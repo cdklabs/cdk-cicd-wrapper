@@ -1,0 +1,6 @@
+---
+nav:
+  - index.md
+  - "Migration Guide": "migration_guide.md"
+  - "{{ project_name }} with NX": "nx.md"
+  - "Prerequisites": "prerequisites.md"

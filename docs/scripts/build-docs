@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+rm -rf build dist
+npm install fs-extra
+./scripts/generate-markdown
+cd build/docs
+if [ ! -d .venv ]; then
+  python3 -m venv --system-site-packages .venv
+fi
+source .venv/bin/activate
+python3 -m pip install \
+    mkdocs~=1.4.3 \
+    pygments>=2.12 \
+    mkdocs-awesome-pages-plugin~=2.9.1 \
+    mkdocs-material~=9.1.15 \
+    mkdocs-redirects~=1.2.0 \
+    mkdocs-typedoc~=1.0.2 \
+    mkdocs-macros-plugin~=1.0.4 \
+    mkdocs-git-revision-date-plugin~=0.3.2 --upgrade
+python3 -m mkdocs build -d ../../dist/docs
+deactivate

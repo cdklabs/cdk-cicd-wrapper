@@ -1,0 +1,27 @@
+{
+    "$schema": "https://raw.githubusercontent.com/jetpack-io/devbox/0.10.3/.schema/devbox.schema.json",
+    "packages": [
+      "git@2.42.0",
+      "git-remote-codecommit@1.15.1",
+      "jq@1.7.1",
+      "go-task@3.35.1",
+      "python@3.12.2",
+      "pipenv@2023.2.4",
+      "nodejs@18.19.1"
+    ],
+    "shell": {
+      "init_hook": [
+        "echo 'Welcome to CDKLabs CDK CI/CD Wrapper'",
+        "echo 'You can run the following commands:'",
+        "task -l",
+        "echo 'For more information, see Readme.md'",
+        "task init"
+      ],
+      "scripts": {
+        "test": [
+          "echo \"Error: no test specified\" && exit 1"
+        ]
+      }
+    }
+  }
+  
