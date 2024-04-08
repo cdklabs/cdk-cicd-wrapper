@@ -1,0 +1,1 @@
+exclude_dirs: ['.github', '.devbox', '.husky', '.projen', '.vscode', 'docs', 'node_modules']

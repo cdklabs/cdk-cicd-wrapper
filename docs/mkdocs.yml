@@ -1,0 +1,76 @@
+site_name: CDK CICD Wrapper
+site_description: CDK CICD Wrapper
+repo_name: dpp-epo-harvesting/harvesting-vanilla-pipeline-core
+repo_url: https://github.com/cdklabs/cdk-cicd-wrapper
+site_url: https://github.com/cdklabs/cdk-cicd-wrapper
+copyright: Copyright &copy; 2023 Amazon Web Services, Inc. or its affiliates.
+use_directory_urls: false
+docs_dir: content
+extra_css:
+  - assets/stylesheets/extra.css
+
+nav:
+  - ...
+
+extra:
+  social:
+    - icon: fontawesome/brands/aws
+      name: Amazon Web Services, Inc.
+      link: https://aws.amazon.com
+  project_name: CDK CICD Wrapper
+  project_vanilla_pipeline: Vanilla Pipeline
+  npm_cli: '@cdklabs/cdk-cicd-wrapper-cli'
+  npm_codepipeline: '@cdklabs/cdk-cicd-wrapper'
+
+theme:
+  name: material
+  font: false
+  logo: assets/images/logo.png
+  icon:
+    logo: fontawesome/brands/aws
+    repo: fontawesome/brands/github
+  favicon: assets/images/logo.png
+  custom_dir: content/overrides
+  palette:
+    scheme: default
+  features:
+    - content.code.copy
+    - toc.follow
+    - navigation.indexes
+    - navigation.instant
+    - navigation.tabs
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - attr_list
+  - md_in_html
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - tables
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - toc:
+      toc_depth: 3
+plugins:
+  - awesome-pages:
+      filename: .pages.yml
+  - git-revision-date
+  - search
+  - macros
+  - typedoc:
+      source: '../../../lib/*.ts'
+      output_dir: 'api'
+      tsconfig: '../../../tsconfig.json'
+      # options: 'typedoc.json'
+      name: 'API Reference'
+      disable_system_check: False

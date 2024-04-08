@@ -1,0 +1,277 @@
+{
+  "tasks": {
+    "audit": {
+      "name": "audit",
+      "steps": [
+        {
+          "spawn": "check-dependencies"
+        },
+        {
+          "spawn": "security-scan"
+        },
+        {
+          "spawn": "license"
+        }
+      ]
+    },
+    "build": {
+      "name": "build",
+      "steps": [
+        {
+          "spawn": "default"
+        },
+        {
+          "spawn": "fmt"
+        },
+        {
+          "exec": "yarn workspaces run build"
+        }
+      ]
+    },
+    "check-dependencies": {
+      "name": "check-dependencies",
+      "description": "Notice file checking and generation",
+      "steps": [
+        {
+          "exec": "yarn workspace @cdklabs/cdk-cicd-wrapper-cli run cli-exec check-dependencies",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "clobber": {
+      "name": "clobber",
+      "description": "hard resets to HEAD of origin and cleans the local repo",
+      "env": {
+        "BRANCH": "$(git branch --show-current)"
+      },
+      "steps": [
+        {
+          "exec": "git checkout -b scratch",
+          "name": "save current HEAD in \"scratch\" branch"
+        },
+        {
+          "exec": "git checkout $BRANCH"
+        },
+        {
+          "exec": "git fetch origin",
+          "name": "fetch latest changes from origin"
+        },
+        {
+          "exec": "git reset --hard origin/$BRANCH",
+          "name": "hard reset to origin commit"
+        },
+        {
+          "exec": "git clean -fdx",
+          "name": "clean all untracked files"
+        },
+        {
+          "say": "ready to rock! (unpushed commits are under the \"scratch\" branch)"
+        }
+      ],
+      "condition": "git diff --exit-code > /dev/null"
+    },
+    "commitlint": {
+      "name": "commitlint",
+      "steps": [
+        {
+          "exec": "commitlint --edit",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "compile": {
+      "name": "compile",
+      "description": "Only compile",
+      "steps": [
+        {
+          "exec": "yarn workspaces run compile"
+        }
+      ]
+    },
+    "default": {
+      "name": "default",
+      "description": "Synthesize project files",
+      "steps": [
+        {
+          "exec": "ts-node --project tsconfig.dev.json .projenrc.ts"
+        }
+      ]
+    },
+    "fmt": {
+      "name": "fmt",
+      "steps": [
+        {
+          "exec": "eslint --ext .ts --fix --no-error-on-unmatched-pattern projenrc .projenrc.ts"
+        }
+      ]
+    },
+    "install": {
+      "name": "install",
+      "description": "Install project dependencies and update lockfile (non-frozen)",
+      "steps": [
+        {
+          "exec": "yarn install --check-files"
+        }
+      ]
+    },
+    "install:ci": {
+      "name": "install:ci",
+      "description": "Install project dependencies using frozen lockfile",
+      "steps": [
+        {
+          "exec": "yarn install --check-files --frozen-lockfile"
+        }
+      ]
+    },
+    "license": {
+      "name": "license",
+      "description": "Notice file checking and generation",
+      "steps": [
+        {
+          "exec": "yarn workspace @cdklabs/cdk-cicd-wrapper-cli run cli-exec license",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "lint": {
+      "name": "lint",
+      "description": "Lint all code",
+      "steps": [
+        {
+          "spawn": "fmt"
+        },
+        {
+          "exec": "yarn workspaces run eslint"
+        }
+      ]
+    },
+    "package": {
+      "name": "package",
+      "description": "Creates the distribution package",
+      "steps": [
+        {
+          "exec": "yarn workspaces run package"
+        }
+      ]
+    },
+    "post-upgrade": {
+      "name": "post-upgrade",
+      "description": "Runs after upgrading dependencies"
+    },
+    "release": {
+      "name": "release",
+      "description": "Release",
+      "steps": [
+        {
+          "exec": "yarn workspaces run release"
+        }
+      ]
+    },
+    "run": {
+      "name": "run",
+      "steps": [
+        {
+          "exec": "yarn workspaces run",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "security-scan": {
+      "name": "security-scan",
+      "description": "Notice file checking and generation",
+      "steps": [
+        {
+          "exec": "yarn workspace @cdklabs/cdk-cicd-wrapper-cli run cli-exec security-scan  --bandit --semgrep --shellcheck --ci",
+          "receiveArgs": true,
+          "condition": "[ -n \"$CI\" ]"
+        },
+        {
+          "exec": "yarn workspace @cdklabs/cdk-cicd-wrapper-cli run cli-exec security-scan  --bandit --semgrep --shellcheck",
+          "receiveArgs": true,
+          "condition": "[ ! -n \"$CI\" ]"
+        }
+      ]
+    },
+    "test": {
+      "name": "test",
+      "description": "Run tests",
+      "steps": [
+        {
+          "exec": "yarn workspaces run test"
+        }
+      ]
+    },
+    "upgrade": {
+      "name": "upgrade",
+      "description": "Upgrade dependencies in all workspaces",
+      "env": {
+        "CI": "0"
+      },
+      "steps": [
+        {
+          "exec": "npx npm-check-updates@16 --dep=dev,optional,peer,prod,bundle --upgrade --target=minor"
+        },
+        {
+          "exec": "yarn workspaces run check-for-updates"
+        },
+        {
+          "exec": "yarn install --check-files"
+        },
+        {
+          "exec": "yarn upgrade"
+        },
+        {
+          "spawn": "default"
+        },
+        {
+          "spawn": "post-upgrade"
+        },
+        {
+          "spawn": "license",
+          "args": [
+            "--fix"
+          ]
+        },
+        {
+          "spawn": "validate",
+          "args": [
+            "--fix"
+          ]
+        }
+      ]
+    },
+    "validate": {
+      "name": "validate",
+      "description": "Validate the lock files",
+      "steps": [
+        {
+          "exec": "yarn workspace @cdklabs/cdk-cicd-wrapper-cli run cli-exec validate",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "validate:fix": {
+      "name": "validate:fix",
+      "description": "Fixes the lock files",
+      "steps": [
+        {
+          "exec": "yarn workspace @cdklabs/cdk-cicd-wrapper-cli run cli-exec validate --fix",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "verdaccio": {
+      "name": "verdaccio",
+      "steps": [
+        {
+          "exec": "verdaccio --config .verdaccio/config.yml",
+          "receiveArgs": true
+        }
+      ]
+    }
+  },
+  "env": {
+    "PATH": "$(npx -c \"node --print process.env.PATH\")"
+  },
+  "//": "~~ Generated by projen. To modify, edit .projenrc.ts and run \"npx projen\"."
+}

@@ -1,0 +1,9 @@
+{
+  "npm-lock-file": "7a45b934f52f6e65e08417123947440b817b76e33b2a9fbbde11b723b351f896",
+  "license": {
+    "package.json": "138a28168f8789a965495b098af955d35e5b051abe14c40a1349005a815fb587",
+    "packages/cdk-cicd-wrapper/package.json": "a504ddb2f3683f65b5b586b08eb768bd6e9b630a15aae02c92b695ed3111e8b9",
+    "packages/cli/package.json": "ec3bdd27ef5a20f572a82cf37d3d953e0fdf61c71dd5e9ae51ece66d131260e8",
+    "projectList": "18ed256e247355cc31eb0137fd7d1f4e038e7091a8ca552897243c4cc74e4ae6"
+  }
+}

@@ -1,0 +1,82 @@
+version: '3'
+
+env:
+  REPOLINTER_DIR: ${HOME}/.repolinter
+  REPOLINTER_RULESET: ${HOME}/.repolinter/repolinter.json
+
+tasks:
+
+  clean:
+    desc: Clean the project
+    summary: Removes all the generated folders and returns the project to a clean state.
+    cmds:
+      - rm -rf node_modules
+      - rm -rf dist
+      - rm -rf coverage
+      - task: refresh
+  
+  refresh:
+    desc: Recover after project has been cleaned
+    summary: Reinstall all dependencies based on yarn.lock and execute Projen
+    preconditions:
+      - test -f .projenrc.ts
+      - test -f yarn.lock
+    cmds:
+      - yarn install --frozen-lockfile
+      - npm run projen
+
+  build:
+    desc: Build the project
+    cmds:
+      - npm run build
+
+  fix:
+    desc: Run autofix on the project
+    cmds:
+      - task refresh
+      - rm -rf yarn.lock
+      - yarn install
+      - npm run lint -- --fix
+      - npm run validate:fix
+      - npm run license -- --fix
+
+  audit:
+    desc: Run audit steps on the project
+    cmds:
+      - npm run check-dependencies
+      - npm run audit
+      - npm run license
+  
+  release-util:list-direct-dependencies:
+    desc: List direct dependencies of the project
+    summary: List direct dependencies of the project. This is useful when artifact has to be provided for review processes.
+    vars:
+      NPM_LICENSE_CHECKER_TOOL: license-checker-rseidelsohn
+      VERSION: 4.3.0
+    cmds:
+      - npx -y {{.NPM_LICENSE_CHECKER_TOOL}}@{{.VERSION}} --nopeer --direct  1 --limitAttributes licenses,repository,publisher {{.CLI_ARGS}}
+
+  release-util:repolinter_install:
+    desc: Install repolinter
+    summary: |
+      Install repolinter a tool that is used to provide in-depth analyses. This task only donwlods and install the tool. 
+      The `release-util:repolinter` task will run the tool. That requires a configuration file.
+    dir: "{{.REPOLINTER_DIR}}"
+    run: once
+    status:
+      - test -d {{.REPOLINTER_DIR}}
+    cmds:
+      - mkdir -p {{.REPOLINTER_DIR}}
+      - git clone https://github.com/todogroup/repolinter.git .
+      - npm install
+
+  release-util:repolinter:
+    desc: Run repo linter
+    env:
+      NODE_OPTIONS: --max-old-space-size=127284016
+    preconditions:
+      - test -t ${HOME}/.repolinter/repolinter.json
+    deps:
+      - repolinter_install
+    cmds:
+      - node {{.REPOLINTER_DIR}}/bin/repolinter.js lint . -r {{.REPOLINTER_RULESET}} {{.CLI_ARGS}}

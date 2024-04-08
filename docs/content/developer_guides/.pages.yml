@@ -1,0 +1,18 @@
+---
+nav:
+  - index.md
+  - "Continuous Integration": "ci.md"
+  - "Continuous Deployment": "cd.md"
+  - "Resources":
+    - "Global Resources": "global_resource.md"
+  - "CDK Context": "cdk_context.md"
+  - "Security": "security.md"
+  - "Python Dependencies": "python_dependencies.md"
+  - "NPM Dependencies":
+    - "Private NPM Registry": "private_npm_registry.md"
+  - "GIT Integrations":
+    - "CodeCommit": "vcs_codecommit.md"
+    - "GitHub": "vcs_github.md"
+  - "Networking": "networking.md"
+  - "Single AWS account": "single_account.md"
+  - "Multiple {{ project_name }}s in one AWS account": "multiple_vanilla_pipelines.md"
