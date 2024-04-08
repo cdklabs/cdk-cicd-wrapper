@@ -13,8 +13,7 @@ const eslintDeps = [
 ];
 
 const workflowRunsOn = [
-  // 'ubuntu-latest',
-  'awscdk-service-spec_ubuntu-latest_32-core',
+  'ubuntu-latest'
 ];
 
 const root = new YarnMonorepo({
