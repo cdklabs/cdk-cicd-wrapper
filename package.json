@@ -14,6 +14,7 @@
     "compile": "npx projen compile",
     "default": "npx projen default",
     "fmt": "npx projen fmt",
+    "husky": "npx projen husky",
     "license": "npx projen license",
     "lint": "npx projen lint",
     "package": "npx projen package",

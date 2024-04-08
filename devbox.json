@@ -14,7 +14,8 @@
         "echo 'Welcome to CDKLabs CDK CI/CD Wrapper'",
         "echo 'You can run the following commands:'",
         "task -l",
-        "echo 'For more information, see Readme.md'"
+        "echo 'For more information, see Readme.md'",
+        "task init"
       ],
       "scripts": {
         "test": [

@@ -105,6 +105,15 @@
         }
       ]
     },
+    "husky": {
+      "name": "husky",
+      "steps": [
+        {
+          "exec": "husky",
+          "condition": "[ ! -n \"$CI\" ]"
+        }
+      ]
+    },
     "install": {
       "name": "install",
       "description": "Install project dependencies and update lockfile (non-frozen)",

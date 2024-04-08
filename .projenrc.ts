@@ -150,7 +150,7 @@ cli.addPackageIgnore('*.ts');
 
 const cliExec = cli.addTask('cli-exec');
 cliExec.spawn(cli.tasks.tryFind('compile')!);
-cliExec.exec('./packages/cli/bin/ci-cd-boot-cli', { receiveArgs: true, cwd: '../..' });
+cliExec.exec('./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/ci-cd-boot-cli', { receiveArgs: true, cwd: '../../..' });
 
 //============================================
 //
@@ -227,5 +227,8 @@ commitlint.exec('commitlint --edit', { receiveArgs: true });
 
 // husky
 root.package.addDevDeps('husky');
+
+const prepare = root.addTask('husky');
+prepare.exec('husky', { condition: '[ ! -n "$CI" ]' });
 
 root.synth();

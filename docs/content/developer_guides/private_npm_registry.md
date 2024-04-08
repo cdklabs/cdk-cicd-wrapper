@@ -25,7 +25,7 @@ registry=https://private-registry.example.com
 In case you want to use the registry only for [scoped dependencies](https://docs.npmjs.com/about-scopes), add the scope definition before the registry.
 
 ```
-@harvesting-vp:registry=https://private-registry.example.com
+@cdklabs:registry=https://private-registry.example.com
 ```
 
 4. Add Authentication Credentials:
