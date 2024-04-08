@@ -1,3 +1,3 @@
 # Check Dependencies
 
-The `npx @harvesting/vanilla-pipeline-core check-dependencies` audits dependencies.
+The `npx {{npm_cli}} check-dependencies` audits dependencies.

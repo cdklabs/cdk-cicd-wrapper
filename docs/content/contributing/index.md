@@ -83,7 +83,7 @@ _WRONG COMMIT MESSAGE_
 ```bash
 > git commit -m "foo: this will fail"
 
-> harvesting-vanilla-pipeline@1.2.3 commitlint
+> cdk-cicd-wrapper@1.2.3 commitlint
 > commitlint --edit
 
 ⧗   input: foo: this will fail

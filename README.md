@@ -1,7 +1,7 @@
 # Welcome to the CI/CD Wrapper
 
-The CI/CD Wrapper enables your CDK applications to be deployed with 
-This repository contain all the construct provided and used in the Vanilla Pipelin to build, test and deliver the packages through Private NPM Registries such as JFrog Artifactory or AWS CodeArtifact.
+The CI/CD Wrapper gives you an easy way to deliver your CDK applications like a PRO.
+This repository contain all the construct provided and used to build, test and deliver the CDK Applications through multiple stages, and AWS accounts to have high level of controlle over your Software Delivery pipelines.
 
 The documentation for the {{ project_name }} Core is stored under the docs/ (index file: index.md) and is designed to be viewed as an MkDocs html site. Before heading to the documentation we highly recommend you:
 

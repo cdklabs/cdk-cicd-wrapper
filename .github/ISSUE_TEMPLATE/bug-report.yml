@@ -60,9 +60,9 @@ body:
     validations:
       required: false
   - type: input
-    id: vp-version
+    id: wrapper-version
     attributes:
-      label: Vanilla Pipeline Core version used
+      label: CDK CI/CD Wrapper version used
     validations:
       required: true
   - type: input

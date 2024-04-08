@@ -46,12 +46,6 @@ body:
         - label: This feature might incur a breaking change
           required: false
   - type: input
-    id: vp-version
-    attributes:
-      label: Vanilla Pipeline Core version used
-    validations:
-      required: true
-  - type: input
     id: environment
     attributes:
       label: Environment details (OS name and version, etc.)

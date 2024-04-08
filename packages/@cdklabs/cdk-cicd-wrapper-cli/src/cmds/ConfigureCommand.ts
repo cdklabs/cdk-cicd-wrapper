@@ -11,7 +11,7 @@ const CONFIGURE_SCRIPT = '../../scripts/configure.sh';
 class Command implements yargs.CommandModule {
   command = 'configure';
 
-  describe = 'Configures the vanilla-pipeline';
+  describe = 'Configures the CDK-CICD-Wrapper pipeline';
 
   builder(args: yargs.Argv) {
     return args;

@@ -1,6 +1,6 @@
 site_name: CDK CICD Wrapper
 site_description: CDK CICD Wrapper
-repo_name: dpp-epo-harvesting/harvesting-vanilla-pipeline-core
+repo_name: cdklabs/cdk-cicd-wrapper
 repo_url: https://github.com/cdklabs/cdk-cicd-wrapper
 site_url: https://github.com/cdklabs/cdk-cicd-wrapper
 copyright: Copyright &copy; 2023 Amazon Web Services, Inc. or its affiliates.

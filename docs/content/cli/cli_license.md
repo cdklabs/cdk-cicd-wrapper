@@ -1,8 +1,8 @@
 # License Management
 
-The `npx @harvesting/vanilla-pipeline-core license` can validate and generate a NOTICE file for the project.
+The `npx {{npm_cli}} license` can validate and generate a NOTICE file for the project.
 
-The NOTICE file consistency is tested by the `npx @harvesting/vanilla-pipeline-core license`, this script is included into the CodePipeline Build step to ensure the NOTICE file is always up-to-date.
+The NOTICE file consistency is tested by the `npx {{npm_cli}} license`, this script is included into the CodePipeline Build step to ensure the NOTICE file is always up-to-date.
 
 The script checks dependencies in `package.json` for NPM, `Pipfile.lock`, and `requirements.txt` for Python projects. In case, you are using other package managers, you need to manage those dependencies by **yourself** as long as that is not supported by {{ project_name }}.
 
@@ -11,7 +11,7 @@ The used dependencies can be dependent on the Operating System and the runtime e
 To update the NOTICE file you need to run the following command:
 
 ```bash
-npx @harvesting/vanilla-pipeline-core license --fix
+npx {{npm_cli}} license --fix
 ```
 
 ## Configuration options

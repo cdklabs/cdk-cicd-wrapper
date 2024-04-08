@@ -20,15 +20,6 @@ This will initialize the connection from the AWS side. As a follow up go to the 
   - codestar-connections:CreateConnection
   - codestar-connections:UpdateConnectionInstallation
 
-## DPP - Guide
-
-This section contains more targeted information for DPP contributors.
-
-- IAM Role for establishing CodeStarConnection is PA_DEVELOPER
-- Only establish CodeStarConnections for RES accounts, **never** for DEV, INT, or PROD
-- Read the [Update a pending connection](https://docs.aws.amazon.com/dtconsole/latest/userguide/connections-update.html) documentation before you proceed with the process
-- In case you are owner of multiple organizations ensure you are selecting the right one ![dpp-enhanced-plant-onboarding](../assets/images/codestarconnection-guide-01.png)
-
 ### Known Issues
 
 - Careful if you see a page like this when you open the [Console](https://console.aws.amazon.com/codesuite/settings/connections) ![AccessDeniedExxception](../assets/images/codestarconnection-common-issues-01.png) You might be using a wrong **region** or you don't have the right permissions.

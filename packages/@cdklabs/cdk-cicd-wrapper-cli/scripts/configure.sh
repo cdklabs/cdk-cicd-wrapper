@@ -38,7 +38,7 @@ QUESTIONARY=(
     "What is your AWS cli profile for DEV environment?;AWS profile name or - (dash) in case the DEV environment is not needed.;DEV profile;DEV_ACCOUNT_AWS_PROFILE"
     "What is the INT AWS account number?;AWS account number or - (dash) in case the INT environment is not needed.;INT account;ACCOUNT_INT"
     "What is your AWS cli profile for INT environment?;AWS profile name or - (dash) in case the INT environment is not needed.;INT profile;INT_ACCOUNT_AWS_PROFILE"
-    "What is your Proxy configuration with DPP?;Proxy configuration with DPP Outbound proxy (https://devstack.vwgroup.com/confluence/display/BP/Outbound+Proxy). Leave empty if you do not need proxy.;Proxy secret arn;PROXY_SECRET_ARN"
+    "What is your Proxy configuration?;Proxy configuration. Leave empty if you do not need proxy.;Proxy secret arn;PROXY_SECRET_ARN"
 )
 
 DEFAULT_CDK_QALIFIER="hnb659fds";
@@ -302,7 +302,7 @@ function collect_inputs_for_github() {
             "The GitHub repository name is in 'owner/name' format. Please provide in this format." \
             "Owner/Name" GIT_REPOSITORY
     else
-        echo_warning "Please check the documentation of the Vanilla Pipeline. '${SCRIPTPATH}/../docs/prerequisites-github-codestarconnection.md'"
+        echo_warning "Please check the documentation of the CDK-CICD-Wrapper pipeline. '${SCRIPTPATH}/../docs/prerequisites-github-codestarconnection.md'"
         exit 1
     fi
 }

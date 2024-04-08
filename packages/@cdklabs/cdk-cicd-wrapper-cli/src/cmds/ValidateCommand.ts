@@ -31,7 +31,7 @@ class Command implements yargs.CommandModule {
 
   command = 'validate';
 
-  describe = 'Validates the vanilla-pipeline';
+  describe = 'Validates the CDK-CICD-Wrapper pipeline';
 
   builder(args: yargs.Argv) {
     args.option('fix', {

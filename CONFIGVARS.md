@@ -1,8 +1,8 @@
-# Configuration Variables
+# Environment Variables
 
-Vanilla Pipeline uses a configuration script, `scripts/configure.sh` to set up the configuration of the Vanilla Pipeline project. In addition to generating a script which can be sourced to your environment shell, this script also modifies  `package.json` with certain configuration values.
+CDK CI/CD Wrapper uses a environment variables, to set up the CDK projects with multi-stage deployment.
 
-## Vanilla Pipeline Variables
+## Variables
 
 | ENV Variable | Package.json config | Default Value | Description |
 |---|---|---|---|
@@ -14,8 +14,8 @@ Vanilla Pipeline uses a configuration script, `scripts/configure.sh` to set up t
 | DEV_ACCOUNT_AWS_PROFILE |   |   | sets the named profile to use for the DEV account. this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
 | INT_ACCOUNT_AWS_PROFILE |   |   | sets the named profile to use for the INT account. this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
 | AWS_PROFILE |   |   | sets the default named profile to use for aws cli or cdk commands when no `--profile` is provided. set to the same value as `RES_ACCOUNT_AWS_PROFILE` this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
-|             | applicationName | VanillaPipeline | sets the name of the Application |
-| CDK_QUALIFIER | cdkQualifier | vanillap | used to distinguish between multiple deployments of a VP project in the same account. Good practice to customize per deployment. |
+|             | applicationName | Wrapper | sets the name of the Application |
+| CDK_QUALIFIER | cdkQualifier | wrapper | used to distinguish between multiple deployments of a VP project in the same account. Good practice to customize per deployment. |
 | GIT_REPOSITORY | repositoryName |  | sets the name of the Git repository in the format org/name |
 |  | repositoryType |  | sets the type of the repository, `GITHUB` or `CODECOMMIT` |
 | CODESTAR_CONNECTION_ARN |  |  | sets the codestar connection required for GITHUB type |

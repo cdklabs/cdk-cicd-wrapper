@@ -7,4 +7,4 @@ nav:
   - API Reference: api/index.html
   - FAQs: faqs
   - Contributing: contributing
-  - Release notes: https://github.com/dpp-epo-harvesting/harvesting-vanilla-pipeline-core/releases
+  - Release notes: https://github.com/cdklabs/cdk-cicd-wrapper/releases

@@ -5,6 +5,13 @@ import { TypeScriptWorkspace } from './projenrc/workspace';
 const cdkVersion = '2.132.0';
 const repositoryUrl = 'https://github.com/cdklabs/cdk-cicd-wrapper.git';
 
+const eslintDeps = [
+  'eslint@^8',
+  '@typescript-eslint/eslint-plugin@^7',
+  '@typescript-eslint/parser@^7',
+  '@typescript-eslint/typescript-estree@^7',
+];
+
 const workflowRunsOn = [
   // 'ubuntu-latest',
   'awscdk-service-spec_ubuntu-latest_32-core',
@@ -95,21 +102,23 @@ const pipeline = new TypeScriptWorkspace({
   keywords: ['cdk', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot'],
   releasableCommits: pj.ReleasableCommits.featuresAndFixes('.'),
 
-  devDeps: [`@aws-cdk/integ-runner@${cdkVersion}-alpha.0`, `@aws-cdk/integ-tests-alpha@${cdkVersion}-alpha.0`],
+  devDeps: [
+    `@aws-cdk/integ-runner@${cdkVersion}-alpha.0`,
+    `@aws-cdk/integ-tests-alpha@${cdkVersion}-alpha.0`,
+    'eslint@^8',
+    '@typescript-eslint/eslint-plugin@^7',
+    '@typescript-eslint/parser@^7',
+    '@typescript-eslint/typescript-estree@^7',
+  ],
 
   peerDeps: ['cdk-nag', 'aws-cdk-lib', 'constructs'],
   bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check'],
   jest: true,
-
-  // tsconfig: {
-  //   extends: pj.javascript.TypescriptConfigExtends.fromTypescriptConfigs([root.tsconfig!]),
-  //   compilerOptions: {}
-  // },
-  // disableTsconfig: true,
 });
 
 // Copy non TS sources to the package
 pipeline.addDevDeps('copyfiles');
+pipeline.addDevDeps(...eslintDeps);
 pipeline.tasks.tryFind('post-compile')!.exec('copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock lib');
 
 // Copy bundle dependencies to the package
@@ -147,6 +156,8 @@ const cli = new TypeScriptWorkspace({
 
 // Don't need to include the TypeScript source files in the tarball; the transpiled JS files are sufficient.
 cli.addPackageIgnore('*.ts');
+
+cli.addDevDeps(...eslintDeps);
 
 const cliExec = cli.addTask('cli-exec');
 cliExec.spawn(cli.tasks.tryFind('compile')!);
