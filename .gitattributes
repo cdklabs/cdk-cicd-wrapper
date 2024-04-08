@@ -8,6 +8,7 @@
 /.github/workflows/auto-merge.yml linguist-generated
 /.github/workflows/build.yml linguist-generated
 /.github/workflows/pull-request-lint.yml linguist-generated
+/.github/workflows/release.yml linguist-generated
 /.github/workflows/upgrade.yml linguist-generated
 /.gitignore linguist-generated
 /.npmignore linguist-generated
@@ -17,8 +18,6 @@
 /.projen/deps.json linguist-generated
 /.projen/files.json linguist-generated
 /.projen/tasks.json linguist-generated
-/.vscode/extensions.json linguist-generated
-/.vscode/settings.json linguist-generated
 /LICENSE linguist-generated
 /package.json linguist-generated
 /tsconfig.dev.json linguist-generated

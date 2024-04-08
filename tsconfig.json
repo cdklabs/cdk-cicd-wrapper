@@ -31,10 +31,10 @@
   "exclude": [],
   "references": [
     {
-      "path": "./packages/cdk-cicd-wrapper"
+      "path": "packages/@cdklabs/cdk-cicd-wrapper"
     },
     {
-      "path": "./packages/cli"
+      "path": "packages/@cdklabs/cdk-cicd-wrapper-cli"
     }
   ]
 }

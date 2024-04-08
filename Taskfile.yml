@@ -46,6 +46,35 @@ tasks:
       - npm run check-dependencies
       - npm run audit
       - npm run license
+
+  test-release:
+    desc: Run tests and release
+    deps:
+      - verdaccio:install
+    cmds:
+      - yarn add -W shx
+      - npm config -L project set @cdklabs:registry=http://localhost:4873
+      - npm run release
+
+  verdaccio:start:
+    desc: Start verdaccio
+    summary: Start verdaccio. This task only starts the server. 
+    run: once
+    cmds:
+      - npx verdaccio@latest -c ./verdaccio/config.yml --listen 0.0.0.0:4873
+
+  verdaccio:install:
+    desc: Install verdaccio
+    summary: Install verdaccio. This task only downloads and install the tool. 
+    run: once
+    status:
+      - npm exec verdaccio -- --help > /dev/null
+    cmds:
+      - npm install verdaccio
+      - npm exec verdaccio -- --help
+
+
+    
   
   release-util:list-direct-dependencies:
     desc: List direct dependencies of the project

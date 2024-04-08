@@ -24,6 +24,11 @@
       "type": "build"
     },
     {
+      "name": "@typescript-eslint/typescript-estree",
+      "version": "^7",
+      "type": "build"
+    },
+    {
       "name": "cdklabs-projen-project-types",
       "type": "build"
     },
@@ -41,7 +46,17 @@
       "type": "build"
     },
     {
+      "name": "eslint",
+      "version": "^8",
+      "type": "build"
+    },
+    {
       "name": "husky",
+      "type": "build"
+    },
+    {
+      "name": "node-fetch",
+      "version": "^2",
       "type": "build"
     },
     {

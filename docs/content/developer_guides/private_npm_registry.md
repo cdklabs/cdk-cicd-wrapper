@@ -50,8 +50,8 @@ Set the `NPM_TOKEN` environment variable to your API token value.
 
 ```
 # Content of .npmrc
-@harvesting-vp:registry=https://jfrog.devstack.vwgroup.com/artifactory/api/npm/dpp-npm-release/
-//jfrog.devstack.vwgroup.com/artifactory/api/npm/dpp-npm-release/:_authToken=eya......
+@cdklabs:registry=https://jfrog.com/artifactory/api/npm/cdklabs-npm-release/
+//jfrog.com/artifactory/api/npm/cdklabs-npm-release/:_authToken=eya......
 ```
 
 Anytime you modify the `.npmrc` file it is highly recommended to verify the new configuration. It can be done with an `npm ci` call.
