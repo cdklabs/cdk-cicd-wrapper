@@ -12,9 +12,7 @@ const eslintDeps = [
   '@typescript-eslint/typescript-estree@^7',
 ];
 
-const workflowRunsOn = [
-  'ubuntu-latest'
-];
+const workflowRunsOn = ['ubuntu-latest'];
 
 const root = new YarnMonorepo({
   name: 'cdk-cicd-wrapper',
