@@ -6,5 +6,5 @@ export * from './LogRetentionRoleStack';
 export * from './CodeStarConnectRepositoryStack';
 export * from './SSMParameterStack';
 export * from './VPCStack';
-export * from './VanillaPipelineBlueprintStack';
+export * from './PipelineBlueprint';
 export * from './compliance-bucket/ComplianceBucketStack';

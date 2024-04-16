@@ -43,7 +43,7 @@ export class PipelineProvider implements IResourceProvider {
         : undefined,
       buildImage: blueprintProps.codeBuildEnvSettings.buildImage,
       codeGuruScanThreshold: blueprintProps.codeGuruScanThreshold,
-      isDockerEnabledForSynth: blueprintProps.codeBuildEnvSettings.privileged,
+      isDockerEnabledForSynth: true,
       applicationQualifier: blueprintProps.applicationQualifier,
       primaryOutputDirectory: blueprintProps.primaryOutputDirectory,
       pipelineName: blueprintProps.applicationName,

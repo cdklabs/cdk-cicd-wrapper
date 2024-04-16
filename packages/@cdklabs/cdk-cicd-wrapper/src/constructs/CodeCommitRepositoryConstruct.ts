@@ -112,6 +112,10 @@ export class CodeCommitRepositoryConstruct extends Construct {
             id: 'AwsSolutions-IAM5',
             reason: 'Suppress AwsSolutions-IAM5 on the PR check lambda function Resource.',
           },
+          {
+            id: 'AwsSolutions-IAM4',
+            reason: 'Suppress AwsSolutions-IAM4 on the PR check lambda function Resource.',
+          },
         ],
         true,
       );

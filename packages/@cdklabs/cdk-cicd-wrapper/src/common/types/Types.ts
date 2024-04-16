@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import { Step } from 'aws-cdk-lib/pipelines';
 import { ResourceContext } from '../spi';
 
 export type IStage = 'RES' | 'DEV' | 'INT' | 'PROD' | string;
@@ -50,6 +51,12 @@ export interface IVanillaPipelineConfig {
   codeGuruScanThreshold?: CodeGuruSeverityThreshold;
   phases: IPipelinePhases;
   primaryOutputDirectory: string;
+  sandbox?: SandboxConfig;
+}
+
+export interface SandboxConfig {
+  stackProvider: IStackProvider;
+  stageToUse: string;
 }
 
 export interface IPipelinePhases {
@@ -61,8 +68,13 @@ export interface IPipelinePhases {
   postDeploy?: IPhaseCommand[];
 }
 
+export interface DeploymentHookConfig {
+  pre?: Step[];
+  post?: Step[];
+}
+
 export interface IStackProvider {
-  provide(context: ResourceContext): void;
+  provide(context: ResourceContext): DeploymentHookConfig | void;
 }
 
 export interface DeploymentDefinition {

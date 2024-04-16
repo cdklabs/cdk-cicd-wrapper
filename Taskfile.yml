@@ -58,6 +58,12 @@ tasks:
       - npm run audit
       - npm run license
 
+  local-dev:
+    dir: packages/@cdklabs/cdk-cicd-wrapper/
+    cmds:
+      # - task: build
+      - npx yalc publish
+
   test-release:
     desc: Run tests and release
     deps:
@@ -66,7 +72,6 @@ tasks:
       # - yarn add -W shx
       - npm config -L project set @cdklabs:registry=http://127.0.0.1:4873
       - npm config -L project set //127.0.0.1:4873/:_authToken="\"fake\""
-      - task: clean
       - task: build
       - task: test-release:pipeline
       - task: test-release:cli

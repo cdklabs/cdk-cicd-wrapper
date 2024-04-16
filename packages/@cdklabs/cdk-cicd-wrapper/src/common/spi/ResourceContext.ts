@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Construct } from 'constructs';
-import { IVanillaPipelineBlueprintProps } from '../../stacks';
+import { IPipelineBlueprintProps } from '../../stacks';
 import { IStage, Environment, Stage } from '../types/Types';
 
 export enum Scope {
@@ -102,7 +102,7 @@ export class ResourceContext {
   constructor(
     private _scope: Construct,
     public readonly pipelineStack: Construct,
-    public readonly blueprintProps: IVanillaPipelineBlueprintProps,
+    public readonly blueprintProps: IPipelineBlueprintProps,
   ) {
     ResourceContext._instance = this;
 
@@ -176,4 +176,5 @@ export enum GlobalResources {
   COMPLIANCE_BUCKET = 'compliance-bucket',
   PIPELINE = 'pipeline',
   PHASE = 'phase',
+  ADDON_STORE = 'addon-store',
 }

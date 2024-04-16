@@ -3,20 +3,18 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import * as pipelines from 'aws-cdk-lib/pipelines';
 import { AwsSolutionsChecks } from 'cdk-nag';
-import { Construct } from 'constructs';
-import { PostDeployBuildStep, PreDeployBuildStep } from '../code-pipeline';
+import { PipelineStack } from './PipelineStack';
+import { SandboxStack } from './SandboxStack';
 import {
   DeploymentDefinition,
   Environment,
-  IVanillaPipelineConfig,
+  IVanillaPipelineConfig as IPipelineConfig,
   NPMRegistryConfig,
   IPhaseCommand,
   PipelinePhases,
   Stage,
   GlobalResources,
-  ResourceContext,
   IResourceProvider,
   CodeGuruSeverityThreshold,
   IStackProvider,
@@ -34,7 +32,6 @@ import { HttpProxyProvider, IProxyConfig } from '../resource-providers/ProxyProv
 import { BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
 import { StageProvider } from '../resource-providers/StageProvider';
 import { VPCProvider } from '../resource-providers/VPCProvider';
-import { SecurityControls } from '../utils';
 
 const defaultRegion = process.env.AWS_REGION;
 
@@ -69,8 +66,8 @@ const defaultConfigs = {
 };
 
 // Create Builder class for Pipeline Blueprint
-export class VanillaPipelineBlueprintBuilder {
-  private _id: string = defaultConfigs.applicationName || 'VanillaPipelineBlueprint';
+export class PipelineBlueprintBuilder {
+  private _id: string = defaultConfigs.applicationName || 'CiCdBlueprintBlueprint';
 
   private stacksCommon: IStackProvider[] = [];
 
@@ -80,7 +77,7 @@ export class VanillaPipelineBlueprintBuilder {
 
   private _region?: string = defaultRegion;
 
-  constructor(private props: IVanillaPipelineBlueprintProps = defaultConfigs) {
+  constructor(private props: IPipelineBlueprintProps = defaultConfigs) {
     this.repositoryProvider(new BasicRepositoryProvider());
     this.resourceProvider(GlobalResources.PARAMETER_STORE, new ParameterProvider());
     this.resourceProvider(GlobalResources.ENCRYPTION, new EncryptionProvider());
@@ -181,6 +178,15 @@ export class VanillaPipelineBlueprintBuilder {
     return this;
   }
 
+  public sandbox(stackProvider: IStackProvider, stage: string = 'DEV') {
+    this.props.sandbox = {
+      stackProvider,
+      stageToUse: stage,
+    };
+
+    return this;
+  }
+
   public addStack(stackProvider: IStackProvider, ...stages: string[]) {
     if (stages.length == 0) {
       this.stacksCommon.push(stackProvider);
@@ -205,17 +211,26 @@ export class VanillaPipelineBlueprintBuilder {
   public synth(app: cdk.App) {
     this.props.deploymentDefinition = this.generateDeploymentDefinitions();
 
-    const vanillaPipelineBlueprint = new VanillaPipelineBlueprint(
-      app,
-      this._id,
-      this.props as IVanillaPipelineBlueprintProps,
-    );
+    var stack: cdk.Stack;
+
+    if (app.node.tryGetContext('sandbox')) {
+      console.log('Sandbox');
+      const sandboxEnv = this.props.deploymentDefinition[this.props.sandbox?.stageToUse!];
+      if (!sandboxEnv) {
+        throw new Error(`Sandbox stage ${this.props.sandbox?.stageToUse} not defined`);
+      }
+
+      stack = new SandboxStack(app, this._id, sandboxEnv.env, this.props as IPipelineBlueprintProps);
+    } else {
+      console.log('Pipeline');
+      stack = new PipelineStack(app, this._id, this.props as IPipelineBlueprintProps);
+    }
 
     cdk.Tags.of(app).add('Application', `${this.props.applicationName}`);
 
     cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
 
-    return vanillaPipelineBlueprint;
+    return stack;
   }
 
   private generateDeploymentDefinitions(): RequiredRESStage<DeploymentDefinition> {
@@ -239,7 +254,7 @@ export class VanillaPipelineBlueprintBuilder {
   }
 }
 
-export interface IVanillaPipelineBlueprintProps extends IVanillaPipelineConfig {
+export interface IPipelineBlueprintProps extends IPipelineConfig {
   /**
    * Named resource providers to leverage for cluster resources.
    * The resource can represent Vpc, Hosting Zones or other resources, see {@link spi.ResourceType}.
@@ -249,96 +264,8 @@ export interface IVanillaPipelineBlueprintProps extends IVanillaPipelineConfig {
   resourceProviders: { [key in string]: IResourceProvider };
 }
 
-export class VanillaPipelineBlueprint extends cdk.Stack {
-  public static builder(): VanillaPipelineBlueprintBuilder {
-    return new VanillaPipelineBlueprintBuilder();
-  }
-
-  constructor(
-    scope: Construct,
-    id: string,
-    readonly config: IVanillaPipelineBlueprintProps,
-  ) {
-    super(scope, id, { env: config.deploymentDefinition.RES.env });
-
-    const resourceContext = new ResourceContext(scope, this, config);
-
-    resourceContext.initStage(Stage.RES);
-
-    resourceContext.get(GlobalResources.REPOSITORY);
-    resourceContext.get(GlobalResources.PARAMETER_STORE);
-    resourceContext.get(GlobalResources.ENCRYPTION);
-    resourceContext.get(GlobalResources.VPC);
-    const pipeline = resourceContext.get(GlobalResources.PIPELINE)!;
-
-    cdk.Aspects.of(scope).add(
-      new SecurityControls(
-        resourceContext.get(GlobalResources.ENCRYPTION)!.kmsKey,
-        Stage.RES,
-        config.logRetentionInDays,
-        resourceContext.get(GlobalResources.COMPLIANCE_BUCKET)!.bucketName,
-      ),
-    );
-
-    Object.entries(config.deploymentDefinition).forEach(([deploymentStage, deploymentDefinition]) => {
-      this.renderStage(resourceContext, pipeline, deploymentStage, deploymentDefinition);
-    });
-
-    pipeline.buildPipeline();
-  }
-
-  private renderStage(
-    resourceContext: ResourceContext,
-    pipeline: pipelines.CodePipeline,
-    stage: string,
-    deploymentDefinition: DeploymentDefinition,
-  ) {
-    const deploymentEnvironment = deploymentDefinition.env;
-
-    if (stage == Stage.RES) {
-      // Allow to define additional stacks for RES stage
-      deploymentDefinition.stacksProviders.forEach((stackProvider) => stackProvider.provide(resourceContext));
-      return;
-    }
-
-    if (deploymentEnvironment.account == '-') return;
-
-    const phaseDefinition = resourceContext.get(GlobalResources.PHASE)!;
-    resourceContext.initStage(stage);
-    const preDeployStep = new PreDeployBuildStep(stage, {
-      env: {
-        TARGET_REGION: deploymentEnvironment.region,
-      },
-      commands: phaseDefinition.getCommands(PipelinePhases.PRE_DEPLOY),
-    });
-
-    const appStage = resourceContext.get(GlobalResources.STAGE_PROVIDER)!;
-
-    resourceContext._scoped(appStage, () => {
-      deploymentDefinition.stacksProviders.forEach((stackProvider) => stackProvider.provide(resourceContext));
-    });
-
-    pipeline.addStage(appStage, {
-      pre: [
-        preDeployStep,
-        // add manual approval step for all stages, except DEV
-        ...(stage != Stage.DEV ? [preDeployStep.appendManualApprovalStep()] : []),
-      ],
-      post: [
-        new PostDeployBuildStep(
-          stage,
-          {
-            env: {
-              ACCOUNT_ID: deploymentEnvironment.account,
-              TARGET_REGION: deploymentEnvironment.region,
-            },
-            commands: phaseDefinition.getCommands(PipelinePhases.POST_DEPLOY),
-          },
-          resourceContext.blueprintProps.applicationName,
-          resourceContext.blueprintProps.logRetentionInDays,
-          appStage.logRetentionRoleArn,
-        ),
-      ],
-    });
+export class PipelineBlueprint {
+  public static builder(): PipelineBlueprintBuilder {
+    return new PipelineBlueprintBuilder();
   }
 }
