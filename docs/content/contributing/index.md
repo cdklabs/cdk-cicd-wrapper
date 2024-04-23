@@ -9,36 +9,38 @@ Please read through this document before submitting any issues or pull requests 
 The structure of this project is as follows:
 
 ```bash
-├── bin
-├── docs
-├── lib
-│   ├── cli ### the cli code
-│   ├── code-pipeline
-│   ├── constructs ### constructs distributed through NPM
-│   ├── examples
-│   ├── resource-providers
-│   ├── spi
-│   ├── stacks
-│   └── utils
-├── scripts
-│   └── lib
-├── src
-│   ├── codebuild
-│   ├── lambda-functions
-│   └── lambda-layer
-├── test
-│   ├── constructs
-│   ├── examples
-│   └── stacks
-└── utils
-    └── license-checker
+├── docs                                  # Documentation 
+├── packages                              # Packages
+│   └── @cdklabs
+│       ├── cdk-cicd-wrapper              # CDK CI/CD Wrapper Blueprint
+│       └── cdk-cicd-wrapper-cli          # CLI tools to support the Blueprint
+├── projenrc                              # Projen source
+├── .projenrc.ts                          # Projen file to manage project structure
+├── CHANGELOG.md
+├── CODE_OF_CONDUCT.md
+├── CONFIGVARS.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── NOTICE
+├── OSS_License_Summary.csv
+├── README.md
+├── Taskfile.yml                          # Contains helpful tasks that are useful during development
+├── bandit.yaml
+├── licensecheck.json
+├── package-verification.json
+├── package.json
+├── tsconfig.dev.json
+├── tsconfig.json
+└── yarn.lock
 ```
 
 ### **docs**
 
 This is where the documentation site is defined and built.
 
-### **lib**
+### **packages**
+
+This folder the sources are located
 
 #### Testing xxx constructs
 
@@ -100,7 +102,7 @@ _CORRECT COMMIT MESSAGE_
 ```bash
 > git commit -m "docs: updated README.md with better instructions for the commit-msg hook"
 
-> harvesting-vanilla-pipeline@1.2.3 commitlint
+> cdk-cicd-wrapper@1.2.3 commitlint
 > commitlint --edit .git/COMMIT_EDITMSG
 
 [feat/developer-tools 24192d7] docs: updated README.md with better instructions for the commit-msg hook

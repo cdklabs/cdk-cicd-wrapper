@@ -1,0 +1,131 @@
+version: '3'
+
+vars:
+  SECRET_ID: 'cdk-cicd-wrapper'
+  DOMAIN: 'cdk-cicd-wrapper'
+  REPOSITORY: 'cdk-cicd-wrapper'
+
+tasks:
+
+  publish:
+    desc: Run tests and release
+    deps:
+      - unpublish
+    preconditions:
+      - sh: npm config get @cdklabs:registry | grep codeartifact
+        msg: "CodeArtifact repository has to be set up for test release. Use 'task codeartifact:login'."
+    cmds:
+      - task build
+      - task: publish:pipeline
+      - task: publish:cli
+  
+  unpublish:
+    desc: Unpublish all package versions
+    cmds:
+      - task: unpublish:package
+        vars: 
+          PACKAGE: 'cdk-cicd-wrapper-cli'
+      - task: unpublish:package
+        vars: 
+          PACKAGE: 'cdk-cicd-wrapper'
+
+  unpublish:package:
+    internal: true
+    desc: Unpublish a package version
+    preconditions:
+      - sh: npm config get @cdklabs:registry | grep codeartifact
+        msg: "CodeArtifact repository has to be set up for test release. Use 'task codeartifact:login'."
+    requires:
+      vars:
+        - PACKAGE
+    vars:
+      NAMESPACE: 'cdklabs'
+      VERSION:
+        sh: npm view @{{.NAMESPACE}}/{{.PACKAGE}} version
+    silent: true
+    cmds:
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}delete-package-versions  --domain {{.DOMAIN}} --repository {{.REPOSITORY}} --format npm --package {{.PACKAGE}} --namespace {{.NAMESPACE}} --versions {{.VERSION}} {{with .AWS_REGION}} --region {{.}} {{end}} &> /dev/null
+      - echo "Unpublished version {{.VERSION}} of package @{{.NAMESPACE}}/{{.PACKAGE}}."
+    status:
+      - '[ ! $(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-package-version --domain {{.DOMAIN}} --repository {{.REPOSITORY}} --format npm --package {{.PACKAGE}} --namespace {{.NAMESPACE}} --version {{.VERSION}} {{with .AWS_REGION}} --region {{.}} {{end}}) ]'
+
+  publish:pipeline:
+    desc: Publish the pipeline package locally
+    dir: packages/@cdklabs/cdk-cicd-wrapper/dist/js/
+    internal: true
+    cmds:
+      - npm publish
+
+  publish:cli:
+    desc: Publish the cli package
+    dir: packages/@cdklabs/cdk-cicd-wrapper-cli/dist/js/
+    internal: true
+    cmds:
+      - npm publish
+
+  repository:create: 
+    desc: Create a codeartifact repository
+    cmds:
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}create-domain --domain {{.DOMAIN}} {{with .AWS_REGION}} --region {{.}} {{end}} &> /dev/null
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}create-repository --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} &> /dev/null
+    preconditions:
+      - sh: 'aws --v'
+        msg: 'AWS cli is not available. Please install AWS CLI and try again.'
+    silent: true
+    status:
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-domain --domain {{.DOMAIN}} {{with .AWS_REGION}} --region {{.}} {{end}}
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-repository --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}}
+
+  repository:delete:
+    desc: Delete a codeartifact repository
+    cmds:
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}delete-repository --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} &> /dev/null
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}delete-domain --domain {{.DOMAIN}} {{with .AWS_REGION}} --region {{.}} {{end}} &> /dev/null
+    silent: true
+    preconditions:
+      - sh: 'aws --v'
+        msg: 'AWS cli is not available. Please install AWS CLI and try again.'
+    status:
+      - '[ ! $(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-domain --domain {{.DOMAIN}} {{with .AWS_REGION}} --region {{.}} {{end}}) ]'
+      - '[ ! $(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-repository --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}}) ]'
+
+  login:
+    desc: Login to a codeartifact repository
+    deps:
+      - repository:create
+    cmds:
+      - test -f .npmrc && rm -rf ./.npmrc && echo "[Warning] Project level .npmrc file has been removed." || true
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --namespace cdklabs --tool npm
+    silent: true
+    preconditions:
+      - sh: 'aws --v'
+        msg: 'AWS cli is not available. Please install AWS CLI and try again.'
+
+  set-token-secret:
+    desc: Set the token secret for the pipeline
+    deps:
+      - create-secret-id
+    silent: true
+    cmds:
+      - >
+        aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}put-secret-value --secret-id {{.SECRET_ID}} --secret-string \
+          '$(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}get-authorization-token --domain {{.DOMAIN}} --query authorizationToken --output text --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}})' &> /dev/null
+      - echo "Secret id {{.SECRET_ID}} has been set, ARN=$(aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-secret --secret-id {{.SECRET_ID}} --output text --query ARN)."
+  
+  create-secret-id:
+    desc: Create the secret id for the pipeline
+    silent: true
+    cmds:
+      - aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}create-secret --name {{.SECRET_ID}} --description "CodeArtifact token for pipeline" &> /dev/null
+      - echo "Secret id {{.SECRET_ID}} has been created, ARN=$(aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-secret --secret-id {{.SECRET_ID}} --output text --query ARN)."
+    status:
+      - aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-secret --secret-id {{.SECRET_ID}}
+      
+  delete-secret-id:
+    desc: Delete the secret id for the pipeline
+    silent: true
+    cmds:
+      - aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}delete-secret --force-delete-without-recovery --secret-id {{.SECRET_ID}} &> /dev/null
+      - echo "Secret id {{.SECRET_ID}} has been deleted."
+    status:
+      - '[ ! $(aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-secret --secret-id {{.SECRET_ID}}) ]'

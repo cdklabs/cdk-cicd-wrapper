@@ -83,6 +83,7 @@ const root = new YarnMonorepo({
     '.devbox',
     '.task',
     'node_modules',
+    '.env'
   ],
 });
 
