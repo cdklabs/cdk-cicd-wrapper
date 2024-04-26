@@ -42,6 +42,7 @@ export class PipelineBlueprintBase extends cdk.Stack {
       return;
     }
 
+    // [Backward compatibility] Allows to ignore stages which was env variable ACCOUNT_{STAGE} has discovered but value is set to - to ignore
     if (deploymentEnvironment.account == '-') return;
 
     const phaseDefinition = this.resourceContext.get(GlobalResources.PHASE)!;

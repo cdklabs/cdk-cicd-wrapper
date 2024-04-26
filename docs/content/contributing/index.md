@@ -15,6 +15,7 @@ The structure of this project is as follows:
 │       ├── cdk-cicd-wrapper              # CDK CI/CD Wrapper Blueprint
 │       └── cdk-cicd-wrapper-cli          # CLI tools to support the Blueprint
 ├── projenrc                              # Projen source
+├── samples                               # Samples folder for demonstrating various aspects of the tool
 ├── .projenrc.ts                          # Projen file to manage project structure
 ├── CHANGELOG.md
 ├── CODE_OF_CONDUCT.md
@@ -42,7 +43,6 @@ This is where the documentation site is defined and built.
 
 This folder the sources are located
 
-#### Testing xxx constructs
 
 ## Reporting Bugs/Feature Requests
 
@@ -68,7 +68,7 @@ To send us a pull request, please:
 
 1. Fork the repository.
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
-3. Run `npm run checks` to ensure everything builds and tests correctly.
+3. Run `task build` to ensure everything builds and tests correctly.
    > This will execute all necessary verification `verification`, `build`, `test`, `audit`.
 4. Commit to your fork on a new branch using [conventional commit messages](#commits).
 5. Send us a pull request, answering any default questions in the pull request template.
@@ -145,59 +145,40 @@ See the [LICENSE](LICENSE) file for our project's licensing. We will ask you to 
 
 We may ask you to sign a [Contributor License Agreement (CLA)](http://en.wikipedia.org/wiki/Contributor_License_Agreement) for larger changes.
 
+## Working with documentation
+The documentation for the CDK CI/CD Wrapper Core is stored under the docs/ (index file: index.md) and is designed to be viewed as an MkDocs html site. Before heading to the documentation we highly recommend you:
+
+test
+- Run the build docs script `task docs` using you UNIX cli
+- Start the local mkdocs webserver to view locally the ConfigBuilder documentation site with the `task docs:serve` command; the documentation will then be available at http://localhost:8000
+
 ## Testing Packages locally
 This section explains how you can run local versions of the {{ project_name }} packages that you have made changes to.
 You would typically do this when testing new features or fixes that you are trying to contribute to this project.
-There are 2 ways of testing : 
--   Verdaicco : This is for testing your packages exclusively on your machine. Verdaccio allows you to host a local nom registry where you can then publish packages. In the context of {{ project_name }} this will come in handy in rapidly testing your initial deployments of {{ project_name }}. the main limitation of this is that once deployed your CICD pipeline will fail as it will not have access to your local npm registry. But this servers as a quick way to confirm that your modified {{ project_name }} will work for initial deployment
+
+### Prerequisite
+An AWS account available for testing with Administrator access.
+
+### First steps
+
+Configure the following environment variables:
+
+|Name|Description|Required|Default|Example|
+|----|-----------|---|---|----|
+|AWS_PROFILE|[AWS Profile](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-profile) to use for interacting with the AWS account. This profile is used to create an AWS CodeArtifact to host the {{ project_name }} packages, while the version is not publicly available. | true | | 123456789012 |
+|DOMAIN     |AWS CodeArtifact Domain name to use     | true | cdk-cicd-wrapper | |
+|REPOSITORY |AWS CodeArtifact repository name to use | true | cdk-cicd-wrapper | |
+|SECRET_ID  |AWS SecretManager Secret name to publish to login token. This token will be used by the {{ project_name }} pipeline to be able to pull the packages at the Synth stage. | true | cdk-cicd-wrapper | |
+
+# Publish the CDK CI/CD packages into AWS CodeArtifact
+
+First log into the code artifact:
+
+```task codeartifact:login```
+
 -   CodeArtifact : To be able to test your modified version of {{ project_name }} end to end and have it work in the {{ project_name }}'s code build instances you can use code artifact to host a private npm registry in the cloud.
 
 See following sections explain how to set these two methods up.
-
-### Verdaicco Setup
-First, install Verdaccio on your local machine. You can do this by running ```npm install -g verdaccio``` in your command line.
-
-After installing, start Verdaccio by running ```verdaccio``` in your command line. Verdaccio will then display the address of the local server (usually http://localhost:4873), which will serve as your local npm registry.
-
-Create a ```.npmrc```  File: In your project directory, create a .npmrc file. Inside this file, add the following line:
-```
-<macro>:registry=http://localhost:4873
-```
-This configuration tells npm to use your local Verdaccio server as the registry for all package operations within this project.
-The ```<macro>``` will scope the registry to only be used for the {{ project_name }} packages with are scoped under ```<macro>```
-Ensure the ```.npmrc``` file is saved within your project directory.
-
-####Publishing packages
-Before publishing, you need to add a user to your Verdaccio registry for authentication purposes. Use the command:
-```
-npm adduser --registry http://localhost:4873
-```
-Then you can navigate to your package and run the following command to publish it
-```
-npm publish --registry http://localhost:4873
-```
-
-**Note**
-In this repository, the {{ project_name }} packages are found in the .packages directory. 
-There, you will find two separate directories: ```cdk-cicd-wrapper``` and ```cli```, which contain the two essential packages for {{ project_name }}. 
-You will need to navigate (cd) into these directories individually and publish them. 
-However, ensure you run ```npm run build``` before you publish them. 
-When publishing the cdk-cicd-wrapper package, you must ensure you have NPM, .NET, Maven, and Python installed on your machine.
-
-Once the packages are published, you can install them using the following command:
-```
-npm install <your-package-name> --registry http://localhost:4873
-```
-For {{ project_name }} your install commands will look like this :
-```
-npm install <macro>/cdk-cicd-wrapper --registry http://localhost:4873 --force
-npm install <macro>/cdk-cicd-wrapper-cli --registry http://localhost:4873 --force
-```
-**Note**
-You may need to use the --force flag here.
-
-**Note**
-Once you have completed this, you will be able to deploy from your local computer to AWS, but the CI/CD pipeline will fail as it does not have access to your local npm registry. Please follow the steps in the 'CodeArtifact for CI/CD Environment Setup' section detailing how to use CodeArtifact to host your npm registry.
 
 ### CodeArtifact for CI/CD environment setup
 AWS CodeArtifact is a fully managed artifact repository service that makes it easy for developers to securely store, publish, and share software packages used in their software development process. 

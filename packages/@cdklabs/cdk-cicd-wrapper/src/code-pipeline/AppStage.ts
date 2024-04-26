@@ -30,14 +30,19 @@ export class AppStage extends cdk.Stage {
 
       const encryptionStack = context.get(GlobalResources.ENCRYPTION)!;
 
-      const logRetentionRoleStack = new LogRetentionRoleStack(this, `${applicationName}LogRetentionRoleStack`, {
+      new LogRetentionRoleStack(this, `${applicationName}LogRetentionRoleStack`, {
         resAccount: resAccount,
         stageName: stage,
         applicationName: applicationName,
         encryptionKey: encryptionStack.kmsKey,
       });
 
-      this._logRetentionRoleArn = logRetentionRoleStack.roleArn;
+      this._logRetentionRoleArn = LogRetentionRoleStack.getRoleArn(
+        context.environment.account,
+        context.environment.region,
+        stage,
+        applicationName,
+      );
 
       cdk.Aspects.of(this).add(
         new SecurityControls(encryptionStack.kmsKey, stage, logRetentionInDays, complianceLogBucketName),

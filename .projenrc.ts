@@ -79,11 +79,11 @@ const root = new YarnMonorepo({
     '.DS_Store',
     'junit-reports',
     '.npmrc',
-    'tmp',
+    'development',
     '.devbox',
     '.task',
     'node_modules',
-    '.env'
+    '.env',
   ],
 });
 
@@ -136,7 +136,7 @@ const cli = new TypeScriptWorkspace({
   projenrcTs: true,
 
   bin: {
-    'ci-cd-boot-cli': './bin/ci-cd-boot-cli',
+    'cdk-cicd': './bin/cdk-cicd',
   },
 
   deps: [
@@ -159,7 +159,7 @@ cli.addDevDeps(...eslintDeps);
 
 const cliExec = cli.addTask('cli-exec');
 cliExec.spawn(cli.tasks.tryFind('compile')!);
-cliExec.exec('./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/ci-cd-boot-cli', { receiveArgs: true, cwd: '../../..' });
+cliExec.exec('./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/cdk-cicd', { receiveArgs: true, cwd: '../../..' });
 
 //============================================
 //
@@ -217,11 +217,6 @@ const audit = root.addTask('audit');
 audit.spawn(checkDependencies);
 audit.spawn(securityScan);
 audit.spawn(license);
-
-// verdaccio
-const verdaccio = root.addTask('verdaccio');
-verdaccio.exec('verdaccio --config .verdaccio/config.yml', { receiveArgs: true });
-root.addDevDeps('verdaccio');
 
 // commitlint
 root.package.addDevDeps('@commitlint/cli', '@commitlint/config-conventional');

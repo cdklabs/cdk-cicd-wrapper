@@ -3,11 +3,6 @@
 The CI/CD Wrapper gives you an easy way to deliver your CDK applications like a PRO.
 This repository contains all the tools to build, deliver and test any CDK Applications through multiple stages, and AWS accounts to have high level of quality and confidence.
 
-The documentation for the CDK CI/CD Wrapper Core is stored under the docs/ (index file: index.md) and is designed to be viewed as an MkDocs html site. Before heading to the documentation we highly recommend you:
-
-- Run the build docs script `./scripts/build-docs` using you UNIX cli
-- Start the local mkdocs webserver to view locally the ConfigBuilder documentation site with the `mkdocs serve` command; the documentation will then be available at https://localhost:8000
-
 ## Use cases
 
 The CDK CI/CD Wrapper is the next step on road to standardize and simplify the multi-stage CI/CD process that the successful [aws-cdk-cicd-boot-sample](https://github.com/aws-samples/aws-cdk-cicd-boot-sample) started. Thus the use cases for the CDK CI/CD Wrapper are the same as for the [aws-cdk-cicd-boot-sample](https://github.com/aws-samples/aws-cdk-cicd-boot-sample).

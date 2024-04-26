@@ -61,7 +61,7 @@
           "spawn": "compile"
         },
         {
-          "exec": "./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/ci-cd-boot-cli",
+          "exec": "./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/cdk-cicd",
           "receiveArgs": true,
           "cwd": "../../.."
         }

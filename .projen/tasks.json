@@ -283,15 +283,6 @@
           "receiveArgs": true
         }
       ]
-    },
-    "verdaccio": {
-      "name": "verdaccio",
-      "steps": [
-        {
-          "exec": "verdaccio --config .verdaccio/config.yml",
-          "receiveArgs": true
-        }
-      ]
     }
   },
   "env": {

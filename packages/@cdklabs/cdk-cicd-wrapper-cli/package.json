@@ -7,7 +7,7 @@
     "directory": "packages/@cdklabs/cdk-cicd-wrapper-cli"
   },
   "bin": {
-    "ci-cd-boot-cli": "bin/ci-cd-boot-cli"
+    "cdk-cicd": "bin/cdk-cicd"
   },
   "scripts": {
     "build": "npx projen build",

@@ -10,6 +10,9 @@ includes:
   codeartifact: 
     taskfile: Taskfile.codeartifact.yml
 
+  samples:
+    taskfile: Taskfile.sample-app.yml
+
 tasks:
 
   init:
@@ -64,11 +67,23 @@ tasks:
       - npm run audit
       - npm run license
 
-  local-dev:
-    dir: packages/@cdklabs/cdk-cicd-wrapper/
+  docs:
+    desc: Generate documentation with mkdocs
+    dir: docs
     cmds:
-      # - task: build
-      - npx yalc publish
+      - ./scripts/build-docs
+
+  docs:local:
+    desc: Create a webserver to host the documentation
+    summary: |
+      This command is useful to work on documentation of the project.
+
+      It run a webs erver to host the generated html pages
+    dir: docs
+    cmds:
+      # - source build/docs/.venv/bin/activate
+      - build/docs/.venv/bin/mkdocs serve
+
 
   release-util:list-direct-dependencies:
     desc: List direct dependencies of the project

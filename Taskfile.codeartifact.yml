@@ -41,12 +41,13 @@ tasks:
     vars:
       NAMESPACE: 'cdklabs'
       VERSION:
-        sh: npm view @{{.NAMESPACE}}/{{.PACKAGE}} version
+        sh: npm view @{{.NAMESPACE}}/{{.PACKAGE}} version || true
     silent: true
     cmds:
       - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}delete-package-versions  --domain {{.DOMAIN}} --repository {{.REPOSITORY}} --format npm --package {{.PACKAGE}} --namespace {{.NAMESPACE}} --versions {{.VERSION}} {{with .AWS_REGION}} --region {{.}} {{end}} &> /dev/null
       - echo "Unpublished version {{.VERSION}} of package @{{.NAMESPACE}}/{{.PACKAGE}}."
     status:
+      - '[ ! $(npm view @{{.NAMESPACE}}/{{.PACKAGE}}) ]'
       - '[ ! $(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-package-version --domain {{.DOMAIN}} --repository {{.REPOSITORY}} --format npm --package {{.PACKAGE}} --namespace {{.NAMESPACE}} --version {{.VERSION}} {{with .AWS_REGION}} --region {{.}} {{end}}) ]'
 
   publish:pipeline:

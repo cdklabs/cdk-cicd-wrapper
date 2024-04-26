@@ -67,7 +67,7 @@ const defaultConfigs = {
 
 // Create Builder class for Pipeline Blueprint
 export class PipelineBlueprintBuilder {
-  private _id: string = defaultConfigs.applicationName || 'CiCdBlueprintBlueprint';
+  private _id: string = defaultConfigs.applicationName || 'CiCdBlueprint';
 
   private stacksCommon: IStackProvider[] = [];
 
