@@ -41,13 +41,13 @@ tasks:
     vars:
       NAMESPACE: 'cdklabs'
       VERSION:
-        sh: npm view @{{.NAMESPACE}}/{{.PACKAGE}} version || true
+        sh: npm view @{{.NAMESPACE}}/{{.PACKAGE}} version 2> /dev/null || true
     silent: true
     cmds:
       - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}delete-package-versions  --domain {{.DOMAIN}} --repository {{.REPOSITORY}} --format npm --package {{.PACKAGE}} --namespace {{.NAMESPACE}} --versions {{.VERSION}} {{with .AWS_REGION}} --region {{.}} {{end}} &> /dev/null
       - echo "Unpublished version {{.VERSION}} of package @{{.NAMESPACE}}/{{.PACKAGE}}."
     status:
-      - '[ ! $(npm view @{{.NAMESPACE}}/{{.PACKAGE}}) ]'
+      - '[ ! $(npm view @{{.NAMESPACE}}/{{.PACKAGE}} version 2> /dev/null) ]'
       - '[ ! $(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-package-version --domain {{.DOMAIN}} --repository {{.REPOSITORY}} --format npm --package {{.PACKAGE}} --namespace {{.NAMESPACE}} --version {{.VERSION}} {{with .AWS_REGION}} --region {{.}} {{end}}) ]'
 
   publish:pipeline:
@@ -93,10 +93,12 @@ tasks:
   login:
     desc: Login to a codeartifact repository
     deps:
+      - aws:session:active
       - repository:create
     cmds:
       - test -f .npmrc && rm -rf ./.npmrc && echo "[Warning] Project level .npmrc file has been removed." || true
       - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --namespace cdklabs --tool npm
+      - task: set-token-secret
     silent: true
     preconditions:
       - sh: 'aws --v'
@@ -106,12 +108,17 @@ tasks:
     desc: Set the token secret for the pipeline
     deps:
       - create-secret-id
+    vars:
+      TOKEN:
+        sh: aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}get-authorization-token --domain {{.DOMAIN}} --query authorizationToken --output text {{with .AWS_REGION}} --region {{.}} {{end}}
     silent: true
     cmds:
       - >
         aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}put-secret-value --secret-id {{.SECRET_ID}} --secret-string \
-          '$(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}get-authorization-token --domain {{.DOMAIN}} --query authorizationToken --output text --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}})' &> /dev/null
-      - echo "Secret id {{.SECRET_ID}} has been set, ARN=$(aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-secret --secret-id {{.SECRET_ID}} --output text --query ARN)."
+          '{{.TOKEN}}' &> /dev/null
+      - echo "NPM_REGISTRY=$(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}get-repository-endpoint --domain {{.DOMAIN}} --format npm --output text --repository {{.REPOSITORY}} --output text {{with .AWS_REGION}} --region {{.}} {{end}})" > .env.codeartifact
+      - echo "NPM_BASIC_AUTH_SECRET_ID=$(aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-secret --secret-id {{.SECRET_ID}} --output text --query ARN)" >> .env.codeartifact
+      - echo "NPM_SCOPE=cdklabs" >> .env.codeartifact
   
   create-secret-id:
     desc: Create the secret id for the pipeline
@@ -130,3 +137,12 @@ tasks:
       - echo "Secret id {{.SECRET_ID}} has been deleted."
     status:
       - '[ ! $(aws secretsmanager {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-secret --secret-id {{.SECRET_ID}}) ]'
+  
+  aws:session:active:
+    internal: true
+    silent: true
+    prerequisites:
+      - sh: 'aws sts {{with .AWS_PROFILE}} --profile {{.}} get-caller-identity'
+        msg: 'AWS cli is not available. Please install AWS CLI and try again.'
+    commands:
+      - aws sts {{with .AWS_PROFILE}} --profile {{.}} get-caller-identity

@@ -29,7 +29,7 @@ export class PipelineProvider implements IResourceProvider {
         ...(blueprintProps.npmRegistry
           ? {
               NPM_REGISTRY: blueprintProps.npmRegistry.url,
-              NPM_BASIC_AUTH_ID: blueprintProps.npmRegistry.basicAuthSecretArn,
+              NPM_BASIC_AUTH_SECRET_ID: blueprintProps.npmRegistry.basicAuthSecretArn,
               NPM_SCOPE: blueprintProps.npmRegistry.scope ?? '',
             }
           : {}),

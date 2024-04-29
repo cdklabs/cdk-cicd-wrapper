@@ -71,4 +71,6 @@ audit.spawn(license);
 const lint = project.addTask('lint');
 lint.spawn(project.tasks.tryFind('eslint')!);
 
+project.addTask('cdkls').exec('cdk ls');
+
 project.synth();

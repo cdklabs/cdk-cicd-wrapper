@@ -1,7 +1,8 @@
 version: '3'
 
 vars:
-  DEVELOPMENT_DIR: "development"
+  # need to use 2 folders to ensure each relative path is correct after moving from samples to development
+  DEVELOPMENT_DIR: "development/project"
   SAMPLES_APP_DIR: "samples"
   # Default sample app to use
   SAMPLE_APP: "ts-cdk-project-with-private-repository"
@@ -12,6 +13,7 @@ tasks:
   dev:info:
     desc: Prints information about the pipeline
     summary: Prints information about the pipeline
+    dir: '{{.DEVELOPMENT_DIR}}'
     silent: true
     cmds:
       - echo "Information:"
@@ -24,6 +26,7 @@ tasks:
       - for: { var: STAGES_ENABLED, split: "," }
         cmd: 'echo "  - {{.ITEM}}: ${ACCOUNT_{{.ITEM}}} -- profile: ${{.ITEM}}_ACCOUNT_AWS_PROFILE"'
       - echo "===================================================="
+      - npm run cdkls
 
   list:
     desc: List all available sample apps
@@ -45,7 +48,7 @@ tasks:
     internal: true
     silent: true
     cmds:
-      - mkdir {{.DEVELOPMENT_DIR}}
+      - mkdir -p {{.DEVELOPMENT_DIR}}
     status:
       - test -d {{.DEVELOPMENT_DIR}}
   
@@ -57,13 +60,28 @@ tasks:
     cmds:
       - task: dev:clean
       - task: dev:create-development-dir
-      - cp -r {{.SAMPLES_APP_DIR}}/{{.SAMPLE_APP}}/* {{.DEVELOPMENT_DIR}}
+      - cp -a {{.SAMPLES_APP_DIR}}/{{.SAMPLE_APP}}/. {{.DEVELOPMENT_DIR}}
+      - task: dev:npm:install
+
+  dev:npm:install:
+    desc: Install the dependencies for {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    cmds:
+      - npm install
+      - npm run default
+
+  dev:update:
+    desc: Update the wrapper for {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    cmds:
+      - npm run update-cdk-cicd-wrapper
 
   dev:deploy:
     desc: Deploy the development with {{.SAMPLE_APP}}
-    dir: '{{.SAMPLES_APP_DIR}}/{{.SAMPLE_APP}}'
+    dir: '{{.DEVELOPMENT_DIR}}'
     cmds:
-      - cdk deploy --all
+      - npm run build
+      - npm run deploy -- --all
 
   dev:bootstrap:
     desc: Bootstrap the development for {{.SAMPLE_APP}}
@@ -71,7 +89,7 @@ tasks:
       This task will bootstrap the AWS accounts to be able to deploy CDK applications.
 
       Get more information about CDK bootstrapping: https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html
-    dir: '{{.SAMPLES_APP_DIR}}/{{.SAMPLE_APP}}'
+    dir: '{{.DEVELOPMENT_DIR}}'
     silent: true
     cmds:
       - echo "==============================================================="
@@ -85,7 +103,7 @@ tasks:
   dev:bootstrap:internal:
     internal: true
     desc: Internal task to bootstrap the AWS accounts to be able to deploy CDK applications
-    dir: '{{.SAMPLES_APP_DIR}}/{{.SAMPLE_APP}}'
+    dir: '{{.DEVELOPMENT_DIR}}'
     preconditions:
       - sh: '[ `jq -r ''.context."@aws-cdk/core:bootstrapQualifier"'' cdk.json` = "$CDK_QUALIFIER" ]'
         msg: 'The bootstrap qualifier does not match the CDK_QUALIFIER variable. Please update the cdk.json file.'
@@ -107,7 +125,7 @@ tasks:
 
   dev:bootstrap:account:
     internal: true
-    dir: '{{.SAMPLES_APP_DIR}}/{{.SAMPLE_APP}}'
+    dir: '{{.DEVELOPMENT_DIR}}'
     requires:
       vars:
         - CDK_QUALIFIER
@@ -125,3 +143,50 @@ tasks:
     cmds:
       - npm install
       - npm run build
+  
+  dev:prepare:
+    desc: Prepare the development with {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    cmds:
+      - npm ci
+      - npm run validate -- --fix
+      - npm run lint -- --fix
+      - npm run license -- --fix
+
+
+  dev:git:push:
+    desc: Push the development with {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    deps:
+      - dev:git:init
+      - dev:prepare
+    status:
+      - '[ ! `git status` ]'
+    cmds:
+      - git add .
+      - 'git commit -m "chore: Init" --no-verify'
+      - git push -u origin main --no-verify
+
+  dev:git:init:
+    desc: Initialize the development with {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    status:
+      - 'git remote get-url origin'
+    requires:
+      vars:
+        - GIT_REPOSITORY
+        - AWS_REGION
+        - RES_ACCOUNT_AWS_PROFILE
+    cmds:
+      - git init .
+      - git remote add origin codecommit::{{.AWS_REGION}}://{{.RES_ACCOUNT_AWS_PROFILE}}@{{.GIT_REPOSITORY}}
+
+
+  dev:loop:
+    desc: Loop the development with {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    cmds:
+      - task codeartifact:publish
+      - task: dev:update
+      - task: dev:deploy
+      - task: dev:git:push

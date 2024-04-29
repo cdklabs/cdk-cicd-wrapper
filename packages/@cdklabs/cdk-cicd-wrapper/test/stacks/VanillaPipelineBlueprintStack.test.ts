@@ -9,6 +9,9 @@ import { BasicRepositoryProvider, sh } from '../../src/resource-providers';
 import { PipelineBlueprint } from '../../src/stacks/PipelineBlueprint';
 import { TestAppConfig, TestRepositoryConfigCodeCommit, TestRepositoryConfigGithub } from '../TestConfig';
 
+// Clear env as env variables can populate unintended configurations during the tests
+process.env = {};
+
 describe('vanilla-pipeline-blueprint-stack-test-codecommit', () => {
   const app = new cdk.App();
 

@@ -170,69 +170,53 @@ Configure the following environment variables:
 |REPOSITORY |AWS CodeArtifact repository name to use | true | cdk-cicd-wrapper | |
 |SECRET_ID  |AWS SecretManager Secret name to publish to login token. This token will be used by the {{ project_name }} pipeline to be able to pull the packages at the Synth stage. | true | cdk-cicd-wrapper | |
 
-# Publish the CDK CI/CD packages into AWS CodeArtifact
+The values can be placed into a `.env` file in the root of the project as well.
 
-First log into the code artifact:
+### Publish the CDK CI/CD packages into AWS CodeArtifact
 
-```task codeartifact:login```
+#### Login to CodeArtifact
+It is highly recommended to set up a separate AWS CodeArtifact for testing and developing the {{ project_name }}.
+With a single ```task codeartifact:login``` command you can login to the AWS CodeArtifact.
+In case the AWS CodeArtifact Domain or Repository are not existing, then it creates it based on the provided DOMAIN, REPOSITORY.
 
--   CodeArtifact : To be able to test your modified version of {{ project_name }} end to end and have it work in the {{ project_name }}'s code build instances you can use code artifact to host a private npm registry in the cloud.
+The created AWS CodeArtifact Domain and Repository can be deleted with the `task codeartifact:repository:delete` command.
 
-See following sections explain how to set these two methods up.
+**Note**
+The command might fail with message like `exit status 255` or similar. This means your AWS Session has been expired.
 
-### CodeArtifact for CI/CD environment setup
-AWS CodeArtifact is a fully managed artifact repository service that makes it easy for developers to securely store, publish, and share software packages used in their software development process. 
+#### Publish 
+The {{ project_name }} packages can be publish with the `task codeartifact:publish` command.
 
-Here’s how to set it up for your CI/CD environment:
+This command unpublish the previous package in cases where the package version has not been changed.
 
-Start in the AWS CodeArtifact Console by creating a domain, which is a container for repositories, and then create a repository within this domain to store your npm packages.
+### Use the packages from AWS CodeArtifact
 
-Alternatively you can do the above with the aws cli like so
-```
-aws codeartifact create-domain --domain <domain-name> 
+The {{ project_name }} packages can be added to any CDK project from the AWS CodeArtifact with the `npm install --save @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli`. Then you can follow the [Getting Started](../getting_started/index.md) Guide.
 
-aws codeartifact create-repository --domain <domain-name> --repository <repository-name> 
-```
-Replace <your-domain> and <repository-name> with your specific domain name and repository name.
+#### Configure the pipeline to use the AWS CodeArtifact
 
-Once your repository is created, use the AWS CLI to get an authorization token for your CodeArtifact repository. The command is:
-```
-aws codeartifact get-authorization-token --domain <your-domain> --domain-owner <your-aws-account-id> --query authorizationToken --output text
-```
-Replace <your-domain> and <your-aws-account-id> with your specific domain name and AWS account ID.
+### Use a sample app for development
+The repository comes with a `samples` folder that host example projects to understood the benefit of the {{ project_name }}.
 
-With your authorization token, configure npm to use your CodeArtifact repository as follows:
-```
-npm config set registry https://<your-domain>-<your-aws-account-id>.d.codeartifact.<region>.amazonaws.com/npm/<your-repository>/
-```
-Then, set the authorization token for your repository:
-```
-npm config set //<your-domain>-<your-aws-account-id>.d.codeartifact.eu-west-2.amazonaws.com/npm/{{ project_name }}core/:_authToken=<YOUR_AUTH_TOKEN>
-```
-Make sure to replace <your-domain>, <your-aws-account-id>, <region>, <your-repository>, and <YOUR_AUTH_TOKEN> with your specific details and the token you obtained in the previous step.
+Once you've selected a sample, that you'd like to use as baseline. 
+The available samples can be listed, with the `task samples:list` command.
+Set the `SAMPLE_APP` environment variable name as the folder is called inside the sample folder.
 
-Now, you can publish your npm packages to your CodeArtifact repository using ```npm publish```
+You can use e.g: `export SAMPLE_APP=ts-cdk-project-with-private-repository;`. 
+In case you want to use the `ts-cdk-project-with-private-repository` you can skip this step as that is the default sample used.
 
-##### Use CodeArtifact Registry Locally
-To use your CodeArtifact Registry locally on a project you will need to create a .npmrc file where you specify your registry and authorization token.
+Then you need to execute the `task samples:dev:init` command.
+This command create the `development/project` temporarily folder and initialize the project with [Projen](https://projen.io/).
 
-Create a ```.npmrc```  File: In your project directory, create a .npmrc file. Inside this file, add the following line:
-```
-<macro>:registry=https://<your-domain>-<your-aws-account-id>.d.codeartifact.<region>.amazonaws.com/npm/<your-repository>/
-//<your-domain>-<your-aws-account-id>.d.codeartifact.eu-west-2.amazonaws.com/npm/{{ project_name }}core/:_authToken=<YOUR_AUTH_TOKEN>
-```
-Make sure to replace <your-domain>, <your-aws-account-id>, <region>, <your-repository>, and <YOUR_AUTH_TOKEN> with your specific details and the token you obtained in the previous step.
-The ```<macro>``` will scope the registry to only be used for the {{ project_name }} packages with are scoped under ```<macro>```
+#### Configure environment variables for the sample application
+The environment variables listed on the [Variables](../developer_guides/variables.md) page.
+These variables can be included into the `.env` file in either the root or int he `development/project` folder.
 
-Once the registry is set, you can install them using the following command:
-```
-npm install <your-package-name> --registry http://localhost:4873
-```
-For {{ project_name }} your install commands will look like this :
-```
-npm install <macro>/cdk-cicd-wrapper --registry http://localhost:4873 --force
-npm install <macro>/cdk-cicd-wrapper-cli --registry http://localhost:4873 --force
-```
+The requirements for the samples projects can be different, so check the **README.md** file of the sample application for further details.
+
+You can verify the recognized configuration with the `task samples:dev:info`. This is recommended if you manage multiple AWS accounts.
+
+#### 
 
 ##### Use CodeArtifact Registry in CI/CD environment
 To make the Codebuild instance utilise your code artifact registry you will need to set the npmRegistry configuration in your `{{ project_name }}Builder` with the following parameters:

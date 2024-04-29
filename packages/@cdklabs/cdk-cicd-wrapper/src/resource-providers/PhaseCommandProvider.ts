@@ -84,13 +84,15 @@ class InlineShellPhaseCommand implements IPhaseCommand {
   ) {}
 
   get command() {
-    const scriptCommand = fs.readFileSync(path.resolve(__dirname, '../../scripts/', this.script), {
+    const bashScript = fs.readFileSync(path.resolve(__dirname, '../../scripts/', this.script), {
       encoding: 'utf-8',
     });
+    const replaced = bashScript.replace(/\$/g, '\\$');
+    const escapedScript = `bash_command=$(cat << CDKEOF\n ${replaced}\nCDKEOF\n )`;
     if (this.exportEnvironment) {
-      return `ENV_OUT=.env.${this.script}.vars bash -c '${scriptCommand}'; . ./.env.${this.script}.vars; rm -rf ./.env.${this.script}.vars;`;
+      return `${escapedScript}; echo -n "$bash_command" > ./.cdk.wrapper.${this.script}.sh; chmod +x ./.cdk.wrapper.${this.script}.sh; . ./.cdk.wrapper.${this.script}.sh;`;
     }
-    return `bash -c '${scriptCommand}';`;
+    return `${escapedScript}; echo -n "$bash_command" > ./.cdk.wrapper.${this.script}.sh; chmod +x ./.cdk.wrapper.${this.script}.sh; ./.cdk.wrapper.${this.script}.sh; ./.cdk.wrapper.${this.script}.sh`;
   }
 }
 

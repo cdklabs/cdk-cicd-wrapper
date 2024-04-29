@@ -37,7 +37,6 @@ const defaultRegion = process.env.AWS_REGION;
 
 const defaultConfigs = {
   applicationName: process.env.npm_package_config_applicationName || '',
-  npmBasicAuthSecretArn: process.env.npm_basic_auth_secret_arn || '',
   applicationQualifier: process.env.npm_package_config_cdkQualifier || 'hnb659fds',
   region: defaultRegion,
   logRetentionInDays: '365',
@@ -55,9 +54,9 @@ const defaultConfigs = {
       PhaseCommands.NPM_LOGIN,
     ],
     [PipelinePhases.PRE_BUILD]: [
+      PhaseCommands.NPM_CI,
       PhaseCommands.VALIDATE,
       PhaseCommands.CHECK_AUDIT,
-      PhaseCommands.NPM_CI,
       PhaseCommands.CHECK_LINT,
     ],
     [PipelinePhases.BUILD]: [PhaseCommands.BUILD],
@@ -93,6 +92,14 @@ export class PipelineBlueprintBuilder {
     // Backward compatibility to use proxy if PROXY_SECRET_ARN is present
     if (process.env.PROXY_SECRET_ARN) {
       this.proxy();
+    }
+
+    if (process.env.NPM_BASIC_AUTH_SECRET_ID && process.env.NPM_REGISTRY) {
+      this.npmRegistry({
+        url: process.env.NPM_REGISTRY!,
+        basicAuthSecretArn: process.env.NPM_BASIC_AUTH_SECRET_ID,
+        scope: process.env.NPM_SCOPE,
+      });
     }
   }
 

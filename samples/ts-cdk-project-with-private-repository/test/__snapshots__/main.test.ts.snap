@@ -2,6 +2,11 @@
 
 exports[`Snapshot 1`] = `
 {
+  "Outputs": {
+    "hello": {
+      "Value": "world",
+    },
+  },
   "Parameters": {
     "BootstrapVersion": {
       "Default": "/cdk-bootstrap/hnb659fds/version",

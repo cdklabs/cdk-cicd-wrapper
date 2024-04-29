@@ -1,6 +1,6 @@
 version: '3'
 
-dotenv: ['.env']
+dotenv: ['.env', 'development/project/.env', '.env.codeartifact']
 
 env:
   REPOLINTER_DIR: ${HOME}/.repolinter
@@ -118,3 +118,7 @@ tasks:
       - repolinter_install
     cmds:
       - node {{.REPOLINTER_DIR}}/bin/repolinter.js lint . -r {{.REPOLINTER_RULESET}} {{.CLI_ARGS}}
+
+  warming:
+    cmds:
+      - ./dummy.sh

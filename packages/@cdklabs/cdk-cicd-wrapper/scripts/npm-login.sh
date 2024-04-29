@@ -3,10 +3,10 @@
 # Get the NPM BASIC AUTH Token and output it to ~/.npmrc
 set -e
 
-if [[ -z "${NPM_BASIC_AUTH_ID}" || -z "${NPM_REGISTRY}" ]]; then
+if [[ -z "${NPM_BASIC_AUTH_SECRET_ID}" || -z "${NPM_REGISTRY}" ]]; then
     echo "--- No NPM Basic Auth detected ---";
 else
-    NODE_AUTH_TOKEN=`aws secretsmanager get-secret-value --region ${AWS_REGION} --secret-id ${NPM_BASIC_AUTH_ID} --output text --query SecretString`;
+    NODE_AUTH_TOKEN=`aws secretsmanager get-secret-value --region ${AWS_REGION} --secret-id ${NPM_BASIC_AUTH_SECRET_ID} --output text --query SecretString`;
 
     SCOPE="";
     if [[ ! -z "${NPM_SCOPE}" ]]; then
