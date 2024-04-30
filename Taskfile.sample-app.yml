@@ -5,7 +5,7 @@ vars:
   DEVELOPMENT_DIR: "development/project"
   SAMPLES_APP_DIR: "samples"
   # Default sample app to use
-  SAMPLE_APP: "ts-cdk-project-with-private-repository"
+  SAMPLE_APP: "cdk-ts-example"
   STAGES_ENABLED: "DEV"
 
 tasks:
@@ -82,6 +82,26 @@ tasks:
     cmds:
       - npm run build
       - npm run deploy -- --all
+  
+  dev:destroy:
+    desc: Destroy the development with {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    interactive: true
+    cmds:
+      - npm exec -- cdk --version
+      - for: { var: STAGES_ENABLED, split: "," } 
+        task: dev:destroy:stage
+        vars:
+          STAGE: '{{.ITEM}}'
+      - npm exec -- cdk destroy --all --profile {{.RES_ACCOUNT_AWS_PROFILE}}
+
+  dev:destroy:stage:
+    desc: Destroy the development with {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    interactive: true
+    cmds:
+      - npm exec -- cdk ls
+      - npm exec -- cdk destroy --profile ${{.STAGE}}_ACCOUNT_AWS_PROFILE {{.STAGE}}/*
 
   dev:bootstrap:
     desc: Bootstrap the development for {{.SAMPLE_APP}}
