@@ -1,5 +1,8 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import { awscdk, javascript } from 'projen';
-import { CdkCICDWrapper } from '../../projenrc/cdk-ci-cd-wrapper';
+import { CdkCICDWrapper } from '@cdklabs/cdk-cicd-wrapper';
 
 const cdkQualifier = 'sample';
 

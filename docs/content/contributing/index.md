@@ -216,7 +216,8 @@ You can verify the recognized configuration with the `task samples:dev:info`. Th
 
 
 #### Bootstrap the accounts
-The accounts used to deploy with the pipe
+The accounts must be bootstrapped prior to the first deployment.
+You can execute it with the `task samples:dev:bootstrap`.
 
 
 ## FAQ

@@ -7,3 +7,4 @@ export * from './resource-providers';
 export * from './code-pipeline';
 export * from './stacks';
 export * from './utils';
+export * from './projen';

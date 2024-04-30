@@ -50,7 +50,8 @@
       {
         "devDependencies": [
           "**/test/**",
-          "**/build-tools/**"
+          "**/build-tools/**",
+          "**/projen/**"
         ],
         "optionalDependencies": false,
         "peerDependencies": true

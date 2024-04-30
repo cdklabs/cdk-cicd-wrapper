@@ -1,3 +1,7 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+// eslint-disables-next-line
 import * as projen from 'projen';
 
 export type REPOSITORY_TYPE = 'GITHUB' | 'CODECOMMIT';
@@ -70,11 +74,14 @@ export class CdkCICDWrapper extends projen.Component {
     const securityScan = project.addTask('security-scan', {
       description: 'Notice file checking and generation',
     });
-    securityScan.exec('cdk-cicd  --bandit --semgrep --shellcheck --ci', {
+    securityScan.exec('cdk-cicd security-scan --bandit --semgrep --shellcheck --ci', {
       receiveArgs: true,
       condition: '[ -n "$CI" ]',
     });
-    securityScan.exec('cdk-cicd  --bandit --semgrep --shellcheck', { receiveArgs: true, condition: '[ ! -n "$CI" ]' });
+    securityScan.exec('cdk-cicd security-scan --bandit --semgrep --shellcheck', {
+      receiveArgs: true,
+      condition: '[ ! -n "$CI" ]',
+    });
 
     const audit = project.addTask('audit');
     audit.spawn(checkDependencies);

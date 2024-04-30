@@ -1,5 +1,6 @@
 import * as pj from 'projen';
 import { yarn } from 'cdklabs-projen-project-types';
+import { Eslint } from 'projen/lib/javascript';
 
 const repositoryUrl = 'https://github.com/cdklabs/cdk-cicd-wrapper.git';
 
@@ -110,6 +111,18 @@ const pipeline = new yarn.TypeScriptWorkspace({
   peerDeps: ['cdk-nag', 'aws-cdk-lib', 'constructs'],
   bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check'],
   jest: true,
+});
+
+// Keep the projen module as optional dependency, while we can leverage it in our samples
+Eslint.of(pipeline)?.addRules({
+  'import/no-extraneous-dependencies': [
+    'error',
+    {
+      devDependencies: ['**/test/**', '**/build-tools/**', '**/projen/**'],
+      optionalDependencies: false,
+      peerDependencies: true,
+    },
+  ],
 });
 
 // Copy non TS sources to the package
