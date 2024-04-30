@@ -29,7 +29,7 @@ const project = new awscdk.AwsCdkTypeScriptApp({
 project.cdkConfig.json.patch(JsonPatch.add('/toolkitStackName', `CdkToolkit-${cdkQualifier}`));
 project.package.addField('config', {
   cdkQualifier: cdkQualifier,
-  repositoryName: 'ts-cdk-project-with-private-repository',
+  repositoryName: 'cdk-ts-example',
   repositoryType: 'CODECOMMIT',
   cicdVpcType: 'NO_VPC',
 });

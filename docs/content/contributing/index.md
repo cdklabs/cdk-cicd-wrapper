@@ -202,8 +202,8 @@ Once you've selected a sample, that you'd like to use as baseline.
 The available samples can be listed, with the `task samples:list` command.
 Set the `SAMPLE_APP` environment variable name as the folder is called inside the sample folder.
 
-You can use e.g: `export SAMPLE_APP=ts-cdk-project-with-private-repository;`. 
-In case you want to use the `ts-cdk-project-with-private-repository` you can skip this step as that is the default sample used.
+You can use e.g: `export SAMPLE_APP=cdk-ts-example;`. 
+In case you want to use the `cdk-ts-example` you can skip this step as that is the default sample used.
 
 Then you need to execute the `task samples:dev:init` command.
 This command create the `development/project` temporarily folder and initialize the project with [Projen](https://projen.io/).
@@ -216,63 +216,6 @@ The requirements for the samples projects can be different, so check the **READM
 
 You can verify the recognized configuration with the `task samples:dev:info`. This is recommended if you manage multiple AWS accounts.
 
-#### 
-
-##### Use CodeArtifact Registry in CI/CD environment
-To make the Codebuild instance utilise your code artifact registry you will need to set the npmRegistry configuration in your `{{ project_name }}Builder` with the following parameters:
-- url: NPM registry url
-- basicAuthSecretArn: AWS SecretManager Secret arn, will be detailed soon
-- scope: NPM Registry scope if it is used
-  
-You can do this like so:
-```
-import * as vp from '{{ npm_codepipeline }}';
-
-const npmRegistryConfig: vp.NPMRegistryConfig = {
-  url: "https://<your-domain>-<your-aws-account-id>.d.codeartifact.<region>.amazonaws.com/npm/<your-repository>/", 
-  basicAuthSecretArn: "<your-secret-arn>", 
-  scope: "<scope>" 
-};
-Make sure to replace <your-domain>, <your-aws-account-id>, <region>, <your-repository>, and <YOUR_AUTH_TOKEN> with your specific details and the token you obtained in the previous step.
-For <scope> use <macro>
-
-vp.{{ project_name }}Blueprint.builder().npmRegistry(npmRegistryConfig).synth(app);
-```
-
-The NPM Authentication Token needs to remain secret that is why the {{ project_name }} uses AWS SecretManager to store it.
-Create a secret in AWS Secrets Manager and store the authentication token as plaintext. 
-Please be aware the code artifact token expires after 12 hours so if you Codebuild runs after more than 12 hours since you last generated you auth token it will fail. So you will have to generate a new one and update your secret with it.
-
-Your CICD environment will now automatically use your CodeArtifact Registry
 
 
 ## FAQ
-
-### How do I bump dependency versions?
-
-From the root directory run: `npm install`. This will bump all dependencies to be the same/latest versions and update the `package-lock.json` file.
-Then, please update `package-verification.json` by running the following commands:
-
-```bash
-rm -rf node_modules ### remove the locally downloaded npm dependencies
-npm install  ### install fresh from the package.json, this will generate package-lock.json as well
-npm run validate:fix ### will generate the checksum for the package-lock.json which is checked in the CI/CD
-npm run audit:fix:license ### will update the NOTICE file with the updated package versions
-```
-
-## CDK Useful commands
-
-- `npm ci` install the packages from the frozen dependencies in the package-lock.json
-- `npm run build` compile typescript to js
-- `npm run watch` watch for changes and compile
-- `npm run test` perform the jest unit tests
-- `npm install` installs an npm package (make sure to run the npm run generate-checksum afterwards)
-- `npm run generate-checksum` generate checksum of the package-lock.json (after installing new dependencies)
-- `npm run audit` audits both NPM and Python dependencies
-- `npm run audit-nodejs` audits NPM dependencies
-- `npm run audit-python` audits Python dependencies
-- `npm run lint` check for linting issues in the project
-- `npm run lint-fix` fix linting issues in the project (do not forget to add & commit the fixed files)
-- `cdk deploy` deploy this stack to your default AWS account/region
-- `cdk diff` compare deployed stack with current state
-- `cdk synth --all` emits the synthesized CloudFormation template for all stacks
