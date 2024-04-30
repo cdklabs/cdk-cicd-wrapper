@@ -1,8 +1,6 @@
 import * as pj from 'projen';
-import { YarnMonorepo } from './projenrc/monorepo';
-import { TypeScriptWorkspace } from './projenrc/workspace';
+import { yarn } from 'cdklabs-projen-project-types';
 
-const cdkVersion = '2.132.0';
 const repositoryUrl = 'https://github.com/cdklabs/cdk-cicd-wrapper.git';
 
 const eslintDeps = [
@@ -14,12 +12,13 @@ const eslintDeps = [
 
 const workflowRunsOn = ['ubuntu-latest'];
 
-const root = new YarnMonorepo({
+const root = new yarn.Monorepo({
   name: 'cdk-cicd-wrapper',
   description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
   repository: repositoryUrl,
   homepage: repositoryUrl,
   keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot'],
+  projenrcTs: true,
 
   defaultReleaseBranch: 'main',
   devDeps: [
@@ -94,7 +93,7 @@ const root = new YarnMonorepo({
 //
 //============================================
 
-const pipeline = new TypeScriptWorkspace({
+const pipeline = new yarn.TypeScriptWorkspace({
   parent: root,
   name: '@cdklabs/cdk-cicd-wrapper',
   description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
@@ -102,8 +101,6 @@ const pipeline = new TypeScriptWorkspace({
   releasableCommits: pj.ReleasableCommits.featuresAndFixes('.'),
 
   devDeps: [
-    `@aws-cdk/integ-runner@${cdkVersion}-alpha.0`,
-    `@aws-cdk/integ-tests-alpha@${cdkVersion}-alpha.0`,
     'eslint@^8',
     '@typescript-eslint/eslint-plugin@^7',
     '@typescript-eslint/parser@^7',
@@ -129,7 +126,7 @@ postCompile.exec("export DEP='@cloudcomponents';cp -rf ../../../node_modules/$DE
 //  CLI package
 //
 //============================================
-const cli = new TypeScriptWorkspace({
+const cli = new yarn.TypeScriptWorkspace({
   parent: root,
   name: '@cdklabs/cdk-cicd-wrapper-cli',
   description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',

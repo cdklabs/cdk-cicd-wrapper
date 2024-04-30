@@ -100,7 +100,7 @@
   },
   "config": {
     "cdkQualifier": "sample",
-    "repositoryName": "ts-cdk-project-with-private-repository",
+    "repositoryName": "cdk-ts-example",
     "repositoryType": "CODECOMMIT",
     "cicdVpcType": "NO_VPC"
   },

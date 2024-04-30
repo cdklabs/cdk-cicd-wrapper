@@ -43,6 +43,7 @@ node_modules
 .env
 .env.*
 !/.github/workflows/build.yml
+!/.mergify.yml
 !/.github/workflows/upgrade.yml
 !/.github/pull_request_template.md
 !/.prettierignore
@@ -54,6 +55,5 @@ node_modules
 /lib
 /dist/
 !/.eslintrc.json
-!/.github/workflows/auto-merge.yml
 !/.projenrc.ts
 !/.github/workflows/release.yml

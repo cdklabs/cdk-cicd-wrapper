@@ -193,8 +193,6 @@ This command unpublish the previous package in cases where the package version h
 
 The {{ project_name }} packages can be added to any CDK project from the AWS CodeArtifact with the `npm install --save @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli`. Then you can follow the [Getting Started](../getting_started/index.md) Guide.
 
-#### Configure the pipeline to use the AWS CodeArtifact
-
 ### Use a sample app for development
 The repository comes with a `samples` folder that host example projects to understood the benefit of the {{ project_name }}.
 
@@ -216,6 +214,9 @@ The requirements for the samples projects can be different, so check the **READM
 
 You can verify the recognized configuration with the `task samples:dev:info`. This is recommended if you manage multiple AWS accounts.
 
+
+#### Bootstrap the accounts
+The accounts used to deploy with the pipe
 
 
 ## FAQ

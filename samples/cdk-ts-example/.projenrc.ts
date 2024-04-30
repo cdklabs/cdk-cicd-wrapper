@@ -1,4 +1,5 @@
-import { JsonPatch, awscdk, javascript } from 'projen';
+import { awscdk, javascript } from 'projen';
+import { CdkCICDWrapper } from '../../projenrc/cdk-ci-cd-wrapper';
 
 const cdkQualifier = 'sample';
 
@@ -9,68 +10,13 @@ const project = new awscdk.AwsCdkTypeScriptApp({
   projenrcTs: true,
   packageManager: javascript.NodePackageManager.NPM,
   release: false,
-
-  // Set the cdklabs url if/whenever you need it
-  // scopedPackagesOptions: [{
-  //   scope: 'cdklabs',
-  //   registryUrl: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-  // }]
-
-  deps: ['@cdklabs/cdk-cicd-wrapper', '@cdklabs/cdk-cicd-wrapper-cli'], /* Runtime dependencies of this module. */
-  // description: undefined,  /* The description is just a string that helps people understand the purpose of the package. */
-  // devDeps: [],             /* Build dependencies for this module. */
-  // packageName: undefined,  /* The "name" in package.json. */
-  context: {
-    '@aws-cdk/core:bootstrapQualifier': cdkQualifier,
-  },
-
 });
 
-project.cdkConfig.json.patch(JsonPatch.add('/toolkitStackName', `CdkToolkit-${cdkQualifier}`));
-project.package.addField('config', {
-  cdkQualifier: cdkQualifier,
+//@ts-ignore Projen Versions can be different during the upgrade process and would resolve complains about assignability issues.
+new CdkCICDWrapper(project, {
+  cdkQualifier,
   repositoryName: 'cdk-ts-example',
   repositoryType: 'CODECOMMIT',
-  cicdVpcType: 'NO_VPC',
 });
-
-project.addTask('update-cdk-cicd-wrapper').exec('npm update @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli --force');
-
-project.addTask('validate').exec('cdk-cicd validate', { receiveArgs: true });
-
-const license = project.addTask('license', {
-  description: 'Notice file checking and generation',
-});
-license.exec('cdk-cicd license', { receiveArgs: true });
-
-
-const checkDependencies = project.addTask('check-dependencies', {
-  description: 'Notice file checking and generation',
-});
-checkDependencies.exec('cdk-cicd check-dependencies', {
-  receiveArgs: true,
-});
-
-const securityScan = project.addTask('security-scan', {
-  description: 'Notice file checking and generation',
-});
-securityScan.exec(
-  'cdk-cicd  --bandit --semgrep --shellcheck --ci',
-  { receiveArgs: true, condition: '[ -n "$CI" ]' },
-);
-securityScan.exec(
-  'cdk-cicd  --bandit --semgrep --shellcheck',
-  { receiveArgs: true, condition: '[ ! -n "$CI" ]' },
-);
-
-const audit = project.addTask('audit');
-audit.spawn(checkDependencies);
-audit.spawn(securityScan);
-audit.spawn(license);
-
-const lint = project.addTask('lint');
-lint.spawn(project.tasks.tryFind('eslint')!);
-
-project.addTask('cdkls').exec('cdk ls');
 
 project.synth();

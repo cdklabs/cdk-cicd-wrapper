@@ -3,6 +3,8 @@
 /test-reports/
 junit.xml
 /coverage/
+/.prettierignore
+/.prettierrc.json
 /test/
 /tsconfig.dev.json
 /src/
@@ -19,7 +21,4 @@ tsconfig.tsbuildinfo
 /.eslintrc.json
 /dist/changelog.md
 /dist/version.txt
-/.eslintrc.js
-/.prettierignore
-/.prettierrc.json
 /.gitattributes

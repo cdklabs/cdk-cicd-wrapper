@@ -50,7 +50,7 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev,peer,prod,optional --filter=@aws-cdk/integ-runner,@aws-cdk/integ-tests-alpha,@types/jest,copyfiles,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,prettier,projen,ts-jest,typescript,@cloudcomponents/cdk-pull-request-approval-rule,@cloudcomponents/cdk-pull-request-check,aws-cdk-lib,cdk-nag,constructs"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev,peer,prod,optional --filter=@types/jest,copyfiles,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,prettier,projen,ts-jest,typescript,@cloudcomponents/cdk-pull-request-approval-rule,@cloudcomponents/cdk-pull-request-check,aws-cdk-lib,cdk-nag,constructs"
         }
       ]
     },
@@ -87,7 +87,7 @@
       "name": "gather-versions",
       "steps": [
         {
-          "exec": "ts-node ../../../projenrc/gather-versions.exec.ts @cdklabs/cdk-cicd-wrapper MAJOR --deps ",
+          "exec": "node -e \"require(path.join(path.dirname(require.resolve('cdklabs-projen-project-types')), 'yarn', 'gather-versions.exec.js'))\" @cdklabs/cdk-cicd-wrapper MAJOR --deps ",
           "receiveArgs": true
         }
       ]
@@ -118,7 +118,7 @@
           "exec": "mkdir -p dist/js"
         },
         {
-          "exec": "mv $(npm pack) dist/js/"
+          "exec": "npm pack --pack-destination dist/js"
         }
       ]
     },

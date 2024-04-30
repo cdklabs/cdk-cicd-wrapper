@@ -54,8 +54,6 @@ tasks:
     desc: Run autofix on the project
     cmds:
       - task refresh
-      - rm -rf yarn.lock
-      - yarn install
       - npm run lint -- --fix
       - npm run validate:fix
       - npm run license -- --fix
@@ -81,7 +79,6 @@ tasks:
       It run a webs erver to host the generated html pages
     dir: docs
     cmds:
-      # - source build/docs/.venv/bin/activate
       - build/docs/.venv/bin/mkdocs serve
 
 
@@ -119,6 +116,15 @@ tasks:
     cmds:
       - node {{.REPOLINTER_DIR}}/bin/repolinter.js lint . -r {{.REPOLINTER_RULESET}} {{.CLI_ARGS}}
 
-  warming:
+  upgrade:
+    desc: Upgrade project and samples versions
+    vars:
+      SAMPLES:
+        sh: task samples:list
     cmds:
-      - ./dummy.sh
+      - npm run upgrade
+      - task: fix
+      - for: { var: SAMPLES, split: "/n"}
+        task: samples:upgrade
+        vars:
+          SAMPLE_APP: '{{.ITEM}}'

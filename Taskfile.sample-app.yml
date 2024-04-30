@@ -210,3 +210,9 @@ tasks:
       - task: dev:update
       - task: dev:deploy
       - task: dev:git:push
+
+  upgrade:
+    desc: Upgrade sample project
+    dir: '{{.DEVELOPMENT_DIR}}/{{.SAMPLE_APP}}'
+    cmds:
+      - npm run upgrade
