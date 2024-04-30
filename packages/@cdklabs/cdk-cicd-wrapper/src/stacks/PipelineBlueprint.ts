@@ -66,7 +66,7 @@ const defaultConfigs = {
 
 // Create Builder class for Pipeline Blueprint
 export class PipelineBlueprintBuilder {
-  private _id: string = defaultConfigs.applicationName || 'CiCdBlueprint';
+  private _id?: string;
 
   private stacksCommon: IStackProvider[] = [];
 
@@ -220,17 +220,17 @@ export class PipelineBlueprintBuilder {
 
     var stack: cdk.Stack;
 
+    const id = this._id || this.props.applicationName || 'CiCdBlueprint';
+
     if (app.node.tryGetContext('sandbox')) {
-      console.log('Sandbox');
       const sandboxEnv = this.props.deploymentDefinition[this.props.sandbox?.stageToUse!];
       if (!sandboxEnv) {
         throw new Error(`Sandbox stage ${this.props.sandbox?.stageToUse} not defined`);
       }
 
-      stack = new SandboxStack(app, this._id, sandboxEnv.env, this.props as IPipelineBlueprintProps);
+      stack = new SandboxStack(app, id, sandboxEnv.env, this.props as IPipelineBlueprintProps);
     } else {
-      console.log('Pipeline');
-      stack = new PipelineStack(app, this._id, this.props as IPipelineBlueprintProps);
+      stack = new PipelineStack(app, id, this.props as IPipelineBlueprintProps);
     }
 
     cdk.Tags.of(app).add('Application', `${this.props.applicationName}`);

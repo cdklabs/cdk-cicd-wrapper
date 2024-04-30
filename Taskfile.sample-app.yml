@@ -81,7 +81,7 @@ tasks:
     dir: '{{.DEVELOPMENT_DIR}}'
     cmds:
       - npm run build
-      - npm run deploy -- --all
+      - npm run deploy -- --all --require-approval never
   
   dev:destroy:
     desc: Destroy the development with {{.SAMPLE_APP}}
@@ -185,13 +185,13 @@ tasks:
     cmds:
       - git add .
       - 'git commit -m "chore: Init" --no-verify'
-      - git push -u origin main --no-verify
+      - git push -u sample-origin main --no-verify
 
   dev:git:init:
     desc: Initialize the development with {{.SAMPLE_APP}}
     dir: '{{.DEVELOPMENT_DIR}}'
     status:
-      - 'git remote get-url origin'
+      - 'git remote get-url sample-origin'
     requires:
       vars:
         - GIT_REPOSITORY
@@ -199,7 +199,7 @@ tasks:
         - RES_ACCOUNT_AWS_PROFILE
     cmds:
       - git init .
-      - git remote add origin codecommit::{{.AWS_REGION}}://{{.RES_ACCOUNT_AWS_PROFILE}}@{{.GIT_REPOSITORY}}
+      - git remote add sample-origin codecommit::{{.AWS_REGION}}://{{.RES_ACCOUNT_AWS_PROFILE}}@{{.GIT_REPOSITORY}}
 
 
   dev:loop:
