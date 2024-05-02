@@ -11,6 +11,9 @@ import { ResourceContext, IResourceProvider, Scope, IPhaseCommand, PipelinePhase
 export class NPMPhaseCommand implements IPhaseCommand {
   constructor(readonly script: string) {}
 
+  /**
+   * Returns the command to be executed for the given NPM script.
+   */
   get command() {
     // npm ci is not a script but essential
     if (this.script === 'ci') {
@@ -37,6 +40,9 @@ export class NPMPhaseCommand implements IPhaseCommand {
 export class ShellScriptPhaseCommand implements IPhaseCommand {
   constructor(readonly script: string) {}
 
+  /**
+   * Returns the command to be executed for the given shell script.
+   */
   get command() {
     // Check script file exists and executable
     if (!fs.existsSync(path.resolve(this.script))) {
@@ -54,6 +60,11 @@ export class ShellCommandPhaseCommand implements IPhaseCommand {
   constructor(readonly command: string) {}
 }
 
+/**
+ * Creates a new ShellCommandPhaseCommand instance with the given command.
+ * @param command The shell command to be executed.
+ * @returns A new ShellCommandPhaseCommand instance.
+ */
 export const sh = (command: string) => new ShellCommandPhaseCommand(command);
 
 /**
@@ -62,6 +73,9 @@ export const sh = (command: string) => new ShellCommandPhaseCommand(command);
 export class PythonPhaseCommand implements IPhaseCommand {
   constructor(readonly script: string) {}
 
+  /**
+   * Returns the command to be executed for the given Python script.
+   */
   get command() {
     // Check script file exists and executable
     if (!fs.existsSync(path.resolve(this.script))) {
@@ -80,9 +94,16 @@ export class PythonPhaseCommand implements IPhaseCommand {
 class InlineShellPhaseCommand implements IPhaseCommand {
   constructor(
     readonly script: string,
+    /**
+     * Determines whether the script should export environment variables or not.
+     * @default false
+     */
     readonly exportEnvironment = false,
   ) {}
 
+  /**
+   * Returns the command to be executed for the given inline shell script.
+   */
   get command() {
     const bashScript = fs.readFileSync(path.resolve(__dirname, '../../scripts/', this.script), {
       encoding: 'utf-8',
@@ -161,9 +182,9 @@ export const PhaseCommands = {
  */
 export interface IPhaseCommandSettings {
   /**
-   * the list of commands for the phases.
-   *
-   * @param phases list of phases
+   * Returns the list of commands for the specified phases.
+   * @param phases The phases for which commands are needed.
+   * @returns The list of commands for the specified phases.
    */
   getCommands(...phases: PipelinePhases[]): string[];
 }
@@ -173,6 +194,9 @@ export interface IPhaseCommandSettings {
  */
 class DefaultPhaseCommandSettings implements IPhaseCommandSettings {
   constructor(
+    /**
+     * The phase definitions containing the commands for each phase.
+     */
     readonly phaseDefinitions: Partial<{
       [key in PipelinePhases]: IPhaseCommand[];
     }>,

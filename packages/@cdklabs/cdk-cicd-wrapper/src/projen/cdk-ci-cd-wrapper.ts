@@ -4,30 +4,50 @@
 // eslint-disables-next-line
 import * as projen from 'projen';
 
+/**
+ * Represents the type of repository for the project.
+ */
 export type REPOSITORY_TYPE = 'GITHUB' | 'CODECOMMIT';
 
+/**
+ * Options for configuring the CdkCICDWrapper component.
+ */
 export interface CdkCICDWrapperOptions {
   /**
-   * CDK Qualifier use to bootstrap your project
+   * CDK Qualifier used to bootstrap your project.
    */
   cdkQualifier: string;
 
   /**
-   * default: is project Name
+   * The name of the repository.
+   * @default project name
    */
   repositoryName?: string;
 
   /**
-   * default: CodeCommit
+   * The type of repository.
+   * @default 'CODECOMMIT'
    */
   repositoryType?: REPOSITORY_TYPE;
 }
 
+/**
+ * A component that wraps the CDK CI/CD pipeline for a project.
+ */
 export class CdkCICDWrapper extends projen.Component {
+  /**
+   * The CDK Qualifier used to bootstrap the project.
+   */
   readonly cdkQualifier: string;
 
+  /**
+   * The name of the repository.
+   */
   readonly repositoryName: string;
 
+  /**
+   * The type of repository.
+   */
   readonly repositoryType: REPOSITORY_TYPE;
 
   constructor(project: projen.awscdk.AwsCdkTypeScriptApp, options: CdkCICDWrapperOptions) {

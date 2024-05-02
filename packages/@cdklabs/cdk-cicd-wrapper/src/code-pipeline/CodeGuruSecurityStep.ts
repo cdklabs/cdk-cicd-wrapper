@@ -10,17 +10,62 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { CodeGuruSeverityThreshold } from '../common';
 
+/**
+ * Props for the CodeGuruSecurityStep construct.
+ *
+ * @interface CodeGuruSecurityStepProps
+ */
 interface CodeGuruSecurityStepProps {
+  /**
+   * The name of the application.
+   *
+   * @type {string}
+   */
   applicationName: string;
+  /**
+   * The qualifier for the application (e.g., dev, prod).
+   *
+   * @type {string}
+   */
   applicationQualifier: string;
+  /**
+   * The output artifact from the source stage of the CodePipeline.
+   *
+   * @type {codepipeline.Artifact}
+   */
   sourceOutput: codepipeline.Artifact;
+  /**
+   * The severity threshold for CodeGuru Security to fail the pipeline.
+   *
+   * @type {CodeGuruSeverityThreshold}
+   */
   threshold: CodeGuruSeverityThreshold;
 }
 
+/**
+ * A construct that creates a CodeBuild project and a CodePipeline action to run CodeGuru Security on the source code.
+ *
+ * @export
+ * @class CodeGuruSecurityStep
+ * @extends {Construct}
+ */
 export class CodeGuruSecurityStep extends Construct {
-  readonly action: codepipeline_actions.CodeBuildAction;
+  /**
+   * The CodePipeline action to run the CodeGuru Security scan.
+   *
+   * @public
+   * @type {codepipeline_actions.CodeBuildAction}
+   */
+  public readonly action: codepipeline_actions.CodeBuildAction;
 
-  readonly codeGuruScanImage =
+  /**
+   * The Docker image used for the CodeBuild project.
+   *
+   * @private
+   * @type {string}
+   * @memberof CodeGuruSecurityStep
+   */
+  private readonly codeGuruScanImage =
     'public.ecr.aws/l6c8c5q3/codegurusecurity-actions-public@sha256:1077986a48ec419f3bc72a2a321773f59c259632f0f9fb72b1a2067b12fd4311';
 
   constructor(scope: Construct, id: string, props: CodeGuruSecurityStepProps) {
@@ -29,6 +74,11 @@ export class CodeGuruSecurityStep extends Construct {
 
     const scanName = props.applicationName.replace(/[\W_]+/g, '-');
 
+    /**
+     * IAM role for the CodeBuild project to access required AWS resources.
+     *
+     * @type {iam.Role}
+     */
     const role = new iam.Role(this, `${props.applicationQualifier}CodeGuruSecurityCodebuildAccessRole`, {
       roleName: `codeguru-codebuild-${stack.account}-${stack.region}-${props.applicationQualifier}`,
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
@@ -82,6 +132,11 @@ export class CodeGuruSecurityStep extends Construct {
       },
     });
 
+    /**
+     * The CodeBuild project to run the CodeGuru Security scan.
+     *
+     * @type {codebuild.PipelineProject}
+     */
     const codeGuruReview = new codebuild.PipelineProject(this, `${props.applicationQualifier}CodeGuruSecurity`, {
       projectName: `${props.applicationQualifier}CodeGuruSecurity`,
       description: 'The build target to run codeguru security.',

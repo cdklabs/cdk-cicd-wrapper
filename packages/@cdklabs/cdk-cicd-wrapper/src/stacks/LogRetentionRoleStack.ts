@@ -8,19 +8,63 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { Stage } from '../common';
 
+/**
+ * Properties for the LogRetentionRoleStack.
+ */
 export interface LogRetentionRoleStackProps extends cdk.StackProps {
+  /**
+   * The AWS account ID where the resources will be deployed.
+   */
   readonly resAccount: string;
+
+  /**
+   * The name of the deployment stage (e.g., 'prod', 'test').
+   */
   readonly stageName: string;
+
+  /**
+   * The name of the application.
+   */
   readonly applicationName: string;
+
+  /**
+   * The KMS encryption key to use for encrypting resources.
+   */
   readonly encryptionKey: kms.IKey;
 }
 
+/**
+ * Stack for creating an IAM role used for log retention.
+ */
 export class LogRetentionRoleStack extends cdk.Stack {
-  static getRoleName(account: string, region: string, stageName: Stage, applicationName: string) {
+  /**
+   * The ARN of the created IAM role.
+   */
+  readonly roleArn: string;
+
+  /**
+   * Generates the name for the IAM role based on the provided parameters.
+   *
+   * @param account The AWS account ID.
+   * @param region The AWS region.
+   * @param stageName The deployment stage name.
+   * @param applicationName The application name.
+   * @returns The generated role name.
+   */
+  static getRoleName(account: string, region: string, stageName: Stage, applicationName: string): string {
     return `log-retention-${account}-${region}-${applicationName}-${stageName}`;
   }
 
-  static getRoleArn(account: string, region: string, stageName: Stage, applicationName: string) {
+  /**
+   * Generates the ARN for the IAM role based on the provided parameters.
+   *
+   * @param account The AWS account ID.
+   * @param region The AWS region.
+   * @param stageName The deployment stage name.
+   * @param applicationName The application name.
+   * @returns The generated role ARN.
+   */
+  static getRoleArn(account: string, region: string, stageName: Stage, applicationName: string): string {
     return cdk.Arn.format({
       partition: 'aws',
       service: 'iam',
@@ -30,8 +74,6 @@ export class LogRetentionRoleStack extends cdk.Stack {
       resourceName: LogRetentionRoleStack.getRoleName(account, region, stageName, applicationName),
     });
   }
-
-  readonly roleArn: string;
 
   constructor(scope: Construct, id: string, props: LogRetentionRoleStackProps) {
     super(scope, id, props);

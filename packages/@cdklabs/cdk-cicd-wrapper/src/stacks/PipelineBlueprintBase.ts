@@ -17,9 +17,21 @@ import {
   DeploymentHookConfig,
 } from '../common';
 
+/**
+ * Base class for pipeline blueprints.
+ * This class provides common functionality for creating and configuring pipeline stages.
+ */
 export class PipelineBlueprintBase extends cdk.Stack {
   protected resourceContext: ResourceContext;
 
+  /**
+   * Creates a new instance of the PipelineBlueprintBase class.
+   *
+   * @param scope The parent construct.
+   * @param id The unique identifier for the construct.
+   * @param env The environment configuration for the stack.
+   * @param config The configuration properties for the pipeline blueprint.
+   */
   constructor(
     scope: Construct,
     id: string,
@@ -33,6 +45,13 @@ export class PipelineBlueprintBase extends cdk.Stack {
     this.resourceContext.initStage(Stage.RES);
   }
 
+  /**
+   * Renders a pipeline stage by configuring the pre-deploy and post-deploy steps, and adding stacks to the stage.
+   *
+   * @param pipeline The CodePipeline instance to which the stage will be added.
+   * @param stage The name of the stage to render.
+   * @param deploymentDefinition The deployment definition containing information about the environment and stacks to deploy.
+   */
   protected renderStage(pipeline: pipelines.CodePipeline, stage: string, deploymentDefinition: DeploymentDefinition) {
     const deploymentEnvironment = deploymentDefinition.env;
 
@@ -84,6 +103,13 @@ export class PipelineBlueprintBase extends cdk.Stack {
     });
   }
 
+  /**
+   * Renders the stacks for a given stage by invoking the `provide` method on each stack provider.
+   *
+   * @param scope The scope in which the stacks should be rendered.
+   * @param stacksProviders The array of stack providers.
+   * @returns An array of deployment hook configurations for the rendered stacks.
+   */
   protected renderStacks(scope: Construct, stacksProviders: IStackProvider[]) {
     const hooks: DeploymentHookConfig[] = [];
 

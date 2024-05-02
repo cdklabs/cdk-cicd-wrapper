@@ -8,6 +8,12 @@ import { GlobalResources, ResourceContext, IResourceProvider, INTEGRATION_PHASES
  * Provides CodePipeline implementation
  */
 export class PipelineProvider implements IResourceProvider {
+  /**
+   * Provides the CodePipeline resource.
+   *
+   * @param context - The resource context containing the required resources and properties.
+   * @returns The created CodePipeline resource.
+   */
   provide(context: ResourceContext): any {
     const { pipelineStack, blueprintProps } = context;
 
