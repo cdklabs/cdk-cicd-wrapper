@@ -172,6 +172,11 @@ Configure the following environment variables:
 
 The values can be placed into a `.env` file in the root of the project as well.
 
+### Checkout and Initialize the repository
+You can clone the repository from [GithHub](https://github.com/cdklabs/cdk-cicd-wrapper/).
+
+Execute the `task init` command.
+
 ### Publish the CDK CI/CD packages into AWS CodeArtifact
 
 #### Login to CodeArtifact
@@ -219,5 +224,20 @@ You can verify the recognized configuration with the `task samples:dev:info`. Th
 The accounts must be bootstrapped prior to the first deployment.
 You can execute it with the `task samples:dev:bootstrap`.
 
+#### Update the cdk-cicd-wrapper libraries in the development
+You can update the packages with the `task samples:dev:update` command that ensures the latest {{ project_name }} is used.
+
+
+#### Deploy the pipeline to the account
+You can deploy the pipelines from the development folder with the `task samples:dev:deploy` command. 
+
+#### Push the sources of the sample application up to the generated repository AWS CodeCommit
+You can publish the sample from the folder with the `task samples:dev:git:push`
+
+#### Deploy sandbox stacks
+The sandbox stacks can be deployed with the `task samples:dev:sandbox:deploy`.
+
+#### Do development iteration
+You can test your changes in the {{ project_name }} simply with calling the `task samples:dev:loop`.
 
 ## FAQ
