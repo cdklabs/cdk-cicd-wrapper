@@ -80,6 +80,7 @@ const root = new yarn.Monorepo({
     'junit-reports',
     '.npmrc',
     'development',
+    'samples/**/package-lock.json', // ignore lock files
     '.devbox',
     '.task',
     'node_modules',

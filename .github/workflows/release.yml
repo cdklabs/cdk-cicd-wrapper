@@ -70,7 +70,7 @@ jobs:
     name: "@cdklabs/cdk-cicd-wrapper: Publish to GitHub Releases"
     needs:
       - release
-      - release_npm
+      - cdklabs-cdk-cicd-wrapper_release_npm
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -122,7 +122,7 @@ jobs:
     name: "@cdklabs/cdk-cicd-wrapper-cli: Publish to GitHub Releases"
     needs:
       - release
-      - release_npm
+      - cdklabs-cdk-cicd-wrapper-cli_release_npm
     runs-on: ubuntu-latest
     permissions:
       contents: write

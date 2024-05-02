@@ -37,6 +37,7 @@ docs/dist
 junit-reports
 .npmrc
 development
+samples/**/package-lock.json
 .devbox
 .task
 node_modules

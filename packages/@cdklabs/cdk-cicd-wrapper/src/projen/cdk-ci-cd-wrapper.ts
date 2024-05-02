@@ -91,7 +91,9 @@ export class CdkCICDWrapper extends projen.Component {
     const lint = project.addTask('lint');
     lint.spawn(project.tasks.tryFind('eslint')!);
 
-    project.addTask('sandbox').spawn(project.tasks.tryFind('deploy')!, { args: ['-c', 'sandbox=true'], receiveArgs: true });
+    project
+      .addTask('sandbox')
+      .spawn(project.tasks.tryFind('deploy')!, { args: ['-c', 'sandbox=true'], receiveArgs: true });
 
     project.addTask('cdkls').exec('cdk ls');
   }

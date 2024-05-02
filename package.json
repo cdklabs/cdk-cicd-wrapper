@@ -35,7 +35,7 @@
     "@typescript-eslint/eslint-plugin": "^7",
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
-    "cdklabs-projen-project-types": "^0.1.194",
+    "cdklabs-projen-project-types": "^0.1.196",
     "constructs": "^10.0.0",
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
