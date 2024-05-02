@@ -209,25 +209,25 @@ This command unpublish the previous package in cases where the package version h
 The {{ project_name }} packages can be added to any CDK project from the AWS CodeArtifact with the `npm install --save @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli`. Then you can follow the [Getting Started](../getting_started/index.md) Guide.
 
 ### Use a sample app for development
-The repository comes with a `samples` folder that host example projects to understood the benefit of the {{ project_name }}.
+The repository comes with a `samples` folder that host example projects to understand the benefit of the {{ project_name }}.
 
-Once you've selected a sample, that you'd like to use as baseline. 
 The available samples can be listed, with the `task samples:list` command.
 Set the `SAMPLE_APP` environment variable name as the folder is called inside the sample folder.
+Once you've selected a sample, that you'd like to use as baseline you need to then go ahead and initialize a project based on that running the following commands:
 
-You can use e.g: `export SAMPLE_APP=cdk-ts-example;`. 
-In case you want to use the `cdk-ts-example` you can skip this step as that is the default sample used.
-
-Then you need to execute the `task samples:dev:init` command.
-This command create the `development/project` temporarily folder and initialize the project with [Projen](https://projen.io/).
+```bash
+export SAMPLE_APP=cdk-ts-example;
+task samples:dev:init
+```
+The last command creates the `development/project` temporarily folder and initialize the project with [Projen](https://projen.io/).
 
 #### Configure environment variables for the sample application
 The environment variables listed on the [Variables](../developer_guides/variables.md) page.
-These variables can be included into the `.env` file in either the root or int he `development/project` folder.
+These variables can be included into the `.env` file in either the root or in the `development/project` folder.
 
-The requirements for the samples projects can be different, so check the **README.md** file of the sample application for further details.
+The requirements for the samples projects can be different, so check the **README.md** file of the sample application for more details.
 
-You can verify the recognized configuration with the `task samples:dev:info`. This is recommended if you manage multiple AWS accounts.
+You can verify the detected configuration with the `task samples:dev:info`. This is recommended if you are managing multiple AWS accounts.
 
 
 #### Bootstrap the accounts
@@ -242,7 +242,7 @@ You can update the packages with the `task samples:dev:update` command that ensu
 You can deploy the pipelines from the development folder with the `task samples:dev:deploy` command. 
 
 #### Push the sources of the sample application up to the generated repository AWS CodeCommit
-You can publish the sample from the folder with the `task samples:dev:git:push`
+You can push the changes made into the sample from the folder with the `task samples:dev:git:push`
 
 #### Deploy sandbox stacks
 The sandbox stacks can be deployed with the `task samples:dev:sandbox:deploy`.
