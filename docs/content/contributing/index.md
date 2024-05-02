@@ -161,16 +161,24 @@ An AWS account available for testing with Administrator access.
 
 ### First steps
 
-Configure the following environment variables:
+Configure the following environment variables.
 
-|Name|Description|Required|Default|Example|
-|----|-----------|---|---|----|
-|AWS_PROFILE|[AWS Profile](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-profile) to use for interacting with the AWS account. This profile is used to create an AWS CodeArtifact to host the {{ project_name }} packages, while the version is not publicly available. | true | | 123456789012 |
-|DOMAIN     |AWS CodeArtifact Domain name to use     | true | cdk-cicd-wrapper | |
-|REPOSITORY |AWS CodeArtifact repository name to use | true | cdk-cicd-wrapper | |
-|SECRET_ID  |AWS SecretManager Secret name to publish to login token. This token will be used by the {{ project_name }} pipeline to be able to pull the packages at the Synth stage. | true | cdk-cicd-wrapper | |
+|Name|Description|Required|Default|Example|CreateIfNotExisting|
+|----|-----------|---|---|----|----|
+|AWS_PROFILE|[AWS Profile](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-profile) to use for interacting with the AWS account. This profile is used to create an AWS CodeArtifact to host the {{ project_name }} packages, while the version is not publicly available. | true | | 123456789012 | false |
+| DOMAIN     | AWS CodeArtifact Domain name to use     | true | cdk-cicd-wrapper | | true | 
+| REPOSITORY | AWS CodeArtifact repository name to use | true | cdk-cicd-wrapper | | true |
+| SECRET_ID  | AWS SecretManager Secret name to publish to login token. This token will be used by the {{ project_name }} pipeline to be able to pull the packages at the Synth stage. | true | cdk-cicd-wrapper | | true |
 
-The values can be placed into a `.env` file in the root of the project as well.
+The values can be placed into a `.env` file in the root of the project as well, e.g:
+
+```bash
+AWS_PROFILE=my-aws-profile
+DOMAIN=cdk-cicd-wrapper
+REPOSITORY=cdk-cicd-wrapper
+SECRET_ID=codeartifact-secret-id
+```
+
 
 ### Checkout and initialize the code repository
 You can clone the repository from [GitHub](https://github.com/cdklabs/cdk-cicd-wrapper/).
