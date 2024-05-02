@@ -37,7 +37,7 @@ import { VPCProvider } from '../resource-providers/VPCProvider';
 const defaultRegion = process.env.AWS_REGION;
 
 const defaultConfigs = {
-  applicationName: process.env.npm_package_config_applicationName || '',
+  applicationName: process.env.npm_package_config_applicationName || process.env.npm_package_name || '',
   applicationQualifier: process.env.npm_package_config_cdkQualifier || 'hnb659fds',
   region: defaultRegion,
   logRetentionInDays: '365',

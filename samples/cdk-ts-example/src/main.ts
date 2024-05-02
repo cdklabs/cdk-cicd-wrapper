@@ -1,4 +1,4 @@
-import { BasicRepositoryProvider, PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+import { PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
 import { App, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
@@ -17,12 +17,6 @@ export class MyStack extends Stack {
 const app = new App();
 
 PipelineBlueprint.builder()
-  .applicationName('sample-app')
-  .repositoryProvider(new BasicRepositoryProvider({
-    repositoryType: 'CODECOMMIT',
-    name: 'ts-cdk-project-with-private-repository',
-    branch: 'main',
-  }))
   .sandbox({
     provide(context) {
       new MyStack(context.scope, 'cdk-ts-example-sandbox', { value: 'sandbox' });

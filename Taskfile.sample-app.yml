@@ -69,6 +69,7 @@ tasks:
     cmds:
       - npm install
       - npm run default
+      - npm run projen
 
   dev:update:
     desc: Update the wrapper for {{.SAMPLE_APP}}
