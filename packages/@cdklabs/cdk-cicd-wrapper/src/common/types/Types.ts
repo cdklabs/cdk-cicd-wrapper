@@ -56,7 +56,12 @@ export interface IVanillaPipelineConfig {
 
 export interface SandboxConfig {
   stackProvider: IStackProvider;
-  stageToUse: string;
+  options: Required<SandboxOptions>;
+}
+
+export interface SandboxOptions {
+  stageToUse?: string;
+  sandboxPrefix?: string;
 }
 
 export interface IPipelinePhases {

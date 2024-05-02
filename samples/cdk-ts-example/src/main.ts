@@ -2,14 +2,17 @@ import { BasicRepositoryProvider, PipelineBlueprint } from '@cdklabs/cdk-cicd-wr
 import { App, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-export class MyStack extends Stack {
-  constructor(scope: Construct, id: string, props: StackProps = {}) {
-    super(scope, id, props);
-
-    new CfnOutput(this, 'hello', { value: 'world' });
-  }
+interface Props extends StackProps {
+  value?: string;
 }
 
+export class MyStack extends Stack {
+  constructor(scope: Construct, id: string, props: Props = {}) {
+    super(scope, id, props);
+
+    new CfnOutput(this, 'hello', { value: props.value || 'world' });
+  }
+}
 
 const app = new App();
 
@@ -20,9 +23,14 @@ PipelineBlueprint.builder()
     name: 'ts-cdk-project-with-private-repository',
     branch: 'main',
   }))
+  .sandbox({
+    provide(context) {
+      new MyStack(context.scope, 'cdk-ts-example-sandbox', { value: 'sandbox' });
+    },
+  })
   .addStack({
     provide(context) {
-      new MyStack(context.scope, 'ts-cdk-project-with-private-repository-dev');
+      new MyStack(context.scope, 'cdk-ts-example');
     },
   })
   .synth(app);

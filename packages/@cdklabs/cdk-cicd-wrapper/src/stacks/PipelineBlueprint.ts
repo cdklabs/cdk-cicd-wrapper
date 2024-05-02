@@ -21,6 +21,7 @@ import {
   IStageDefinition,
   AllStage,
   RequiredRESStage,
+  SandboxOptions,
 } from '../common';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketConfigProvider } from '../resource-providers/ComplianceBucketProvider';
@@ -47,6 +48,7 @@ const defaultConfigs = {
   resourceProviders: {},
   deploymentDefinition: {},
   primaryOutputDirectory: './cdk.out',
+  sandboxPrefix: process.env.USER || 'sandbox',
   phases: {
     [PipelinePhases.INITIALIZE]: [
       PhaseCommands.CONFIGURE_HTTP_PROXY,
@@ -185,10 +187,10 @@ export class PipelineBlueprintBuilder {
     return this;
   }
 
-  public sandbox(stackProvider: IStackProvider, stage: string = 'DEV') {
+  public sandbox(stackProvider: IStackProvider, option?: SandboxOptions) {
     this.props.sandbox = {
       stackProvider,
-      stageToUse: stage,
+      options: { sandboxPrefix: process.env.USER || 'sbx', stageToUse: 'DEV', ...option },
     };
 
     return this;
@@ -223,12 +225,19 @@ export class PipelineBlueprintBuilder {
     const id = this._id || this.props.applicationName || 'CiCdBlueprint';
 
     if (app.node.tryGetContext('sandbox')) {
-      const sandboxEnv = this.props.deploymentDefinition[this.props.sandbox?.stageToUse!];
+      const sandboxEnv = this.props.deploymentDefinition[this.props.sandbox?.options.stageToUse!];
       if (!sandboxEnv) {
-        throw new Error(`Sandbox stage ${this.props.sandbox?.stageToUse} not defined`);
+        throw new Error(`Sandbox stage ${this.props.sandbox?.options.stageToUse} not defined`);
       }
 
-      stack = new SandboxStack(app, id, sandboxEnv.env, this.props as IPipelineBlueprintProps);
+      this.props.applicationName = `${this.props.sandbox?.options.sandboxPrefix}-${this.props.applicationName}`;
+
+      stack = new SandboxStack(
+        app,
+        `${this.props.sandbox?.options.sandboxPrefix}-${id}`,
+        sandboxEnv.env,
+        this.props as IPipelineBlueprintProps,
+      );
     } else {
       stack = new PipelineStack(app, id, this.props as IPipelineBlueprintProps);
     }

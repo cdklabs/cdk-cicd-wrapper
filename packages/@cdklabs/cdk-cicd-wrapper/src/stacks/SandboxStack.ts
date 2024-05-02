@@ -18,9 +18,8 @@ export class SandboxStack extends PipelineBlueprintBase {
   ) {
     super(scope, id, env, config);
 
-    this.resourceContext.initStage(config.sandbox!.stageToUse);
+    this.resourceContext.initStage(config.sandbox!.options.stageToUse);
 
-    this.resourceContext.get(GlobalResources.PARAMETER_STORE);
     this.resourceContext.get(GlobalResources.ENCRYPTION);
 
     cdk.Aspects.of(scope).add(
