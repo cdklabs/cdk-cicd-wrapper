@@ -150,7 +150,7 @@ The documentation for the CDK CI/CD Wrapper Core is stored under the docs/ (inde
 
 test
 - Run the build docs script `task docs` using you UNIX cli
-- Start the local mkdocs webserver to view locally the ConfigBuilder documentation site with the `task docs:serve` command; the documentation will then be available at http://localhost:8000
+- Start the local mkdocs webserver to view locally the ConfigBuilder documentation site with the `task docs:local` command; the documentation will then be available at http://localhost:8000
 
 ## Testing Packages locally
 This section explains how you can run local versions of the {{ project_name }} packages that you have made changes to.
