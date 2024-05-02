@@ -4,7 +4,7 @@
 import { awscdk, javascript } from 'projen';
 import { CdkCICDWrapper } from '@cdklabs/cdk-cicd-wrapper';
 
-const cdkQualifier = 'sample';
+const cdkQualifier = process.env.CDK_QUALIFIER || 'simple';
 
 const project = new awscdk.AwsCdkTypeScriptApp({
   cdkVersion: '2.1.0',

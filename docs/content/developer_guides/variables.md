@@ -15,7 +15,7 @@
 |             | applicationName | Wrapper | sets the name of the Application |
 | CDK_QUALIFIER | cdkQualifier | wrapper | used to distinguish between multiple deployments of a VP project in the same account. Good practice to customize per deployment. |
 | GIT_REPOSITORY | repositoryName |  | sets the name of the Git repository in the format org/name |
-|  | repositoryType |  | sets the type of the repository, `GITHUB` or `CODECOMMIT` |
+| REPOSITORY_TYPE | repositoryType |  | sets the type of the repository, `GITHUB` or `CODECOMMIT` |
 | CODESTAR_CONNECTION_ARN |  |  | sets the codestar connection required for GITHUB type |
 | CICD_VPC_TYPE | cicdVpcType | NO_VPC | sets the type of the VPC: `NO_VPC`, `VPC`, or `VPC_FROM_LOOK_UP`. |
 | CICD_VPC_ID | cicdVpcId |  | for use with `VPC_FROM_LOOK_UP` to set the vpc ID |
