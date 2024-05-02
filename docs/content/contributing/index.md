@@ -172,8 +172,8 @@ Configure the following environment variables:
 
 The values can be placed into a `.env` file in the root of the project as well.
 
-### Checkout and Initialize the repository
-You can clone the repository from [GithHub](https://github.com/cdklabs/cdk-cicd-wrapper/).
+### Checkout and initialize the code repository
+You can clone the repository from [GitHub](https://github.com/cdklabs/cdk-cicd-wrapper/).
 
 Execute the `task init` command.
 
@@ -187,7 +187,7 @@ In case the AWS CodeArtifact Domain or Repository are not existing, then it crea
 The created AWS CodeArtifact Domain and Repository can be deleted with the `task codeartifact:repository:delete` command.
 
 **Note**
-The command might fail with message like `exit status 255` or similar. This means your AWS Session has been expired.
+The command might fail with message like `exit status 255` or similar. This means your AWS Session has expired.
 
 #### Publish 
 The {{ project_name }} packages can be publish with the `task codeartifact:publish` command.
