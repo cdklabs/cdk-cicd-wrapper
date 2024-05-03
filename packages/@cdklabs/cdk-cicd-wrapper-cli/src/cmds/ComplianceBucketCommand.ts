@@ -8,13 +8,30 @@ import { S3, BucketLocationConstraint } from '@aws-sdk/client-s3';
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 import * as yargs from 'yargs';
 
+/**
+ * The default path to the policy JSON file.
+ */
 const DEFAULT_POLICY_JSON = '../../scripts/compliance-bucket-policy.json';
 
+/**
+ * Command class that configures the compliance bucket.
+ */
 class Command implements yargs.CommandModule {
+  /**
+   * The command name.
+   */
   command = 'compliance-bucket';
 
+  /**
+   * A description of the command.
+   */
   describe = 'Configures the vanilla-pipeline';
 
+  /**
+   * Builds the command arguments.
+   * @param args The argument parser.
+   * @returns The argument parser with defined options.
+   */
   builder(args: yargs.Argv) {
     args.option('profile', {
       type: 'string',
@@ -45,6 +62,11 @@ class Command implements yargs.CommandModule {
 
     return args;
   }
+
+  /**
+   * Handles the command execution.
+   * @param args The parsed command arguments.
+   */
   handler(args: yargs.Arguments) {
     const account = args.account as string;
     const region = args.region as string;

@@ -10,8 +10,14 @@ import license from './cmds/LicenseCommand';
 import security from './cmds/SecurityCommand';
 import validate from './cmds/ValidateCommand';
 
+/**
+ * The main function sets up the command-line interface (CLI) using the yargs library.
+ * It defines various commands, options, and configurations for the CLI.
+ */
 async function main() {
   const ya = yargs;
+
+  // Register the command handlers
   ya.command(configure);
   ya.command(validate);
   ya.command(license);
@@ -19,33 +25,38 @@ async function main() {
   ya.command(security);
   ya.command(checkDependencies);
 
+  // Enable command recommendations and strict command handling
   ya.recommendCommands();
   ya.strictCommands();
 
-  ya.showHelpOnFail(true);
-  ya.wrap(yargs.terminalWidth());
-  ya.options('debug', { type: 'boolean', default: false, desc: 'Debug logs' });
-  ya.completion();
-  ya.help();
+  // Configure CLI options
+  ya.showHelpOnFail(true); // Show help on command failure
+  ya.wrap(yargs.terminalWidth()); // Wrap command output to terminal width
+  ya.options('debug', { type: 'boolean', default: false, desc: 'Debug logs' }); // Add a --debug option
+  ya.completion(); // Enable command completion
+  ya.help(); // Add a --help option
+
+  // Ensure a command is provided
   ya.demandCommand();
 
-  // do not use the default yargs '--version' implementation since it is
-  // global by default (it appears on all subcommands)
-  ya.version(false);
+  // Custom version option handling
+  ya.version(false); // Disable the default --version option
   ya.option('version', {
     type: 'boolean',
     description: 'Show version number',
-    global: false,
+    global: false, // Restrict to the top-level command
   });
 
-  const args = await ya.argv;
+  const args = await ya.argv; // Parse the command-line arguments
 
+  // Enable debug mode if the --debug option is provided
   if (args.debug) {
     process.env.DEBUG = 'true';
   }
 }
 
+// Start the main function and handle any errors
 main().catch((e) => {
-  console.error(e.stack);
-  process.exit(1);
+  console.error(e.stack); // Log the error stack trace
+  process.exit(1); // Exit with a non-zero status code
 });

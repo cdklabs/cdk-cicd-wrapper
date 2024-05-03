@@ -135,14 +135,6 @@ export interface ResourceProviderSupplier {
  * Provides an API to register resource providers and access the provided resources.
  */
 export class ResourceContext {
-  private static _instance: ResourceContext;
-
-  private readonly globalScope: ScopedStorage;
-  private stagedScope?: ScopedStorage;
-
-  private _currentStage: string = Stage.RES;
-  private _currentEnv?: Environment;
-
   /**
    * Returns the singleton instance of ResourceContext.
    *
@@ -151,6 +143,14 @@ export class ResourceContext {
   static instance() {
     return ResourceContext._instance;
   }
+
+  private static _instance: ResourceContext;
+
+  private readonly globalScope: ScopedStorage;
+  private stagedScope?: ScopedStorage;
+
+  private _currentStage: string = Stage.RES;
+  private _currentEnv?: Environment;
 
   /**
    * Constructs a new instance of ResourceContext.

@@ -42,7 +42,7 @@ const defaultConfigs = {
   region: defaultRegion,
   logRetentionInDays: '365',
   codeBuildEnvSettings: {
-    privileged: true,
+    privileged: false,
     buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
   },
   resourceProviders: {},

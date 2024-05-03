@@ -6,10 +6,26 @@ import { readFileSync, existsSync } from 'fs';
 import * as yargs from 'yargs';
 import { CliHelpers } from '../utils/CliHelpers';
 
+/**
+ * The path to the package verification file.
+ */
 const VERIFICATION_FILE = './package-verification.json';
+
+/**
+ * The key used to store the lock file checksum in the package verification file.
+ */
 const LOCK_FILE = 'npm-lock-file';
 
+/**
+ * A class representing the 'validate' command for validating the CDK-CICD-Wrapper pipeline.
+ */
 class Command implements yargs.CommandModule {
+  /**
+   * Generates a checksum for the given file path and logs it to the console.
+   * Also persists the checksum in the package verification file.
+   *
+   * @param {string} filePath - The path to the file for which the checksum needs to be generated.
+   */
   static generateChecksum(filePath: string) {
     const hexCheckSum = CliHelpers.generateChecksum(filePath);
     console.log(hexCheckSum);
@@ -17,6 +33,13 @@ class Command implements yargs.CommandModule {
     CliHelpers.persistChecksum(VERIFICATION_FILE, LOCK_FILE, hexCheckSum);
   }
 
+  /**
+   * Validates the checksum of the given file path against the expected hash value.
+   * If the checksums do not match, logs an error message and exits the process with an error.
+   *
+   * @param {string} filePath - The path to the file for which the checksum needs to be validated.
+   * @param {string} expectedHash - The expected hash value against which the checksum needs to be validated.
+   */
   static validateChecksum(filePath: string, expectedHash: string) {
     const hexCheckSum = CliHelpers.generateChecksum(filePath);
     if (hexCheckSum !== expectedHash) {
@@ -29,10 +52,22 @@ class Command implements yargs.CommandModule {
     }
   }
 
+  /**
+   * The name of the command.
+   */
   command = 'validate';
 
+  /**
+   * The description of the command.
+   */
   describe = 'Validates the CDK-CICD-Wrapper pipeline';
 
+  /**
+   * Builds the command arguments.
+   *
+   * @param {yargs.Argv} args - The yargs argument object.
+   * @returns {yargs.Argv} The updated yargs argument object.
+   */
   builder(args: yargs.Argv) {
     args.option('fix', {
       type: 'boolean',
@@ -43,6 +78,11 @@ class Command implements yargs.CommandModule {
     return args;
   }
 
+  /**
+   * The handler function for the command.
+   *
+   * @param {yargs.Arguments} args - The parsed arguments for the command.
+   */
   handler(args: yargs.Arguments) {
     const npmLockFile = existsSync('package-lock.json')
       ? 'package-lock.json'

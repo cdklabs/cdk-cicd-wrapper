@@ -38,11 +38,6 @@ export interface LogRetentionRoleStackProps extends cdk.StackProps {
  */
 export class LogRetentionRoleStack extends cdk.Stack {
   /**
-   * The ARN of the created IAM role.
-   */
-  readonly roleArn: string;
-
-  /**
    * Generates the name for the IAM role based on the provided parameters.
    *
    * @param account The AWS account ID.
@@ -74,6 +69,10 @@ export class LogRetentionRoleStack extends cdk.Stack {
       resourceName: LogRetentionRoleStack.getRoleName(account, region, stageName, applicationName),
     });
   }
+  /**
+   * The ARN of the created IAM role.
+   */
+  readonly roleArn: string;
 
   constructor(scope: Construct, id: string, props: LogRetentionRoleStackProps) {
     super(scope, id, props);
