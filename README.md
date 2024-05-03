@@ -16,7 +16,7 @@ On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged
 - License management over NPM and Python dependencies
 - Support for private NPM registry to safely store your libraries
 - Customizable CI/CD pipeline to attach to your CDK applications which comes with built-in dependency injection
-- Sandbox deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline
+- Workbench deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline
 
 ## Intended usage
 

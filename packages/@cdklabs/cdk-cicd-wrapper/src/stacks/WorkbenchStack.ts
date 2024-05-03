@@ -9,11 +9,11 @@ import { Environment, Stage, GlobalResources } from '../common';
 import { SecurityControls } from '../utils';
 
 /**
- * Represents a sandbox stack within the pipeline blueprint.
+ * Represents a workbench stack within the pipeline blueprint.
  */
-export class SandboxStack extends PipelineBlueprintBase {
+export class WorkbenchStack extends PipelineBlueprintBase {
   /**
-   * Creates a new instance of the SandboxStack class.
+   * Creates a new instance of the WorkbenchStack class.
    *
    * @param scope The scope in which the stack is created.
    * @param id The unique identifier for the stack.
@@ -28,8 +28,8 @@ export class SandboxStack extends PipelineBlueprintBase {
   ) {
     super(scope, id, env, config);
 
-    // Initialize the stage for the sandbox stack
-    this.resourceContext.initStage(config.sandbox!.options.stageToUse);
+    // Initialize the stage for the workbench stack
+    this.resourceContext.initStage(config.workbench!.options.stageToUse);
 
     // Retrieve the encryption key from the global resources
     this.resourceContext.get(GlobalResources.ENCRYPTION);
@@ -44,7 +44,7 @@ export class SandboxStack extends PipelineBlueprintBase {
       ),
     );
 
-    // Render the stacks for the sandbox
-    this.renderStacks(this, [config.sandbox?.stackProvider!]);
+    // Render the stacks for the workbench
+    this.renderStacks(this, [config.workbench?.stackProvider!]);
   }
 }

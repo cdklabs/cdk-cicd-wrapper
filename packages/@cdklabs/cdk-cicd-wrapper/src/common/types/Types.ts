@@ -166,39 +166,39 @@ export interface IVanillaPipelineConfig {
   primaryOutputDirectory: string;
 
   /**
-   * The configuration for the sandbox (optional).
+   * The configuration for the workbench (optional).
    */
-  sandbox?: SandboxConfig;
+  workbench?: WorkbenchConfig;
 }
 
 /**
- * Represents the configuration for a sandbox.
+ * Represents the configuration for a workbench.
  */
-export interface SandboxConfig {
+export interface WorkbenchConfig {
   /**
-   * The stack provider for the sandbox.
+   * The stack provider for the workbench.
    */
   stackProvider: IStackProvider;
 
   /**
-   * The options for the sandbox.
+   * The options for the workbench.
    */
-  options: Required<SandboxOptions>;
+  options: Required<WorkbenchOptions>;
 }
 
 /**
- * Represents the options for a sandbox.
+ * Represents the options for a workbench.
  */
-export interface SandboxOptions {
+export interface WorkbenchOptions {
   /**
-   * The stage to use for the sandbox (optional).
+   * The stage to use for the workbench (optional).
    */
   stageToUse?: string;
 
   /**
-   * The prefix for the sandbox (optional).
+   * The prefix for the workbench (optional).
    */
-  sandboxPrefix?: string;
+  workbenchPrefix?: string;
 }
 
 /**

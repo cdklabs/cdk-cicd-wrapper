@@ -5,7 +5,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { PipelineStack } from './PipelineStack';
-import { SandboxStack } from './SandboxStack';
+import { WorkbenchStack } from './WorkbenchStack';
 import {
   DeploymentDefinition,
   Environment,
@@ -21,7 +21,7 @@ import {
   IStageDefinition,
   AllStage,
   RequiredRESStage,
-  SandboxOptions,
+  WorkbenchOptions,
 } from '../common';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketConfigProvider } from '../resource-providers/ComplianceBucketProvider';
@@ -48,7 +48,7 @@ const defaultConfigs = {
   resourceProviders: {},
   deploymentDefinition: {},
   primaryOutputDirectory: './cdk.out',
-  sandboxPrefix: process.env.USER || 'sandbox',
+  workbenchPrefix: process.env.USER || 'workbench',
   phases: {
     [PipelinePhases.INITIALIZE]: [
       PhaseCommands.CONFIGURE_HTTP_PROXY,
@@ -262,15 +262,15 @@ export class PipelineBlueprintBuilder {
   }
 
   /**
-   * Sets up a sandbox environment for the Pipeline Blueprint.
-   * @param stackProvider The stack provider for the sandbox environment.
-   * @param option Optional sandbox options.
+   * Sets up a workbench environment for the Pipeline Blueprint.
+   * @param stackProvider The stack provider for the workbench environment.
+   * @param option Optional workbench options.
    * @returns This PipelineBlueprintBuilder instance.
    */
-  public sandbox(stackProvider: IStackProvider, option?: SandboxOptions) {
-    this.props.sandbox = {
+  public workbench(stackProvider: IStackProvider, option?: WorkbenchOptions) {
+    this.props.workbench = {
       stackProvider,
-      options: { sandboxPrefix: process.env.USER || 'sbx', stageToUse: 'DEV', ...option },
+      options: { workbenchPrefix: process.env.USER || 'sbx', stageToUse: 'DEV', ...option },
     };
 
     return this;
@@ -321,18 +321,18 @@ export class PipelineBlueprintBuilder {
 
     const id = this._id || this.props.applicationName || 'CiCdBlueprint';
 
-    if (app.node.tryGetContext('sandbox')) {
-      const sandboxEnv = this.props.deploymentDefinition[this.props.sandbox?.options.stageToUse!];
-      if (!sandboxEnv) {
-        throw new Error(`Sandbox stage ${this.props.sandbox?.options.stageToUse} not defined`);
+    if (app.node.tryGetContext('workbench')) {
+      const workbenchEnv = this.props.deploymentDefinition[this.props.workbench?.options.stageToUse!];
+      if (!workbenchEnv) {
+        throw new Error(`Workbench stage ${this.props.workbench?.options.stageToUse} not defined`);
       }
 
-      this.props.applicationName = `${this.props.sandbox?.options.sandboxPrefix}-${this.props.applicationName}`;
+      this.props.applicationName = `${this.props.workbench?.options.workbenchPrefix}-${this.props.applicationName}`;
 
-      stack = new SandboxStack(
+      stack = new WorkbenchStack(
         app,
-        `${this.props.sandbox?.options.sandboxPrefix}-${id}`,
-        sandboxEnv.env,
+        `${this.props.workbench?.options.workbenchPrefix}-${id}`,
+        workbenchEnv.env,
         this.props as IPipelineBlueprintProps,
       );
     } else {

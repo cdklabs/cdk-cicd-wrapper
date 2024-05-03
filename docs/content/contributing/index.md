@@ -244,8 +244,8 @@ You can deploy the pipelines from the development folder with the `task samples:
 #### Push the sources of the sample application up to the generated repository AWS CodeCommit
 You can push the changes made into the sample from the folder with the `task samples:dev:git:push`
 
-#### Deploy sandbox stacks
-The sandbox stacks can be deployed with the `task samples:dev:sandbox:deploy`.
+#### Deploy workbench stacks
+The workbench stacks can be deployed with the `task samples:dev:workbench:deploy`.
 
 #### Do development iteration
 You can test your changes in the {{ project_name }} simply with calling the `task samples:dev:loop`.

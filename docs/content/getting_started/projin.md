@@ -54,15 +54,15 @@ export class MyStack extends Stack {
 }
 ```
 
-4. Configure the Projin pipeline blueprint using the `PipelineBlueprint.builder()` method. This method allows you to define the stages of your pipeline, including a sandbox stage for testing and a production stage for deployment.
+4. Configure the Projin pipeline blueprint using the `PipelineBlueprint.builder()` method. This method allows you to define the stages of your pipeline, including a workbench stage for testing and a production stage for deployment.
 
 ```typescript
 const app = new App();
 
 PipelineBlueprint.builder()
-  .sandbox({
+  .workbench({
     provide(context) {
-      new MyStack(context.scope, 'cdk-ts-example-sandbox', { value: 'sandbox' });
+      new MyStack(context.scope, 'cdk-ts-example-workbench', { value: 'workbench' });
     },
   })
   .addStack({
@@ -75,7 +75,7 @@ PipelineBlueprint.builder()
 app.synth();
 ```
 
-In the example above, the `sandbox` stage creates a stack named `cdk-ts-example-sandbox` with the output value set to `'sandbox'`. The `addStack` method creates a stack named `cdk-ts-example` with the default output value (`'world'`).
+In the example above, the `workbench` stage creates a stack named `cdk-ts-example-workbench` with the output value set to `'workbench'`. The `addStack` method creates a stack named `cdk-ts-example` with the default output value (`'world'`).
 
 ## Step 4: Deploy the Pipeline
 

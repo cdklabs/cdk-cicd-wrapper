@@ -120,12 +120,12 @@ tasks:
       - task: dev:bootstrap:internal
       - echo "================================================================"
 
-  dev:sandbox:deploy:
-    desc: Deploy the development with {{.SAMPLE_APP}} in a sandbox
+  dev:workbench:deploy:
+    desc: Deploy the development with {{.SAMPLE_APP}} in a workbench
     dir: '{{.DEVELOPMENT_DIR}}'
     cmds:
       - npm run build
-      - npm run sandbox -- --all --require-approval never --profile {{.DEV_ACCOUNT_AWS_PROFILE}}
+      - npm run workbench -- --all --require-approval never --profile {{.DEV_ACCOUNT_AWS_PROFILE}}
 
   dev:bootstrap:internal:
     internal: true

@@ -17,9 +17,9 @@ export class MyStack extends Stack {
 const app = new App();
 
 PipelineBlueprint.builder()
-  .sandbox({
+  .workbench({
     provide(context) {
-      new MyStack(context.scope, 'cdk-ts-example-sandbox', { value: 'sandbox' });
+      new MyStack(context.scope, 'cdk-ts-example-workbench', { value: 'workbench' });
     },
   })
   .defineStages([
