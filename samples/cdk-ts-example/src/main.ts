@@ -22,6 +22,13 @@ PipelineBlueprint.builder()
       new MyStack(context.scope, 'cdk-ts-example-sandbox', { value: 'sandbox' });
     },
   })
+  .defineStages([
+    {
+      stage: 'dev',
+      account: '123456789012',
+      region: 'us-east-1',
+    }
+  ])
   .addStack({
     provide(context) {
       new MyStack(context.scope, 'cdk-ts-example');
