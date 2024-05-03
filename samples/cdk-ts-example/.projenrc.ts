@@ -18,7 +18,7 @@ const project = new awscdk.AwsCdkTypeScriptApp({
 //@ts-ignore Projen Versions can be different during the upgrade process and would resolve complains about assignability issues.
 new CdkCICDWrapper(project, {
   cdkQualifier,
-  repositoryName: process.env.GIT_REPOSITORY || 'cdk-ts-example',
+  repositoryName: process.env.GIT_REPOSITORY || process.env.npm_package_config_repositoryName || 'cdk-ts-example',
   repositoryType: 'CODECOMMIT',
 });
 
