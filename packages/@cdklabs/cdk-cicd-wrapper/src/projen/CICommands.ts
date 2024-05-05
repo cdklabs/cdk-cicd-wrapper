@@ -3,23 +3,63 @@
 
 import { Component, Project } from 'projen';
 
+/**
+ * Options for configuring security scanning tools.
+ */
 export interface SecurityScanOptions {
+  /**
+   * Whether to enable Bandit security scanning.
+   * @default - false
+   */
   bandit?: boolean;
+
+  /**
+   * The version of Bandit to use for security scanning.
+   */
   banditVersion?: string;
 
+  /**
+   * Whether to enable Semgrep security scanning.
+   * @default - false
+   */
   semgrep?: boolean;
+
+  /**
+   * The version of Semgrep to use for security scanning.
+   */
   semgrepVersion?: string;
 
+  /**
+   * Whether to enable ShellCheck security scanning.
+   * @default - false
+   */
   shellcheck?: boolean;
+
+  /**
+   * The version of ShellCheck to use for security scanning.
+   */
   shellcheckVersion?: string;
 }
 
+/**
+ * Properties for configuring the CI commands.
+ */
 export interface CICommandsProps {
+  /**
+   * Whether to enable security scanning.
+   * @default - false
+   */
   securityScan?: boolean;
 
+  /**
+   * Options for configuring security scanning tools.
+   */
   securityScanOptions?: SecurityScanOptions;
 }
 
+/**
+ * Defines CI commands for the project.
+ */
 export class CICommands extends Component {
   constructor(project: Project, props: CICommandsProps) {
     super(project);
@@ -69,6 +109,13 @@ export class CICommands extends Component {
     }
   }
 
+  /**
+   * Adds security scanning configuration for the specified tool.
+   *
+   * @param tool - The security scanning tool to configure.
+   * @param securityArgs - An array to which the security scanning arguments will be appended.
+   * @param options - The security scanning options.
+   */
   private addSecurityScanning(tool: keyof SecurityScanOptions, securityArgs: string[], options?: SecurityScanOptions) {
     if (options && options[tool]) {
       console.log(`Skipping ${tool} security scanning`);

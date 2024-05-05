@@ -94,7 +94,7 @@ export class CdkCICDWrapper extends projen.Component {
       new Error(`The workbenchStage ${this.workbenchStage} is missing form the list of stages ${this.stages}.`);
     }
 
-    project.addDeps('@cdklabs/cdk-cicd-wrapper', '@cdklabs/cdk-cicd-wrapper-cli');
+    project.addDeps('@cdklabs/cdk-cicd-wrapper', '@cdklabs/cdk-cicd-wrapper-cli', 'cdk-nag');
 
     project.cdkConfig.json.patch(projen.JsonPatch.add('/toolkitStackName', `CdkToolkit-${this.cdkQualifier}`));
     project.cdkConfig.json.patch(

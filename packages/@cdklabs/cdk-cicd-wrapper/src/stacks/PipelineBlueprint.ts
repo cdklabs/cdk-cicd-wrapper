@@ -36,6 +36,9 @@ import { VPCProvider } from '../resource-providers/VPCProvider';
 
 const defaultRegion = process.env.AWS_REGION;
 
+/**
+ * Default configuration for the Pipeline Blueprint.
+ */
 const defaultConfigs = {
   applicationName: process.env.npm_package_config_applicationName || process.env.npm_package_name || '',
   applicationQualifier: process.env.npm_package_config_cdkQualifier || 'hnb659fds',

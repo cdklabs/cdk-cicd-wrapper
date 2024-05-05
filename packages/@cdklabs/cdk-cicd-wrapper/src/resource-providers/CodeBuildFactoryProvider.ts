@@ -22,6 +22,11 @@ export interface ICodeBuildFactory {
 export class CodeBuildFactoryProvider implements IResourceProvider {
   constructor() {}
 
+  /**
+   * Provides the DefaultCodeBuildFactory instance
+   * @param context The ResourceContext object containing blueprint properties and other resources
+   * @returns The DefaultCodeBuildFactory instance
+   */
   provide(context: ResourceContext): any {
     let proxyConfig: IProxyConfig | undefined;
     if (context.has(GlobalResources.PROXY)) {
@@ -49,6 +54,10 @@ export interface DefaultCodeBuildFactoryProps {
   parameterProvider: IParameterConstruct; // Provider for Parameter Store parameters
 }
 
+/**
+ * Default implementation of the ICodeBuildFactory interface
+ * Provides CodeBuild options for the pipeline, including proxy and NPM registry configurations
+ */
 export class DefaultCodeBuildFactory implements ICodeBuildFactory {
   private codeBuildOptions: CodeBuildOptions;
 
@@ -128,6 +137,11 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     };
   }
 
+  /**
+   * Generates default options for a CodeBuild project in a VPC
+   * @param vpc The VPC to use for the CodeBuild project, default is undefined (no VPC)
+   * @returns An object containing default options for a CodeBuild project in a VPC
+   */
   generateVPCCodeBuildDefaults(vpc?: ec2.IVpc): object {
     if (!vpc) return {}; // If no VPC is provided, return an empty object
 
@@ -137,6 +151,10 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     };
   }
 
+  /**
+   * Provides the CodeBuild options for the pipeline
+   * @returns The CodeBuildOptions object containing options for the CodeBuild project
+   */
   provideCodeBuildOptions(): CodeBuildOptions {
     return this.codeBuildOptions;
   }

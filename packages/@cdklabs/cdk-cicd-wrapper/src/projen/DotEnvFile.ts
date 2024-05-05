@@ -3,12 +3,31 @@
 
 import { Project, SampleFile } from 'projen';
 
+/**
+ * Interface representing the properties required for creating a .env file.
+ */
 export interface DotEnvFileProps {
+  /**
+   * An array of strings representing the stages for which the .env file is being created.
+   */
   stages: string[];
+
+  /**
+   * A string representing the stage for the workbench environment.
+   */
   workbenchStage: string;
 }
 
+/**
+ * Class representing a .env file.
+ * @extends SampleFile
+ */
 export class DotEnvFile extends SampleFile {
+  /**
+   * Constructs a new instance of the DotEnvFile class.
+   * @param project - The Project instance for which the .env file is being created.
+   * @param props - The DotEnvFileProps containing the stages and workbenchStage.
+   */
   constructor(project: Project, props: DotEnvFileProps) {
     super(project, '.env', {
       contents: `
@@ -27,6 +46,7 @@ AWS_PROFILE=$RES_ACCOUNT_AWS_PROFILE
         `,
     });
 
+    // Add the .env file to the project's gitignore
     project.gitignore.addPatterns('.env');
   }
 }

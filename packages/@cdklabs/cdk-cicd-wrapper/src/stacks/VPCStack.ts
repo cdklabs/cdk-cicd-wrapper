@@ -19,6 +19,7 @@ export interface VPCStackProps extends cdk.StackProps {
 
   /**
    * Whether to use a proxy for the VPC.
+   * Default value is false.
    */
   readonly useProxy: boolean;
 

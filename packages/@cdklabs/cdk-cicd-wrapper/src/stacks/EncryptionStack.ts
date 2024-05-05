@@ -8,6 +8,7 @@ import { Construct } from 'constructs';
 
 /**
  * Properties for the EncryptionStack.
+ * Defines the configuration options required to create an instance of the EncryptionStack.
  */
 export interface EncryptionStackProps extends cdk.StackProps {
   /**

@@ -3,23 +3,67 @@
 
 import { Component, javascript } from 'projen';
 
+/**
+ * Options interface for the CDKCommands component.
+ */
 export interface CDKCommandsOptions {
+  /**
+   * Whether to use environment variables from a .env file.
+   * @default false
+   */
   dotenv?: boolean;
 
+  /**
+   * List of stages to include in the deployment.
+   * @default ['DEV', 'INT']
+   */
   stages?: string[];
 
+  /**
+   * Whether to enable workbench mode.
+   * @default true
+   */
   workbench?: boolean;
 
+  /**
+   * The stage to use for workbench mode.
+   * @default 'DEV'
+   */
   workbenchStage?: string;
 
+  /**
+   * The CDK qualifier to use for deployment.
+   */
   cdkQualifier: string;
 }
 
+/**
+ * A component that manages CDK commands for a project.
+ */
 export class CDKCommands extends Component {
+  /**
+   * Whether to use environment variables from a .env file.
+   */
   readonly dotenv: boolean;
+
+  /**
+   * Whether to enable workbench mode.
+   */
   readonly workbench: boolean;
+
+  /**
+   * The stage to use for workbench mode.
+   */
   readonly workbenchStage: string;
+
+  /**
+   * The CDK qualifier to use for deployment.
+   */
   readonly cdkQualifier: string;
+
+  /**
+   * List of stages to include in the deployment.
+   */
   readonly stages: string[];
 
   constructor(project: javascript.NodeProject, options: CDKCommandsOptions) {

@@ -8,10 +8,11 @@ import { RepositoryConfig } from '../common';
 /**
  * Configuration properties for the CodeStarConnectionConstruct.
  * @extends RepositoryConfig
- *
- * @property codeStarConnectionArn - The Amazon Resource Name (ARN) of the CodeStar connection.
  */
 export interface CodeStarConfig extends RepositoryConfig {
+  /**
+   * The Amazon Resource Name (ARN) of the CodeStar connection.
+   */
   readonly codeStarConnectionArn: string;
 }
 
@@ -39,9 +40,18 @@ export class CodeStarConnectionConstruct extends Construct {
   constructor(scope: Construct, id: string, props: CodeStarConfig) {
     super(scope, id);
 
+    /**
+     * The pipelineInput is initialized with a CodePipelineSource.connection instance,
+     * which sets up a connection to the specified Git repository using the given
+     * connection ARN, repository name, and branch.
+     */
     this.pipelineInput = pipelines.CodePipelineSource.connection(props.name, props.branch, {
       connectionArn: props.codeStarConnectionArn,
     });
+
+    /**
+     * The codeStarConnectionArn property is assigned the value from the props object.
+     */
     this.codeStarConnectionArn = props.codeStarConnectionArn;
   }
 }

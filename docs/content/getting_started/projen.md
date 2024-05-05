@@ -126,6 +126,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 
    This command will prompt you to confirm the deployment and then create the necessary resources for your pipeline in AWS.
 
+## Step 6: Push your changes to the GIT repository
 After the deployment is complete, Projen will automatically trigger the pipeline and begin the process of building, testing, and deploying your application infrastructure based on the defined stages.
 
 ## Conclusion

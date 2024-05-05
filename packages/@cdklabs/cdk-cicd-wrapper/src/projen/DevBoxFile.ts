@@ -3,7 +3,15 @@
 
 import { SampleFile, Project } from 'projen';
 
+/**
+ * Represents a configuration file for a development environment.
+ */
 export class DevBox extends SampleFile {
+  /**
+   * Creates a new instance of the DevBox class.
+   *
+   * @param project - The Project instance to which this DevBox configuration belongs.
+   */
   constructor(project: Project) {
     super(project, 'devbox.json', {
       contents: JSON.stringify(
@@ -25,6 +33,9 @@ export class DevBox extends SampleFile {
       ),
     });
 
+    /**
+     * Excludes the '.devbox' directory from the Git repository.
+     */
     project.gitignore.exclude('.devbox');
   }
 }
