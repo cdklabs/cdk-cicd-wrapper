@@ -21,7 +21,7 @@ import { CodeCommitRepositoryStack } from '../stacks/CodeCommitRepositoryStack';
  */
 const defaultRepositoryConfig: BaseRepositoryProviderProps = {
   repositoryType: process.env.npm_package_config_repositoryType as RepositoryType,
-  name: process.env.npm_package_config_repositoryName || '',
+  name: process.env.npm_package_config_repositoryName!,
   branch: 'main',
   codeStarConnectionArn: process.env.CODESTAR_CONNECTION_ARN,
   codeGuruReviewer: true,

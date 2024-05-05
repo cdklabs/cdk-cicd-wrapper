@@ -129,7 +129,9 @@ Eslint.of(pipeline)?.addRules({
 // Copy non TS sources to the package
 pipeline.addDevDeps('copyfiles');
 pipeline.addDevDeps(...eslintDeps);
-pipeline.tasks.tryFind('post-compile')!.exec('copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock lib');
+pipeline.tasks
+  .tryFind('post-compile')!
+  .exec('copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock src/projen/Taskfile.yaml lib');
 
 // Copy bundle dependencies to the package
 const postCompile = pipeline.tasks.tryFind('post-compile')!;

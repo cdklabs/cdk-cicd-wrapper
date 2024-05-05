@@ -17,7 +17,17 @@ export class NPMPhaseCommand implements IPhaseCommand {
   get command() {
     // npm ci is not a script but essential
     if (this.script === 'ci') {
-      return 'npm ci';
+      if (fs.existsSync(path.resolve('.projenrc.ts'))) {
+        return 'npx projen install:ci';
+      }
+
+      if (fs.existsSync(path.resolve('package-lock.json'))) {
+        return 'npm ci';
+      }
+
+      if (fs.existsSync(path.resolve('yarn.lock'))) {
+        return 'yarn install --check-files --frozen-lockfile';
+      }
     }
 
     const command = `npm run ${this.script}`;

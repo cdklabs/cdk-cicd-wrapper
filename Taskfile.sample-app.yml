@@ -67,7 +67,7 @@ tasks:
     desc: Install the dependencies for {{.SAMPLE_APP}}
     dir: '{{.DEVELOPMENT_DIR}}'
     cmds:
-      - npm install
+      - npx projen install
       - npm run default
       - npm run projen
 
@@ -168,14 +168,13 @@ tasks:
     desc: Build the development with {{.SAMPLE_APP}}
     dir: '{{.DEVELOPMENT_DIR}}'
     cmds:
-      - npm install
       - npm run build
   
   dev:prepare:
     desc: Prepare the development with {{.SAMPLE_APP}}
     dir: '{{.DEVELOPMENT_DIR}}'
     cmds:
-      - npm ci
+      - npx projen install:ci
       - npm run validate -- --fix
       - npm run lint -- --fix
       - npm run license -- --fix

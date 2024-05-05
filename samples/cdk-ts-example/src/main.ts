@@ -22,13 +22,6 @@ PipelineBlueprint.builder()
       new MyStack(context.scope, 'cdk-ts-example-workbench', { value: 'workbench' });
     },
   })
-  .defineStages([
-    {
-      stage: 'dev',
-      account: '123456789012',
-      region: 'us-east-1',
-    }
-  ])
   .addStack({
     provide(context) {
       new MyStack(context.scope, 'cdk-ts-example');

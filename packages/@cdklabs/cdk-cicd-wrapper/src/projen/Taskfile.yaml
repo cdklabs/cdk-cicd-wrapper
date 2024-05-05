@@ -1,0 +1,134 @@
+version: '3'
+
+dotenv:
+  - .env
+
+vars:
+  GIT_REPOSITORY:
+    sh: jq -r '.config.repositoryName' package.json
+  CDK_QUALIFIER:
+    sh: jq -r '.config.cdkQualifier' package.json
+
+tasks:
+
+  info:
+    desc: Prints information about the pipeline
+    summary: Prints information about the pipeline
+    silent: true
+    cmds:
+      - echo "Information:"
+      - 'echo "AWS Region: ${AWS_REGION}"'
+      - 'echo "AWS RES Account: ${ACCOUNT_RES}"'
+      - 'echo "AWS Profile: $RES_ACCOUNT_AWS_PROFILE"'
+      - 'echo "Workbench stage": $WORKBENCH_STAGE'
+      - 'echo "Workbench profile": $WORKBENCH_AWS_PROFILE'
+      - 'echo "CDK Qualifier: {{.CDK_QUALIFIER}}"'
+      - 'echo "GIT_REPOSITORY: {{.GIT_REPOSITORY}}"'
+      - echo "Accounts:"
+      - for: { var: STAGES_ENABLED, split: "," }
+        cmd: 'echo "  - {{.ITEM}}: ${ACCOUNT_{{.ITEM}}} -- profile: ${{.ITEM}}_ACCOUNT_AWS_PROFILE"'
+      - echo "===================================================="
+      - npm run cdkls
+
+  install:
+    desc: Install the dependencies
+    cmds:
+      - npx projen install
+
+  upgrade:
+    desc: Update the project
+    cmds:
+      - npm run upgrade
+
+  deploy:
+    desc: Deploy the pipeline
+    interactive: true
+    cmds:
+      - npm run build
+      - npm run deploy -- --all
+  
+  destroy:
+    desc: Destroy the application for all stages
+    interactive: true
+    cmds:
+      - npm exec -- cdk --version
+      - for: { var: STAGES_ENABLED, split: "," } 
+        task: destroy:stage
+        vars:
+          STAGE: '{{.ITEM}}'
+      - npm exec -- cdk destroy --all --profile {{.RES_ACCOUNT_AWS_PROFILE}}
+
+  destroy:stage:
+    desc: Destroy the application for the stage {{.STAGE}}
+    cmds:
+      - npm exec -- cdk ls
+      - npm exec -- cdk destroy --profile ${{.STAGE}}_ACCOUNT_AWS_PROFILE {{.STAGE}}/*
+
+  bootstrap:
+    desc: Bootstrap the development for {{.SAMPLE_APP}}
+    summary: |
+      This task will bootstrap the AWS accounts to be able to deploy CDK applications.
+
+      Get more information about CDK bootstrapping: https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html
+    silent: true
+    cmds:
+      - echo "==============================================================="
+      - echo "# Bootstrapping CDK for the pipeline {{.GIT_REPOSITORY}}        "
+      - echo "==============================================================="
+      - task: info
+      - task: bootstrap:internal
+      - echo "================================================================"
+
+  workbench:
+    desc: Deploy the development in a workbench
+    cmds:
+      - npm run build
+      - npm run workbench -- --profile {{.WORKBENCH_AWS_PROFILE}} 
+
+  bootstrap:internal:
+    internal: true
+    desc: Internal task to bootstrap the AWS accounts to be able to deploy CDK applications
+    preconditions:
+      - sh: '[ `jq -r ''.context."@aws-cdk/core:bootstrapQualifier"'' cdk.json` = "{{.CDK_QUALIFIER}}" ]'
+        msg: 'The bootstrap qualifier does not match the CDK_QUALIFIER variable. Please update the cdk.json file.'
+    cmds:
+      - task: bootstrap:RES
+      - for: { var: STAGES_ENABLED, split: "," } 
+        task: bootstrap:account
+        vars:
+          STAGE: '{{.ITEM}}'
+          OPTS: --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess --trust ${ACCOUNT_RES}
+
+
+  bootstrap:RES:
+    internal: true
+    cmds:
+      - task: bootstrap:account
+        vars:
+          STAGE: RES
+
+  bootstrap:account:
+    internal: true
+    requires:
+      vars:
+        - CDK_QUALIFIER
+        - AWS_REGION
+        - STAGE
+    preconditions:
+      - sh: '[[ ! -z "${{.STAGE}}_ACCOUNT_AWS_PROFILE" ]]'
+        msg: 'The environment {{.STAGE}} does not have an AWS profile defined. Please define it in the .env file.'
+    cmds:
+      - npm exec -- cdk bootstrap --profile ${{.STAGE}}_ACCOUNT_AWS_PROFILE --qualifier {{.CDK_QUALIFIER}} {{.OPTS}} aws://$ACCOUNT_{{.STAGE}}/${AWS_REGION}
+  
+  build:
+    desc: Build the application
+    cmds:
+      - npm run build
+  
+  prepare:
+    desc: Prepare the appliction
+    cmds:
+      - npx projen install:ci
+      - npm run validate -- --fix
+      - npm run lint -- --fix
+      - npm run license -- --fix

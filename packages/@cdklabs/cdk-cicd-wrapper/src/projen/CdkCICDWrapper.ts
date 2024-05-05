@@ -3,6 +3,11 @@
 
 // eslint-disables-next-line
 import * as projen from 'projen';
+import { CDKCommands } from './CDKCommands';
+import { CICommands, SecurityScanOptions } from './CICommands';
+import { DevBox } from './DevBoxFile';
+import { DotEnvFile } from './DotEnvFile';
+import { TaskFile } from './TaskFile';
 
 /**
  * Represents the type of repository for the project.
@@ -29,6 +34,28 @@ export interface CdkCICDWrapperOptions {
    * @default 'CODECOMMIT'
    */
   repositoryType?: REPOSITORY_TYPE;
+
+  cicdVpcType?: 'NO_VPC' | 'VPC' | 'VPC_FROM_LOOK_UP';
+
+  cicdVpcId?: string;
+
+  cicdVpcCidr?: string;
+
+  cicdVpcCidrMask?: string;
+
+  cicdVpcMaxAZs?: number;
+
+  securityScan?: boolean;
+
+  securityScanOptions?: SecurityScanOptions;
+
+  stages?: string[];
+
+  workbenchStage?: string;
+
+  taskfile?: boolean;
+
+  devbox?: boolean;
 }
 
 /**
@@ -50,12 +77,22 @@ export class CdkCICDWrapper extends projen.Component {
    */
   readonly repositoryType: REPOSITORY_TYPE;
 
+  readonly stages: string[];
+
+  readonly workbenchStage: string;
+
   constructor(project: projen.awscdk.AwsCdkTypeScriptApp, options: CdkCICDWrapperOptions) {
     super(project);
 
     this.cdkQualifier = options.cdkQualifier;
     this.repositoryName = options.repositoryName ?? project.name;
     this.repositoryType = options.repositoryType ?? 'CODECOMMIT';
+    this.stages = options.stages ?? ['DEV', 'INT'];
+    this.workbenchStage = options.workbenchStage ?? 'DEV';
+
+    if (!this.stages.find((stage) => stage === this.workbenchStage)) {
+      new Error(`The workbenchStage ${this.workbenchStage} is missing form the list of stages ${this.stages}.`);
+    }
 
     project.addDeps('@cdklabs/cdk-cicd-wrapper', '@cdklabs/cdk-cicd-wrapper-cli');
 
@@ -70,51 +107,36 @@ export class CdkCICDWrapper extends projen.Component {
       cdkQualifier: this.cdkQualifier,
       repositoryName: this.repositoryName,
       repositoryType: this.repositoryType,
-      cicdVpcType: 'NO_VPC',
+      cicdVpcType: options.cicdVpcType || 'NO_VPC',
+      ...(options.cicdVpcCidr ? { cicdVpcId: options.cicdVpcId } : {}),
+      ...(options.cicdVpcCidrMask ? { cicdVpcCidrMask: options.cicdVpcCidrMask } : {}),
+      ...(options.cicdVpcMaxAZs ? { cicdVpcId: options.cicdVpcMaxAZs } : {}),
     });
 
-    project
-      .addTask('update-cdk-cicd-wrapper')
-      .exec('npm update @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli --force');
-
-    project.addTask('validate').exec('cdk-cicd validate', { receiveArgs: true });
-
-    const license = project.addTask('license', {
-      description: 'Notice file checking and generation',
-    });
-    license.exec('cdk-cicd license', { receiveArgs: true });
-
-    const checkDependencies = project.addTask('check-dependencies', {
-      description: 'Notice file checking and generation',
-    });
-    checkDependencies.exec('cdk-cicd check-dependencies', {
-      receiveArgs: true,
+    new CICommands(project, {
+      securityScan: options.securityScan || true,
+      securityScanOptions: options.securityScanOptions,
     });
 
-    const securityScan = project.addTask('security-scan', {
-      description: 'Notice file checking and generation',
-    });
-    securityScan.exec('cdk-cicd security-scan --bandit --semgrep --shellcheck --ci', {
-      receiveArgs: true,
-      condition: '[ -n "$CI" ]',
-    });
-    securityScan.exec('cdk-cicd security-scan --bandit --semgrep --shellcheck', {
-      receiveArgs: true,
-      condition: '[ ! -n "$CI" ]',
+    new DotEnvFile(project, {
+      stages: this.stages,
+      workbenchStage: this.workbenchStage,
     });
 
-    const audit = project.addTask('audit');
-    audit.spawn(checkDependencies);
-    audit.spawn(securityScan);
-    audit.spawn(license);
+    if (options.taskfile) {
+      new TaskFile(project);
+    }
 
-    const lint = project.addTask('lint');
-    lint.spawn(project.tasks.tryFind('eslint')!);
+    if (options.devbox) {
+      new DevBox(project);
+    }
 
-    project
-      .addTask('workbench')
-      .spawn(project.tasks.tryFind('deploy')!, { args: ['-c', 'workbench=true'], receiveArgs: true });
-
-    project.addTask('cdkls').exec('cdk ls');
+    new CDKCommands(project, {
+      dotenv: !options.taskfile,
+      stages: this.stages,
+      workbenchStage: this.workbenchStage,
+      workbench: true,
+      cdkQualifier: this.cdkQualifier,
+    });
   }
 }
