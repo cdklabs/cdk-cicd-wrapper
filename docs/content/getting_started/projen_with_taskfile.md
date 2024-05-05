@@ -44,6 +44,7 @@ Follow these steps to initialize a new project using Projen:
      cdkQualifier: 'wrapper',
      repositoryName: 'projen-sample-wrapper',
      repositoryType: 'CODECOMMIT',
+     taskfile: true,
    });
 
    project.synth();
@@ -56,12 +57,8 @@ Follow these steps to initialize a new project using Projen:
 6. Before deploying, run the following commands to ensure your project is ready:
 
    ```bash
-   npm run validate -- --fix
-   npm run license -- --fix
+   task prepare
    ```
-
-   - `npm run validate -- --fix` will create the required `package-verification.json` file for you.
-   - `npm run license -- --fix` will generate a valid Notice file for you.
 
 ## Step 2: Configure Stacks
 
@@ -102,31 +99,11 @@ The {{ project_name }} uses the AWS CDK Toolkit with a cross-account trust relat
 
 If you are reusing an existing CDK bootstrapping setup, you can skip this step. Otherwise, follow these instructions to bootstrap your stages:
 
-1. **Prepare the RES stage**:
-
    ```bash
-   npm run bootstrap RES
+   task bootstrap
    ```
 
-2. **Prepare the DEV stage**:
-
-   ```bash
-   npm run bootstrap DEV
-   ```
-
-3. **Prepare the INT stage**:
-
-   ```bash
-   npm run bootstrap INT
-   ```
-
-4. **Prepare the PROD stage**:
-
-   ```bash
-   npm run bootstrap PROD
-   ```
-
-   **Note**: The stages have to be defined in the `.projenrc.ts` file `CdkCICDWrapperOptions.stages` variable.
+   **Note**: The stages have to be defined in the `.env` file in the `STAGES_ENABLED` variable.
 
 ## Step 5: Deploy the Pipeline
 
@@ -135,8 +112,8 @@ Once you have completed the previous steps, you can deploy the pipeline:
 1. In your terminal or command prompt, navigate to the root directory of your project.
 2. Run the following command to deploy the pipeline:
 
-   ```
-   npm run deploy
+   ```bash
+   task deploy
    ```
 
    This command will prompt you to confirm the deployment and then create the necessary resources for your pipeline in AWS.

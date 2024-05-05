@@ -2,5 +2,6 @@
 nav:
   - index.md
   - "Migration Guide": "migration_guide.md"
-  - "{{ project_name }} with Projin": "projin.md"
+  - "{{ project_name }} with Projen": "projen.md"
+  - "{{ project_name }} with Projen and Taskfile": "projen.md"
   - "Prerequisites": "prerequisites.md"
