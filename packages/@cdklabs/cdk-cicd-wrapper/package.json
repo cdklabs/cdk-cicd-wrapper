@@ -30,7 +30,7 @@
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
     "aws-cdk-lib": "2.139.1",
-    "cdk-nag": "2.28.104",
+    "cdk-nag": "2.28.109",
     "constructs": "^10.3.0",
     "copyfiles": "^2.4.1",
     "eslint": "^8",
@@ -41,12 +41,12 @@
     "jest": "^29.7.0",
     "jest-junit": "^15",
     "prettier": "^3.2.5",
-    "projen": "^0.81.5",
+    "projen": "^0.81.7",
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.5"
   },
   "peerDependencies": {
-    "aws-cdk-lib": "^2.139.1",
+    "aws-cdk-lib": "^2.140.0",
     "cdk-nag": "^2.28.106",
     "constructs": "^10.3.0"
   },

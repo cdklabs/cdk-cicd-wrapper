@@ -8,6 +8,8 @@ vars:
     sh: jq -r '.config.repositoryName' package.json
   CDK_QUALIFIER:
     sh: jq -r '.config.cdkQualifier' package.json
+  APPLICATION:
+    sh: jq -r '.config.applicationName' package.json
 
 tasks:
 
@@ -17,6 +19,7 @@ tasks:
     silent: true
     cmds:
       - echo "Information:"
+      - 'echo "Application: {{.APPLICATION}}"'
       - 'echo "AWS Region: ${AWS_REGION}"'
       - 'echo "AWS RES Account: ${ACCOUNT_RES}"'
       - 'echo "AWS Profile: $RES_ACCOUNT_AWS_PROFILE"'
@@ -46,6 +49,13 @@ tasks:
     cmds:
       - npm run build
       - npm run deploy -- --all
+
+  synth:
+    desc: Synthesize the pipeline
+    interactive: true
+    cmds:
+      - npm run build
+      - npm run synth
   
   destroy:
     desc: Destroy the application for all stages
@@ -65,7 +75,7 @@ tasks:
       - npm exec -- cdk destroy --profile ${{.STAGE}}_ACCOUNT_AWS_PROFILE {{.STAGE}}/*
 
   bootstrap:
-    desc: Bootstrap the development for {{.SAMPLE_APP}}
+    desc: Bootstrap the development for {{.APPLICATION}}
     summary: |
       This task will bootstrap the AWS accounts to be able to deploy CDK applications.
 
@@ -81,9 +91,23 @@ tasks:
 
   workbench:
     desc: Deploy the development in a workbench
+    interactive: true
     cmds:
+      - echo {{.WORKBENCH_AWS_PROFILE}}
       - npm run build
-      - npm run workbench -- --profile {{.WORKBENCH_AWS_PROFILE}} 
+      - npm run workbench -- --profile {{.WORKBENCH_AWS_PROFILE}} {{with .CLI_ARGS}} {{.}} {{else}} --all {{end}}
+
+  workbench:synth:
+    desc: Synth the development in a workbench
+    interactive: true
+    cmds:
+      - npm run workbench:synth -- --profile {{.WORKBENCH_AWS_PROFILE}} 
+
+  workbench:destroy:
+    desc: Destroys the development in a workbench
+    interactive: true
+    cmds:
+      - npm run workbench:destroy -- --profile {{.WORKBENCH_AWS_PROFILE}} {{with .CLI_ARGS}} {{.}} {{else}} --all {{end}}
 
   bootstrap:internal:
     internal: true
@@ -126,7 +150,7 @@ tasks:
       - npm run build
   
   prepare:
-    desc: Prepare the appliction
+    desc: Prepare the application
     cmds:
       - npx projen install:ci
       - npm run validate -- --fix

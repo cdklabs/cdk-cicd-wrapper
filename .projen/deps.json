@@ -29,6 +29,10 @@
       "type": "build"
     },
     {
+      "name": "all-contributors-cli",
+      "type": "build"
+    },
+    {
       "name": "cdklabs-projen-project-types",
       "type": "build"
     },

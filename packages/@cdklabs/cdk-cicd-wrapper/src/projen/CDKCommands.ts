@@ -80,6 +80,15 @@ export class CDKCommands extends Component {
         project
           .addTask('workbench')
           .spawn(project.tasks.tryFind('deploy')!, { receiveArgs: true, args: ['-c', 'workbench=true'] });
+
+        const synthTask = project.tasks.tryFind('synth')!;
+        synthTask.reset('cdk synth', { receiveArgs: true });
+
+        project.addTask('workbench:synth').spawn(synthTask, { receiveArgs: true, args: ['-c', 'workbench=true'] });
+
+        project
+          .addTask('workbench:destroy')
+          .spawn(project.tasks.tryFind('destroy')!, { receiveArgs: true, args: ['-c', 'workbench=true'] });
       }
 
       project.addTask('cdkls').exec('cdk ls', { receiveArgs: true });
@@ -95,6 +104,20 @@ export class CDKCommands extends Component {
       project
         .addTask('_workbench')
         .exec(`cross-env cdk deploy --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
+          receiveArgs: true,
+        });
+
+      project.addTask('workbench:synth').exec('dotenv -- npm run _workbench:synth', { receiveArgs: true });
+      project
+        .addTask('_workbench:synth')
+        .exec(`cross-env cdk synth --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
+          receiveArgs: true,
+        });
+
+      project.addTask('workbench:destroy').exec('dotenv -- npm run _workbench:destroy', { receiveArgs: true });
+      project
+        .addTask('_workbench:destroy')
+        .exec(`cross-env cdk destroy --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
           receiveArgs: true,
         });
 
