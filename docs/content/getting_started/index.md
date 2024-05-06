@@ -44,7 +44,7 @@ We suggest using the provided CLI tool to set up your local environment, as it s
 
    **Note**: The CLI Configure script supports the RES, DEV, INT, and PROD stages by default, but you can extend the list of stages as needed. If you plan to use a GitHub repository to host your project, you will need to know your [AWS CodeStar Connection ARN](../developer_guides/vcs_github.md).
 
-## Bootstrap Your Stages
+## Bootstrap your stages
 
 The {{ project_name }} uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. This bootstrapping process must be established for each stage, and each account must have a trust relationship with the RES account.
 
@@ -84,7 +84,6 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 
    **Note**: Update the variables in the command with your actual account IDs and AWS region.
 
-
 ## Configure .gitignore
 
 Ensure that the following lines are in your `.gitignore` file:
@@ -94,7 +93,7 @@ Ensure that the following lines are in your `.gitignore` file:
 
 ## Setup the {{ project_name }}
 
-To set up the CI/CD pipeline in your existing CDK project, follow these steps:
+To set up the CI/CD pipeline in your existing AWS CDK project, follow these steps:
 
 1. Open your entry file, typically located at `bin/<your-main-file>.ts` (where `your-main-file` is the name of your root project directory).
 
@@ -190,13 +189,13 @@ To set up the CI/CD pipeline in your existing CDK project, follow these steps:
 
 The CI/CD pipeline comes with a set of predefined steps for checking the correctness of your source code:
 
-1. `npm ci`: Downloads the NPM dependencies.
-2. `npm run validate`: Validates that the `package-lock.json` file has not been changed or corrupted.
-3. `npm run audit`: Validates that the third-party dependencies are free from any known CVEs.
-4. `npm run lint`: Checks source code linting.
-5. `npm run build`: Builds the source code.
-6. `npm run test`: Runs the included tests.
-7. `npm run cdk synth`: Synthesizes the CDK projects and runs the CDK NAG.
+- `npm ci ##  Downloads the NPM dependencies.`
+- `npm run validate ## Validates that the package-lock.json file has not been changed or corrupted.`
+- `npm run audit ## Validates that the third-party dependencies are free from any known CVEs.`
+- `npm run lint ## Checks source code linting.`
+- `npm run build ## Builds the source code.`
+- `npm run test ## Runs the included tests.`
+- `npm run cdk synth ## Synthesizes the CDK projects and runs the CDK NAG.`
 
 If all steps are finished successfully, the Continuous Integration (CI) part is considered complete.
 
