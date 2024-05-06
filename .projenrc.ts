@@ -58,8 +58,11 @@ const root = new yarn.Monorepo({
   release: true,
   releaseOptions: {
     publishToNpm: true,
-    releaseTrigger: pj.release.ReleaseTrigger.scheduled({
-      schedule: '11 8 * * 5',
+    releaseTrigger: pj.release.ReleaseTrigger.continuous({
+      paths: [
+        'packages/*',
+        'package.json'
+      ]
     }),
   },
 
@@ -69,6 +72,7 @@ const root = new yarn.Monorepo({
         types: ['feat', 'fix', 'chore', 'refactor'],
       },
     },
+    mergify: false
   },
 
   prerelease: 'alpha',

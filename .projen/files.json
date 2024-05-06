@@ -9,7 +9,6 @@
     ".github/workflows/release.yml",
     ".github/workflows/upgrade.yml",
     ".gitignore",
-    ".mergify.yml",
     ".npmignore",
     ".prettierignore",
     ".prettierrc.json",
