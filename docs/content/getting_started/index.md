@@ -1,10 +1,10 @@
 # Getting Started with the {{ project_name }}
 
-This guide provides instructions on how to set up and configure the Continuous Integration and Continuous Deployment (CI/CD) pipeline for your AWS CDK project. By following these steps, you will have a fully functional CI/CD pipeline that automates the build, test, and deployment processes for your project.
+This guide gives you clear steps to set up and customize a Continuous Integration and Continuous Delivery (CI/CD) pipeline for your AWS CDK project. Following these steps will automate the build, testing, and delivery of your AWS CDK project, giving you a smooth workflow.
 
 ## Overview
 
-The CI/CD pipeline is designed to streamline the development workflow and ensure that your project is thoroughly tested and validated before being deployed to various stages (e.g., development, integration, production). The pipeline leverages AWS services such as AWS CodePipeline, AWS CodeBuild, and AWS CodeCommit/GitHub to orchestrate the entire process.
+The CI/CD pipeline simplifies your development process, making sure your project undergoes thorough testing and validation before moving to different stages like development, integration, or production. It utilizes AWS services like AWS CodePipeline, AWS CodeBuild, and AWS CodeCommit/GitHub to manage the entire workflow seamlessly.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ For more detailed information on prerequisites, refer to the [Prerequisites](./p
 
 ## Setup Local Environment
 
-It is recommended to set up your local environment using the provided CLI tool to reduce the configuration complexity of the CI/CD pipeline. Follow these steps:
+We suggest using the provided CLI tool to set up your local environment, as it simplifies the configuration process for the CI/CD pipeline. Simply follow these steps:
 
 1. Run the `npx {{ npm_cli }}@latest configure` command and follow the instructions.
 
