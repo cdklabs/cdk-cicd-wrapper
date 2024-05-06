@@ -6,12 +6,12 @@
 
 Before getting started, ensure that you have the following prerequisites installed:
 
-- [Node.js](https://nodejs.org/) (version 14.x or later)
+- [Node.js](https://nodejs.org/) (version 16.x or later)
 - [npm](https://www.npmjs.com/) (comes bundled with Node.js)
 
-Projen doesn't need to be installed separately. You will be using `npx` to run Projen, which takes care of all the required setup steps.
+Projen doesn't need to be installed separately. You will be using `npx` to run Projen, which takes care of all the required steps of the setup.
 
-## Step 1: Initialize a New Project
+## Step 1: Initialize a new project
 
 Follow these steps to initialize a new project using Projen:
 
@@ -60,7 +60,7 @@ Follow these steps to initialize a new project using Projen:
    task prepare
    ```
 
-## Step 2: Configure Stacks
+## Step 2: Configure stacks
 
 The `PipelineBlueprint` component provided by the `{{ npm_pipeline }}` package allows you to define and configure the stacks for your application. Here's an example of how you can configure your stacks:
 
@@ -87,13 +87,13 @@ PipelineBlueprint.builder().addStack({
 
 **Note**: Refer to the [Developer Guide](../developer_guides/index.md) for more information on the `PipelineBlueprint` component and how to configure your stacks.
 
-## Step 3: Configure Environment Variables / Create .env File
+## Step 3: Configure environment variables / create .env file
 
 The {{ project_name }} uses environment variables to store sensitive information and configuration settings. The `CdkCICDWrapper` component creates a sample `.env` file in the root directory of your project and defines the necessary variables there. You must fill out the values for these variables.
 
 This file is created once, and you must maintain it manually as needed.
 
-## Step 4: Bootstrap Your Stages
+## Step 4: Bootstrap your stages
 
 The {{ project_name }} uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. This bootstrapping process must be established for each stage, and each account must have a trust relationship with the RES account.
 
@@ -105,7 +105,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 
    **Note**: The stages have to be defined in the `.env` file in the `STAGES_ENABLED` variable.
 
-## Step 5: Deploy the Pipeline
+## Step 5: Deploy the pipeline
 
 Once you have completed the previous steps, you can deploy the pipeline:
 
@@ -118,7 +118,7 @@ Once you have completed the previous steps, you can deploy the pipeline:
 
    This command will prompt you to confirm the deployment and then create the necessary resources for your pipeline in AWS.
 
-## Step 6: Push Your Changes to the Git Repository
+## Step 6: Push your changes to the git repository
 
 After the deployment is complete, Projen will automatically trigger the pipeline and begin the process of building, testing, and deploying your application infrastructure based on the defined stages. Push your changes to the Git repository to start the pipeline process.
 
