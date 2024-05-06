@@ -255,8 +255,8 @@ root.synth();
 
 function setupAllContributors(project: pj.javascript.NodeProject) {
   project.addDevDeps('all-contributors-cli');
-  project.addTask("contributors:update", {
+  project.addTask('contributors:update', {
     exec: 'all-contributors check | grep "Missing contributors" -A 1 | tail -n1 | sed -e "s/,//g" | xargs -n1 | grep -v "\\[bot\\]" | grep -v "cdklabs-automation" | xargs -n1 -I{} all-contributors add {} code',
   });
-  project.npmignore?.exclude("/.all-contributorsrc");
+  project.npmignore?.exclude('/.all-contributorsrc');
 }
