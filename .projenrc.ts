@@ -59,10 +59,7 @@ const root = new yarn.Monorepo({
   releaseOptions: {
     publishToNpm: true,
     releaseTrigger: pj.release.ReleaseTrigger.continuous({
-      paths: [
-        'packages/*',
-        'package.json'
-      ]
+      paths: ['packages/*', 'package.json'],
     }),
   },
 
@@ -72,7 +69,7 @@ const root = new yarn.Monorepo({
         types: ['feat', 'fix', 'chore', 'refactor'],
       },
     },
-    mergify: false
+    mergify: false,
   },
 
   prerelease: 'alpha',
