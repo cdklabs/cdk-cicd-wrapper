@@ -6,13 +6,16 @@ import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { Stage, PipelinePhases } from '../../src/common';
 import { BasicRepositoryProvider, sh } from '../../src/resource-providers';
-import { VanillaPipelineBlueprint } from '../../src/stacks/VanillaPipelineBlueprintStack';
+import { PipelineBlueprint } from '../../src/stacks/PipelineBlueprint';
 import { TestAppConfig, TestRepositoryConfigCodeCommit, TestRepositoryConfigGithub } from '../TestConfig';
+
+// Clear env as env variables can populate unintended configurations during the tests
+process.env = {};
 
 describe('vanilla-pipeline-blueprint-stack-test-codecommit', () => {
   const app = new cdk.App();
 
-  const stack = VanillaPipelineBlueprint.builder()
+  const stack = PipelineBlueprint.builder()
     .applicationName(TestAppConfig.applicationName)
     .applicationQualifier(TestAppConfig.applicationQualifier)
     .codeBuildEnvSettings(TestAppConfig.codeBuildEnvSettings)
@@ -118,7 +121,7 @@ describe('pipeline-stack-test-codestar', () => {
   const app = new cdk.App();
 
   const template = Template.fromStack(
-    VanillaPipelineBlueprint.builder()
+    PipelineBlueprint.builder()
       .applicationName(TestAppConfig.applicationName)
       .applicationQualifier(TestAppConfig.applicationQualifier)
       .codeGuruScanThreshold(TestAppConfig.codeGuruScanThreshold!)
@@ -201,7 +204,7 @@ describe('pipeline-stack-test-extending-STAGE', () => {
   const app = new cdk.App();
 
   const template = Template.fromStack(
-    VanillaPipelineBlueprint.builder()
+    PipelineBlueprint.builder()
       .applicationName(TestAppConfig.applicationName)
       .applicationQualifier(TestAppConfig.applicationQualifier)
       .codeGuruScanThreshold(TestAppConfig.codeGuruScanThreshold!)
@@ -280,7 +283,7 @@ describe('pipeline-stack-test-proxy-vpc', () => {
   const app = new cdk.App();
 
   const template = Template.fromStack(
-    VanillaPipelineBlueprint.builder()
+    PipelineBlueprint.builder()
       .applicationName(TestAppConfig.applicationName)
       .applicationQualifier(TestAppConfig.applicationQualifier)
       .codeGuruScanThreshold(TestAppConfig.codeGuruScanThreshold!)

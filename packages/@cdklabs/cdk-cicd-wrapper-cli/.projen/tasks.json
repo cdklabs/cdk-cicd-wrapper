@@ -50,7 +50,7 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev,peer,prod,optional --filter=eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,prettier,projen,typescript,@aws-sdk/client-s3,@aws-sdk/credential-providers,@types/fs-extra,@types/yargs,csv,fs-extra,globby,yargs"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev,peer,prod,optional --filter=eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,prettier,projen,typescript,@aws-sdk/client-s3,@aws-sdk/credential-providers,@types/fs-extra,@types/yargs,csv,fs-extra,yargs"
         }
       ]
     },
@@ -61,7 +61,7 @@
           "spawn": "compile"
         },
         {
-          "exec": "./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/ci-cd-boot-cli",
+          "exec": "./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/cdk-cicd",
           "receiveArgs": true,
           "cwd": "../../.."
         }
@@ -100,7 +100,7 @@
       "name": "gather-versions",
       "steps": [
         {
-          "exec": "ts-node ../../../projenrc/gather-versions.exec.ts @cdklabs/cdk-cicd-wrapper-cli MAJOR --deps ",
+          "exec": "node -e \"require(path.join(path.dirname(require.resolve('cdklabs-projen-project-types')), 'yarn', 'gather-versions.exec.js'))\" @cdklabs/cdk-cicd-wrapper-cli MAJOR --deps ",
           "receiveArgs": true
         }
       ]
@@ -131,7 +131,7 @@
           "exec": "mkdir -p dist/js"
         },
         {
-          "exec": "mv $(npm pack) dist/js/"
+          "exec": "npm pack --pack-destination dist/js"
         }
       ]
     },

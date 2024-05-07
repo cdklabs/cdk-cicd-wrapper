@@ -7,21 +7,27 @@ import { ResourceContext, IResourceProvider, Scope } from '../common';
 import { EncryptionStack } from '../stacks/EncryptionStack';
 
 /**
- * Construct for supplying encryption key
+ * Interface representing a construct for supplying an encryption key.
  */
 export interface IEncryptionKey extends IConstruct {
   /**
-   * KMS Key
+   * The KMS Key used for encryption.
    */
   readonly kmsKey: kms.Key;
 }
 
 /**
- * Encryption key provider that creates dedicated encryption stacks in each stages.
+ * A provider for encryption resources that creates dedicated encryption stacks in each stage.
  */
 export class EncryptionProvider implements IResourceProvider {
-  scope? = Scope.PER_STAGE;
+  scope? = Scope.PER_STAGE; // The default scope for this provider is per stage.
 
+  /**
+   * Provides the encryption resources based on the given context.
+   *
+   * @param context The resource context containing information about the current scope, blueprint properties, stage, and environment.
+   * @returns The EncryptionStack construct containing the encryption resources.
+   */
   provide(context: ResourceContext): any {
     const { scope, blueprintProps, stage, environment } = context;
 

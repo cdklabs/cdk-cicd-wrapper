@@ -8,6 +8,12 @@ import { GlobalResources, ResourceContext, IResourceProvider, INTEGRATION_PHASES
  * Provides CodePipeline implementation
  */
 export class PipelineProvider implements IResourceProvider {
+  /**
+   * Provides the CodePipeline resource.
+   *
+   * @param context - The resource context containing the required resources and properties.
+   * @returns The created CodePipeline resource.
+   */
   provide(context: ResourceContext): any {
     const { pipelineStack, blueprintProps } = context;
 
@@ -29,7 +35,7 @@ export class PipelineProvider implements IResourceProvider {
         ...(blueprintProps.npmRegistry
           ? {
               NPM_REGISTRY: blueprintProps.npmRegistry.url,
-              NPM_BASIC_AUTH_ID: blueprintProps.npmRegistry.basicAuthSecretArn,
+              NPM_BASIC_AUTH_SECRET_ID: blueprintProps.npmRegistry.basicAuthSecretArn,
               NPM_SCOPE: blueprintProps.npmRegistry.scope ?? '',
             }
           : {}),
@@ -43,7 +49,7 @@ export class PipelineProvider implements IResourceProvider {
         : undefined,
       buildImage: blueprintProps.codeBuildEnvSettings.buildImage,
       codeGuruScanThreshold: blueprintProps.codeGuruScanThreshold,
-      isDockerEnabledForSynth: blueprintProps.codeBuildEnvSettings.privileged,
+      isDockerEnabledForSynth: true,
       applicationQualifier: blueprintProps.applicationQualifier,
       primaryOutputDirectory: blueprintProps.primaryOutputDirectory,
       pipelineName: blueprintProps.applicationName,

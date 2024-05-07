@@ -19,6 +19,9 @@ const PYTHON_LICENSE_CHECKER_TOOL = 'pip-licenses';
 const GLOBAL_TIMEOUT = { timeout: 5 * 60 * 1000 };
 const DEFAULT_EXCLUDED_FOLDERS = ['**/node_modules/**', '**/cdk.out/**', '.git/**', '**/dist/**', 'docs/**', '**/bin/**', '**/tmp/**'];
 
+/**
+ * Interface representing the scanning context.
+ */
 interface ScanningContext {
   readonly projectRoot: string;
   readonly workingDir: string;
@@ -26,6 +29,9 @@ interface ScanningContext {
   readonly python: string;
 }
 
+/**
+ * Interface representing the license configuration.
+ */
 interface LicenseConfig {
   readonly failOnLicenses: string[];
   readonly npm: {
@@ -91,6 +97,9 @@ const DEFAULT_LICENSE_FILE = {
   },
 };
 
+/**
+ * Class to check licenses of NPM and Python projects.
+ */
 class LicenseChecker {
   readonly licenseCheckerConfiguration: LicenseConfig;
 
@@ -99,6 +108,14 @@ class LicenseChecker {
 
   private newLicensesSection: Record<string, string> = {};
 
+  /**
+   * Constructor to initialize the LicenseChecker.
+   *
+   * @param configFile - Path to the license checker configuration file. Default is './licensecheck.json'.
+   * @param force - Flag to force license file regeneration. Default is false.
+   * @param fix - Flag to generate a new Notice file. Default is true.
+   * @param debug - Flag to allow debug information. Default is false.
+   */
   constructor(
     readonly configFile: string = './licensecheck.json',
     readonly force: boolean = false,
@@ -122,6 +139,11 @@ class LicenseChecker {
     ]
   }
 
+  /**
+   * Scans the project for NPM and Python packages and checks their licenses.
+   *
+   * @returns 0 if successful, 1 if failed.
+   */
   scan() {
     return this.createScanningEnvironment((context) => {
       const npmProjectsToCheck = this.collectNpmPackageJsons(context);
@@ -159,8 +181,8 @@ class LicenseChecker {
   /**
    * Scans the working directory and all subfolder for existing package.json files.
    *
-   * @param context scanning environment context
-   * @returns
+   * @param context - Scanning environment context.
+   * @returns Array of paths to package.json files.
    */
   private collectNpmPackageJsons(context: ScanningContext) {
     const packageJsons = globby.sync('**/package.json', {
@@ -176,10 +198,10 @@ class LicenseChecker {
   }
 
   /**
-   * Scans the working directory and all subfolder for existing Pipfile of requirements.txt
+   * Scans the working directory and all subfolder for existing Pipfile or requirements.txt files.
    *
-   * @param context scanning environment context
-   * @returns
+   * @param context - Scanning environment context.
+   * @returns Array of paths to Pipfile or requirements.txt files.
    */
   private collectPythonPackages(context: ScanningContext) {
     const lookup = this.licenseCheckerConfiguration.python.allowedTypes.map((pkgType) => { switch(pkgType) {
@@ -201,12 +223,11 @@ class LicenseChecker {
   }
 
   /**
-   * Checks is there any project file (package.json or Pipfile or requirements.txt) which has been modified.
-   * The state is maintained in the package-verification.json file.
+   * Checks if there any project file (package.json, Pipfile, or requirements.txt) has been modified since the last scan.
    *
-   * @param context scanning environment context
-   * @param projectFiles list of package.json or Pipfile or requirements.txt
-   * @returns
+   * @param context - Scanning environment context.
+   * @param projectFiles - List of package.json, Pipfile, or requirements.txt files.
+   * @returns True if any project file has been modified, false otherwise.
    */
   private checkHasPackageFileUpdated(context: ScanningContext, projectFiles: string[]) {
     if (!existsSync(VERIFICATION_FILE)) {
@@ -248,17 +269,20 @@ class LicenseChecker {
     return result;
   }
 
+  /**
+   * Updates the package-verification.json file with the latest license section.
+   */
   private updateVerificationJson() {
     this.verificationJson.license = this.newLicensesSection;
     writeFileSync(VERIFICATION_FILE, JSON.stringify(this.verificationJson, null, 2), { encoding: 'utf-8' });
   }
 
   /**
-   * Orchestrates the license checking of the projects
+   * Orchestrates the license checking of the projects.
    *
-   * @param context scanning environment context
-   * @param npmProjectsToCheck list of NPM projects to verify
-   * @param pythonProjectsToCheck list of Python projects to verify
+   * @param context - Scanning environment context.
+   * @param npmProjectsToCheck - List of NPM projects to verify.
+   * @param pythonProjectsToCheck - List of Python projects to verify.
    */
   private runCheckLicenses(context: ScanningContext, npmProjectsToCheck: string[], pythonProjectsToCheck: string[]) {
     console.log('Scanning NPM packages...');
@@ -275,9 +299,9 @@ class LicenseChecker {
   }
 
   /**
-   * Installs the NPM dependencies as that is required to be locally present for the license checker tool
+   * Installs the NPM dependencies as that is required to be locally present for the license checker tool.
    *
-   * @param projectWorkingDirectory working directory of the folder
+   * @param projectWorkingDirectory - Working directory of the folder.
    */
   private runNPMCI(projectWorkingDirectory: string) {
     console.log(`Running NPM CI in folder ${projectWorkingDirectory}`);
@@ -309,11 +333,10 @@ class LicenseChecker {
 
   /**
    * Collect the licenses of the NPM dependencies of the project.
-   * When the NPM project doesn't have an package-lock.json or npm-shrinkwrap.json file then it is assumed that all of it is dependencies are listed in a higher level of package.json.
+   * When the NPM project doesn't have a package-lock.json or npm-shrinkwrap.json file, it is assumed that all its dependencies are listed in a higher level package.json.
    *
-   * @param context scanning environment context
-   * @param npmProjectToCheck NPM project to check
-   * @returns
+   * @param context - Scanning environment context.
+   * @param npmProjectToCheck - NPM project to check.
    */
   private runNPMLicenseCheck(context: ScanningContext, npmProjectToCheck: string) {
     const projectRelativePath = path.relative(context.projectRoot, npmProjectToCheck);
@@ -357,12 +380,12 @@ class LicenseChecker {
   }
 
   /**
-   * Generates the summary of the various license types used in the NPM project
+   * Generates the summary of the various license types used in the NPM project.
    *
-   * @param context scanning environment context
-   * @param npmProjectFile NPM project file relative location
-   * @param npmPackageFolder NPM project folder
-   * @param tmpNoticeSummaryLocation temporary location of the summary file
+   * @param context - Scanning environment context.
+   * @param npmProjectFile - NPM project file relative location.
+   * @param npmPackageFolder - NPM project folder.
+   * @param tmpNoticeSummaryLocation - Temporary location of the summary file.
    */
   private generateNPMSummary(
     _: ScanningContext,

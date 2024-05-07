@@ -12,7 +12,7 @@ import { SSMParameterStack } from '../stacks/SSMParameterStack';
  */
 export interface IParameterConstruct extends IConstruct {
   /**
-   * Create  parameter that is accessible through the pipeline
+   * Create a parameter that is accessible through the pipeline
    *
    * @param parameterName - name of the parameter
    * @param parameterValue - value of the parameter
@@ -20,27 +20,34 @@ export interface IParameterConstruct extends IConstruct {
   createParameter(parameterName: string, parameterValue: string): ssm.IStringParameter;
 
   /**
-   * Returns with a policy that allows to access the parameters
+   * Returns with a policy that allows access to the parameters
    */
   provideParameterPolicyStatement(): iam.PolicyStatement;
 }
 
 /**
- * Resource provider that creates Parameters in SSM
+ * Resource provider that creates Parameters in AWS Systems Manager (SSM)
  */
 export class ParameterProvider implements IResourceProvider {
+  /**
+   * Provides the resources (SSM parameters) based on the given context
+   *
+   * @param context - The context that contains scope, blueprint properties, and environment
+   * @returns The SSMParameterStack instance
+   */
   provide(context: ResourceContext): any {
     const { scope, blueprintProps, environment } = context;
 
     const parameters = new Map<string, string>();
 
+    // Set account parameters based on deployment definition
     Object.entries(blueprintProps.deploymentDefinition).forEach(([deploymentStage, deploymentDefinition]) => {
       if (deploymentDefinition.env && deploymentDefinition.env.account) {
         parameters.set(`Account${deploymentStage}`, deploymentDefinition.env.account);
       }
     });
 
-    // backward compatibility
+    // Backward compatibility for account parameters
     [Stage.RES, Stage.DEV, Stage.INT].forEach((stage) => {
       if (!parameters.get(`Account${stage}`)) {
         parameters.set(`Account${stage}`, '-');
@@ -53,6 +60,7 @@ export class ParameterProvider implements IResourceProvider {
       );
     });
 
+    // Create SSMParameterStack with the parameters
     return new SSMParameterStack(scope, `${blueprintProps.applicationName}SSMParameterStack`, {
       env: environment,
       applicationQualifier: blueprintProps.applicationQualifier,

@@ -41,6 +41,9 @@ export interface IVpcConfigFromLookUp {
   vpcId: string;
 }
 
+/**
+ * Interface representing VPC configuration
+ */
 export interface IVpcConfig {
   type: VpcType;
   vpc?: IVpcConfigNewVpc;
@@ -76,6 +79,11 @@ export interface IVpcConstruct extends IConstruct {
 export class VPCProvider implements IResourceProvider {
   constructor(readonly vpc: IVpcConfig = defaultVPC) {}
 
+  /**
+   * Provides the VPC resource
+   * @param context The resource context
+   * @returns The VPC stack
+   */
   provide(context: ResourceContext): any {
     const { scope, blueprintProps, environment } = context;
 

@@ -88,6 +88,6 @@ vp.{{ project_name }}Blueprint.builder().npmRegistry(npmRegistryConfig).synth(ap
 
 The NPM Authentication Token needs to remain secret that is why the {{ project_name }} uses AWS SecretManager to store it.
 
-Create a secret in AWS Secrets Manager and store the authentication token as plaintext. This is viable for long living tokens. The value of the secret needs to be **only** the token. Provide the arn of this secret as `basicAuthSecretArn` either as a hardcoded string  in your npmRegistryConfig or through an environment variable but in this case the environment variable name **must** be `NPM_BASIC_AUTH_ID`.
+Create a secret in AWS Secrets Manager and store the authentication token as plaintext. This is viable for long living tokens. The value of the secret needs to be **only** the token. Provide the arn of this secret as `basicAuthSecretArn` either as a hardcoded string  in your npmRegistryConfig or through an environment variable but in this case the environment variable name **must** be `NPM_BASIC_AUTH_SECRET_ID`.
 
 **Note** It is recommended to use technical users and token dedicated to them, rather than personal tokens.

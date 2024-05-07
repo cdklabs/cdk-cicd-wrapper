@@ -1,8 +1,7 @@
 import * as pj from 'projen';
-import { YarnMonorepo } from './projenrc/monorepo';
-import { TypeScriptWorkspace } from './projenrc/workspace';
+import { yarn } from 'cdklabs-projen-project-types';
+import { Eslint } from 'projen/lib/javascript';
 
-const cdkVersion = '2.132.0';
 const repositoryUrl = 'https://github.com/cdklabs/cdk-cicd-wrapper.git';
 
 const eslintDeps = [
@@ -14,12 +13,13 @@ const eslintDeps = [
 
 const workflowRunsOn = ['ubuntu-latest'];
 
-const root = new YarnMonorepo({
+const root = new yarn.Monorepo({
   name: 'cdk-cicd-wrapper',
   description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
   repository: repositoryUrl,
   homepage: repositoryUrl,
   keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot'],
+  projenrcTs: true,
 
   defaultReleaseBranch: 'main',
   devDeps: [
@@ -58,8 +58,8 @@ const root = new YarnMonorepo({
   release: true,
   releaseOptions: {
     publishToNpm: true,
-    releaseTrigger: pj.release.ReleaseTrigger.scheduled({
-      schedule: '11 8 * * 5',
+    releaseTrigger: pj.release.ReleaseTrigger.continuous({
+      paths: ['packages/*', 'package.json'],
     }),
   },
 
@@ -69,6 +69,7 @@ const root = new YarnMonorepo({
         types: ['feat', 'fix', 'chore', 'refactor'],
       },
     },
+    mergify: false,
   },
 
   prerelease: 'alpha',
@@ -79,10 +80,13 @@ const root = new YarnMonorepo({
     '.DS_Store',
     'junit-reports',
     '.npmrc',
-    'tmp',
+    'development',
+    'samples/**/package-lock.json', // ignore lock files
     '.devbox',
     '.task',
     'node_modules',
+    '.env',
+    '.env.*',
   ],
 });
 
@@ -92,7 +96,7 @@ const root = new YarnMonorepo({
 //
 //============================================
 
-const pipeline = new TypeScriptWorkspace({
+const pipeline = new yarn.TypeScriptWorkspace({
   parent: root,
   name: '@cdklabs/cdk-cicd-wrapper',
   description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
@@ -100,8 +104,6 @@ const pipeline = new TypeScriptWorkspace({
   releasableCommits: pj.ReleasableCommits.featuresAndFixes('.'),
 
   devDeps: [
-    `@aws-cdk/integ-runner@${cdkVersion}-alpha.0`,
-    `@aws-cdk/integ-tests-alpha@${cdkVersion}-alpha.0`,
     'eslint@^8',
     '@typescript-eslint/eslint-plugin@^7',
     '@typescript-eslint/parser@^7',
@@ -113,10 +115,24 @@ const pipeline = new TypeScriptWorkspace({
   jest: true,
 });
 
+// Keep the projen module as optional dependency, while we can leverage it in our samples
+Eslint.of(pipeline)?.addRules({
+  'import/no-extraneous-dependencies': [
+    'error',
+    {
+      devDependencies: ['**/test/**', '**/build-tools/**', '**/projen/**'],
+      optionalDependencies: false,
+      peerDependencies: true,
+    },
+  ],
+});
+
 // Copy non TS sources to the package
 pipeline.addDevDeps('copyfiles');
 pipeline.addDevDeps(...eslintDeps);
-pipeline.tasks.tryFind('post-compile')!.exec('copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock lib');
+pipeline.tasks
+  .tryFind('post-compile')!
+  .exec('copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock src/projen/Taskfile.yaml lib');
 
 // Copy bundle dependencies to the package
 const postCompile = pipeline.tasks.tryFind('post-compile')!;
@@ -127,7 +143,7 @@ postCompile.exec("export DEP='@cloudcomponents';cp -rf ../../../node_modules/$DE
 //  CLI package
 //
 //============================================
-const cli = new TypeScriptWorkspace({
+const cli = new yarn.TypeScriptWorkspace({
   parent: root,
   name: '@cdklabs/cdk-cicd-wrapper-cli',
   description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
@@ -135,7 +151,7 @@ const cli = new TypeScriptWorkspace({
   projenrcTs: true,
 
   bin: {
-    'ci-cd-boot-cli': './bin/ci-cd-boot-cli',
+    'cdk-cicd': './bin/cdk-cicd',
   },
 
   deps: [
@@ -158,7 +174,7 @@ cli.addDevDeps(...eslintDeps);
 
 const cliExec = cli.addTask('cli-exec');
 cliExec.spawn(cli.tasks.tryFind('compile')!);
-cliExec.exec('./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/ci-cd-boot-cli', { receiveArgs: true, cwd: '../../..' });
+cliExec.exec('./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/cdk-cicd', { receiveArgs: true, cwd: '../../..' });
 
 //============================================
 //
@@ -217,11 +233,6 @@ audit.spawn(checkDependencies);
 audit.spawn(securityScan);
 audit.spawn(license);
 
-// verdaccio
-const verdaccio = root.addTask('verdaccio');
-verdaccio.exec('verdaccio --config .verdaccio/config.yml', { receiveArgs: true });
-root.addDevDeps('verdaccio');
-
 // commitlint
 root.package.addDevDeps('@commitlint/cli', '@commitlint/config-conventional');
 root.package.file.patch(
@@ -239,4 +250,14 @@ root.package.addDevDeps('husky');
 const prepare = root.addTask('husky');
 prepare.exec('husky', { condition: '[ ! -n "$CI" ]' });
 
+setupAllContributors(root);
+
 root.synth();
+
+function setupAllContributors(project: pj.javascript.NodeProject) {
+  project.addDevDeps('all-contributors-cli');
+  project.addTask('contributors:update', {
+    exec: 'all-contributors check | grep "Missing contributors" -A 1 | tail -n1 | sed -e "s/,//g" | xargs -n1 | grep -v "\\[bot\\]" | grep -v "cdklabs-automation" | xargs -n1 -I{} all-contributors add {} code',
+  });
+  project.npmignore?.exclude('/.all-contributorsrc');
+}

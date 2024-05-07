@@ -3,26 +3,25 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import * as pipelines from 'aws-cdk-lib/pipelines';
 import { AwsSolutionsChecks } from 'cdk-nag';
-import { Construct } from 'constructs';
-import { PostDeployBuildStep, PreDeployBuildStep } from '../code-pipeline';
+import { PipelineStack } from './PipelineStack';
+import { WorkbenchStack } from './WorkbenchStack';
 import {
   DeploymentDefinition,
   Environment,
-  IVanillaPipelineConfig,
+  IVanillaPipelineConfig as IPipelineConfig,
   NPMRegistryConfig,
   IPhaseCommand,
   PipelinePhases,
   Stage,
   GlobalResources,
-  ResourceContext,
   IResourceProvider,
   CodeGuruSeverityThreshold,
   IStackProvider,
   IStageDefinition,
   AllStage,
   RequiredRESStage,
+  WorkbenchOptions,
 } from '../common';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketConfigProvider } from '../resource-providers/ComplianceBucketProvider';
@@ -34,23 +33,25 @@ import { HttpProxyProvider, IProxyConfig } from '../resource-providers/ProxyProv
 import { BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
 import { StageProvider } from '../resource-providers/StageProvider';
 import { VPCProvider } from '../resource-providers/VPCProvider';
-import { SecurityControls } from '../utils';
 
 const defaultRegion = process.env.AWS_REGION;
 
+/**
+ * Default configuration for the Pipeline Blueprint.
+ */
 const defaultConfigs = {
-  applicationName: process.env.npm_package_config_applicationName || '',
-  npmBasicAuthSecretArn: process.env.npm_basic_auth_secret_arn || '',
+  applicationName: process.env.npm_package_config_applicationName || process.env.npm_package_name || '',
   applicationQualifier: process.env.npm_package_config_cdkQualifier || 'hnb659fds',
   region: defaultRegion,
   logRetentionInDays: '365',
   codeBuildEnvSettings: {
-    privileged: true,
+    privileged: false,
     buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
   },
   resourceProviders: {},
   deploymentDefinition: {},
   primaryOutputDirectory: './cdk.out',
+  workbenchPrefix: process.env.USER || 'workbench',
   phases: {
     [PipelinePhases.INITIALIZE]: [
       PhaseCommands.CONFIGURE_HTTP_PROXY,
@@ -58,9 +59,9 @@ const defaultConfigs = {
       PhaseCommands.NPM_LOGIN,
     ],
     [PipelinePhases.PRE_BUILD]: [
+      PhaseCommands.NPM_CI,
       PhaseCommands.VALIDATE,
       PhaseCommands.CHECK_AUDIT,
-      PhaseCommands.NPM_CI,
       PhaseCommands.CHECK_LINT,
     ],
     [PipelinePhases.BUILD]: [PhaseCommands.BUILD],
@@ -68,9 +69,11 @@ const defaultConfigs = {
   },
 };
 
-// Create Builder class for Pipeline Blueprint
-export class VanillaPipelineBlueprintBuilder {
-  private _id: string = defaultConfigs.applicationName || 'VanillaPipelineBlueprint';
+/**
+ * Class for building a Pipeline Blueprint.
+ */
+export class PipelineBlueprintBuilder {
+  private _id?: string;
 
   private stacksCommon: IStackProvider[] = [];
 
@@ -80,7 +83,11 @@ export class VanillaPipelineBlueprintBuilder {
 
   private _region?: string = defaultRegion;
 
-  constructor(private props: IVanillaPipelineBlueprintProps = defaultConfigs) {
+  /**
+   * Constructor for the PipelineBlueprintBuilder class.
+   * @param props The configuration properties for the Pipeline Blueprint. Defaults to the `defaultConfigs` object.
+   */
+  constructor(private props: IPipelineBlueprintProps = defaultConfigs) {
     this.repositoryProvider(new BasicRepositoryProvider());
     this.resourceProvider(GlobalResources.PARAMETER_STORE, new ParameterProvider());
     this.resourceProvider(GlobalResources.ENCRYPTION, new EncryptionProvider());
@@ -97,62 +104,131 @@ export class VanillaPipelineBlueprintBuilder {
     if (process.env.PROXY_SECRET_ARN) {
       this.proxy();
     }
+
+    if (process.env.NPM_BASIC_AUTH_SECRET_ID && process.env.NPM_REGISTRY) {
+      this.npmRegistry({
+        url: process.env.NPM_REGISTRY!,
+        basicAuthSecretArn: process.env.NPM_BASIC_AUTH_SECRET_ID,
+        scope: process.env.NPM_SCOPE,
+      });
+    }
   }
 
+  /**
+   * Sets the ID for the Pipeline Blueprint.
+   * @param id The ID to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public id(id: string) {
     this._id = id;
     return this;
   }
 
+  /**
+   * Sets the application name for the Pipeline Blueprint.
+   * @param applicationName The application name to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public applicationName(applicationName: string) {
     this.props.applicationName = applicationName;
     return this;
   }
 
+  /**
+   * Sets the NPM registry configuration for the Pipeline Blueprint.
+   * @param npmRegistry The NPM registry configuration to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public npmRegistry(npmRegistry: NPMRegistryConfig) {
     this.props.npmRegistry = npmRegistry;
     return this;
   }
 
+  /**
+   * Sets the proxy configuration for the Pipeline Blueprint.
+   * @param proxy The proxy configuration to set. If not provided, a default proxy configuration will be used.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public proxy(proxy?: IProxyConfig) {
     this.resourceProvider(GlobalResources.PROXY, new HttpProxyProvider(proxy));
     return this;
   }
 
+  /**
+   * Sets the application qualifier for the Pipeline Blueprint.
+   * @param applicationQualifier The application qualifier to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public applicationQualifier(applicationQualifier: string) {
     this.props.applicationQualifier = applicationQualifier;
     return this;
   }
 
+  /**
+   * Sets the AWS region for the Pipeline Blueprint.
+   * @param region The AWS region to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public region(region: string) {
     this._region = region;
     return this;
   }
 
+  /**
+   * Sets the log retention period in days for the Pipeline Blueprint.
+   * @param logRetentionInDays The log retention period in days to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public logRetentionInDays(logRetentionInDays: string) {
     this.props.logRetentionInDays = logRetentionInDays;
     return this;
   }
 
+  /**
+   * Sets the CodeBuild environment settings for the Pipeline Blueprint.
+   * @param codeBuildEnvSettings The CodeBuild environment settings to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public codeBuildEnvSettings(codeBuildEnvSettings: codebuild.BuildEnvironment) {
     this.props.codeBuildEnvSettings = codeBuildEnvSettings;
     return this;
   }
 
+  /**
+   * Sets the Amazon CodeGuru Reviewer severity threshold for the Pipeline Blueprint.
+   * @param codeGuruScanThreshold The Amazon CodeGuru Reviewer severity threshold to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public codeGuruScanThreshold(codeGuruScanThreshold: CodeGuruSeverityThreshold) {
     this.props.codeGuruScanThreshold = codeGuruScanThreshold;
     return this;
   }
 
+  /**
+   * Sets the repository provider for the Pipeline Blueprint.
+   * @param repositoryProvider The repository provider to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public repositoryProvider(repositoryProvider: RepositoryProvider) {
     return this.resourceProvider(GlobalResources.REPOSITORY, repositoryProvider);
   }
 
+  /**
+   * Sets a resource provider for the Pipeline Blueprint.
+   * @param name The name of the resource provider.
+   * @param provider The resource provider to set.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public resourceProvider(name: string, provider: IResourceProvider): this {
     this.props.resourceProviders![name] = provider;
     return this;
   }
 
+  /**
+   * Defines the stages for the Pipeline Blueprint.
+   * @param stageDefinition An array of stage definitions or stage names.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public defineStages(stageDefinition: (IStageDefinition | string)[]) {
     stageDefinition.forEach((stageDef) => {
       if (typeof stageDef === 'string') {
@@ -173,6 +249,13 @@ export class VanillaPipelineBlueprintBuilder {
     return this;
   }
 
+  /**
+   * Adds a stage to the Pipeline Blueprint.
+   * @param stage The name of the stage to add.
+   * @param account The AWS account ID for the stage.
+   * @param region The AWS region for the stage.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   private addStage(stage: string, account: string, region?: string) {
     this.stageEnvironments[stage] = {
       account,
@@ -181,6 +264,27 @@ export class VanillaPipelineBlueprintBuilder {
     return this;
   }
 
+  /**
+   * Sets up a workbench environment for the Pipeline Blueprint.
+   * @param stackProvider The stack provider for the workbench environment.
+   * @param option Optional workbench options.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
+  public workbench(stackProvider: IStackProvider, option?: WorkbenchOptions) {
+    this.props.workbench = {
+      stackProvider,
+      options: { workbenchPrefix: process.env.USER || 'sbx', stageToUse: 'DEV', ...option },
+    };
+
+    return this;
+  }
+
+  /**
+   * Adds a stack to the Pipeline Blueprint.
+   * @param stackProvider The stack provider to add.
+   * @param stages The stages to which the stack should be added.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public addStack(stackProvider: IStackProvider, ...stages: string[]) {
     if (stages.length == 0) {
       this.stacksCommon.push(stackProvider);
@@ -197,27 +301,58 @@ export class VanillaPipelineBlueprintBuilder {
     return this;
   }
 
+  /**
+   * Defines a phase for the Pipeline Blueprint.
+   * @param phase The phase to define.
+   * @param commandsToExecute The commands to execute during the phase.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public definePhase(phase: PipelinePhases, commandsToExecute: IPhaseCommand[]) {
     this.props.phases![phase] = commandsToExecute;
     return this;
   }
 
+  /**
+   * Synthesizes the Pipeline Blueprint and creates the necessary stacks.
+   * @param app The CDK app instance.
+   * @returns The created stack.
+   */
   public synth(app: cdk.App) {
     this.props.deploymentDefinition = this.generateDeploymentDefinitions();
 
-    const vanillaPipelineBlueprint = new VanillaPipelineBlueprint(
-      app,
-      this._id,
-      this.props as IVanillaPipelineBlueprintProps,
-    );
+    let stack: cdk.Stack;
+
+    const id = this._id || this.props.applicationName || 'CiCdBlueprint';
+
+    if (app.node.tryGetContext('workbench')) {
+      const workbenchEnv = this.props.deploymentDefinition[this.props.workbench?.options.stageToUse!];
+      if (!workbenchEnv) {
+        throw new Error(`Workbench stage ${this.props.workbench?.options.stageToUse} not defined`);
+      }
+
+      this.props.applicationName = `${this.props.workbench?.options.workbenchPrefix}-${this.props.applicationName}`;
+
+      stack = new WorkbenchStack(
+        app,
+        `${this.props.workbench?.options.workbenchPrefix}-${id}`,
+        workbenchEnv.env,
+        this.props as IPipelineBlueprintProps,
+      );
+    } else {
+      stack = new PipelineStack(app, id, this.props as IPipelineBlueprintProps);
+    }
 
     cdk.Tags.of(app).add('Application', `${this.props.applicationName}`);
 
     cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
 
-    return vanillaPipelineBlueprint;
+    return stack;
   }
 
+  /**
+   * Generates the deployment definitions for the Pipeline Blueprint.
+   * @returns The deployment definitions.
+   */
   private generateDeploymentDefinitions(): RequiredRESStage<DeploymentDefinition> {
     const definitions: AllStage<DeploymentDefinition> = {};
 
@@ -239,7 +374,10 @@ export class VanillaPipelineBlueprintBuilder {
   }
 }
 
-export interface IVanillaPipelineBlueprintProps extends IVanillaPipelineConfig {
+/**
+ * Interface for Pipeline Blueprint configuration properties.
+ */
+export interface IPipelineBlueprintProps extends IPipelineConfig {
   /**
    * Named resource providers to leverage for cluster resources.
    * The resource can represent Vpc, Hosting Zones or other resources, see {@link spi.ResourceType}.
@@ -249,96 +387,15 @@ export interface IVanillaPipelineBlueprintProps extends IVanillaPipelineConfig {
   resourceProviders: { [key in string]: IResourceProvider };
 }
 
-export class VanillaPipelineBlueprint extends cdk.Stack {
-  public static builder(): VanillaPipelineBlueprintBuilder {
-    return new VanillaPipelineBlueprintBuilder();
-  }
-
-  constructor(
-    scope: Construct,
-    id: string,
-    readonly config: IVanillaPipelineBlueprintProps,
-  ) {
-    super(scope, id, { env: config.deploymentDefinition.RES.env });
-
-    const resourceContext = new ResourceContext(scope, this, config);
-
-    resourceContext.initStage(Stage.RES);
-
-    resourceContext.get(GlobalResources.REPOSITORY);
-    resourceContext.get(GlobalResources.PARAMETER_STORE);
-    resourceContext.get(GlobalResources.ENCRYPTION);
-    resourceContext.get(GlobalResources.VPC);
-    const pipeline = resourceContext.get(GlobalResources.PIPELINE)!;
-
-    cdk.Aspects.of(scope).add(
-      new SecurityControls(
-        resourceContext.get(GlobalResources.ENCRYPTION)!.kmsKey,
-        Stage.RES,
-        config.logRetentionInDays,
-        resourceContext.get(GlobalResources.COMPLIANCE_BUCKET)!.bucketName,
-      ),
-    );
-
-    Object.entries(config.deploymentDefinition).forEach(([deploymentStage, deploymentDefinition]) => {
-      this.renderStage(resourceContext, pipeline, deploymentStage, deploymentDefinition);
-    });
-
-    pipeline.buildPipeline();
-  }
-
-  private renderStage(
-    resourceContext: ResourceContext,
-    pipeline: pipelines.CodePipeline,
-    stage: string,
-    deploymentDefinition: DeploymentDefinition,
-  ) {
-    const deploymentEnvironment = deploymentDefinition.env;
-
-    if (stage == Stage.RES) {
-      // Allow to define additional stacks for RES stage
-      deploymentDefinition.stacksProviders.forEach((stackProvider) => stackProvider.provide(resourceContext));
-      return;
-    }
-
-    if (deploymentEnvironment.account == '-') return;
-
-    const phaseDefinition = resourceContext.get(GlobalResources.PHASE)!;
-    resourceContext.initStage(stage);
-    const preDeployStep = new PreDeployBuildStep(stage, {
-      env: {
-        TARGET_REGION: deploymentEnvironment.region,
-      },
-      commands: phaseDefinition.getCommands(PipelinePhases.PRE_DEPLOY),
-    });
-
-    const appStage = resourceContext.get(GlobalResources.STAGE_PROVIDER)!;
-
-    resourceContext._scoped(appStage, () => {
-      deploymentDefinition.stacksProviders.forEach((stackProvider) => stackProvider.provide(resourceContext));
-    });
-
-    pipeline.addStage(appStage, {
-      pre: [
-        preDeployStep,
-        // add manual approval step for all stages, except DEV
-        ...(stage != Stage.DEV ? [preDeployStep.appendManualApprovalStep()] : []),
-      ],
-      post: [
-        new PostDeployBuildStep(
-          stage,
-          {
-            env: {
-              ACCOUNT_ID: deploymentEnvironment.account,
-              TARGET_REGION: deploymentEnvironment.region,
-            },
-            commands: phaseDefinition.getCommands(PipelinePhases.POST_DEPLOY),
-          },
-          resourceContext.blueprintProps.applicationName,
-          resourceContext.blueprintProps.logRetentionInDays,
-          appStage.logRetentionRoleArn,
-        ),
-      ],
-    });
+/**
+ * Class for creating a Pipeline Blueprint.
+ */
+export class PipelineBlueprint {
+  /**
+   * Creates a new PipelineBlueprintBuilder instance.
+   * @returns A PipelineBlueprintBuilder instance.
+   */
+  public static builder(): PipelineBlueprintBuilder {
+    return new PipelineBlueprintBuilder();
   }
 }

@@ -36,10 +36,13 @@ docs/dist
 .DS_Store
 junit-reports
 .npmrc
-tmp
+development
+samples/**/package-lock.json
 .devbox
 .task
 node_modules
+.env
+.env.*
 !/.github/workflows/build.yml
 !/.github/workflows/upgrade.yml
 !/.github/pull_request_template.md
@@ -52,6 +55,5 @@ node_modules
 /lib
 /dist/
 !/.eslintrc.json
-!/.github/workflows/auto-merge.yml
 !/.projenrc.ts
 !/.github/workflows/release.yml

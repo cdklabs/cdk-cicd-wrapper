@@ -11,39 +11,113 @@ import { Construct, IConstruct } from 'constructs';
 import { CodeGuruSecurityStep } from './CodeGuruSecurityStep';
 import { CodeGuruSeverityThreshold } from '../common';
 
+/**
+ * Props for the CDKPipeline construct.
+ */
 export interface CDKPipelineProps extends PipelineProps {
+  /**
+   * The qualifier for the application.
+   */
   readonly applicationQualifier: string;
+  /**
+   * The name of the pipeline.
+   */
   readonly pipelineName: string;
+  /**
+   * Additional IAM policies to be attached to the pipeline role.
+   */
   readonly rolePolicies?: iam.PolicyStatement[];
 }
 
+/**
+ * Props for configuring a VPC.
+ */
 export interface VpcProps {
+  /**
+   * The VPC to be used.
+   */
   readonly vpc: ec2.IVpc;
+  /**
+   * Proxy configuration.
+   */
   readonly proxy?: ProxyProps;
 }
 
+/**
+ * Props for configuring a proxy.
+ */
 export interface ProxyProps {
+  /**
+   * A list of URLs or IP addresses that should bypass the proxy.
+   */
   readonly noProxy: string[];
+  /**
+   * The ARN of the secret containing the proxy credentials.
+   */
   readonly proxySecretArn: string;
+  /**
+   * A URL to test the proxy configuration.
+   */
   readonly proxyTestUrl: string;
 }
 
+/**
+ * Props for configuring the pipeline.
+ */
 export interface PipelineProps {
+  /**
+   * The source repository for the pipeline.
+   */
   readonly repositoryInput: pipelines.IFileSetProducer;
+  /**
+   * The branch to be used from the source repository.
+   */
   readonly branch: string;
+  /**
+   * Whether Docker should be enabled for synth.
+   * @default false
+   */
   readonly isDockerEnabledForSynth?: boolean;
+  /**
+   * The Docker image to be used for the build project.
+   */
   readonly buildImage?: codebuild.IBuildImage;
+  /**
+   * The severity threshold for CodeGuru security scans.
+   */
   readonly codeGuruScanThreshold?: CodeGuruSeverityThreshold;
+  /**
+   * VPC configuration for the pipeline.
+   */
   readonly vpcProps?: VpcProps;
-  readonly pipelineVariables?: { [key in string]: string };
+  /**
+   * Pipeline variables to be passed as environment variables.
+   */
+  readonly pipelineVariables?: { [key: string]: string };
+  /**
+   * The primary output directory for the synth step.
+   */
   readonly primaryOutputDirectory: string;
+  /**
+   * The commands to be executed during the synth step.
+   */
   readonly pipelineCommands: string[];
+  /**
+   * Additional install commands to be executed before the synth step.
+   */
   readonly installCommands?: string[];
+  /**
+   * Default options for CodeBuild projects in the pipeline.
+   */
   readonly codeBuildDefaults: pipelines.CodeBuildOptions;
 }
 
 // ensure that VPC is detached from codebuild project on VPC deletion
 class CodeBuildAspect implements cdk.IAspect {
+  /**
+   * Visits the constructs in the pipeline and detaches the VPC from the CodeBuild project on VPC deletion.
+   * @param node The construct being visited.
+   */
   public visit(node: IConstruct): void {
     if (node instanceof codebuild.Project) {
       (node.node.defaultChild as codebuild.CfnProject).addPropertyOverride('VpcConfig', {
@@ -53,13 +127,25 @@ class CodeBuildAspect implements cdk.IAspect {
   }
 }
 
+/**
+ * A construct for creating a CDK pipeline.
+ */
 export class CDKPipeline extends pipelines.CodePipeline {
+  /**
+   * Default install commands for the pipeline.
+   */
   static readonly installCommands: string[] = ['pip3 install awscli --upgrade --quiet'];
 
   private readonly codeGuruScanThreshold?: CodeGuruSeverityThreshold;
   private readonly applicationQualifier: string;
   private readonly pipelineName: string;
 
+  /**
+   * Creates a new instance of the CDKPipeline construct.
+   * @param scope The parent construct.
+   * @param id The ID of the construct.
+   * @param props The props for configuring the pipeline.
+   */
   constructor(scope: Construct, id: string, props: CDKPipelineProps) {
     super(scope, id, {
       pipelineName: props.pipelineName,
@@ -89,6 +175,9 @@ export class CDKPipeline extends pipelines.CodePipeline {
     }
   }
 
+  /**
+   * Builds the pipeline by applying necessary configurations and suppressing certain CDK Nag rules.
+   */
   public buildPipeline(): void {
     super.buildPipeline();
 
@@ -155,6 +244,10 @@ export class CDKPipeline extends pipelines.CodePipeline {
     }
   }
 
+  /**
+   * Applies the CodeGuru security scan step to the pipeline based on the provided severity threshold.
+   * @param threshold The severity threshold for CodeGuru security scans.
+   */
   private applyCodeGuruScan(threshold: CodeGuruSeverityThreshold) {
     const getSourceOutput = () =>
       this.pipeline.stages

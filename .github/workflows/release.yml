@@ -2,8 +2,9 @@
 
 name: release
 on:
-  schedule:
-    - cron: 11 8 * * 5
+  push:
+    branches:
+      - main
   workflow_dispatch: {}
 jobs:
   release:
@@ -26,9 +27,9 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.14.0
+          node-version: lts/*
       - name: Install dependencies
         run: yarn install --check-files --frozen-lockfile
       - name: release
@@ -68,7 +69,9 @@ jobs:
           overwrite: true
   cdklabs-cdk-cicd-wrapper_release_github:
     name: "@cdklabs/cdk-cicd-wrapper: Publish to GitHub Releases"
-    needs: release
+    needs:
+      - release
+      - cdklabs-cdk-cicd-wrapper_release_npm
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -118,7 +121,9 @@ jobs:
         run: npx -p publib@latest publib-npm
   cdklabs-cdk-cicd-wrapper-cli_release_github:
     name: "@cdklabs/cdk-cicd-wrapper-cli: Publish to GitHub Releases"
-    needs: release
+    needs:
+      - release
+      - cdklabs-cdk-cicd-wrapper-cli_release_npm
     runs-on: ubuntu-latest
     permissions:
       contents: write

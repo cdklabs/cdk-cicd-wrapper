@@ -6,7 +6,7 @@ set -e
 
 if [ -f /var/run/docker.pid ]; then 
     echo "--- Configuring docker env ---"
-    mkdir ~/.docker/
+    test -d ~/.docker/ || mkdir ~/.docker/
     cat > ~/.docker/config.json <<EOF
 {
     "proxies": {

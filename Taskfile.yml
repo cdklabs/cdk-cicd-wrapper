@@ -1,8 +1,17 @@
 version: '3'
 
+dotenv: ['.env', 'development/project/.env', '.env.codeartifact']
+
 env:
   REPOLINTER_DIR: ${HOME}/.repolinter
   REPOLINTER_RULESET: ${HOME}/.repolinter/repolinter.json
+
+includes:
+  codeartifact: 
+    taskfile: Taskfile.codeartifact.yml
+
+  samples:
+    taskfile: Taskfile.sample-app.yml
 
 tasks:
 
@@ -45,8 +54,6 @@ tasks:
     desc: Run autofix on the project
     cmds:
       - task refresh
-      - rm -rf yarn.lock
-      - yarn install
       - npm run lint -- --fix
       - npm run validate:fix
       - npm run license -- --fix
@@ -58,53 +65,23 @@ tasks:
       - npm run audit
       - npm run license
 
-  test-release:
-    desc: Run tests and release
-    deps:
-      - verdaccio:install
+  docs:
+    desc: Generate documentation with mkdocs
+    dir: docs
     cmds:
-      # - yarn add -W shx
-      - npm config -L project set @cdklabs:registry=http://127.0.0.1:4873
-      - npm config -L project set //127.0.0.1:4873/:_authToken="\"fake\""
-      - task: clean
-      - task: build
-      - task: test-release:pipeline
-      - task: test-release:cli
-  
-  test-release:pipeline:
-    desc: Publish the pipeline package locally
-    dir: packages/@cdklabs/cdk-cicd-wrapper/dist/js/
-    internal: true
-    cmds:
-      - npm publish --registry http://127.0.0.1:4873
+      - ./scripts/build-docs
 
-  test-release:cli:
-    desc: Publish the cli package locally
-    dir: packages/@cdklabs/cdk-cicd-wrapper-cli/dist/js/
-    internal: true
-    cmds:
-      - npm publish --registry http://127.0.0.1:4873
+  docs:local:
+    desc: Create a webserver to host the documentation
+    summary: |
+      This command is useful to work on documentation of the project.
 
-  verdaccio:start:
-    desc: Start verdaccio
-    summary: Start verdaccio. This task only starts the server. 
-    run: once
+      It run a webs erver to host the generated html pages
+    dir: docs
     cmds:
-      - npx verdaccio@latest -c ./.verdaccio/config.yml --listen 0.0.0.0:4873
-
-  verdaccio:install:
-    desc: Install verdaccio
-    summary: Install verdaccio. This task only downloads and install the tool. 
-    run: once
-    status:
-      - npm exec verdaccio -- --help > /dev/null
-    cmds:
-      - npm install verdaccio
-      - npm exec verdaccio -- --help
+      - build/docs/.venv/bin/mkdocs serve
 
 
-    
-  
   release-util:list-direct-dependencies:
     desc: List direct dependencies of the project
     summary: List direct dependencies of the project. This is useful when artifact has to be provided for review processes.
@@ -138,3 +115,16 @@ tasks:
       - repolinter_install
     cmds:
       - node {{.REPOLINTER_DIR}}/bin/repolinter.js lint . -r {{.REPOLINTER_RULESET}} {{.CLI_ARGS}}
+
+  upgrade:
+    desc: Upgrade project and samples versions
+    vars:
+      SAMPLES:
+        sh: task samples:list
+    cmds:
+      - npm run upgrade
+      - task: fix
+      - for: { var: SAMPLES, split: "/n"}
+        task: samples:upgrade
+        vars:
+          SAMPLE_APP: '{{.ITEM}}'

@@ -16,19 +16,54 @@ import { Construct } from 'constructs';
 import { CodeCommitRepositoryAspects } from './CodeCommitRepositoryAspects';
 import { RepositoryConfig } from '../common';
 
+/**
+ * Configuration options for enabling pull request checks.
+ */
 export interface PRCheckConfig {
+  /**
+   * Whether to enable Amazon CodeGuru Reviewer for the repository.
+   * @default false
+   */
   readonly codeGuruReviewer: boolean;
+
+  /**
+   * The AWS CodeBuild build spec to use for pull request checks.
+   */
   readonly buildSpec: codebuild.BuildSpec;
+
+  /**
+   * Additional options for the AWS CodeBuild project used for pull request checks.
+   */
   readonly codeBuildOptions: pipelines.CodeBuildOptions;
 }
 
+/**
+ * Properties for creating a new CodeCommit repository construct.
+ */
 export interface CodeCommitRepositoryConstructProps extends RepositoryConfig {
+  /**
+   * The name of the application.
+   */
   readonly applicationName: string;
+
+  /**
+   * A qualifier for the application name.
+   */
   readonly applicationQualifier: string;
+
+  /**
+   * Optional configuration for enabling pull request checks.
+   */
   readonly pr?: PRCheckConfig;
 }
 
+/**
+ * A construct for creating a new AWS CodeCommit repository with optional pull request checks.
+ */
 export class CodeCommitRepositoryConstruct extends Construct {
+  /**
+   * The pipeline input for the repository.
+   */
   readonly pipelineInput: pipelines.IFileSetProducer;
 
   constructor(scope: Construct, id: string, props: CodeCommitRepositoryConstructProps) {
@@ -46,6 +81,12 @@ export class CodeCommitRepositoryConstruct extends Construct {
     }
   }
 
+  /**
+   * Enables pull request checks for the repository.
+   * @param applicationName The name of the application.
+   * @param repository The CodeCommit repository.
+   * @param pr The configuration options for enabling pull request checks.
+   */
   private enablePrRequest(applicationName: string, repository: codecommit.Repository, pr: PRCheckConfig) {
     // CODEGURU REVIEW RESOURCES
     if (pr.codeGuruReviewer) {
@@ -112,6 +153,10 @@ export class CodeCommitRepositoryConstruct extends Construct {
             id: 'AwsSolutions-IAM5',
             reason: 'Suppress AwsSolutions-IAM5 on the PR check lambda function Resource.',
           },
+          {
+            id: 'AwsSolutions-IAM4',
+            reason: 'Suppress AwsSolutions-IAM4 on the PR check lambda function Resource.',
+          },
         ],
         true,
       );
@@ -119,6 +164,10 @@ export class CodeCommitRepositoryConstruct extends Construct {
   }
 }
 
+/**
+ * Suppresses deprecation warnings temporarily while executing the provided block.
+ * @param block The block of code to execute.
+ */
 function suppressDeprecationWarning(block: () => void) {
   const originalJsiiSettings = process.env.JSII_DEPRECATED;
 

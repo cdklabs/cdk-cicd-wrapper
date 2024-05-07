@@ -16,30 +16,50 @@ import {
 import { CodeStarConnectRepositoryStack } from '../stacks';
 import { CodeCommitRepositoryStack } from '../stacks/CodeCommitRepositoryStack';
 
+/**
+ * Default configuration for repository provider.
+ */
 const defaultRepositoryConfig: BaseRepositoryProviderProps = {
   repositoryType: process.env.npm_package_config_repositoryType as RepositoryType,
-  name: process.env.npm_package_config_repositoryName || '',
-  branch: 'main',
+  name: process.env.npm_package_config_repositoryName!,
+  branch: 'main', // Default branch is 'main'
   codeStarConnectionArn: process.env.CODESTAR_CONNECTION_ARN,
-  codeGuruReviewer: true,
+  codeGuruReviewer: true, // Default value for codeGuruReviewer is true
 };
 
+/**
+ * Represents a repository stack in the pipeline.
+ */
 export interface IRepositoryStack extends IConstruct {
   readonly pipelineInput: pipelines.IFileSetProducer;
-  readonly pipelineEnvVars: { [key in string]: string };
+  readonly pipelineEnvVars: { [key: string]: string };
   readonly repositoryBranch: string;
 }
 
+/**
+ * Provider for repository resources.
+ */
 export type RepositoryProvider = IResourceProvider;
 
+/**
+ * Base properties for repository provider.
+ */
 export interface BaseRepositoryProviderProps extends RepositoryConfig {
   readonly codeStarConnectionArn?: string;
   readonly codeGuruReviewer?: boolean;
 }
 
+/**
+ * Basic implementation of repository provider.
+ */
 export class BasicRepositoryProvider implements RepositoryProvider {
   constructor(readonly config: BaseRepositoryProviderProps = defaultRepositoryConfig) {}
 
+  /**
+   * Provides a repository stack based on the configuration.
+   * @param context The resource context.
+   * @returns The repository stack.
+   */
   provide(context: ResourceContext): any {
     const { applicationName, deploymentDefinition, applicationQualifier } = context.blueprintProps;
     const phaseDefinition = context.get(GlobalResources.PHASE)!;
@@ -70,7 +90,7 @@ export class BasicRepositoryProvider implements RepositoryProvider {
           applicationQualifier: applicationQualifier,
           ...this.config,
           pr: {
-            codeGuruReviewer: this.config.codeGuruReviewer || false,
+            codeGuruReviewer: this.config.codeGuruReviewer || false, // Default value is false
             codeBuildOptions: codebuildFactory.provideCodeBuildOptions(),
             buildSpec: codebuild.BuildSpec.fromObject({
               version: '0.2',

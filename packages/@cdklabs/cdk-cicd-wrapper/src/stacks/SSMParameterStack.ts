@@ -6,13 +6,27 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
+/**
+ * Properties for the SSMParameterStack.
+ */
 export interface SSMParameterStackProps extends cdk.StackProps {
+  /**
+   * The qualifier to use for the application.
+   */
   readonly applicationQualifier: string;
+
+  /**
+   * An optional object containing key-value pairs representing the parameters to create in the SSM Parameter Store.
+   * @default - No parameters are created.
+   */
   readonly parameter?: {
-    [key in string]: string;
+    [key: string]: string;
   };
 }
 
+/**
+ * A stack for creating and managing AWS Systems Manager (SSM) Parameters.
+ */
 export class SSMParameterStack extends cdk.Stack {
   readonly applicationQualifier: string;
 
@@ -28,20 +42,40 @@ export class SSMParameterStack extends cdk.Stack {
     }
   }
 
-  createParameterInSSMParameterStack(parameterName: string, parameterValue: string) {
+  /**
+   * Creates a new String Parameter in the SSM Parameter Store within this stack.
+   *
+   * @param parameterName - The name of the parameter.
+   * @param parameterValue - The value of the parameter.
+   * @returns The created SSM String Parameter resource.
+   */
+  createParameterInSSMParameterStack(parameterName: string, parameterValue: string): ssm.StringParameter {
     return new ssm.StringParameter(this, `${parameterName}Parameter`, {
       parameterName: `/${this.applicationQualifier}/${parameterName}`,
       stringValue: parameterValue,
     });
   }
 
-  createParameter(scope: Construct, parameterName: string, parameterValue: string) {
+  /**
+   * Creates a new String Parameter in the SSM Parameter Store within the provided scope.
+   *
+   * @param scope - The scope in which to create the parameter.
+   * @param parameterName - The name of the parameter.
+   * @param parameterValue - The value of the parameter.
+   * @returns The created SSM String Parameter resource.
+   */
+  createParameter(scope: Construct, parameterName: string, parameterValue: string): ssm.StringParameter {
     return new ssm.StringParameter(scope, `${parameterName}Parameter`, {
       parameterName: `/${this.applicationQualifier}/${parameterName}`,
       stringValue: parameterValue,
     });
   }
 
+  /**
+   * Provides an IAM Policy Statement that grants permissions to retrieve parameters from the SSM Parameter Store.
+   *
+   * @returns The IAM Policy Statement granting access to the SSM Parameters.
+   */
   provideParameterPolicyStatement(): iam.PolicyStatement {
     const parameterArn: string = cdk.Arn.format({
       partition: 'aws',

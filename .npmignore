@@ -16,5 +16,7 @@ dist
 /.idea/
 /.projenrc.js
 tsconfig.tsbuildinfo
+/.all-contributorsrc
 /.gitattributes
 /.projenrc.ts
+/projenrc

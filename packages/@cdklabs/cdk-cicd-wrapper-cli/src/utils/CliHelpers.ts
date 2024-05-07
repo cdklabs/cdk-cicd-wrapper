@@ -7,7 +7,16 @@ import { createHash } from 'crypto';
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
+/**
+ * A utility class providing helper functions for various command line operations.
+ */
 export class CliHelpers {
+  /**
+   * Determines the appropriate Python executable and pip executable based on the installed Python version.
+   *
+   * @returns An object containing the Python executable and pip executable paths.
+   * @throws An error if Python is not installed.
+   */
   static getPythonCommand() {
     // 1 min timeout
     const TIMEOUT = { timeout: 5 * 60 * 1000 };
@@ -38,6 +47,15 @@ export class CliHelpers {
     }
   }
 
+  /**
+   * Recursively searches for files matching the given pattern within a directory.
+   *
+   * @param match The regular expression pattern to match file names against.
+   * @param directory The directory to search in.
+   * @param excludes An optional regular expression pattern to exclude certain directories.
+   * @param maxDept The maximum depth of recursion (default is 8).
+   * @returns An array of absolute file paths that match the pattern.
+   */
   static findRecursively(match: string, directory: string, excludes?: string, maxDept: number = 8) {
     const matches: string[] = [];
 
@@ -68,18 +86,37 @@ export class CliHelpers {
     return matches;
   }
 
+  /**
+   * Generates a SHA-256 checksum for the given file path.
+   *
+   * @param filePath The path to the file for which the checksum should be generated.
+   * @returns The SHA-256 checksum of the file as a hexadecimal string.
+   */
   static generateChecksum(filePath: string) {
     const checksum = createHash('sha256');
     checksum.update(readFileSync(filePath));
     return checksum.digest('hex');
   }
 
+  /**
+   * Generates a SHA-256 checksum for the given text.
+   *
+   * @param text The text for which the checksum should be generated.
+   * @returns The SHA-256 checksum of the text as a hexadecimal string.
+   */
   static generateChecksumForText(text: string) {
     const checksum = createHash('sha256');
     checksum.update(text);
     return checksum.digest('hex');
   }
 
+  /**
+   * Persists a checksum value to a verification file.
+   *
+   * @param verificationFile The path to the verification file.
+   * @param checksumKey The key under which the checksum value should be stored.
+   * @param checksumValue The checksum value to be persisted.
+   */
   static persistChecksum(verificationFile: string, checksumKey: string, checksumValue: string) {
     let checkSumState: Record<string, string> = {};
     if (existsSync(verificationFile)) {

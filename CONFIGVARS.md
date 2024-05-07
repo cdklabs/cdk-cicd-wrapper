@@ -16,7 +16,7 @@ CDK CI/CD Wrapper uses a environment variables, to set up the CDK projects with 
 | AWS_PROFILE |   |   | sets the default named profile to use for aws cli or cdk commands when no `--profile` is provided. set to the same value as `RES_ACCOUNT_AWS_PROFILE` this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
 |             | applicationName | Wrapper | sets the name of the Application |
 | CDK_QUALIFIER | cdkQualifier | wrapper | used to distinguish between multiple deployments of a VP project in the same account. Good practice to customize per deployment. |
-| GIT_REPOSITORY | repositoryName |  | sets the name of the Git repository in the format org/name |
+|  | repositoryName |  | sets the name of the Git repository in the format org/name |
 |  | repositoryType |  | sets the type of the repository, `GITHUB` or `CODECOMMIT` |
 | CODESTAR_CONNECTION_ARN |  |  | sets the codestar connection required for GITHUB type |
 | CICD_VPC_TYPE | cicdVpcType | NO_VPC | sets the type of the VPC: `NO_VPC`, `VPC`, or `VPC_FROM_LOOK_UP`. |

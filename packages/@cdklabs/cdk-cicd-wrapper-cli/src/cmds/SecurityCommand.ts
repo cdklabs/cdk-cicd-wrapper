@@ -15,18 +15,57 @@ const GLOBAL_TIMEOUT = { timeout: 2 * 60 * 1000 };
 
 const pythonExecutables = CliHelpers.getPythonCommand();
 
+/**
+ * The command to execute Python.
+ */
 const PYTHON_COMMAND = pythonExecutables.pythonExecutable;
+
+/**
+ * The command to execute Python's package installer (pip).
+ */
 const PIP_COMMAND = pythonExecutables.pipExecutable;
 
+/**
+ * Interface representing the context for security scanning.
+ */
 interface ScanningContext {
+  /**
+   * The root directory of the project being scanned.
+   */
   readonly projectRoot: string;
+
+  /**
+   * The working directory for the security scanning process.
+   */
   readonly workingDir: string;
+
+  /**
+   * The command to execute Python's package installer (pip).
+   */
   readonly pip: string;
+
+  /**
+   * The command to execute Python.
+   */
   readonly python: string;
+
+  /**
+   * The folder where the security scan reports should be generated (optional).
+   */
   readonly scanReportFolder?: string;
 }
 
+/**
+ * Abstract class representing a security scanner.
+ */
 abstract class SecurityScanner {
+  /**
+   * Constructs a new SecurityScanner instance.
+   * @param command The command to execute the security scanner.
+   * @param defaultVersion The default version of the security scanner to use.
+   * @param packageName The name of the package to install for the security scanner.
+   * @param additionalPackages Additional packages to install along with the main package (default: []).
+   */
   constructor(
     readonly command: string,
     readonly defaultVersion: string,
@@ -34,6 +73,11 @@ abstract class SecurityScanner {
     readonly additionalPackages: string[] = [],
   ) {}
 
+  /**
+   * Adds options related to the security scanner to the provided yargs instance.
+   * @param args The yargs instance to add options to.
+   * @returns The modified yargs instance.
+   */
   addOptions(args: yargs.Argv) {
     args.option(this.command, {
       type: 'boolean',
@@ -52,6 +96,11 @@ abstract class SecurityScanner {
     return args;
   }
 
+  /**
+   * Installs the security scanner package with the specified version.
+   * @param context The scanning context.
+   * @param version The version of the security scanner package to install.
+   */
   install(context: ScanningContext, version: string) {
     console.log(`Installing ${this.packageName} ${version}`);
 
@@ -73,8 +122,21 @@ abstract class SecurityScanner {
     return;
   }
 
+  /**
+   * Performs the security scanning process.
+   * @param context The scanning context.
+   * @param args The parsed command-line arguments.
+   * @abstract
+   * @returns The exit code of the scanning process.
+   */
   protected abstract doScan(context: ScanningContext, args: yargs.Arguments): number;
 
+  /**
+   * Initiates the security scanning process.
+   * @param context The scanning context.
+   * @param args The parsed command-line arguments.
+   * @returns The exit code of the scanning process.
+   */
   scan(context: ScanningContext, args: yargs.Arguments) {
     const version = args[`${this.command}-version`] as string;
 
@@ -93,11 +155,22 @@ abstract class SecurityScanner {
   }
 }
 
+/**
+ * Class representing the Shellcheck security scanner.
+ */
 class Shellcheck extends SecurityScanner {
+  /**
+   * Constructs a new Shellcheck instance.
+   */
   constructor() {
     super('shellcheck', '0.9.0.6', 'shellcheck-py');
   }
 
+  /**
+   * Adds options related to the Shellcheck scanner to the provided yargs instance.
+   * @param args The yargs instance to add options to.
+   * @returns The modified yargs instance.
+   */
   override addOptions(args: yargs.Argv) {
     super.addOptions(args);
 
@@ -111,6 +184,12 @@ class Shellcheck extends SecurityScanner {
     return args;
   }
 
+  /**
+   * Performs the Shellcheck security scanning process.
+   * @param context The scanning context.
+   * @param args The parsed command-line arguments.
+   * @returns The exit code of the scanning process.
+   */
   protected doScan(context: ScanningContext, args: yargs.Arguments): number {
     const severity = args.severity as string;
 
@@ -160,11 +239,23 @@ class Shellcheck extends SecurityScanner {
   }
 }
 
+/**
+ * Class representing the Semgrep security scanner.
+ */
 class SemgrepScanner extends SecurityScanner {
+  /**
+   * Constructs a new SemgrepScanner instance.
+   */
   constructor() {
     super('semgrep', '1.55.0', 'semgrep', ['jsonschema']);
   }
 
+  /**
+   * Performs the Semgrep security scanning process.
+   * @param context The scanning context.
+   * @param args The parsed command-line arguments.
+   * @returns The exit code of the scanning process.
+   */
   protected doScan(context: ScanningContext, args: yargs.Arguments): number {
     const commandArgs = [
       'scan',
@@ -208,11 +299,23 @@ class SemgrepScanner extends SecurityScanner {
   }
 }
 
+/**
+ * Class representing the Bandit security scanner.
+ */
 class BanditScanner extends SecurityScanner {
+  /**
+   * Constructs a new BanditScanner instance.
+   */
   constructor() {
     super('bandit', '1.7.5', 'bandit');
   }
 
+  /**
+   * Performs the Bandit security scanning process.
+   * @param context The scanning context.
+   * @param args The parsed command-line arguments.
+   * @returns The exit code of the scanning process.
+   */
   protected doScan(context: ScanningContext, args: yargs.Arguments): number {
     const commandArgs = ['-m', this.command, '-x', '**node_modules/*,**cdk.out/*,**docs/*', '-r', context.projectRoot];
     const options: SpawnSyncOptions = { encoding: 'utf8', stdio: 'inherit' };
@@ -243,9 +346,21 @@ class BanditScanner extends SecurityScanner {
   }
 }
 
+/**
+ * Command module for security scanning.
+ */
 class Command implements yargs.CommandModule {
+  /**
+   * Array of security scanners to be used.
+   */
   static scanners = [new BanditScanner(), new Shellcheck(), new SemgrepScanner()];
 
+  /**
+   * Creates a scanning environment and executes the provided scanning function.
+   * @param ci Whether to generate CI reports or not.
+   * @param scanning The function to execute for security scanning.
+   * @returns The exit code of the scanning process.
+   */
   static createScanningEnvironment(ci: boolean = false, scanning: (context: ScanningContext) => number) {
     let workingDir;
     let exitCode = 0;
@@ -288,10 +403,21 @@ class Command implements yargs.CommandModule {
     return exitCode;
   }
 
+  /**
+   * The command name.
+   */
   command = 'security-scan';
 
+  /**
+   * The command description.
+   */
   describe = 'Scans the codebase for security vulnerabilities.';
 
+  /**
+   * Configures the command options.
+   * @param args The yargs instance to configure options for.
+   * @returns The modified yargs instance.
+   */
   builder(args: yargs.Argv) {
     args.option('ci', {
       type: 'boolean',
@@ -306,6 +432,10 @@ class Command implements yargs.CommandModule {
     return args;
   }
 
+  /**
+   * Handles the command execution.
+   * @param args The parsed command-line arguments.
+   */
   handler(args: yargs.Arguments) {
     const exitCode = Command.createScanningEnvironment(args.ci as boolean, (context) => {
       let results = 0;

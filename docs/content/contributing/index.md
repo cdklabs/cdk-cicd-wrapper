@@ -9,38 +9,40 @@ Please read through this document before submitting any issues or pull requests 
 The structure of this project is as follows:
 
 ```bash
-├── bin
-├── docs
-├── lib
-│   ├── cli ### the cli code
-│   ├── code-pipeline
-│   ├── constructs ### constructs distributed through NPM
-│   ├── examples
-│   ├── resource-providers
-│   ├── spi
-│   ├── stacks
-│   └── utils
-├── scripts
-│   └── lib
-├── src
-│   ├── codebuild
-│   ├── lambda-functions
-│   └── lambda-layer
-├── test
-│   ├── constructs
-│   ├── examples
-│   └── stacks
-└── utils
-    └── license-checker
+├── docs                                  # Documentation 
+├── packages                              # Packages
+│   └── @cdklabs
+│       ├── cdk-cicd-wrapper              # CDK CI/CD Wrapper Blueprint
+│       └── cdk-cicd-wrapper-cli          # CLI tools to support the Blueprint
+├── projenrc                              # Projen source
+├── samples                               # Samples folder for demonstrating various aspects of the tool
+├── .projenrc.ts                          # Projen file to manage project structure
+├── CHANGELOG.md
+├── CODE_OF_CONDUCT.md
+├── CONFIGVARS.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── NOTICE
+├── OSS_License_Summary.csv
+├── README.md
+├── Taskfile.yml                          # Contains helpful tasks that are useful during development
+├── bandit.yaml
+├── licensecheck.json
+├── package-verification.json
+├── package.json
+├── tsconfig.dev.json
+├── tsconfig.json
+└── yarn.lock
 ```
 
 ### **docs**
 
 This is where the documentation site is defined and built.
 
-### **lib**
+### **packages**
 
-#### Testing xxx constructs
+This folder the sources are located
+
 
 ## Reporting Bugs/Feature Requests
 
@@ -66,7 +68,7 @@ To send us a pull request, please:
 
 1. Fork the repository.
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
-3. Run `npm run checks` to ensure everything builds and tests correctly.
+3. Run `task build` to ensure everything builds and tests correctly.
    > This will execute all necessary verification `verification`, `build`, `test`, `audit`.
 4. Commit to your fork on a new branch using [conventional commit messages](#commits).
 5. Send us a pull request, answering any default questions in the pull request template.
@@ -100,7 +102,7 @@ _CORRECT COMMIT MESSAGE_
 ```bash
 > git commit -m "docs: updated README.md with better instructions for the commit-msg hook"
 
-> harvesting-vanilla-pipeline@1.2.3 commitlint
+> cdk-cicd-wrapper@1.2.3 commitlint
 > commitlint --edit .git/COMMIT_EDITMSG
 
 [feat/developer-tools 24192d7] docs: updated README.md with better instructions for the commit-msg hook
@@ -143,169 +145,109 @@ See the [LICENSE](LICENSE) file for our project's licensing. We will ask you to 
 
 We may ask you to sign a [Contributor License Agreement (CLA)](http://en.wikipedia.org/wiki/Contributor_License_Agreement) for larger changes.
 
+## Working with documentation
+The documentation for the CDK CI/CD Wrapper Core is stored under the docs/ (index file: index.md) and is designed to be viewed as an MkDocs html site. Before heading to the documentation we highly recommend you:
+
+test
+- Run the build docs script `task docs` using you UNIX cli
+- Start the local mkdocs webserver to view locally the ConfigBuilder documentation site with the `task docs:local` command; the documentation will then be available at http://localhost:8000
+
 ## Testing Packages locally
 This section explains how you can run local versions of the {{ project_name }} packages that you have made changes to.
 You would typically do this when testing new features or fixes that you are trying to contribute to this project.
-There are 2 ways of testing : 
--   Verdaicco : This is for testing your packages exclusively on your machine. Verdaccio allows you to host a local nom registry where you can then publish packages. In the context of {{ project_name }} this will come in handy in rapidly testing your initial deployments of {{ project_name }}. the main limitation of this is that once deployed your CICD pipeline will fail as it will not have access to your local npm registry. But this servers as a quick way to confirm that your modified {{ project_name }} will work for initial deployment
--   CodeArtifact : To be able to test your modified version of {{ project_name }} end to end and have it work in the {{ project_name }}'s code build instances you can use code artifact to host a private npm registry in the cloud.
 
-See following sections explain how to set these two methods up.
-
-### Verdaicco Setup
-First, install Verdaccio on your local machine. You can do this by running ```npm install -g verdaccio``` in your command line.
-
-After installing, start Verdaccio by running ```verdaccio``` in your command line. Verdaccio will then display the address of the local server (usually http://localhost:4873), which will serve as your local npm registry.
-
-Create a ```.npmrc```  File: In your project directory, create a .npmrc file. Inside this file, add the following line:
-```
-<macro>:registry=http://localhost:4873
-```
-This configuration tells npm to use your local Verdaccio server as the registry for all package operations within this project.
-The ```<macro>``` will scope the registry to only be used for the {{ project_name }} packages with are scoped under ```<macro>```
-Ensure the ```.npmrc``` file is saved within your project directory.
-
-####Publishing packages
-Before publishing, you need to add a user to your Verdaccio registry for authentication purposes. Use the command:
-```
-npm adduser --registry http://localhost:4873
-```
-Then you can navigate to your package and run the following command to publish it
-```
-npm publish --registry http://localhost:4873
-```
-
-**Note**
-In this repository, the {{ project_name }} packages are found in the .packages directory. 
-There, you will find two separate directories: ```cdk-cicd-wrapper``` and ```cli```, which contain the two essential packages for {{ project_name }}. 
-You will need to navigate (cd) into these directories individually and publish them. 
-However, ensure you run ```npm run build``` before you publish them. 
-When publishing the cdk-cicd-wrapper package, you must ensure you have NPM, .NET, Maven, and Python installed on your machine.
-
-Once the packages are published, you can install them using the following command:
-```
-npm install <your-package-name> --registry http://localhost:4873
-```
-For {{ project_name }} your install commands will look like this :
-```
-npm install <macro>/cdk-cicd-wrapper --registry http://localhost:4873 --force
-npm install <macro>/cdk-cicd-wrapper-cli --registry http://localhost:4873 --force
-```
-**Note**
-You may need to use the --force flag here.
-
-**Note**
-Once you have completed this, you will be able to deploy from your local computer to AWS, but the CI/CD pipeline will fail as it does not have access to your local npm registry. Please follow the steps in the 'CodeArtifact for CI/CD Environment Setup' section detailing how to use CodeArtifact to host your npm registry.
-
-### CodeArtifact for CI/CD environment setup
-AWS CodeArtifact is a fully managed artifact repository service that makes it easy for developers to securely store, publish, and share software packages used in their software development process. 
-
-Here’s how to set it up for your CI/CD environment:
-
-Start in the AWS CodeArtifact Console by creating a domain, which is a container for repositories, and then create a repository within this domain to store your npm packages.
-
-Alternatively you can do the above with the aws cli like so
-```
-aws codeartifact create-domain --domain <domain-name> 
-
-aws codeartifact create-repository --domain <domain-name> --repository <repository-name> 
-```
-Replace <your-domain> and <repository-name> with your specific domain name and repository name.
-
-Once your repository is created, use the AWS CLI to get an authorization token for your CodeArtifact repository. The command is:
-```
-aws codeartifact get-authorization-token --domain <your-domain> --domain-owner <your-aws-account-id> --query authorizationToken --output text
-```
-Replace <your-domain> and <your-aws-account-id> with your specific domain name and AWS account ID.
-
-With your authorization token, configure npm to use your CodeArtifact repository as follows:
-```
-npm config set registry https://<your-domain>-<your-aws-account-id>.d.codeartifact.<region>.amazonaws.com/npm/<your-repository>/
-```
-Then, set the authorization token for your repository:
-```
-npm config set //<your-domain>-<your-aws-account-id>.d.codeartifact.eu-west-2.amazonaws.com/npm/{{ project_name }}core/:_authToken=<YOUR_AUTH_TOKEN>
-```
-Make sure to replace <your-domain>, <your-aws-account-id>, <region>, <your-repository>, and <YOUR_AUTH_TOKEN> with your specific details and the token you obtained in the previous step.
-
-Now, you can publish your npm packages to your CodeArtifact repository using ```npm publish```
-
-##### Use CodeArtifact Registry Locally
-To use your CodeArtifact Registry locally on a project you will need to create a .npmrc file where you specify your registry and authorization token.
-
-Create a ```.npmrc```  File: In your project directory, create a .npmrc file. Inside this file, add the following line:
-```
-<macro>:registry=https://<your-domain>-<your-aws-account-id>.d.codeartifact.<region>.amazonaws.com/npm/<your-repository>/
-//<your-domain>-<your-aws-account-id>.d.codeartifact.eu-west-2.amazonaws.com/npm/{{ project_name }}core/:_authToken=<YOUR_AUTH_TOKEN>
-```
-Make sure to replace <your-domain>, <your-aws-account-id>, <region>, <your-repository>, and <YOUR_AUTH_TOKEN> with your specific details and the token you obtained in the previous step.
-The ```<macro>``` will scope the registry to only be used for the {{ project_name }} packages with are scoped under ```<macro>```
-
-Once the registry is set, you can install them using the following command:
-```
-npm install <your-package-name> --registry http://localhost:4873
-```
-For {{ project_name }} your install commands will look like this :
-```
-npm install <macro>/cdk-cicd-wrapper --registry http://localhost:4873 --force
-npm install <macro>/cdk-cicd-wrapper-cli --registry http://localhost:4873 --force
-```
-
-##### Use CodeArtifact Registry in CI/CD environment
-To make the Codebuild instance utilise your code artifact registry you will need to set the npmRegistry configuration in your `{{ project_name }}Builder` with the following parameters:
-- url: NPM registry url
-- basicAuthSecretArn: AWS SecretManager Secret arn, will be detailed soon
-- scope: NPM Registry scope if it is used
-  
-You can do this like so:
-```
-import * as vp from '{{ npm_codepipeline }}';
-
-const npmRegistryConfig: vp.NPMRegistryConfig = {
-  url: "https://<your-domain>-<your-aws-account-id>.d.codeartifact.<region>.amazonaws.com/npm/<your-repository>/", 
-  basicAuthSecretArn: "<your-secret-arn>", 
-  scope: "<scope>" 
-};
-Make sure to replace <your-domain>, <your-aws-account-id>, <region>, <your-repository>, and <YOUR_AUTH_TOKEN> with your specific details and the token you obtained in the previous step.
-For <scope> use <macro>
-
-vp.{{ project_name }}Blueprint.builder().npmRegistry(npmRegistryConfig).synth(app);
-```
-
-The NPM Authentication Token needs to remain secret that is why the {{ project_name }} uses AWS SecretManager to store it.
-Create a secret in AWS Secrets Manager and store the authentication token as plaintext. 
-Please be aware the code artifact token expires after 12 hours so if you Codebuild runs after more than 12 hours since you last generated you auth token it will fail. So you will have to generate a new one and update your secret with it.
-
-Your CICD environment will now automatically use your CodeArtifact Registry
+### Prerequisite
+An AWS account available for testing with Administrator access.
 
 
-## FAQ
 
-### How do I bump dependency versions?
+### First steps
 
-From the root directory run: `npm install`. This will bump all dependencies to be the same/latest versions and update the `package-lock.json` file.
-Then, please update `package-verification.json` by running the following commands:
+Configure the following environment variables.
+
+|Name|Description|Required|Default|Example|CreateIfNotExisting|
+|----|-----------|---|---|----|----|
+|AWS_PROFILE|[AWS Profile](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-profile) to use for interacting with the AWS account. This profile is used to create an AWS CodeArtifact to host the {{ project_name }} packages, while the version is not publicly available. | true | | 123456789012 | false |
+| DOMAIN     | AWS CodeArtifact Domain name to use     | true | cdk-cicd-wrapper | | true | 
+| REPOSITORY | AWS CodeArtifact repository name to use | true | cdk-cicd-wrapper | | true |
+| SECRET_ID  | AWS SecretManager Secret name to publish to login token. This token will be used by the {{ project_name }} pipeline to be able to pull the packages at the Synth stage. | true | cdk-cicd-wrapper | | true |
+
+The values can be placed into a `.env` file in the root of the project as well, e.g:
 
 ```bash
-rm -rf node_modules ### remove the locally downloaded npm dependencies
-npm install  ### install fresh from the package.json, this will generate package-lock.json as well
-npm run validate:fix ### will generate the checksum for the package-lock.json which is checked in the CI/CD
-npm run audit:fix:license ### will update the NOTICE file with the updated package versions
+AWS_PROFILE=my-aws-profile
+DOMAIN=cdk-cicd-wrapper
+REPOSITORY=cdk-cicd-wrapper
+SECRET_ID=codeartifact-secret-id
 ```
 
-## CDK Useful commands
 
-- `npm ci` install the packages from the frozen dependencies in the package-lock.json
-- `npm run build` compile typescript to js
-- `npm run watch` watch for changes and compile
-- `npm run test` perform the jest unit tests
-- `npm install` installs an npm package (make sure to run the npm run generate-checksum afterwards)
-- `npm run generate-checksum` generate checksum of the package-lock.json (after installing new dependencies)
-- `npm run audit` audits both NPM and Python dependencies
-- `npm run audit-nodejs` audits NPM dependencies
-- `npm run audit-python` audits Python dependencies
-- `npm run lint` check for linting issues in the project
-- `npm run lint-fix` fix linting issues in the project (do not forget to add & commit the fixed files)
-- `cdk deploy` deploy this stack to your default AWS account/region
-- `cdk diff` compare deployed stack with current state
-- `cdk synth --all` emits the synthesized CloudFormation template for all stacks
+### Checkout and initialize the code repository
+You can clone the repository from [GitHub](https://github.com/cdklabs/cdk-cicd-wrapper/).
+
+Execute the `task init` command.
+
+### Publish the CDK CI/CD packages into AWS CodeArtifact
+
+#### Login to CodeArtifact
+It is highly recommended to set up a separate AWS CodeArtifact for testing and developing the {{ project_name }}.
+With a single ```task codeartifact:login``` command you can login to the AWS CodeArtifact.
+In case the AWS CodeArtifact Domain or Repository are not existing, then it creates it based on the provided DOMAIN, REPOSITORY.
+
+The created AWS CodeArtifact Domain and Repository can be deleted with the `task codeartifact:repository:delete` command.
+
+**Note**
+The command might fail with message like `exit status 255` or similar. This means your AWS Session has expired.
+
+#### Publish 
+The {{ project_name }} packages can be publish with the `task codeartifact:publish` command.
+
+This command unpublish the previous package in cases where the package version has not been changed.
+
+### Use the packages from AWS CodeArtifact
+
+The {{ project_name }} packages can be added to any CDK project from the AWS CodeArtifact with the `npm install --save @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli`. Then you can follow the [Getting Started](../getting_started/index.md) Guide.
+
+### Use a sample app for development
+The repository comes with a `samples` folder that host example projects to understand the benefit of the {{ project_name }}.
+
+The available samples can be listed, with the `task samples:list` command.
+Set the `SAMPLE_APP` environment variable name as the folder is called inside the sample folder.
+Once you've selected a sample, that you'd like to use as baseline you need to then go ahead and initialize a project based on that running the following commands:
+
+```bash
+export SAMPLE_APP=cdk-ts-example;
+task samples:dev:init
+```
+The last command creates the `development/project` temporarily folder and initialize the project with [Projen](https://projen.io/).
+
+#### Configure environment variables for the sample application
+The environment variables listed on the [Variables](../developer_guides/variables.md) page.
+These variables can be included into the `.env` file in either the root or in the `development/project` folder.
+
+The requirements for the samples projects can be different, so check the **README.md** file of the sample application for more details.
+
+You can verify the detected configuration with the `task samples:dev:info`. This is recommended if you are managing multiple AWS accounts.
+
+
+#### Bootstrap the accounts
+The accounts must be bootstrapped prior to the first deployment.
+You can execute it with the `task samples:dev:bootstrap`.
+
+#### Update the cdk-cicd-wrapper libraries in the development
+You can update the packages with the `task samples:dev:update` command that ensures the latest {{ project_name }} is used.
+
+
+#### Deploy the pipeline to the account
+You can deploy the pipelines from the development folder with the `task samples:dev:deploy` command. 
+
+#### Push the sources of the sample application up to the generated repository AWS CodeCommit
+You can push the changes made into the sample from the folder with the `task samples:dev:git:push`
+
+#### Deploy workbench stacks
+The workbench stacks can be deployed with the `task samples:dev:workbench:deploy`.
+
+#### Do development iteration
+You can test your changes in the {{ project_name }} simply with calling the `task samples:dev:loop`.
+
+## FAQ

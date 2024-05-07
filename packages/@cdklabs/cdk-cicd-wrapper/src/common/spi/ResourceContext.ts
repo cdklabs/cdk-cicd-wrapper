@@ -2,23 +2,47 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Construct } from 'constructs';
-import { IVanillaPipelineBlueprintProps } from '../../stacks';
+import { IPipelineBlueprintProps } from '../../stacks';
 import { IStage, Environment, Stage } from '../types/Types';
 
+/**
+ * Defines the scope of a resource provider.
+ */
 export enum Scope {
+  /**
+   * The resource provider will be available globally across all stages.
+   */
   GLOBAL = 'GLOBAL',
+
+  /**
+   * The resource provider will be available only within the current stage.
+   */
   PER_STAGE = 'PER_STAGE',
 }
 
 /**
- * Generic resource provider interface.
- **/
+ * Interface representing a generic resource provider.
+ * Provides resources through the `provide` method.
+ */
 export interface IResourceProvider {
+  /**
+   * The scope in which the resource provider is available.
+   * Defaults to `Scope.GLOBAL`.
+   */
   scope?: Scope;
 
+  /**
+   * Provides resources based on the given context.
+   *
+   * @param context The context in which the resources are provided.
+   * @returns The provided resources.
+   */
   provide(context: ResourceContext): any;
 }
 
+/**
+ * Internal class used to manage scoped storage of resources and providers.
+ */
 class ScopedStorage {
   private initialized: string[] = [];
 
@@ -30,6 +54,12 @@ class ScopedStorage {
 
   constructor(private resourceContext: ResourceContext) {}
 
+  /**
+   * Adds a resource provider to the storage.
+   *
+   * @param name The name of the resource provider.
+   * @param provider The resource provider instance.
+   */
   public add(name: string, provider: IResourceProvider): void {
     if (this.providers.has(name)) {
       throw new Error(`Overwriting ${name} resource during execution is not allowed.`);
@@ -37,10 +67,22 @@ class ScopedStorage {
     this.providers.set(name, provider);
   }
 
+  /**
+   * Checks if a resource provider with the given name exists in the storage.
+   *
+   * @param name The name of the resource provider.
+   * @returns True if the resource provider exists, false otherwise.
+   */
   public has(name: string): boolean {
     return this.providers.has(name);
   }
 
+  /**
+   * Retrieves a resource from the storage or initializes it if not already initialized.
+   *
+   * @param name The name of the resource.
+   * @returns The resource, or undefined if it doesn't exist.
+   */
   public get(name: string): any | undefined {
     const resource = this.resources.get(name) as any | undefined;
 
@@ -51,10 +93,19 @@ class ScopedStorage {
     return this.initialize(name);
   }
 
+  /**
+   * Initializes all resources in the storage.
+   */
   public initializeAll() {
     this.providers.forEach((_, key) => this.initialize(key));
   }
 
+  /**
+   * Initializes a resource by invoking its provider's `provide` method and stores the result in the storage.
+   *
+   * @param name The name of the resource to initialize.
+   * @returns The initialized resource.
+   */
   public initialize(name: string): any {
     if (this.initialized.indexOf(name) == -1) {
       if (!this.providers.has(name)) {
@@ -77,14 +128,18 @@ class ScopedStorage {
 
 /** @internal */
 export interface ResourceProviderSupplier {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   resourceProviders: Map<string, IResourceProvider>;
 }
 
 /**
- * Provides API to register resource providers and get access to the provided resources.
+ * Provides an API to register resource providers and access the provided resources.
  */
 export class ResourceContext {
+  /**
+   * Returns the singleton instance of ResourceContext.
+   *
+   * @returns The ResourceContext instance.
+   */
   static instance() {
     return ResourceContext._instance;
   }
@@ -92,23 +147,27 @@ export class ResourceContext {
   private static _instance: ResourceContext;
 
   private readonly globalScope: ScopedStorage;
-
   private stagedScope?: ScopedStorage;
 
   private _currentStage: string = Stage.RES;
-
   private _currentEnv?: Environment;
 
+  /**
+   * Constructs a new instance of ResourceContext.
+   *
+   * @param _scope The construct scope.
+   * @param pipelineStack The pipeline stack construct.
+   * @param blueprintProps The pipeline blueprint properties.
+   */
   constructor(
     private _scope: Construct,
     public readonly pipelineStack: Construct,
-    public readonly blueprintProps: IVanillaPipelineBlueprintProps,
+    public readonly blueprintProps: IPipelineBlueprintProps,
   ) {
     ResourceContext._instance = this;
 
     this.globalScope = new ScopedStorage(this);
 
-    blueprintProps.resourceProviders;
     for (const [key, resourceProvider] of Object.entries(blueprintProps.resourceProviders)) {
       if (!resourceProvider.scope || resourceProvider.scope == Scope.GLOBAL) {
         this.globalScope.add(key, resourceProvider);
@@ -128,6 +187,11 @@ export class ResourceContext {
     return result;
   }
 
+  /**
+   * Initializes the current stage and its associated resource providers.
+   *
+   * @param stage The current stage.
+   */
   public initStage(stage: IStage) {
     this.stagedScope = new ScopedStorage(this);
 
@@ -141,6 +205,12 @@ export class ResourceContext {
     }
   }
 
+  /**
+   * Retrieves a resource by its name.
+   *
+   * @param name The name of the resource.
+   * @returns The resource, or undefined if it doesn't exist.
+   */
   public get(name: string): any | undefined {
     if (this.globalScope.has(name)) {
       return this.globalScope.get(name);
@@ -148,23 +218,47 @@ export class ResourceContext {
     return this.stagedScope!.get(name);
   }
 
+  /**
+   * Checks if a resource with the given name exists.
+   *
+   * @param name The name of the resource.
+   * @returns True if the resource exists, false otherwise.
+   */
   public has(name: string): boolean {
     return this.globalScope.has(name) || this.stagedScope!.has(name);
   }
 
+  /**
+   * Retrieves the current stage.
+   *
+   * @returns The current stage.
+   */
   public get stage(): string {
     return this._currentStage;
   }
 
+  /**
+   * Retrieves the current environment.
+   *
+   * @returns The current environment.
+   */
   public get environment(): Environment {
     return this._currentEnv!;
   }
 
+  /**
+   * Retrieves the current construct scope.
+   *
+   * @returns The current construct scope.
+   */
   public get scope(): Construct {
     return this._scope;
   }
 }
 
+/**
+ * Enum representing global resources.
+ */
 export enum GlobalResources {
   REPOSITORY = 'repository',
   VPC = 'vpc',
@@ -176,4 +270,5 @@ export enum GlobalResources {
   COMPLIANCE_BUCKET = 'compliance-bucket',
   PIPELINE = 'pipeline',
   PHASE = 'phase',
+  ADDON_STORE = 'addon-store',
 }

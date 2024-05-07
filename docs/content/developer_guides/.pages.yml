@@ -1,6 +1,7 @@
 ---
 nav:
   - index.md
+  - "Variables": "variables.md"
   - "Continuous Integration": "ci.md"
   - "Continuous Deployment": "cd.md"
   - "Resources":

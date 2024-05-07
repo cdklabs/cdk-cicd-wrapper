@@ -17,7 +17,7 @@ extra:
     - icon: fontawesome/brands/aws
       name: Amazon Web Services, Inc.
       link: https://aws.amazon.com
-  project_name: CDK CICD Wrapper
+  project_name: CDK CI/CD Wrapper
   project_vanilla_pipeline: Vanilla Pipeline
   npm_cli: '@cdklabs/cdk-cicd-wrapper-cli'
   npm_codepipeline: '@cdklabs/cdk-cicd-wrapper'
@@ -67,10 +67,11 @@ plugins:
   - git-revision-date
   - search
   - macros
-  - typedoc:
-      source: '../../../lib/*.ts'
-      output_dir: 'api'
-      tsconfig: '../../../tsconfig.json'
-      # options: 'typedoc.json'
-      name: 'API Reference'
-      disable_system_check: False
+  # Disabled API reference as it is not working
+  # - typedoc:
+  #     source: '../../packages/@cdklabs/cdk-cicd-wrapper/lib/**/*.d.ts'
+  #     output_dir: 'api'
+  #     tsconfig: '../../packages/@cdklabs/cdk-cicd-wrapper/tsconfig.json'
+  #     # options: 'typedoc.json'
+  #     name: 'API Reference'
+  #     disable_system_check: False
