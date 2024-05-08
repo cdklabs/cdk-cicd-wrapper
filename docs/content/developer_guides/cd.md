@@ -8,7 +8,7 @@ This iterative process helps reduce the chance that you develop new code based o
 
 ### Stage
 
-Stage is a representation of a [deployment environment](https://en.wikipedia.org/wiki/Deployment_environment#:~:text=Deployment%20architectures%20vary%20significantly%2C%20but,deployed%20to%20each%20in%20order.) where the solution is deployed. The {{ project_name }} requires the RES stage to be defined, because that is the stage where all the CI/CD infrastructure elements will be placed. We recommend to use the DEV, INT, and PROD stages, in this order, but you can define your own [Stages](#how-to-define-stages).
+Stage is a representation of a [deployment environment](https://en.wikipedia.org/wiki/Deployment_environment#:~:text=Deployment%20architectures%20vary%20significantly%2C%20but,deployed%20to%20each%20in%20order.) where the solution is deployed. The {{ project_name }} requires the RES stage to be defined, because that is the stage where all the CI/CD infrastructure elements will be placed. We recommend to use the DEV, INT, and PROD stages, in this order, but you can define your own [Stages](#how-to-define-custom-stages).
 
 ### Stack
 
@@ -23,7 +23,7 @@ Stacks can be added to all of the stages or can be added only to specific stages
 Open your `bin/<your-main-file>.ts` file and include a stack into the Delivery Pipeline. Here we are using two of our example stacks.
 
 ```typescript
-vp.VanillaPipelineBlueprint.builder().addStack({
+PipelineBlueprint.builder().addStack({
   provide: (context) => {
     new example.LambdaStack(context.scope, `${context.blueprintProps.applicationName}LambdaStack`, {
         applicationName: context.blueprintProps.applicationName,
@@ -33,7 +33,7 @@ vp.VanillaPipelineBlueprint.builder().addStack({
         bucketName: 'test-bucket',
         stageName: context.stage,
         applicationQualifier: context.blueprintProps.applicationQualifier,
-        encryptionKey: context.get<vp.IEncryptionKey>(vp.GlobalResources.Encryption)!.kmsKey,
+        encryptionKey: context.get(GlobalResources.ENCRYPTION)!.kmsKey,
     });
 }}).synth(app);
 ```
@@ -41,7 +41,7 @@ vp.VanillaPipelineBlueprint.builder().addStack({
 You can add stacks one by one as well.
 
 ```typescript
-vp.VanillaPipelineBlueprint.builder().addStack({
+PipelineBlueprint.builder().addStack({
   provide: (context) => {
     new example.LambdaStack(context.scope, `${context.blueprintProps.applicationName}LambdaStack`, {
         applicationName: context.blueprintProps.applicationName,
@@ -53,7 +53,7 @@ vp.VanillaPipelineBlueprint.builder().addStack({
         bucketName: 'test-bucket',
         stageName: context.stage,
         applicationQualifier: context.blueprintProps.applicationQualifier,
-        encryptionKey: context.get<vp.IEncryptionKey>(vp.GlobalResources.Encryption)!.kmsKey,
+        encryptionKey: context.get(GlobalResources.ENCRYPTION)!.kmsKey,
     });
 }}).synth(app);
 ```
@@ -62,13 +62,13 @@ vp.VanillaPipelineBlueprint.builder().addStack({
 
 1. Your stack's scope must be the one that comes from the `context` -> `context.scope` or any other stack you defined in the same addStack block.
 2. It is recommended to use the prefixing with on the resources you are creating in your Stack otherwise your resource name can be conflicting. As best practice we use the stageName and the applicationQualifier both as that allows us to deploy multi stage CI/CD pipelines on a [single AWS account](./single_account.md).
-3. You can access GlobalResources through the context `context.get<IEncryptionKey>(vp.GlobalResources.Encryption)!.kmsKey`, you can read about the [GlobalResources](./global-resource)
+3. You can access GlobalResources through the context `context.get(GlobalResources.ENCRYPTION)!.kmsKey`, you can read about the [GlobalResources](./global_resource.md)
 4. You can access the parameters of the blueprint `context.blueprintProps`
 
 ### Add stack to a specific stage
 
 ```typescript
-vp.VanillaPipelineBlueprint.builder().addStack({
+PipelineBlueprint.builder().addStack({
   provide: (context) => {
     new example.LambdaStack(context.scope, `${context.blueprintProps.applicationName}LambdaStack`, {
         applicationName: context.blueprintProps.applicationName,
@@ -80,7 +80,7 @@ vp.VanillaPipelineBlueprint.builder().addStack({
         bucketName: 'test-bucket',
         stageName: context.stage,
         applicationQualifier: context.blueprintProps.applicationQualifier,
-        encryptionKey: context.get<vp.IEncryptionKey>(vp.GlobalResources.Encryption)!.kmsKey,
+        encryptionKey: context.get(GlobalResources.ENCRYPTION)!.kmsKey,
     });
 }}, vp.COMMON_STAGES.INT, vp.COMMON_STAGES.PROD).synth(app);
 ```
@@ -95,7 +95,7 @@ The deployed stacks can be different for each Stage, although the recommendation
 You can define custom stages through the VanillaPipelineBuilder, so that you can adjust the CD process to your environment setup.
 
 ```typescript
-vp.VanillaPipelineBlueprint.builder()
+PipelineBlueprint.builder()
     .defineStages([
         vp.COMMON_STAGES.RES,
         { stage: 'EXP', account: '1234567891012', region: 'eu-west-1'},
@@ -114,7 +114,7 @@ vp.VanillaPipelineBlueprint.builder()
             bucketName: 'test-bucket',
             stageName: context.stage,
             applicationQualifier: context.blueprintProps.applicationQualifier,
-            encryptionKey: context.get<vp.IEncryptionKey>(vp.GlobalResources.Encryption)!.kmsKey,
+            encryptionKey: context.get(GlobalResources.ENCRYPTION)!.kmsKey,
         });
     }}, vp.COMMON_STAGES.INT, vp.COMMON_STAGES.PROD).synth(app);
 ```

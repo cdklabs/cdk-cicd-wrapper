@@ -65,13 +65,15 @@
   "workspaces": {
     "packages": [
       "packages/@cdklabs/cdk-cicd-wrapper",
-      "packages/@cdklabs/cdk-cicd-wrapper-cli"
+      "packages/@cdklabs/cdk-cicd-wrapper-cli",
+      "packages/@cdklabs/cdk-cicd-wrapper-projen"
     ]
   },
   "jest": {
     "projects": [
       "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper",
-      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-cli"
+      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-cli",
+      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-projen"
     ]
   },
   "commitlint": {

@@ -4,7 +4,7 @@ CI is a continuous method of software development, where you continuously build 
 
 This iterative process helps reduce the chance that you develop new code based on buggy or failed previous versions. The {{ project_name }} can catch bugs early in the development cycle, and help ensure that all the code deployed to production complies with your established code standards.
 
-The CI functionality of the {{ project_name }} can be utilized in any software development process, it is not bound to infrastructure development or AWS CDK projects. For more details checkout the [{{ project_name }} with NX](../getting_started/nx.md).
+The CI functionality of the {{ project_name }} can be utilized in any software development process, it is not bound to infrastructure development or AWS CDK projects.
 
 ## Common terms
 
@@ -120,7 +120,7 @@ The phase can be defined with the `definePhase` method that is available on the 
 ```typescript
 const myScriptPhaseCommand = new vp.NPMPhaseCommand('my-script');
 
-vp.VanillaPipelineBlueprint.builder()
+PipelineBlueprint.builder()
   .addStack((context) => {
     new DemoStack(context.scope, 'DemoStack');
   })
@@ -134,7 +134,7 @@ vp.VanillaPipelineBlueprint.builder()
   .build(app);
 ```
 
-Here, you can see how to define the [order of the commands](#how-to-define-the-order-of-the-steps), for the phase.
+Here, you can see how to define the [order of the commands](#how-to-define-the-order-of-the-phasecommands), for the phase.
 
 ### Define Shell command based PhaseCommand
 
@@ -149,7 +149,7 @@ Now, the command is ready, we need to include into our desired [phase](#phases).
 The phase can be defined with the `definePhase` method that is available on the VanillaPipelineBuilder.
 
 ```typescript
-vp.VanillaPipelineBlueprint.builder()
+PipelineBlueprint.builder()
   .addStack((context) => {
     new DemoStack(context.scope, 'DemoStack');
   })
@@ -167,7 +167,6 @@ vp.VanillaPipelineBlueprint.builder()
 
 Every PhaseCommand must implement the PhaseCommand interface that has only one required command property. This command property must contain an executable command that the `sh` shell engine can execute, as this command will be added to the underlining AWS CodeBuild project `buildSpec.yaml` as part of the [commands](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html) list.
 
-See example [implementations](../api/interfaces/PhaseCommand.html).
 
 ## How to define the order of the PhaseCommands?
 
@@ -176,7 +175,7 @@ The execution order of the PhaseCommands follows the PhaseCommand position in th
 ```typescript
 const myScriptPhaseCommand = new vp.NPMPhaseCommand('my-script');
 
-vp.VanillaPipelineBlueprint.builder()
+PipelineBlueprint.builder()
   .addStack((context) => {
     new DemoStack(context.scope, 'DemoStack');
   })

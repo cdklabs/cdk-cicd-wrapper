@@ -19,6 +19,15 @@ Before you begin, ensure that you have the following prerequisites in place:
 
 For more detailed information on prerequisites, refer to the [Prerequisites](./prerequisites.md) documentation.
 
+### Project
+You can apply the {{ project_name }} to any of your existing project and it can serve as the CI/CD solution. For this guide we use a CDK project as an example. If you don't have an existing CDK project, you can create it with the following command.
+
+```bash
+mkdir my-project
+cd my-project
+npx aws-cdk@latest init app --language typescript
+```
+
 ## Installation
 
 1. Install the CI/CD pipeline package by running the following command:
@@ -35,32 +44,31 @@ We suggest using the provided CLI tool to set up your local environment, as it s
 
 1. Run the `npx {{ npm_cli }}@latest configure` command and follow the instructions.
 
-2. After modifying the placeholders in the script, make it executable and source the variables:
+2. After modifying the placeholders in the script,  source the variables:
 
    ```bash
-   chmod +x export_vars.sh
-   source export_vars.sh
+   source .env
    ```
 
    **Note**: The CLI Configure script supports the RES, DEV, INT, and PROD stages by default, but you can extend the list of stages as needed. If you plan to use a GitHub repository to host your project, you will need to know your [AWS CodeStar Connection ARN](../developer_guides/vcs_github.md).
 
 ## Bootstrap your stages
 
-The {{ project_name }} uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. This bootstrapping process must be established for each stage, and each account must have a trust relationship with the RES account.
-
-**Note**: The `CDK_QUALIFIER` environment variable was created in the [previous step](#setup-local-environment). It is recommended to use a different `CDK_QUALIFIER` for each CDK project.
+The {{ project_name }} uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. This bootstrapping process must be established for each stage, and each account must have a trust relationship with the RES account..
 
 If you are reusing an existing CDK bootstrapping setup, you can skip this step. Otherwise, follow the instructions below to bootstrap your stages:
 
 1. **Prepare the RES stage**:
 
    ```bash
+   CDK_QUALIFIER=$(jq -r '.config.cdkQualifier' package.json)
    npm run cdk bootstrap -- --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} aws://${ACCOUNT_RES}/${AWS_REGION}
    ```
 
 2. **Prepare the DEV stage**:
 
    ```bash
+   CDK_QUALIFIER=$(jq -r '.config.cdkQualifier' package.json)
    npm run cdk bootstrap -- --profile $DEV_ACCOUNT_AWS_PROFILE  --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
    arn:aws:iam::aws:policy/AdministratorAccess \
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_DEV}/${AWS_REGION}
@@ -69,6 +77,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 3. **Prepare the INT stage**:
 
    ```bash
+   CDK_QUALIFIER=$(jq -r '.config.cdkQualifier' package.json)
    npm run cdk bootstrap -- --profile $INT_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
    arn:aws:iam::aws:policy/AdministratorAccess \
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_INT}/${AWS_REGION}
@@ -77,6 +86,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 4. **Prepare the PROD stage**:
 
    ```bash
+   CDK_QUALIFIER=$(jq -r '.config.cdkQualifier' package.json)
    npm run cdk bootstrap -- --profile $PROD_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
    arn:aws:iam::aws:policy/AdministratorAccess \
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_PROD}/${AWS_REGION}
@@ -89,7 +99,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 Ensure that the following lines are in your `.gitignore` file:
 
 - `.npmrc` (if you are using a private NPM repository)
-- `export_vars.sh`
+- `.env`
 
 ## Setup the {{ project_name }}
 
@@ -114,27 +124,53 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
    ```typescript
    import * as cdk from 'aws-cdk-lib';
-   import { PipelineBlueprint } from '{{ npm_codepipeline }}';
+   import { PipelineBlueprint, GlobalResources } from '@cdklabs/cdk-cicd-wrapper';
 
    const app = new cdk.App();
 
    PipelineBlueprint.builder().addStack({
-     provide: (context) => {
-       // Create your stacks here
-       new YourStack(context.scope, `${context.blueprintProps.applicationName}YourStack`, {
-           applicationName: context.blueprintProps.applicationName,
-           stageName: context.stage,
-       });
-       new YourOtherStack(context.scope, `${context.blueprintProps.applicationName}YourOtherStack`, {
-           applicationQualifier: context.blueprintProps.applicationQualifier,
-           encryptionKey: context.get<vp.IEncryptionKey>(vp.GlobalResources.Encryption)!.kmsKey,
-       });
+   provide: (context) => {
+      // Create your stacks here
+      new YourStack(context.scope, `${context.blueprintProps.applicationName}YourStack`, {
+         applicationName: context.blueprintProps.applicationName,
+         stageName: context.stage,
+      });
+      new YourOtherStack(context.scope, `${context.blueprintProps.applicationName}YourOtherStack`, {
+         applicationQualifier: context.blueprintProps.applicationQualifier,
+         encryptionKey: context.get(GlobalResources.ENCRYPTION)!.kmsKey,
+      });
    }}).synth(app);
    ```
 
    **Note**: Refer to the [Developer Guide](../developer_guides/index.md) for more information on the `PipelineBlueprint`.
 
-4. **Optional**: If you are missing any of the `npm run` scripts (e.g., `validate`, `lint`, `test`, `audit`), or want to use the provided CLI tool for one or more actions, you can add the following definitions to your `package.json` file:
+  4. The {{ project_name }} expects to have the `validate`, `lint`, `test`, `audit` scripts defines. If you are missing any of the `npm run` scripts (e.g., ), or want to use the provided CLI tool for one or more actions, you can add the following definitions to your `package.json` file:
+
+  4. 1. Adding validate script
+   ```bash
+   jq --arg key "validate" --arg val "cdk-cicd validate" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "validate:fix" --arg val "cdk-cicd validate --fix" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   ```
+  4. 2. Adding lint script, we recommend using eslint and you can initalise it
+   ```bash
+   npm init @eslint/config
+
+   jq --arg key "lint" --arg val "eslint . --ext .ts --max-warnings 0" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "lint:fix" --arg val "eslint . --ext .ts --fix" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   ```
+
+   4. 3. Adding audit scripts
+   ```typescript
+   npm install --save -D concurrently
+   jq --arg key "audit" --arg val "concurrently 'npm:audit:*(\!fix)'" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "audit:deps:nodejs" --arg val "cdk-cicd check-dependencies --npm" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "audit:deps:python" --arg val "cdk-cicd check-dependencies --python" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "audit:deps:security" --arg val "cdk-cicd security-scan --bandit --semgrep --shellcheck" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "audit:license" --arg val "npm run license" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "audit:fix:license" --arg val "npm run license:fix" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "license" --arg val "cdk-cicd license" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "license:fix" --arg val "cdk-cicd license --fix" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   ```
 
    ```json
    {
@@ -150,8 +186,8 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
        "audit:fix:license": "npm run license:fix",
        "license": "cdk-cicd license",
        "license:fix": "cdk-cicd license --fix",
-       "lint": "npx eslint . --ext .ts --max-warnings 0",
-       "lint:fix": "npx eslint . --ext .ts --fix",
+       "lint": "eslint . --ext .ts --max-warnings 0",
+       "lint:fix": "eslint . --ext .ts --fix",
        "test": "jest"
        ...
      }
@@ -174,7 +210,7 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 6. Deploy all the stacks by running the following command:
 
    ```bash
-   npm run cdk deploy -- --all --region ${AWS_REGION} --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER}
+   npx dotenv-cli -- npm run cdk deploy -- --all --region ${AWS_REGION} --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER}
    ```
 
    Once the command finishes, the following CDK Stacks will be deployed into your RES Account:

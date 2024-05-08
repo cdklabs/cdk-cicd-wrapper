@@ -5,7 +5,7 @@
 ## Common Issues
 
 - When using Cloud9 in the RES account and you want to deploy the code cross-account then you need to define the profiles for the DEV and INT Account as usual (adding them in the ~/.aws/config). The RES profile can be omitted in this case while doing the initial bootstrap, except for the DEV and INT or PROD stages where the profile is mandatory to establish a trust relationship between the RES account and the other environments (DEV/INT/PROD).
-- `when calling the PutParameter operation: The security token included in the request is invalid`: This usually happens if you use Cloud9. Make sure to disable AWS managed temporary credentials and give the full admin access to your Cloud9 Managed role in order to be able to execute everything necessary. See the screenshot here: ![Disable AWS managed temporary credentials](docs/disable-managed-aws-creds.png 'AWS managed temporary credentials')
+- `when calling the PutParameter operation: The security token included in the request is invalid`: This usually happens if you use Cloud9. Make sure to disable AWS managed temporary credentials and give the full admin access to your Cloud9 Managed role in order to be able to execute everything necessary. 
 - `Resource handler returned message: "Policy contains a statement with one or more invalid principals. (Service: Kms, Status Code: 400, Request ID: a9f9e73b-cf2c-4862-9536-af92aa0ed656)" (RequestToken: 949e9034-f910-7eb3-a4a2-427bc9e676b9, HandlerErrorCode: InvalidRequest)`
 - Make sure that the role you are trying to add to the policy exists in the given account.
 - If you get `InvalidLocationConstraint` error during bucket creation, while executing `aws s3api create-bucket`
@@ -22,4 +22,4 @@
   cdk deploy --all --region ${AWS_REGION} --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER}
   ```
   After performing this please do not forget to delete your CloudFormation resources on the previous INT Account.
-- `validation error detected: Value 'log-retention-..........-.......-...-DEV' at 'roleName' failed to satisfy constraint: Member must have length less than or equal to 64`: This usually happens if you use a `applicationName` in the `config/AppConfig.ts` that is longer than 20 characters. In this case, you either use different application name or modify the log retention role in the [LogRetentionRoleStack](lib/stacks/core/LogRetentionRoleStack.ts).
+- `validation error detected: Value 'log-retention-..........-.......-...-DEV' at 'roleName' failed to satisfy constraint: Member must have length less than or equal to 64`: This usually happens if you use a `applicationName` in the `config/AppConfig.ts` that is longer than 20 characters. In this case, you either use different application name or modify the log retention role in the [LogRetentionRoleStack](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/src/stacks/LogRetentionRoleStack.ts).

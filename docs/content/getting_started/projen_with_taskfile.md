@@ -20,16 +20,16 @@ Follow these steps to initialize a new project using Projen:
 3. Run the following command to initialize a new {{ project_name }} project:
 
    ```
-   npx projen@latest new awscdk-app-ts --no-git --deps {{ npm_pipeline }}
+   npx projen@latest new awscdk-app-ts --no-git --deps {{ npm_projen }}
    ```
 
-   This command initializes a new AWS CDK TypeScript app project with the `{{ npm_pipeline }}` dependency.
+   This command initializes a new AWS CDK TypeScript app project with the `{{ npm_projen }}` dependency.
 
 4. Open the `.projenrc.ts` file and add the following code:
 
    ```typescript
    import { awscdk } from 'projen';
-   import { CdkCICDWrapper } from '@cdklabs/cdk-cicd-wrapper';
+   import { CdkCICDWrapper } from '{{ npm_projen }}';
 
    const project = new awscdk.AwsCdkTypeScriptApp({
      cdkVersion: '2.1.0',
@@ -79,7 +79,7 @@ PipelineBlueprint.builder().addStack({
     });
     new YourOtherStack(context.scope, `${context.blueprintProps.applicationName}YourOtherStack`, {
       applicationQualifier: context.blueprintProps.applicationQualifier,
-      encryptionKey: context.get<vp.IEncryptionKey>(vp.GlobalResources.Encryption)!.kmsKey,
+      encryptionKey: context.get(GlobalResources.Encryption)!.kmsKey,
     });
   }
 }).synth(app);
