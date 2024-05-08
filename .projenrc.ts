@@ -15,10 +15,10 @@ const workflowRunsOn = ['ubuntu-latest'];
 
 const root = new yarn.Monorepo({
   name: 'cdk-cicd-wrapper',
-  description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
+  description: 'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
   repository: repositoryUrl,
   homepage: repositoryUrl,
-  keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot'],
+  keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
   projenrcTs: true,
 
   defaultReleaseBranch: 'main',
@@ -100,8 +100,8 @@ const root = new yarn.Monorepo({
 const pipeline = new yarn.TypeScriptWorkspace({
   parent: root,
   name: '@cdklabs/cdk-cicd-wrapper',
-  description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
-  keywords: ['cdk', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot'],
+  description: 'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
+  keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
   releasableCommits: pj.ReleasableCommits.featuresAndFixes('.'),
 
   devDeps: [
@@ -147,14 +147,12 @@ postCompile.exec("export DEP='@cloudcomponents';cp -rf ../../../node_modules/$DE
 const cli = new yarn.TypeScriptWorkspace({
   parent: root,
   name: '@cdklabs/cdk-cicd-wrapper-cli',
-  description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
-
+  description: 'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
+  keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
   projenrcTs: true,
-
   bin: {
     'cdk-cicd': './bin/cdk-cicd',
   },
-
   deps: [
     'yargs',
     '@types/yargs',

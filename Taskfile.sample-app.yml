@@ -219,6 +219,6 @@ tasks:
 
   upgrade:
     desc: Upgrade sample project
-    dir: '{{.DEVELOPMENT_DIR}}/{{.SAMPLE_APP}}'
+    dir: '{{.SAMPLES_APP_DIR}}/{{.SAMPLE_APP}}'
     cmds:
       - npm run upgrade

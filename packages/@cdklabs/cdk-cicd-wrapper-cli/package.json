@@ -1,6 +1,6 @@
 {
   "name": "@cdklabs/cdk-cicd-wrapper-cli",
-  "description": "This repository contains the infrastructure as code to bootstrap your next CI/CD project.",
+  "description": "This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.",
   "repository": {
     "type": "git",
     "url": "https://github.com/cdklabs/cdk-cicd-wrapper.git",
@@ -38,7 +38,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-prettier": "^5.1.3",
     "prettier": "^3.2.5",
-    "projen": "^0.81.7",
+    "projen": "^0.81.8",
     "typescript": "^5.4.5"
   },
   "dependencies": {
@@ -51,6 +51,15 @@
     "globby": "11.1.0",
     "yargs": "^17.7.2"
   },
+  "keywords": [
+    "aws",
+    "aws-cdk",
+    "awscdk",
+    "ci-cd",
+    "ci-cd-boot",
+    "cli",
+    "vanilla-pipeline"
+  ],
   "main": "lib/index.js",
   "license": "Apache-2.0",
   "publishConfig": {
