@@ -3,7 +3,7 @@ site_description: CDK CICD Wrapper
 repo_name: cdklabs/cdk-cicd-wrapper
 repo_url: https://github.com/cdklabs/cdk-cicd-wrapper
 site_url: https://github.com/cdklabs/cdk-cicd-wrapper
-copyright: Copyright &copy; 2023 Amazon Web Services, Inc. or its affiliates.
+copyright: Copyright &copy; 2024 Amazon Web Services, Inc. or its affiliates.
 use_directory_urls: false
 docs_dir: content
 extra_css:
