@@ -1,6 +1,6 @@
 {
   "name": "@cdklabs/cdk-cicd-wrapper",
-  "description": "This repository contains the infrastructure as code to bootstrap your next CI/CD project.",
+  "description": "This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.",
   "repository": {
     "type": "git",
     "url": "https://github.com/cdklabs/cdk-cicd-wrapper.git",
@@ -62,8 +62,10 @@
     "aws",
     "aws-cdk",
     "awscdk",
-    "cdk",
-    "ci-cd-boot"
+    "ci-cd",
+    "ci-cd-boot",
+    "cli",
+    "vanilla-pipeline"
   ],
   "main": "lib/index.js",
   "license": "Apache-2.0",
