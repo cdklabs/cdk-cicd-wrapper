@@ -5,3 +5,4 @@
 
 # Build runs the testing as well
 npm run build
+npm run license

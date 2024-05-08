@@ -58,6 +58,11 @@ tasks:
       - npm run validate:fix
       - npm run license -- --fix
 
+  before-commit:
+    desc: Commands to ensure good quality at commit
+    cmds:
+      - task: upgrade
+
   audit:
     desc: Run audit steps on the project
     cmds:
