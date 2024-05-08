@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="https://projen.io">
-    <img src="https://raw.githubusercontent.com/cdklabs/cdk-cicd-wrapper/main/docs/site/assets/images/logo.svg">
+  <a href="https://cdklabs.github.io/cdk-cicd-wrapper/">
+    <img src="https://cdklabs.github.io/cdk-cicd-wrapper/assets/images/logo.png">
     <h3 align="center">CDK CI/CD Wrapper</h3>
   </a>
 </p>
