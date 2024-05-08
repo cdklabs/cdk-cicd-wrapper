@@ -1614,7 +1614,7 @@
 <span class="w">    </span><span class="nx">bucketName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;test-bucket&#39;</span><span class="p">,</span>
 <span class="w">    </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
 <span class="w">    </span><span class="nx">applicationQualifier</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationQualifier</span><span class="p">,</span>
-<span class="w">    </span><span class="nx">encryptionKey</span><span class="o">:</span><span class="w"> </span><span class="kt">context.get</span><span class="o">&lt;</span><span class="nx">vp</span><span class="p">.</span><span class="nx">IEncryptionKey</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">vp</span><span class="p">.</span><span class="nx">GlobalResources</span><span class="p">.</span><span class="nx">Encryption</span><span class="p">)</span><span class="o">!</span><span class="p">.</span><span class="nx">kmsKey</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">encryptionKey</span><span class="o">:</span><span class="w"> </span><span class="kt">context.get</span><span class="p">(</span><span class="nx">GlobalResources</span><span class="p">.</span><span class="nx">Encryption</span><span class="p">)</span><span class="o">!</span><span class="p">.</span><span class="nx">kmsKey</span><span class="p">,</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>You can see here the S3BucketStack requires a KMS key to perform server-side encryption.

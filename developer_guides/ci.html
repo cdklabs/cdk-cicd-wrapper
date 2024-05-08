@@ -1792,7 +1792,7 @@
 <h1 id="continuous-integration">Continuous Integration</h1>
 <p>CI is a continuous method of software development, where you continuously build and test iterative code changes.</p>
 <p>This iterative process helps reduce the chance that you develop new code based on buggy or failed previous versions. The CDK CI/CD Wrapper can catch bugs early in the development cycle, and help ensure that all the code deployed to production complies with your established code standards.</p>
-<p>The CI functionality of the CDK CI/CD Wrapper can be utilized in any software development process, it is not bound to infrastructure development or AWS CDK projects. For more details checkout the <a href="../getting_started/nx.md">CDK CI/CD Wrapper with NX</a>.</p>
+<p>The CI functionality of the CDK CI/CD Wrapper can be utilized in any software development process, it is not bound to infrastructure development or AWS CDK projects.</p>
 <h2 id="common-terms">Common terms</h2>
 <h3 id="phasecommand">PhaseCommand</h3>
 <p>PhaseCommand represent a single step that is executed by the CI/CD pipeline.</p>
@@ -2006,7 +2006,7 @@
 <p>The phase can be defined with the <code>definePhase</code> method that is available on the VanillaPipelineBuilder.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">myScriptPhaseCommand</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">vp</span><span class="p">.</span><span class="nx">NPMPhaseCommand</span><span class="p">(</span><span class="s1">&#39;my-script&#39;</span><span class="p">);</span>
 
-<span class="nx">vp</span><span class="p">.</span><span class="nx">VanillaPipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
 <span class="w">  </span><span class="p">.</span><span class="nx">addStack</span><span class="p">((</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">);</span>
 <span class="w">  </span><span class="p">})</span>
@@ -2019,14 +2019,14 @@
 <span class="w">  </span><span class="p">])</span>
 <span class="w">  </span><span class="p">.</span><span class="nx">build</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
 </code></pre></div>
-<p>Here, you can see how to define the <a href="#how-to-define-the-order-of-the-steps">order of the commands</a>, for the phase.</p>
+<p>Here, you can see how to define the <a href="#how-to-define-the-order-of-the-phasecommands">order of the commands</a>, for the phase.</p>
 <h3 id="define-shell-command-based-phasecommand">Define Shell command based PhaseCommand</h3>
 <p>You can create a ShellCommandPhaseCommand with:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">myScriptPhaseCommand</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">vp</span><span class="p">.</span><span class="nx">sh</span><span class="p">(</span><span class="s1">&#39;ls&#39;</span><span class="p">);</span>
 </code></pre></div>
 <p>Now, the command is ready, we need to include into our desired <a href="#phases">phase</a>. Once a <a href="#what-are-the-available-phasecommands">default phase</a> has been modified we require you to explicitly define the PhaseCommands for that phase.</p>
 <p>The phase can be defined with the <code>definePhase</code> method that is available on the VanillaPipelineBuilder.</p>
-<div class="highlight"><pre><span></span><code><span class="nx">vp</span><span class="p">.</span><span class="nx">VanillaPipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
 <span class="w">  </span><span class="p">.</span><span class="nx">addStack</span><span class="p">((</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">);</span>
 <span class="w">  </span><span class="p">})</span>
@@ -2041,12 +2041,11 @@
 </code></pre></div>
 <h2 id="how-to-define-a-new-phasecommand-type">How to define a new PhaseCommand Type?</h2>
 <p>Every PhaseCommand must implement the PhaseCommand interface that has only one required command property. This command property must contain an executable command that the <code>sh</code> shell engine can execute, as this command will be added to the underlining AWS CodeBuild project <code>buildSpec.yaml</code> as part of the <a href="https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html">commands</a> list.</p>
-<p>See example <a href="../api/interfaces/PhaseCommand.html">implementations</a>.</p>
 <h2 id="how-to-define-the-order-of-the-phasecommands">How to define the order of the PhaseCommands?</h2>
 <p>The execution order of the PhaseCommands follows the PhaseCommand position in the definition array.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">myScriptPhaseCommand</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">vp</span><span class="p">.</span><span class="nx">NPMPhaseCommand</span><span class="p">(</span><span class="s1">&#39;my-script&#39;</span><span class="p">);</span>
 
-<span class="nx">vp</span><span class="p">.</span><span class="nx">VanillaPipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
 <span class="w">  </span><span class="p">.</span><span class="nx">addStack</span><span class="p">((</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">);</span>
 <span class="w">  </span><span class="p">})</span>
