@@ -23966,7 +23966,7 @@ MIT
     SOFTWARE
 
 
-@types/node 18.19.32
+@types/node 18.19.33
 MIT
     MIT License
 
@@ -23991,7 +23991,7 @@ MIT
     SOFTWARE
 
 
-@types/node 20.12.10
+@types/node 20.12.11
 MIT
     MIT License
 
@@ -47995,7 +47995,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.**
 
 
-projen 0.81.7
+projen 0.81.8
 Apache-2.0
 
                                  Apache License
