@@ -15,10 +15,10 @@ const workflowRunsOn = ['ubuntu-latest'];
 
 const root = new yarn.Monorepo({
   name: 'cdk-cicd-wrapper',
-  description: 'This repository contains the infrastructure as code to bootstrap your next CI/CD project.',
+  description: 'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
   repository: repositoryUrl,
   homepage: repositoryUrl,
-  keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot'],
+  keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
   projenrcTs: true,
 
   defaultReleaseBranch: 'main',
