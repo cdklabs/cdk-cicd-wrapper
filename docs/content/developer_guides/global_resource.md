@@ -13,7 +13,7 @@ new vp.S3BucketStack(context.scope, `${context.blueprintProps.applicationName}S3
     bucketName: 'test-bucket',
     stageName: context.stage,
     applicationQualifier: context.blueprintProps.applicationQualifier,
-    encryptionKey: context.get<vp.IEncryptionKey>(vp.GlobalResources.Encryption)!.kmsKey,
+    encryptionKey: context.get(GlobalResources.Encryption)!.kmsKey,
 }
 ```
 

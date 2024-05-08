@@ -76,10 +76,19 @@ tasks:
     summary: |
       This command is useful to work on documentation of the project.
 
-      It run a webs erver to host the generated html pages
+      It run a webs server to host the generated html pages
     dir: docs
     cmds:
       - build/docs/.venv/bin/mkdocs serve
+
+  docs:deploy:
+    desc: Deploy the documentation
+
+    summary: |
+      This command is a temporarily solution to update the documentation on GitHub.
+    dir: docs
+    cmds:
+      - build/docs/.venv/bin/mkdocs gh-deploy
 
 
   release-util:list-direct-dependencies:

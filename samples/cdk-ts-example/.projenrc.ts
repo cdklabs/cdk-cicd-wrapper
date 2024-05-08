@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { awscdk, javascript } from 'projen';
-import { CdkCICDWrapper } from '@cdklabs/cdk-cicd-wrapper';
+import { CdkCICDWrapper } from '@cdklabs/cdk-cicd-wrapper-projen';
 
 const cdkQualifier = process.env.CDK_QUALIFIER || 'simple';
 

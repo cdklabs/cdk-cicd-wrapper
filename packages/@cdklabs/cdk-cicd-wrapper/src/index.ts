@@ -22,6 +22,3 @@ export * from './stacks';
 
 // Exporting all exports from the './utils' file
 export * from './utils';
-
-// Exporting all exports from the './projen' file
-export * from './projen';

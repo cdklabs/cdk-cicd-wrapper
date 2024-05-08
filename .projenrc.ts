@@ -77,6 +77,7 @@ const root = new yarn.Monorepo({
   gitignore: [
     'docs/build',
     'docs/dist',
+    'docs/site',
     '.DS_Store',
     'junit-reports',
     '.npmrc',
@@ -175,6 +176,22 @@ cli.addDevDeps(...eslintDeps);
 const cliExec = cli.addTask('cli-exec');
 cliExec.spawn(cli.tasks.tryFind('compile')!);
 cliExec.exec('./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/cdk-cicd', { receiveArgs: true, cwd: '../../..' });
+
+//============================================
+//
+//  Projen package
+//
+//============================================
+new yarn.TypeScriptWorkspace({
+  parent: root,
+  name: '@cdklabs/cdk-cicd-wrapper-projen',
+  description: 'This repository contains the projen support for the project',
+
+  projenrcTs: true,
+
+  deps: ['projen'],
+  jest: false,
+});
 
 //============================================
 //

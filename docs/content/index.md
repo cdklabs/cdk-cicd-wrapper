@@ -1,4 +1,4 @@
 ---
 template: home.html
-title: {{ project_name }} Core
+title: CDK CI/CD Wrapper
 ---

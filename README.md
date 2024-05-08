@@ -1,3 +1,23 @@
+<p align="center">
+  <a href="https://projen.io">
+    <img src="https://raw.githubusercontent.com/cdklabs/cdk-cicd-wrapper/main/docs/site/assets/images/logo.svg">
+    <h3 align="center">CDK CI/CD Wrapper</h3>
+  </a>
+</p>
+
+
+<p align="center">
+  <a href="https://cdklabs.github.io/cdk-cicd-wrapper/"><strong>Documentation</strong></a> ·
+  <a href="https://github.com/cdklabs/cdk-cicd-wrapper/releases"><strong>Changelog</strong></a> ·
+  <a href="#community"><strong>Join the community</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-yellowgreen.svg" alt="Apache 2.0 License"></a>
+  <a href="https://github.com/cdklabs/cdk-cicd-wrapper/actions/workflows/release.yml"><img src="https://github.com/cdklabs/cdk-cicd-wrapper/actions/workflows/release.yml/badge.svg" alt="Release badge"></a>
+  <a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits/main"><img src="https://img.shields.io/github/commit-activity/w/cdklabs/cdk-cicd-wrapper" alt="Commit activity"></a>
+</p>
+
 # Welcome to the CDK CI/CD Wrapper
 
 The CDK CI/CD Wrapper gives you an easy way to deliver your CDK applications like a pro.
@@ -32,6 +52,10 @@ You should not fork this repository and expect to reproduce the same in your AWS
 - :white_check_mark: Centrally store compliance logs in S3 Buckets which are pre-configured on a per-stage/environment basis
 - :white_check_mark: Build Lambda Layers for Python and scan dependencies in the CI/CD (in case of CVE findings, block the pipeline)
 
+## Getting Started
+
+Visit our [Getting Started](https://cdklabs.github.io/cdk-cicd-wrapper/getting_started/) guide.
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
@@ -40,23 +64,8 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 
 This project is licensed under the Apache-2.0 License.
 
-## Requirements
-
-You need to have the following dependencies in place:
-
-- AWS Account (RES/DEV/INT/PROD)
-- Mac OS / Cloud9 with Ubuntu Server 22.04 LTS Platform in RES Account
-- Bash/ZSH terminal
-- Docker version >= 24.0.x
-- aws-cli v2 [here](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-- AWS credentials and profiles for each environment under ~/.aws/config [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html)
-- Node >= v18.17._ && NPM >= v10.2._
-- jq command line JSON processor jq-1.5
-
-For developing Python Lambdas you need to have the following dependencies additionally:
-
-- Python >= 3.11
-- Pipenv 2023.\* [here](https://pipenv.pypa.io/en/latest/)
+# Community
+The CDK CI/CD Wrapper community can be found within the #cdk-cicd-wrapper channel in the [cdk.dev](https://cdk.dev/) community Slack workspace.
 
 ## Contributors
 
