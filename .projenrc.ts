@@ -12,6 +12,9 @@ const eslintDeps = [
 ];
 
 const workflowRunsOn = ['ubuntu-latest'];
+const cdkVersion = '2.130.0';
+const cdkNagVersion = '2.28.0';
+const constructsVersion = '10.3.0';
 
 const root = new yarn.Monorepo({
   name: 'cdk-cicd-wrapper',
@@ -111,7 +114,7 @@ const pipeline = new yarn.TypeScriptWorkspace({
     '@typescript-eslint/typescript-estree@^7',
   ],
 
-  peerDeps: ['cdk-nag', 'aws-cdk-lib', 'constructs'],
+  peerDeps: [`cdk-nag@^${cdkNagVersion}`, `aws-cdk-lib@^${cdkVersion}`, `constructs@^${constructsVersion}`],
   bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check'],
   jest: true,
 });
@@ -180,7 +183,7 @@ cliExec.exec('./packages/@cdklabs/cdk-cicd-wrapper-cli/bin/cdk-cicd', { receiveA
 //  Projen package
 //
 //============================================
-new yarn.TypeScriptWorkspace({
+const projenModule = new yarn.TypeScriptWorkspace({
   parent: root,
   name: '@cdklabs/cdk-cicd-wrapper-projen',
   description: 'This repository contains the projen support for the project',
@@ -190,6 +193,8 @@ new yarn.TypeScriptWorkspace({
   deps: ['projen'],
   jest: false,
 });
+
+projenModule.addDevDeps(...eslintDeps);
 
 //============================================
 //
