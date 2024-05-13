@@ -2465,7 +2465,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-cognito-identity 3.572.0
+@aws-sdk/client-cognito-identity 3.574.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -2670,7 +2670,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-s3 3.572.0
+@aws-sdk/client-s3 3.574.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -2875,7 +2875,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-sso-oidc 3.572.0
+@aws-sdk/client-sso-oidc 3.574.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -3285,7 +3285,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-sts 3.572.0
+@aws-sdk/client-sts 3.574.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -3499,7 +3499,7 @@ This package provides common or core functionality to the AWS SDK for JavaScript
 You do not need to explicitly install this package, since it will be transitively installed by AWS SDK clients.
 
 
-@aws-sdk/credential-provider-cognito-identity 3.572.0
+@aws-sdk/credential-provider-cognito-identity 3.574.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -4942,7 +4942,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/credential-providers 3.572.0
+@aws-sdk/credential-providers 3.574.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -26806,7 +26806,7 @@ UNLICENSED
    limitations under the License.
 
 
-cdk-nag 2.28.111
+cdk-nag 2.28.114
 Apache-2.0
 
                                  Apache License
@@ -28981,7 +28981,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-electron-to-chromium 1.4.762
+electron-to-chromium 1.4.763
 ISC
 Copyright 2018 Kilian Valkhof
 
@@ -47969,7 +47969,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.**
 
 
-projen 0.81.8
+projen 0.81.10
 Apache-2.0
 
                                  Apache License
@@ -49249,25 +49249,6 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 semver 7.6.0
-ISC
-The ISC License
-
-Copyright (c) Isaac Z. Schlueter and Contributors
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
-IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-
-semver 7.6.1
 ISC
 The ISC License
 
