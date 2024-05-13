@@ -18,7 +18,7 @@ export class SecurityControls implements IAspect {
   private encryptionKey: aws_kms.Key;
   private readonly stage: string;
   private readonly logRetentionInDays: string;
-  private readonly complianceLogBucketName: string;
+  private readonly complianceLogBucketName?: string;
 
   /**
    * Constructs a new instance of SecurityControls.
@@ -28,7 +28,7 @@ export class SecurityControls implements IAspect {
    * @param logRetentionInDays The number of days to retain logs.
    * @param complianceLogBucketName The name of the S3 bucket for compliance logs.
    */
-  constructor(kmsKey: aws_kms.Key, stage: string, logRetentionInDays: string, complianceLogBucketName: string) {
+  constructor(kmsKey: aws_kms.Key, stage: string, logRetentionInDays: string, complianceLogBucketName?: string) {
     this.encryptionKey = kmsKey;
     this.stage = stage;
     this.logRetentionInDays = logRetentionInDays;
@@ -47,7 +47,7 @@ export class SecurityControls implements IAspect {
         node.retentionInDays = Number(this.logRetentionInDays);
         node.kmsKeyId = this.encryptionKey.keyArn;
       }
-    } else if (node instanceof CfnBucket) {
+    } else if (node instanceof CfnBucket && this.complianceLogBucketName) {
       // Configure S3 bucket logging
       node.loggingConfiguration = {
         destinationBucketName: this.complianceLogBucketName,

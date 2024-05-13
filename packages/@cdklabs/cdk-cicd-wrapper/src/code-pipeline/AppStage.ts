@@ -46,7 +46,7 @@ export class AppStage extends cdk.Stage {
     const stage = context.stage;
 
     context._scoped(this, () => {
-      const complianceLogBucketName = context.get(GlobalResources.COMPLIANCE_BUCKET)!.bucketName;
+      const complianceLogBucketName = context.get(GlobalResources.COMPLIANCE_BUCKET)?.bucketName;
 
       const encryptionStack = context.get(GlobalResources.ENCRYPTION)!;
 

@@ -26,7 +26,7 @@ export interface VPCStackProps extends cdk.StackProps {
   /**
    * The name of the S3 bucket for VPC flow logs.
    */
-  readonly flowLogsBucketName: string;
+  readonly flowLogsBucketName?: string;
 }
 
 /**
@@ -60,7 +60,7 @@ export class VPCStack extends cdk.Stack {
         const vpcFlowLogsDestinationS3 = aws_s3.Bucket.fromBucketName(
           this,
           'VpcFlowLogsBucket',
-          props.flowLogsBucketName,
+          props.flowLogsBucketName!,
         );
         this.vpc.addFlowLog('vpcFlowLogs', {
           destination: ec2.FlowLogDestination.toS3(vpcFlowLogsDestinationS3),

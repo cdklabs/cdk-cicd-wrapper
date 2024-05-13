@@ -90,7 +90,7 @@ export class VPCProvider implements IResourceProvider {
     return new VPCStack(scope, `${blueprintProps.applicationName}VPCStack`, {
       env: environment,
       vpcConfig: this.vpc,
-      flowLogsBucketName: context.get(GlobalResources.COMPLIANCE_BUCKET)!.bucketName,
+      flowLogsBucketName: context.get(GlobalResources.COMPLIANCE_BUCKET)?.bucketName,
       useProxy: context.has(GlobalResources.PROXY),
     });
   }
