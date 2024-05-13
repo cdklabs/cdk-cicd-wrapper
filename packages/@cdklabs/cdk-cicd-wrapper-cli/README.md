@@ -18,13 +18,13 @@ The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a com
 
 ## Installation
 
-To install the CDK CI/CD Wrapper, you'll need to have Node.js and npm (Node Package Manager) installed on your system. Once you have those prerequisites, you can install the Wrapper globally using the following command:
+To install the CDK CI/CD Wrapper, you'll need to have Node.js and npm (Node Package Manager) installed on your system. Once you have those prerequisites, you can install the CDK CI/CD Wrapper globally using the following command:
 
 ```bash
 npm install -g @cdklabs/cdk-cicd-wrapper-cli
 ```
 
-Alternatively, you can use the `npx` command to run the Wrapper without installing it globally:
+Alternatively, you can use the `npx` command to run the CDK CI/CD Wrapper CLI without installing it globally:
 
 ```bash
 npx @cdklabs/cdk-cicd-wrapper-cli [command]
@@ -85,8 +85,8 @@ The `npx @cdklabs/cdk-cicd-wrapper-cli check-dependencies` command audits your p
 
 The `npx @cdklabs/cdk-cicd-wrapper-cli validate` command ensures that the `package-lock.json` file has not been tampered with.
 
-
 ## Contributing
+
 Contributions to the CDK CI/CD Wrapper are welcome! If you'd like to contribute, please follow the guidelines outlined in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
 
 ## License
