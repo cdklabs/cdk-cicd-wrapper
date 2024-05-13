@@ -1,11 +1,11 @@
 {
-  "npm-lock-file": "dec6466d7a92d9402349536a4270ab0c8205b1b83d4e125af784e251f4fbc2f0",
   "license": {
     "package.json": "73d83a89ce2512f651f25a4d6e16811eaa6a067b1420d02177d8c7bffc3a0cf6",
     "samples/cdk-ts-example/package.json": "54e2441af495ddf02e1e232fdd1ed4edc697c31fe03671776290a254e52ba2a6",
-    "packages/@cdklabs/cdk-cicd-wrapper/package.json": "7abe483f68dc03154b88e4f5b3abcf5c6822ea5bc6d6050be3363d16e07219e4",
+    "packages/@cdklabs/cdk-cicd-wrapper/package.json": "4d3f24a6c74810a8a000f25abf9b777f1a2f9df8ee67dd24edc5231b39c5a03e",
     "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "5cff1aff9de217a33d13c547dc748b0bce9fb7110232e590966e5181611a12a4",
     "packages/@cdklabs/cdk-cicd-wrapper-projen/package.json": "d9af924d00973bd97890c217c2b6188f283f7494548ca271bd041f87d4120830",
     "projectList": "5790138ec76401840b75a0409a66d8e7e10445628567d18dbe5b2feedd20f463"
-  }
+  },
+  "npm-lock-file": "dec6466d7a92d9402349536a4270ab0c8205b1b83d4e125af784e251f4fbc2f0"
 }
