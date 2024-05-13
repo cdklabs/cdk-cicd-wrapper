@@ -36,7 +36,7 @@ export class PipelineStack extends PipelineBlueprintBase {
         this.resourceContext.get(GlobalResources.ENCRYPTION)!.kmsKey,
         Stage.RES,
         config.logRetentionInDays,
-        this.resourceContext.get(GlobalResources.COMPLIANCE_BUCKET)!.bucketName,
+        this.resourceContext.get(GlobalResources.COMPLIANCE_BUCKET)?.bucketName,
       ),
     );
 

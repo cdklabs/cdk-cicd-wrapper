@@ -25,6 +25,7 @@ import {
 } from '../common';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketConfigProvider } from '../resource-providers/ComplianceBucketProvider';
+import { DisabledProvider } from '../resource-providers/DisabledProvider';
 import { EncryptionProvider } from '../resource-providers/EncryptionProvider';
 import { ParameterProvider } from '../resource-providers/ParameterProvider';
 import { PhaseCommandProvider, PhaseCommands } from '../resource-providers/PhaseCommandProvider';
@@ -221,6 +222,12 @@ export class PipelineBlueprintBuilder {
    */
   public resourceProvider(name: string, provider: IResourceProvider): this {
     this.props.resourceProviders![name] = provider;
+    return this;
+  }
+
+  public disable(name: string): this {
+    this.props.resourceProviders![name] = new DisabledProvider(name);
+
     return this;
   }
 
