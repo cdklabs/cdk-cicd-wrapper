@@ -1,5 +1,5 @@
-site_name: CDK CICD Wrapper
-site_description: CDK CICD Wrapper
+site_name: CDK CI/CD Wrapper
+site_description: CDK CI/CD Wrapper
 repo_name: cdklabs/cdk-cicd-wrapper
 repo_url: https://github.com/cdklabs/cdk-cicd-wrapper
 site_url: https://github.com/cdklabs/cdk-cicd-wrapper
