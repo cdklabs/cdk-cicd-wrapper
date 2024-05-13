@@ -19,8 +19,13 @@ Before you begin, ensure that you have the following prerequisites in place:
 
 For more detailed information on prerequisites, refer to the [Prerequisites](./prerequisites.md) documentation.
 
-### Project
-You can apply the {{ project_name }} to any of your existing project and it can serve as the CI/CD solution. For this guide we use a CDK project as an example. If you don't have an existing CDK project, you can create it with the following command.
+Below we explain how to integrate the {{ project_name }} into:
+- [New CDK Project](#new-cdk-project)
+- [Existing CDK Project](#existing-cdk-project)
+
+### New CDK project
+
+You can apply the {{ project_name }} to any of your existing CDK projects enable the CI/CD around your solution. If you don't have an existing CDK project then you can create one as shown in this guide step-by-step:
 
 ```bash
 mkdir my-project
@@ -30,7 +35,7 @@ npx aws-cdk@latest init app --language typescript
 
 ## Installation
 
-1. Install the CI/CD pipeline package by running the following command:
+1. Install the {{ project_name }} pipeline package by running the following command:
 
    ```bash
    npm i {{ npm_codepipeline }} {{ npm_cli }}
@@ -101,9 +106,17 @@ Ensure that the following lines are in your `.gitignore` file:
 - `.npmrc` (if you are using a private NPM repository)
 - `.env`
 
-## Setup the {{ project_name }}
+## Existing CDK project
 
 To set up the CI/CD pipeline in your existing AWS CDK project, follow these steps:
+
+0. Install the {{ project_name }} pipeline package by running the following command:
+
+   ```bash
+   npm i {{ npm_codepipeline }} {{ npm_cli }}
+   ```
+
+   **Note**: If the `@cdklabs` scope is not available from the public NPM registry, you will need to configure a [private NPM registry](../developer_guides/private_npm_registry.md).
 
 1. Open your entry file, typically located at `bin/<your-main-file>.ts` (where `your-main-file` is the name of your root project directory).
 
