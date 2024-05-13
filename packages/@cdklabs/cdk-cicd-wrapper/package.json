@@ -29,9 +29,9 @@
     "@typescript-eslint/eslint-plugin": "^7",
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
-    "aws-cdk-lib": "2.116.0",
+    "aws-cdk-lib": "2.130.0",
     "cdk-nag": "2.28.0",
-    "constructs": "10.0.0",
+    "constructs": "10.3.0",
     "copyfiles": "^2.4.1",
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
@@ -46,9 +46,9 @@
     "typescript": "^5.4.5"
   },
   "peerDependencies": {
-    "aws-cdk-lib": "^2.116.0",
+    "aws-cdk-lib": "^2.130.0",
     "cdk-nag": "^2.28.0",
-    "constructs": "^10.0.0"
+    "constructs": "^10.3.0"
   },
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.3.0",
