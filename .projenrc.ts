@@ -12,6 +12,8 @@ const eslintDeps = [
 ];
 
 const workflowRunsOn = ['ubuntu-latest'];
+const cdkVersion = '2.116.0';
+const cdkNagVersion = '2.28.0';
 
 const root = new yarn.Monorepo({
   name: 'cdk-cicd-wrapper',
@@ -111,7 +113,7 @@ const pipeline = new yarn.TypeScriptWorkspace({
     '@typescript-eslint/typescript-estree@^7',
   ],
 
-  peerDeps: ['cdk-nag', 'aws-cdk-lib', 'constructs'],
+  peerDeps: [`cdk-nag@^${cdkNagVersion}`, `aws-cdk-lib@^${cdkVersion}`, 'constructs@^10.0.0'],
   bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check'],
   jest: true,
 });
