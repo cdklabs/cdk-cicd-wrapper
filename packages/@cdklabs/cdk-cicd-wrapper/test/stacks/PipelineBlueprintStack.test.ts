@@ -12,7 +12,7 @@ import { TestAppConfig, TestRepositoryConfigCodeCommit, TestRepositoryConfigGith
 // Clear env as env variables can populate unintended configurations during the tests
 process.env = {};
 
-describe('vanilla-pipeline-blueprint-stack-test-codecommit', () => {
+describe('pipeline-blueprint-stack-test-codecommit', () => {
   const app = new cdk.App();
 
   const stack = PipelineBlueprint.builder()
