@@ -8,8 +8,29 @@
   "commit": false,
   "commitConvention": "angular",
   "contributors": [
-    
+    {
+      "login": "gmuslia",
+      "name": "Gezim Musliaj",
+      "avatar_url": "https://avatars.githubusercontent.com/u/102723839?v=4",
+      "profile": "https://github.com/gmuslia",
+      "contributions": ["code"]
+    },
+    {
+      "login": "gyalai-aws",
+      "name": "Milan Gyalai @ AWS",
+      "avatar_url": "https://avatars.githubusercontent.com/u/142315836?v=4",
+      "profile": "https://github.com/gyalai-aws",
+      "contributions": ["code"]
+    },
+    {
+      "login": "dainovsv",
+      "name": "Vladimir Dainovski",
+      "avatar_url": "https://avatars.githubusercontent.com/u/95890653?v=4",
+      "profile": "https://github.com/dainovsv",
+      "contributions": ["code"]
+    }
   ],
   "contributorsPerLine": 7,
   "contributorsSortAlphabetically": true
 }
+
