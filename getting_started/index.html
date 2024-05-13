@@ -1463,9 +1463,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#project" class="md-nav__link">
+  <a href="#new-cdk-project" class="md-nav__link">
     <span class="md-ellipsis">
-      Project
+      New CDK project
     </span>
   </a>
   
@@ -1513,9 +1513,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setup-the-cdk-cicd-wrapper" class="md-nav__link">
+  <a href="#existing-cdk-project" class="md-nav__link">
     <span class="md-ellipsis">
-      Setup the CDK CI/CD Wrapper
+      Existing CDK project
     </span>
   </a>
   
@@ -1596,15 +1596,18 @@
 <li><strong>Version Control System (VCS)</strong>: The CI/CD pipeline provisions an AWS CodeCommit Git repository by default for hosting your project's source code. However, you can also choose to use your own GitHub repository.</li>
 </ol>
 <p>For more detailed information on prerequisites, refer to the <a href="prerequisites.html">Prerequisites</a> documentation.</p>
-<h3 id="project">Project</h3>
-<p>You can apply the CDK CI/CD Wrapper to any of your existing project and it can serve as the CI/CD solution. For this guide we use a CDK project as an example. If you don't have an existing CDK project, you can create it with the following command.</p>
+<p>Below we explain how to integrate the CDK CI/CD Wrapper into:
+- <a href="#new-cdk-project">New CDK Project</a>
+- <a href="#existing-cdk-project">Existing CDK Project</a></p>
+<h3 id="new-cdk-project">New CDK project</h3>
+<p>You can apply the CDK CI/CD Wrapper to any of your existing CDK projects enable the CI/CD around your solution. If you don't have an existing CDK project then you can create one as shown in this guide step-by-step:</p>
 <div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>my-project
 <span class="nb">cd</span><span class="w"> </span>my-project
 npx<span class="w"> </span>aws-cdk@latest<span class="w"> </span>init<span class="w"> </span>app<span class="w"> </span>--language<span class="w"> </span>typescript
 </code></pre></div>
 <h2 id="installation">Installation</h2>
 <ol>
-<li>Install the CI/CD pipeline package by running the following command:</li>
+<li>Install the CDK CI/CD Wrapper pipeline package by running the following command:</li>
 </ol>
 <div class="highlight"><pre><span></span><code>npm<span class="w"> </span>i<span class="w"> </span>@cdklabs/cdk-cicd-wrapper<span class="w"> </span>@cdklabs/cdk-cicd-wrapper-cli
 </code></pre></div>
@@ -1662,8 +1665,14 @@ arn:aws:iam::aws:policy/AdministratorAccess<span class="w"> </span><span class="
 <li><code>.npmrc</code> (if you are using a private NPM repository)</li>
 <li><code>.env</code></li>
 </ul>
-<h2 id="setup-the-cdk-cicd-wrapper">Setup the CDK CI/CD Wrapper</h2>
+<h2 id="existing-cdk-project">Existing CDK project</h2>
 <p>To set up the CI/CD pipeline in your existing AWS CDK project, follow these steps:</p>
+<ol>
+<li>Install the CDK CI/CD Wrapper pipeline package by running the following command:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>i<span class="w"> </span>@cdklabs/cdk-cicd-wrapper<span class="w"> </span>@cdklabs/cdk-cicd-wrapper-cli
+</code></pre></div>
+<p><strong>Note</strong>: If the <code>@cdklabs</code> scope is not available from the public NPM registry, you will need to configure a <a href="../developer_guides/private_npm_registry.html">private NPM registry</a>.</p>
 <ol>
 <li>
 <p>Open your entry file, typically located at <code>bin/&lt;your-main-file&gt;.ts</code> (where <code>your-main-file</code> is the name of your root project directory).</p>
@@ -1845,7 +1854,7 @@ git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-05-07
+    2024-05-13
   </span>
 
     
@@ -1875,7 +1884,7 @@ git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Copyright &copy; 2023 Amazon Web Services, Inc. or its affiliates.
+      Copyright &copy; 2024 Amazon Web Services, Inc. or its affiliates.
     </div>
   
   
