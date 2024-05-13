@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://cdklabs.github.io/cdk-cicd-wrapper/">
-    <img src="https://cdklabs.github.io/cdk-cicd-wrapper/assets/images/logo.png">
+    <img src="docs/content/assets/images/logo.png" width="100em">
     <h3 align="center">CDK CI/CD Wrapper</h3>
   </a>
 </p>
