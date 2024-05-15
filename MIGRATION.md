@@ -29,17 +29,13 @@ PipelineBlueprint.builder()
   ])
   .addStack({
     provide(context) {
-      // ... your main stack definition
+        // ... your main stack definition 
 
-      // Include PostDeployExecutorStack only in specific stages (modify as needed)
-      const requiredStages = ['prod', 'staging'];
-      if (requiredStages.includes(context.stage)) {
         new PostDeployExecutorStack(context.scope, 'post-deploy-execution', {
-          resAccount: context.blueprintProps.deploymentDefinition.RES.env.account,
-          stageName: context.stage,
-          name: context.blueprintProps.applicationName,
+            resAccount: context.blueprintProps.deploymentDefinition.RES.env.account,
+            stageName: context.stage,
+            name: context.blueprintProps.applicationName,
         });
-      }
     },
   })
   .synth(app);
