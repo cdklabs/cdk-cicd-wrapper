@@ -124,6 +124,16 @@ class ScopedStorage {
       return this.resources.get(name);
     }
   }
+
+  /**
+   * Adds a resource to the storage.
+   *
+   * @param name The name of the resource.
+   * @param value The value of the resource.
+   */
+  public addValue(name: string, value: any) {
+    this.resources.set(name, value);
+  }
 }
 
 /** @internal */
@@ -226,6 +236,10 @@ export class ResourceContext {
    */
   public has(name: string): boolean {
     return this.globalScope.has(name) || this.stagedScope!.has(name);
+  }
+
+  public add(name: string, value: any) {
+    this.stagedScope!.addValue(name, value);
   }
 
   /**

@@ -9,7 +9,7 @@ export * from './EncryptionStack';
 /**
  * Re-exports all constructs and utilities from the LogRetentionRoleStack.
  */
-export * from './LogRetentionRoleStack';
+export * from './PostDeployExecutorStack';
 
 /**
  * Re-exports all constructs and utilities from the CodeStarConnectRepositoryStack.

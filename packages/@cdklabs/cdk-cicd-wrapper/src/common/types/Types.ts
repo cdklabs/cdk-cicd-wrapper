@@ -275,6 +275,13 @@ export interface DeploymentDefinition {
    * The stack providers for the deployment.
    */
   readonly stacksProviders: IStackProvider[];
+
+  /**
+   * Manual approval is required or not.
+   *
+   * @default for DEV stage it is false otherwise true
+   */
+  readonly manualApprovalRequired: boolean;
 }
 
 /**
@@ -295,6 +302,13 @@ export interface IStageDefinition {
    * The region for the stage (optional).
    */
   region?: string;
+
+  /**
+   * Manual approval is required or not.
+   *
+   * @default for DEV stage it is false otherwise true
+   */
+  manualApprovalRequired?: boolean;
 }
 
 /**
