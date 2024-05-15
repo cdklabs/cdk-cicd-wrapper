@@ -98,15 +98,14 @@ export class PostDeployExecutorStack extends cdk.Stack {
       inlinePolicies: props.inlinePolicies,
     });
 
-    this.roleArn = cdk.Arn.format(
-      {
-        partition: 'aws',
-        service: 'iam',
-        resource: 'role',
-        resourceName: this.roleName,
-      },
-      this,
-    );
+    this.roleArn = cdk.Arn.format({
+      partition: 'aws',
+      service: 'iam',
+      account: this.account,
+      region: '',
+      resource: 'role',
+      resourceName: this.roleName,
+    });
 
     new cdk.CfnOutput(this, 'RoleArnCfnOutput', {
       value: this.roleArn,

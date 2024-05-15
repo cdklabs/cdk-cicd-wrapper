@@ -119,7 +119,7 @@ export interface NPMRegistryConfig {
 /**
  * Represents the configuration for a vanilla pipeline.
  */
-export interface IVanillaPipelineConfig {
+export interface IPipelineConfig {
   /**
    * The name of the application.
    */

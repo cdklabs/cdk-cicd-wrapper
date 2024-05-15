@@ -262,14 +262,14 @@ describe('pipeline-stack-test-extending-STAGE', () => {
             {},
             {},
             {},
+            {},
+            {},
             {
               Name: 'TestStack.Deploy',
               Configuration: {
                 StackName: 'PREPROD-TestStack',
               },
             },
-            {},
-            {},
           ],
         },
       ],

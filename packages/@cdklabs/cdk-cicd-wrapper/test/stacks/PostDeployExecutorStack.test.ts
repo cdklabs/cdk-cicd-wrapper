@@ -31,13 +31,13 @@ describe('post-deploy-role-stack-test', () => {
 
   test('Check if output exists', () => {
     template.hasOutput('RoleArnCfnOutput', {
-      Value: 'arn:aws:iam:eu-west-1:234567890123:role/post-deploy-234567890123-eu-west-1-VanillaPipeline-DEV',
+      Value: 'arn:aws:iam::234567890123:role/post-deploy-234567890123-eu-west-1-CICDWrapper-DEV',
     });
   });
 
   test('Check if role arn is added to the context', () => {
     expect(ResourceContext.instance().get(PostDeployExecutorStack.POST_DEPLOY_ROLE_ARN)).toBe(
-      'arn:aws:iam:eu-west-1:234567890123:role/post-deploy-234567890123-eu-west-1-VanillaPipeline-DEV',
+      'arn:aws:iam::234567890123:role/post-deploy-234567890123-eu-west-1-CICDWrapper-DEV',
     );
   });
 });

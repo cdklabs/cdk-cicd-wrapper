@@ -8,7 +8,7 @@ import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
 import {
   DeploymentDefinition,
-  IVanillaPipelineConfig as IPipelineConfig,
+  IPipelineConfig,
   NPMRegistryConfig,
   IPhaseCommand,
   PipelinePhases,
