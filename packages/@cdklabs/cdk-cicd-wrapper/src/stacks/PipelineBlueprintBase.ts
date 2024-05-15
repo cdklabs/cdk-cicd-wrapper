@@ -5,6 +5,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
 import { IPipelineBlueprintProps } from './PipelineBlueprint';
+import { PostDeployExecutorStack } from './PostDeployExecutorStack';
 import { PostDeployBuildStep, PreDeployBuildStep } from '../code-pipeline';
 import {
   DeploymentDefinition,
@@ -64,43 +65,80 @@ export class PipelineBlueprintBase extends cdk.Stack {
     // [Backward compatibility] Allows to ignore stages which was env variable ACCOUNT_{STAGE} has discovered but value is set to - to ignore
     if (deploymentEnvironment.account == '-') return;
 
-    const phaseDefinition = this.resourceContext.get(GlobalResources.PHASE)!;
     this.resourceContext.initStage(stage);
-    const preDeployStep = new PreDeployBuildStep(stage, {
-      env: {
-        TARGET_REGION: deploymentEnvironment.region,
-      },
-      commands: phaseDefinition.getCommands(PipelinePhases.PRE_DEPLOY),
-    });
 
     const appStage = this.resourceContext.get(GlobalResources.STAGE_PROVIDER)!;
 
     const hooks = this.renderStacks(appStage, deploymentDefinition.stacksProviders);
 
     pipeline.addStage(appStage, {
-      pre: [
-        preDeployStep,
-        // add manual approval step for all stages, except DEV
-        ...(stage != Stage.DEV ? [preDeployStep.appendManualApprovalStep()] : []),
-        ...hooks.flatMap((hook) => hook.pre ?? []),
-      ],
-      post: [
+      pre: this.preStageSteps(deploymentDefinition, stage, hooks),
+      post: this.postStageSteps(deploymentDefinition, stage, hooks),
+    });
+  }
+
+  protected preStageSteps(deploymentDefinition: DeploymentDefinition, stage: string, hooks: DeploymentHookConfig[]) {
+    const phaseDefinition = this.resourceContext.get(GlobalResources.PHASE)!;
+
+    const preHooks: pipelines.Step[] = [];
+
+    const preDeployCommands = phaseDefinition.getCommands(PipelinePhases.PRE_DEPLOY);
+
+    if (preDeployCommands && preDeployCommands.length != 0) {
+      preHooks.push(
+        new PreDeployBuildStep(stage, {
+          env: {
+            TARGET_REGION: deploymentDefinition.env.region,
+          },
+          commands: preDeployCommands,
+        }),
+      );
+    }
+
+    preHooks.push(...hooks.flatMap((hook) => hook.pre ?? []));
+
+    if (deploymentDefinition.manualApprovalRequired) {
+      const approvalStep = new pipelines.ManualApprovalStep(`PromoteTo${stage}`);
+      preHooks.forEach((step) => step.addStepDependency(approvalStep));
+      preHooks.push(approvalStep);
+    }
+
+    return preHooks;
+  }
+
+  protected postStageSteps(deploymentDefinition: DeploymentDefinition, stage: string, hooks: DeploymentHookConfig[]) {
+    const phaseDefinition = this.resourceContext.get(GlobalResources.PHASE)!;
+
+    const postHooks: pipelines.Step[] = [];
+
+    const postDeployCommands = phaseDefinition.getCommands(PipelinePhases.POST_DEPLOY);
+
+    if (postDeployCommands && postDeployCommands.length != 0) {
+      const roleArn = this.resourceContext.get(PostDeployExecutorStack.POST_DEPLOY_ROLE_ARN);
+      if (!roleArn) {
+        throw new Error(
+          'Post deploy role arn is not defined. Please ensure the PostDeployExecutorStack is added to the stage.',
+        );
+      }
+      postHooks.push(
         new PostDeployBuildStep(
           stage,
           {
             env: {
-              ACCOUNT_ID: deploymentEnvironment.account,
-              TARGET_REGION: deploymentEnvironment.region,
+              ACCOUNT_ID: deploymentDefinition.env.account,
+              TARGET_REGION: deploymentDefinition.env.region,
             },
             commands: phaseDefinition.getCommands(PipelinePhases.POST_DEPLOY),
           },
           this.resourceContext.blueprintProps.applicationName,
-          this.resourceContext.blueprintProps.logRetentionInDays,
-          appStage.logRetentionRoleArn,
+          roleArn,
         ),
-        ...hooks.flatMap((hook) => hook.post ?? []),
-      ],
-    });
+      );
+    }
+
+    postHooks.push(...hooks.flatMap((hook) => hook.post ?? []));
+
+    return postHooks;
   }
 
   /**

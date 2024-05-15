@@ -16,16 +16,9 @@ export class PostDeployBuildStep extends pipelines.CodeBuildStep {
    * @param stage The stage of the pipeline in which this step is executed.
    * @param props The properties for the CodeBuild step.
    * @param applicationName The name of the application.
-   * @param logRetentionInDays The number of days to retain logs.
-   * @param logRetentionRoleArn The ARN of the role used for log retention.
+   * @param roleArn The ARN of the role used for post build step.
    */
-  constructor(
-    stage: string,
-    props: pipelines.CodeBuildStepProps,
-    applicationName: string,
-    logRetentionInDays: string,
-    logRetentionRoleArn: string,
-  ) {
+  constructor(stage: string, props: pipelines.CodeBuildStepProps, applicationName: string, roleArn: string) {
     super(`PostDeploy${stage}`, {
       ...props,
       env: {
@@ -39,13 +32,9 @@ export class PostDeployBuildStep extends pipelines.CodeBuildStep {
          */
         CDK_APP_NAME: applicationName,
         /**
-         * The number of days to retain logs.
-         */
-        LOG_RETENTION_DAYS: logRetentionInDays,
-        /**
          * The ARN of the role used for log retention.
          */
-        LOG_RETENTIONS_ROLE: logRetentionRoleArn,
+        EXECUTION_ROLE_ARN: roleArn,
       },
       /**
        * The list of commands to run in the CodeBuild step. It includes commands to install dependencies and any additional commands specified in the `props.commands` parameter.
@@ -59,7 +48,7 @@ export class PostDeployBuildStep extends pipelines.CodeBuildStep {
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
           actions: ['sts:AssumeRole'],
-          resources: [logRetentionRoleArn],
+          resources: [roleArn],
         }),
       ],
     });

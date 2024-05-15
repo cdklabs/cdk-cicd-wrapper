@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import { IVanillaPipelineConfig, CodeGuruSeverityThreshold, PipelinePhases } from '../src/common';
+import { IPipelineConfig, CodeGuruSeverityThreshold, PipelinePhases } from '../src/common';
 import { BaseRepositoryProviderProps } from '../src/resource-providers';
 import { PhaseCommands } from '../src/resource-providers/PhaseCommandProvider';
 
@@ -11,13 +11,17 @@ const codeBuildEnvSettings = {
   buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
 };
 
-export const TestAppConfig: IVanillaPipelineConfig = {
-  applicationName: 'VanillaPipeline',
+export const TestAppConfig: IPipelineConfig = {
+  applicationName: 'CICDWrapper',
   deploymentDefinition: {
-    RES: { env: { account: '123456789012', region: 'eu-west-1' }, stacksProviders: [] },
-    DEV: { env: { account: '234567890123', region: 'eu-west-1' }, stacksProviders: [] },
-    INT: { env: { account: '345678901234', region: 'eu-west-1' }, stacksProviders: [] },
-    PREPROD: { env: { account: '456789012345', region: 'eu-west-1' }, stacksProviders: [] },
+    RES: { env: { account: '123456789012', region: 'eu-west-1' }, stacksProviders: [], manualApprovalRequired: false },
+    DEV: { env: { account: '234567890123', region: 'eu-west-1' }, stacksProviders: [], manualApprovalRequired: false },
+    INT: { env: { account: '345678901234', region: 'eu-west-1' }, stacksProviders: [], manualApprovalRequired: true },
+    PREPROD: {
+      env: { account: '456789012345', region: 'eu-west-1' },
+      stacksProviders: [],
+      manualApprovalRequired: true,
+    },
   },
   applicationQualifier: 'test',
   logRetentionInDays: '365',

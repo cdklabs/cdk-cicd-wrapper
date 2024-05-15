@@ -8,8 +8,7 @@ import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
 import {
   DeploymentDefinition,
-  Environment,
-  IVanillaPipelineConfig as IPipelineConfig,
+  IPipelineConfig,
   NPMRegistryConfig,
   IPhaseCommand,
   PipelinePhases,
@@ -78,7 +77,7 @@ export class PipelineBlueprintBuilder {
 
   private stacksCommon: IStackProvider[] = [];
 
-  private stageEnvironments: AllStage<Partial<Environment>> = {};
+  private stageDefinitions: AllStage<Partial<IStageDefinition>> = {};
 
   private stacksByStage: AllStage<IStackProvider[]> = {};
 
@@ -242,13 +241,18 @@ export class PipelineBlueprintBuilder {
         const account = process.env[`ACCOUNT_${stageDef}`];
 
         if (account) {
-          this.addStage(stageDef, account);
+          this.addStage({
+            stage: stageDef,
+            account: account,
+          });
         }
       } else {
         const account = stageDef.account || process.env[`ACCOUNT_${stageDef.stage}`];
 
         if (account) {
-          this.addStage(stageDef.stage, account, stageDef.region);
+          this.addStage({ ...stageDef, account });
+        } else {
+          throw Error(`Stage ${stageDef.stage} does not have an associated account.`);
         }
       }
     });
@@ -263,11 +267,8 @@ export class PipelineBlueprintBuilder {
    * @param region The AWS region for the stage.
    * @returns This PipelineBlueprintBuilder instance.
    */
-  private addStage(stage: string, account: string, region?: string) {
-    this.stageEnvironments[stage] = {
-      account,
-      region,
-    };
+  private addStage(stage: IStageDefinition) {
+    this.stageDefinitions[stage.stage] = stage;
     return this;
   }
 
@@ -363,13 +364,15 @@ export class PipelineBlueprintBuilder {
   private generateDeploymentDefinitions(): RequiredRESStage<DeploymentDefinition> {
     const definitions: AllStage<DeploymentDefinition> = {};
 
-    Object.entries(this.stageEnvironments).forEach(([stage, environment]) => {
+    Object.entries(this.stageDefinitions).forEach(([stage, providedDefinition]) => {
       definitions[stage] = {
         env: {
-          account: environment.account!,
-          region: environment.region || this._region!,
+          account: providedDefinition.account!,
+          region: providedDefinition.region || this._region!,
         },
         stacksProviders: [...(stage != Stage.RES ? this.stacksCommon : []), ...(this.stacksByStage[stage] || [])],
+        manualApprovalRequired:
+          providedDefinition.manualApprovalRequired ?? !(stage === Stage.DEV || stage === Stage.RES),
       };
     });
 

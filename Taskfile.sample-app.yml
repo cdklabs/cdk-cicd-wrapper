@@ -75,14 +75,21 @@ tasks:
     desc: Update the wrapper for {{.SAMPLE_APP}}
     dir: '{{.DEVELOPMENT_DIR}}'
     cmds:
-      - npm run update-cdk-cicd-wrapper
+      - npm run upgrade
+
+  dev:synth:
+    desc: Synthesize the development with {{.SAMPLE_APP}}
+    dir: '{{.DEVELOPMENT_DIR}}'
+    cmds:
+      - npm run build
+      - npm exec -- cdk synth
 
   dev:deploy:
     desc: Deploy the development with {{.SAMPLE_APP}}
     dir: '{{.DEVELOPMENT_DIR}}'
     cmds:
       - npm run build
-      - npm run deploy -- --all --require-approval never
+      - npm exec -- cdk deploy --all --require-approval never
   
   dev:destroy:
     desc: Destroy the development with {{.SAMPLE_APP}}
@@ -190,8 +197,8 @@ tasks:
       - '[ ! `git status` ]'
     cmds:
       - git add .
-      - 'git commit -m "chore: Init" --no-verify'
-      - git push -u sample-origin main --no-verify
+      - 'git commit -m "chore: Init"'
+      - git push -u -f sample-origin main
 
   dev:git:init:
     desc: Initialize the development with {{.SAMPLE_APP}}
@@ -206,6 +213,14 @@ tasks:
     cmds:
       - git init .
       - git remote add sample-origin codecommit::{{.AWS_REGION}}://{{.RES_ACCOUNT_AWS_PROFILE}}@{{.GIT_REPOSITORY}}
+      - task: dev:git:defender
+
+  dev:git:defender:
+    desc: Configure the development with {{.SAMPLE_APP}} with GIT Defender
+    dir: '{{.DEVELOPMENT_DIR}}'
+    interactive: true
+    cmds:
+      - command -v git-defender && git-defender --setup || echo "Nothing to do..."
 
 
   dev:loop:

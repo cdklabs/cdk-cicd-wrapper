@@ -256,6 +256,9 @@ describe('pipeline-stack-test-extending-STAGE', () => {
         {
           Name: 'PREPROD',
           Actions: [
+            {
+              Name: 'PromoteToPREPROD',
+            },
             {},
             {},
             {},
@@ -267,11 +270,6 @@ describe('pipeline-stack-test-extending-STAGE', () => {
                 StackName: 'PREPROD-TestStack',
               },
             },
-            {},
-            {},
-            {},
-            {},
-            {},
           ],
         },
       ],

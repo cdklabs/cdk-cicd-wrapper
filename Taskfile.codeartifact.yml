@@ -18,6 +18,7 @@ tasks:
       - task build
       - task: publish:pipeline
       - task: publish:cli
+      - task: publish:projen
   
   unpublish:
     desc: Unpublish all package versions
@@ -28,6 +29,9 @@ tasks:
       - task: unpublish:package
         vars: 
           PACKAGE: 'cdk-cicd-wrapper'
+      - task: unpublish:package
+        vars: 
+          PACKAGE: 'cdk-cicd-wrapper-projen'
 
   unpublish:package:
     internal: true
@@ -60,6 +64,13 @@ tasks:
   publish:cli:
     desc: Publish the cli package
     dir: packages/@cdklabs/cdk-cicd-wrapper-cli/dist/js/
+    internal: true
+    cmds:
+      - npm publish
+
+  publish:projen:
+    desc: Publish the projen package
+    dir: packages/@cdklabs/cdk-cicd-wrapper-projen/dist/js/
     internal: true
     cmds:
       - npm publish

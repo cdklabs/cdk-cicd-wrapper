@@ -9,8 +9,6 @@ import { CDKPipeline } from './CDKPipeline';
  * This class is used to create a pre-deployment build step for a specific stage in a pipeline.
  */
 export class PreDeployBuildStep extends pipelines.CodeBuildStep {
-  private stage: string;
-
   /**
    * Creates a new instance of the PreDeployBuildStep class.
    *
@@ -26,18 +24,5 @@ export class PreDeployBuildStep extends pipelines.CodeBuildStep {
       },
       commands: [...CDKPipeline.installCommands, ...props.commands],
     });
-    this.stage = stage;
-  }
-
-  /**
-   * Appends a manual approval step to the pipeline after the pre-deployment build step.
-   *
-   * @returns A new instance of the ManualApprovalStep class representing the manual approval step.
-   */
-  public appendManualApprovalStep(): pipelines.ManualApprovalStep {
-    // append a pipelines.ManualApprovalStep AFTER the prebuild step and return it
-    const manualApprovalStep = new pipelines.ManualApprovalStep(`PromoteTo${this.stage}`);
-    manualApprovalStep.addStepDependency(this);
-    return manualApprovalStep;
   }
 }
