@@ -14,6 +14,10 @@ import { ResourceContext, IResourceProvider, GlobalResources, NPMRegistryConfig 
  * Interface for a factory that provides CodeBuild options for the pipeline.
  */
 export interface ICodeBuildFactory {
+  /**
+   * Provides the CodeBuild options for the pipeline
+   * @returns The CodeBuildOptions object containing options for the CodeBuild project
+   */
   provideCodeBuildOptions(): CodeBuildOptions;
 }
 
@@ -49,12 +53,38 @@ export class CodeBuildFactoryProvider implements IResourceProvider {
 }
 
 export interface DefaultCodeBuildFactoryProps {
+  /**
+   * The account ID of the RES stage
+   */
   resAccount: string;
-  vpc?: ec2.IVpc; // The VPC to use for the CodeBuild project
-  proxyConfig?: IProxyConfig; // Configuration for an HTTP proxy
-  npmRegistry?: NPMRegistryConfig; // Configuration for an NPM registry
-  codeBuildEnvSettings?: codebuild.BuildEnvironment; // Environment settings for the CodeBuild project
-  parameterProvider: IParameterConstruct; // Provider for Parameter Store parameters
+  /**
+   * The VPC to use for the CodeBuild project
+   * Default value is undefined (no VPC)
+   */
+  vpc?: ec2.IVpc;
+  /**
+   * Configuration for an HTTP proxy
+   * Default value is undefined
+   */
+  proxyConfig?: IProxyConfig;
+  /**
+   * Configuration for an NPM registry
+   * Default value is undefined
+   */
+  npmRegistry?: NPMRegistryConfig;
+  /**
+   * Environment settings for the CodeBuild project
+   * Default value is undefined
+   */
+  codeBuildEnvSettings?: codebuild.BuildEnvironment;
+  /**
+   * Provider for Parameter Store parameters
+   */
+  parameterProvider: IParameterConstruct;
+  /**
+   * Additional IAM policy statements to be added to the CodeBuild project role
+   * Default value is undefined
+   */
   additionalRolePolicies?: iam.PolicyStatement[];
 }
 
@@ -81,6 +111,11 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     };
   }
 
+  /**
+   * Generates a partial CodeBuild buildspec based on the provided properties
+   * @param props The properties used to generate the buildspec
+   * @returns The partially constructed buildspec
+   */
   protected generatePartialBuildSpec(props: DefaultCodeBuildFactoryProps) {
     // Merge the constructed objects with existing buildSpec
     const buildSpec = codebuild.BuildSpec.fromObject(this.partialCodeBuildSpec);
@@ -101,6 +136,11 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     );
   }
 
+  /**
+   * Generates build environment variables for the CodeBuild project based on the provided proxy configuration
+   * @param props The properties containing the proxy configuration
+   * @returns An object containing the build environment variables
+   */
   protected generateBuildEnvironmentVariables(props: DefaultCodeBuildFactoryProps): Record<string, string> {
     const proxyConfig = props.proxyConfig;
     const envVariables: Record<string, string> = {};
@@ -113,6 +153,11 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     return envVariables;
   }
 
+  /**
+   * Generates install commands for the CodeBuild project based on the provided proxy configuration
+   * @param props The properties containing the proxy configuration
+   * @returns An array of install commands
+   */
   protected generateInstallCommands(props: DefaultCodeBuildFactoryProps): string[] {
     const commands: string[] = [];
 
@@ -126,6 +171,11 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     return commands;
   }
 
+  /**
+   * Generates Secrets Manager values for the CodeBuild project based on the provided proxy configuration
+   * @param props The properties containing the proxy configuration
+   * @returns An object containing Secrets Manager values
+   */
   protected generateCodeBuildSecretsManager(props: DefaultCodeBuildFactoryProps): Record<string, string> {
     const proxySecretArn = props.proxyConfig?.proxySecretArn;
 
@@ -142,6 +192,11 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     };
   }
 
+  /**
+   * Generates IAM role policies for the CodeBuild project based on the provided properties
+   * @param props The properties containing configuration for the CodeBuild project
+   * @returns An array of IAM policy statements
+   */
   protected generateRolePolicies(props: DefaultCodeBuildFactoryProps) {
     const rolePolicies = [];
 
