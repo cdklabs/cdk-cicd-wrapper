@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -37,6 +38,7 @@ export class CodeBuildFactoryProvider implements IResourceProvider {
     const parameterProvider = context.get(GlobalResources.PARAMETER_STORE);
 
     return new DefaultCodeBuildFactory({
+      resAccount: context.blueprintProps.deploymentDefinition.RES.env.account,
       vpc,
       proxyConfig,
       npmRegistry: context.blueprintProps.npmRegistry,
@@ -47,11 +49,13 @@ export class CodeBuildFactoryProvider implements IResourceProvider {
 }
 
 export interface DefaultCodeBuildFactoryProps {
+  resAccount: string;
   vpc?: ec2.IVpc; // The VPC to use for the CodeBuild project
   proxyConfig?: IProxyConfig; // Configuration for an HTTP proxy
   npmRegistry?: NPMRegistryConfig; // Configuration for an NPM registry
   codeBuildEnvSettings?: codebuild.BuildEnvironment; // Environment settings for the CodeBuild project
   parameterProvider: IParameterConstruct; // Provider for Parameter Store parameters
+  additionalRolePolicies?: iam.PolicyStatement[];
 }
 
 /**
@@ -69,72 +73,110 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
   };
 
   constructor(props: DefaultCodeBuildFactoryProps) {
-    let buildSpec = codebuild.BuildSpec.fromObject(this.partialCodeBuildSpec);
+    this.codeBuildOptions = {
+      ...this.generateVPCCodeBuildDefaults(props.vpc), // Default options for a CodeBuild project in a VPC
+      partialBuildSpec: this.generatePartialBuildSpec(props), // The partially constructed buildspec
+      buildEnvironment: props.codeBuildEnvSettings, // Environment settings for the CodeBuild project
+      rolePolicy: this.generateRolePolicies(props),
+    };
+  }
+
+  protected generatePartialBuildSpec(props: DefaultCodeBuildFactoryProps) {
+    // Merge the constructed objects with existing buildSpec
+    const buildSpec = codebuild.BuildSpec.fromObject(this.partialCodeBuildSpec);
+
+    return codebuild.mergeBuildSpecs(
+      buildSpec,
+      codebuild.BuildSpec.fromObject({
+        env: {
+          variables: this.generateBuildEnvironmentVariables(props), // Environment variables for the proxy configuration
+          'secrets-manager': this.generateCodeBuildSecretsManager(props), // Secrets Manager values for the proxy configuration
+        },
+        phases: {
+          install: {
+            commands: this.generateInstallCommands(props),
+          },
+        },
+      }),
+    );
+  }
+
+  protected generateBuildEnvironmentVariables(props: DefaultCodeBuildFactoryProps): Record<string, string> {
+    const proxyConfig = props.proxyConfig;
+    const envVariables: Record<string, string> = {};
+
+    if (proxyConfig) {
+      envVariables.AWS_STS_REGIONAL_ENDPOINTS = 'regional';
+      envVariables.NO_PROXY = proxyConfig.noProxy.join(','); // Comma-separated list of hosts that should bypass the proxy
+    }
+
+    return envVariables;
+  }
+
+  protected generateInstallCommands(props: DefaultCodeBuildFactoryProps): string[] {
+    const commands: string[] = [];
 
     if (props.proxyConfig) {
-      const { noProxy, proxySecretArn, proxyTestUrl } = props.proxyConfig;
+      commands.push('export HTTP_PROXY="http://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTP_PROXY_PORT"'); // Set the HTTP proxy
+      commands.push('export HTTPS_PROXY="https://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTPS_PROXY_PORT"'); // Set the HTTPS proxy
+      commands.push('echo "--- Proxy Test ---"'); // Print a message for the proxy test
+      commands.push(`curl -Is --connect-timeout 5 ${props.proxyConfig.proxyTestUrl} | grep "HTTP/"`); // Test the proxy by making a request and checking for an HTTP response
+    }
 
-      // Construct environment variables
-      const envVariables = {
-        NO_PROXY: noProxy.join(', '), // Comma-separated list of hosts that should bypass the proxy
-        AWS_STS_REGIONAL_ENDPOINTS: 'regional', // Use regional endpoints for AWS STS
-      };
+    return commands;
+  }
 
-      // Construct secrets manager object
-      const secretsManager = {
-        PROXY_USERNAME: `${proxySecretArn}:username`, // Username for the proxy, stored in Secrets Manager
-        PROXY_PASSWORD: `${proxySecretArn}:password`, // Password for the proxy, stored in Secrets Manager
-        HTTP_PROXY_PORT: `${proxySecretArn}:http_proxy_port`, // HTTP proxy port, stored in Secrets Manager
-        HTTPS_PROXY_PORT: `${proxySecretArn}:https_proxy_port`, // HTTPS proxy port, stored in Secrets Manager
-        PROXY_DOMAIN: `${proxySecretArn}:proxy_domain`, // Domain for the proxy, stored in Secrets Manager
-      };
+  protected generateCodeBuildSecretsManager(props: DefaultCodeBuildFactoryProps): Record<string, string> {
+    const proxySecretArn = props.proxyConfig?.proxySecretArn;
 
-      // Merge the constructed objects with existing buildSpec
-      buildSpec = codebuild.mergeBuildSpecs(
-        buildSpec,
-        codebuild.BuildSpec.fromObject({
-          env: {
-            variables: envVariables, // Environment variables for the proxy configuration
-            'secrets-manager': secretsManager, // Secrets Manager values for the proxy configuration
-          },
-          phases: {
-            install: {
-              commands: [
-                'export HTTP_PROXY="http://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTP_PROXY_PORT"', // Set the HTTP proxy
-                'export HTTPS_PROXY="https://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTPS_PROXY_PORT"', // Set the HTTPS proxy
-                'echo "--- Proxy Test ---"', // Print a message for the proxy test
-                `curl -Is --connect-timeout 5 ${proxyTestUrl} | grep "HTTP/"`, // Test the proxy by making a request and checking for an HTTP response
-              ],
-            },
-          },
+    if (!proxySecretArn) {
+      return {};
+    }
+
+    return {
+      PROXY_USERNAME: `${proxySecretArn}:username`,
+      PROXY_PASSWORD: `${proxySecretArn}:password`,
+      HTTP_PROXY_PORT: `${proxySecretArn}:http_proxy_port`,
+      HTTPS_PROXY_PORT: `${proxySecretArn}:https_proxy_port`,
+      PROXY_DOMAIN: `${proxySecretArn}:proxy_domain`,
+    };
+  }
+
+  protected generateRolePolicies(props: DefaultCodeBuildFactoryProps) {
+    const rolePolicies = [];
+
+    rolePolicies.push(props.parameterProvider.provideParameterPolicyStatement()); // Policy statement for accessing Parameter Store parameters)
+
+    if (props.proxyConfig?.proxySecretArn) {
+      rolePolicies.push(
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'], // Allow retrieving secrets from Secrets Manager
+          resources: [props.proxyConfig.proxySecretArn], // The ARN of the secret containing proxy configuration
+        }),
+      );
+
+      const arnSplit = cdk.Arn.split(props.proxyConfig.proxySecretArn, cdk.ArnFormat.SLASH_RESOURCE_NAME);
+
+      if (arnSplit.account != props.resAccount) {
+        rolePolicies.push(
+          new iam.PolicyStatement({
+            actions: ['kms:Decrypt', 'kms:DescribeKey', 'kms:Encrypt', 'kms:GenerateDataKey*', 'kms:ReEncrypt*'], // Allow retrieving secrets from Secrets Manager
+            resources: [`arn:aws:kms:${arnSplit.region}:${arnSplit.account}:key/*`], // The ARN of the secret containing NPM registry authentication
+          }),
+        );
+      }
+    }
+
+    if (props.npmRegistry) {
+      rolePolicies.push(
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'], // Allow retrieving secrets from Secrets Manager
+          resources: [props.npmRegistry.basicAuthSecretArn], // The ARN of the secret containing NPM registry authentication
         }),
       );
     }
 
-    this.codeBuildOptions = {
-      ...this.generateVPCCodeBuildDefaults(props.vpc), // Default options for a CodeBuild project in a VPC
-      partialBuildSpec: buildSpec, // The partially constructed buildspec
-      buildEnvironment: props.codeBuildEnvSettings, // Environment settings for the CodeBuild project
-      rolePolicy: [
-        ...(props.proxyConfig?.proxySecretArn // If a proxy configuration is provided
-          ? [
-              new iam.PolicyStatement({
-                actions: ['secretsmanager:GetSecretValue'], // Allow retrieving secrets from Secrets Manager
-                resources: [props.proxyConfig.proxySecretArn], // The ARN of the secret containing proxy configuration
-              }),
-            ]
-          : []), // Otherwise, an empty array
-        ...(props.npmRegistry // If an NPM registry configuration is provided
-          ? [
-              new iam.PolicyStatement({
-                actions: ['secretsmanager:GetSecretValue'], // Allow retrieving secrets from Secrets Manager
-                resources: [props.npmRegistry.basicAuthSecretArn], // The ARN of the secret containing NPM registry authentication
-              }),
-            ]
-          : []), // Otherwise, an empty array
-        props.parameterProvider.provideParameterPolicyStatement(), // Policy statement for accessing Parameter Store parameters
-      ],
-    };
+    return rolePolicies;
   }
 
   /**
