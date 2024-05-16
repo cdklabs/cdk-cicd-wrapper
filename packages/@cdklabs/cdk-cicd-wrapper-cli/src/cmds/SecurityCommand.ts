@@ -163,7 +163,7 @@ class Shellcheck extends SecurityScanner {
    * Constructs a new Shellcheck instance.
    */
   constructor() {
-    super('shellcheck', '0.9.0.6', 'shellcheck-py');
+    super('shellcheck', '0.10.0.1', 'shellcheck-py');
   }
 
   /**
@@ -247,7 +247,7 @@ class SemgrepScanner extends SecurityScanner {
    * Constructs a new SemgrepScanner instance.
    */
   constructor() {
-    super('semgrep', '1.55.0', 'semgrep', ['jsonschema']);
+    super('semgrep', '1.73.0', 'semgrep', ['jsonschema']);
   }
 
   /**
@@ -307,7 +307,7 @@ class BanditScanner extends SecurityScanner {
    * Constructs a new BanditScanner instance.
    */
   constructor() {
-    super('bandit', '1.7.5', 'bandit');
+    super('bandit', '1.7.8', 'bandit');
   }
 
   /**
