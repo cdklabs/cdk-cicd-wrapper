@@ -40,3 +40,8 @@ export * from './PhaseCommandProvider';
  * Provider for creating a proxy.
  */
 export * from './ProxyProvider';
+
+/**
+ * Provider for creating a CodeBuild factory.
+ */
+export * from './CodeBuildFactoryProvider';
