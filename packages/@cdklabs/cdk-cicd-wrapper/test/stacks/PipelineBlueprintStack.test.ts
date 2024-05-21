@@ -7,7 +7,12 @@ import { AwsSolutionsChecks } from 'cdk-nag';
 import { Stage, PipelinePhases, GlobalResources } from '../../src/common';
 import { BasicRepositoryProvider, sh } from '../../src/resource-providers';
 import { PipelineBlueprint } from '../../src/stacks/PipelineBlueprint';
-import { TestAppConfig, TestRepositoryConfigCodeCommit, TestRepositoryConfigGithub } from '../TestConfig';
+import {
+  TestAppConfig,
+  TestRepositoryConfigCodeCommit,
+  TestRepositoryConfigGithub,
+  TestStackProvider,
+} from '../TestConfig';
 
 // Clear env as env variables can populate unintended configurations during the tests
 process.env = {};
@@ -28,6 +33,7 @@ describe('pipeline-blueprint-stack-test-codecommit', () => {
     .definePhase(PipelinePhases.TESTING, [sh('true')])
     .definePhase(PipelinePhases.PRE_BUILD, [])
     .repositoryProvider(new BasicRepositoryProvider(TestRepositoryConfigCodeCommit))
+    .addStack(TestStackProvider)
     .synth(app);
 
   const template = Template.fromStack(stack);
@@ -133,6 +139,7 @@ describe('pipeline-stack-test-codestar', () => {
       .definePhase(PipelinePhases.BUILD, [sh('true')])
       .definePhase(PipelinePhases.TESTING, [sh('true')])
       .definePhase(PipelinePhases.PRE_BUILD, [])
+      .addStack(TestStackProvider)
       .repositoryProvider(new BasicRepositoryProvider(TestRepositoryConfigGithub))
       .synth(app),
   );
@@ -224,6 +231,7 @@ describe('pipeline-stack-test-extending-STAGE', () => {
         },
         'PREPROD',
       )
+      .addStack(TestStackProvider, 'DEV', 'INT')
       .definePhase(PipelinePhases.BUILD, [sh('true')])
       .definePhase(PipelinePhases.TESTING, [sh('true')])
       .definePhase(PipelinePhases.PRE_BUILD, [])
@@ -298,6 +306,7 @@ describe('pipeline-stack-test-proxy-vpc', () => {
       .definePhase(PipelinePhases.BUILD, [sh('true')])
       .definePhase(PipelinePhases.TESTING, [sh('true')])
       .definePhase(PipelinePhases.PRE_BUILD, [])
+      .addStack(TestStackProvider)
       .repositoryProvider(new BasicRepositoryProvider(TestRepositoryConfigGithub))
       .synth(app),
   );
@@ -381,6 +390,7 @@ describe('pipeline-stack-disable-compliance-log-bucket', () => {
         { stage: Stage.INT, ...TestAppConfig.deploymentDefinition.INT.env },
       ])
       .disable(GlobalResources.COMPLIANCE_BUCKET)
+      .addStack(TestStackProvider)
       .repositoryProvider(new BasicRepositoryProvider(TestRepositoryConfigGithub))
       .synth(app),
   );
@@ -413,7 +423,7 @@ describe('pipeline-stack-stage-order', () => {
         { stage: 'StageB', ...TestAppConfig.deploymentDefinition.DEV.env },
         { stage: 'StageA', ...TestAppConfig.deploymentDefinition.INT.env },
       ])
-      .disable(GlobalResources.COMPLIANCE_BUCKET)
+      .addStack(TestStackProvider)
       .repositoryProvider(new BasicRepositoryProvider(TestRepositoryConfigGithub))
       .synth(app),
   );
@@ -430,6 +440,9 @@ describe('pipeline-stack-stage-order', () => {
         },
         {
           Name: 'UpdatePipeline',
+        },
+        {
+          Name: 'Assets',
         },
         {
           Name: 'StageC',

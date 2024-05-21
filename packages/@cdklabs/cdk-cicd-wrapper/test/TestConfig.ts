@@ -1,8 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import { IPipelineConfig, CodeGuruSeverityThreshold, PipelinePhases } from '../src/common';
+import { IPipelineConfig, CodeGuruSeverityThreshold, PipelinePhases, IStackProvider } from '../src/common';
 import { BaseRepositoryProviderProps } from '../src/resource-providers';
 import { PhaseCommands } from '../src/resource-providers/PhaseCommandProvider';
 
@@ -59,4 +60,12 @@ export const TestComplianceLogBucketName = {
   RES: 'bucket-res',
   DEV: 'bucket-dev',
   INT: 'bucket-int',
+};
+
+export const TestStackProvider: IStackProvider = {
+  provide(context) {
+    new cdk.Stack(context.scope, 'TestStack', {
+      env: context.environment,
+    });
+  },
 };
