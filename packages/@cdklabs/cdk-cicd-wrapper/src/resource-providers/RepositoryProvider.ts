@@ -94,6 +94,11 @@ export class BasicRepositoryProvider implements RepositoryProvider {
             codeBuildOptions: codebuildFactory.provideCodeBuildOptions(),
             buildSpec: codebuild.BuildSpec.fromObject({
               version: '0.2',
+              env: {
+                variables: {
+                  CDK_QUALIFIER: applicationQualifier,
+                },
+              },
               phases: {
                 build: {
                   commands: phaseDefinition.getCommands(...INTEGRATION_PHASES),

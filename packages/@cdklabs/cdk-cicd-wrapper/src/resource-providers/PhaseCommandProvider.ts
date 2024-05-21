@@ -101,7 +101,7 @@ export class PythonPhaseCommand implements IPhaseCommand {
  *
  * This is used to add scripts from this NPM library to the buildSpec that needs to run without internet access or ability to invoke npm ci.
  */
-class InlineShellPhaseCommand implements IPhaseCommand {
+export class InlineShellPhaseCommand implements IPhaseCommand {
   constructor(
     readonly script: string,
     /**
@@ -118,12 +118,12 @@ class InlineShellPhaseCommand implements IPhaseCommand {
     const bashScript = fs.readFileSync(path.resolve(__dirname, '../../scripts/', this.script), {
       encoding: 'utf-8',
     });
-    const replaced = bashScript.replace(/\$/g, '\\$');
+    const replaced = bashScript.replace(/\$/g, '\\$').replace(/\`/g, '\\`');
     const escapedScript = `bash_command=$(cat << CDKEOF\n ${replaced}\nCDKEOF\n )`;
     if (this.exportEnvironment) {
-      return `${escapedScript}; echo -n "$bash_command" > ./.cdk.wrapper.${this.script}.sh; chmod +x ./.cdk.wrapper.${this.script}.sh; . ./.cdk.wrapper.${this.script}.sh;`;
+      return `${escapedScript}; echo -n "$bash_command" > ./.cdk.wrapper.${this.script}.sh; chmod +x ./.cdk.wrapper.${this.script}.sh; . ./.cdk.wrapper.${this.script}.sh; rm -rf ./.cdk.wrapper.${this.script}.sh;`;
     }
-    return `${escapedScript}; echo -n "$bash_command" > ./.cdk.wrapper.${this.script}.sh; chmod +x ./.cdk.wrapper.${this.script}.sh; ./.cdk.wrapper.${this.script}.sh; ./.cdk.wrapper.${this.script}.sh`;
+    return `${escapedScript}; echo -n "$bash_command" > ./.cdk.wrapper.${this.script}.sh; chmod +x ./.cdk.wrapper.${this.script}.sh; ./.cdk.wrapper.${this.script}.sh; rm -rf ./.cdk.wrapper.${this.script}.sh;`;
   }
 }
 
