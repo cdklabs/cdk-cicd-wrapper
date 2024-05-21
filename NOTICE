@@ -24100,7 +24100,7 @@ MIT
     SOFTWARE
 
 
-@typescript-eslint/eslint-plugin 7.9.0
+@typescript-eslint/eslint-plugin 7.10.0
 MIT
 MIT License
 
@@ -24125,7 +24125,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@typescript-eslint/parser 7.9.0
+@typescript-eslint/parser 7.10.0
 BSD-2-Clause
 TypeScript ESLint Parser
 Copyright JS Foundation and other contributors, https://js.foundation
@@ -24151,7 +24151,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-@typescript-eslint/scope-manager 7.9.0
+@typescript-eslint/scope-manager 7.10.0
 MIT
 MIT License
 
@@ -24176,7 +24176,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@typescript-eslint/type-utils 7.9.0
+@typescript-eslint/type-utils 7.10.0
 MIT
 MIT License
 
@@ -24201,7 +24201,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@typescript-eslint/types 7.9.0
+@typescript-eslint/types 7.10.0
 MIT
 MIT License
 
@@ -24226,7 +24226,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@typescript-eslint/typescript-estree 7.9.0
+@typescript-eslint/typescript-estree 7.10.0
 BSD-2-Clause
 TypeScript ESTree
 
@@ -24256,7 +24256,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-@typescript-eslint/utils 7.9.0
+@typescript-eslint/utils 7.10.0
 MIT
 MIT License
 
@@ -24281,7 +24281,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@typescript-eslint/visitor-keys 7.9.0
+@typescript-eslint/visitor-keys 7.10.0
 MIT
 MIT License
 
@@ -28710,7 +28710,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-electron-to-chromium 1.4.773
+electron-to-chromium 1.4.775
 ISC
 Copyright 2018 Kilian Valkhof
 
@@ -47815,7 +47815,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.**
 
 
-projen 0.81.13
+projen 0.81.15
 Apache-2.0
 
                                  Apache License
