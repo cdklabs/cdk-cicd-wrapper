@@ -28,7 +28,7 @@ import { BasicRepositoryProvider, PipelineBlueprint } from '@cdklabs/cdk-cicd-wr
 
 const pipeline = PipelineBlueprint.builder()
 .repositoryProvider(new BasicRepositoryProvider({
-      repositoryType: 'GITHUB',
+      repositoryType: 'CODECOMMIT',
       branch: 'main',
       name: 'my-repo',
     }))
