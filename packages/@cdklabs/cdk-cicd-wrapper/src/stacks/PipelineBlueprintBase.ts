@@ -65,6 +65,11 @@ export class PipelineBlueprintBase extends cdk.Stack {
     // [Backward compatibility] Allows to ignore stages which was env variable ACCOUNT_{STAGE} has discovered but value is set to - to ignore
     if (deploymentEnvironment.account == '-') return;
 
+    if (deploymentDefinition.stacksProviders.length == 0) {
+      // Do not provision stage if there are no stacks to provision
+      return;
+    }
+
     this.resourceContext.initStage(stage);
 
     const appStage = this.resourceContext.get(GlobalResources.STAGE_PROVIDER)!;
