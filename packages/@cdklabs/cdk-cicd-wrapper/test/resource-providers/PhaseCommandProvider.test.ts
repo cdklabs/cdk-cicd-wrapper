@@ -30,7 +30,7 @@ else
     echo "//\\\${NPM_REGISTRY#*://}:_authToken=\\\${NODE_AUTH_TOKEN}" >> ./.npmrc;
 fi
 CDKEOF
- ); echo -n "$bash_command" > ./.cdk.wrapper.npm-login.sh.sh; chmod +x ./.cdk.wrapper.npm-login.sh.sh; ./.cdk.wrapper.npm-login.sh.sh;`;
+ ); echo -n "$bash_command" > ./.cdk.wrapper.npm-login.sh.sh; chmod +x ./.cdk.wrapper.npm-login.sh.sh; ./.cdk.wrapper.npm-login.sh.sh; rm -rf ./.cdk.wrapper.npm-login.sh.sh;`;
 
     expect(npmLogin.command).toEqual(expected);
   });
