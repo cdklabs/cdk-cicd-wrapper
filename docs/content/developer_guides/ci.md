@@ -1,6 +1,6 @@
 # Continuous Integration
 
-CI is a continuous method of software development, where you continuously build and test iterative code changes.
+CI (Continuous Integration) is a continuous method of software development, where you continuously build and test iterative code changes.
 
 This iterative process helps reduce the chance that you develop new code based on buggy or failed previous versions. The {{ project_name }} can catch bugs early in the development cycle, and help ensure that all the code deployed to production complies with your established code standards.
 
@@ -110,7 +110,7 @@ First ensure the `script` is defined in your package.json file and the scripts e
 Then you can create an NPMPhaseCommand with:
 
 ```typescript
-const myScriptPhaseCommand = new vp.NPMPhaseCommand('my-script');
+const myScriptPhaseCommand = new NPMPhaseCommand('my-script');
 ```
 
 Now the command is ready, we need to include it into our desired [phase](#phases). Once a [default phase](#what-are-the-available-phasecommands) has been modified we require you to explicitly define the PhaseCommands for that phase.
@@ -118,18 +118,18 @@ Now the command is ready, we need to include it into our desired [phase](#phases
 The phase can be defined with the `definePhase` method that is available on the VanillaPipelineBuilder.
 
 ```typescript
-const myScriptPhaseCommand = new vp.NPMPhaseCommand('my-script');
+const myScriptPhaseCommand = new NPMPhaseCommand('my-script');
 
 PipelineBlueprint.builder()
   .addStack((context) => {
     new DemoStack(context.scope, 'DemoStack');
   })
-  .definePhase(vp.PipelinePhases.PRE_BUILD, [
-    vp.PhaseCommands.VALIDATE,
+  .definePhase(PipelinePhases.PRE_BUILD, [
+    PhaseCommands.VALIDATE,
     myScriptPhaseCommand,
-    vp.PhaseCommands.CHECK_AUDIT,
-    vp.PhaseCommands.NPM_CI,
-    vp.PhaseCommands.CHECK_LINT
+    PhaseCommands.CHECK_AUDIT,
+    PhaseCommands.NPM_CI,
+    PhaseCommands.CHECK_LINT
   ])
   .build(app);
 ```
@@ -141,7 +141,7 @@ Here, you can see how to define the [order of the commands](#how-to-define-the-o
 You can create a ShellCommandPhaseCommand with:
 
 ```typescript
-const myScriptPhaseCommand = new vp.sh('ls');
+const myScriptPhaseCommand = new sh('ls');
 ```
 
 Now, the command is ready, we need to include into our desired [phase](#phases). Once a [default phase](#what-are-the-available-phasecommands) has been modified we require you to explicitly define the PhaseCommands for that phase.
@@ -153,12 +153,12 @@ PipelineBlueprint.builder()
   .addStack((context) => {
     new DemoStack(context.scope, 'DemoStack');
   })
-  .definePhase(vp.PipelinePhases.PRE_BUILD, [
-    vp.PhaseCommands.VALIDATE,
-    vp.sh('ls'),
-    vp.PhaseCommands.CHECK_AUDIT,
-    vp.PhaseCommands.NPM_CI,
-    vp.PhaseCommands.CHECK_LINT
+  .definePhase(PipelinePhases.PRE_BUILD, [
+    PhaseCommands.VALIDATE,
+    sh('ls'),
+    PhaseCommands.CHECK_AUDIT,
+    PhaseCommands.NPM_CI,
+    PhaseCommands.CHECK_LINT
   ])
   .build(app);
 ```
@@ -173,18 +173,18 @@ Every PhaseCommand must implement the PhaseCommand interface that has only one r
 The execution order of the PhaseCommands follows the PhaseCommand position in the definition array.
 
 ```typescript
-const myScriptPhaseCommand = new vp.NPMPhaseCommand('my-script');
+const myScriptPhaseCommand = new NPMPhaseCommand('my-script');
 
 PipelineBlueprint.builder()
   .addStack((context) => {
     new DemoStack(context.scope, 'DemoStack');
   })
-  .definePhase(vp.PipelinePhases.PRE_BUILD, [
-    vp.PhaseCommands.VALIDATE,
+  .definePhase(PipelinePhases.PRE_BUILD, [
+    PhaseCommands.VALIDATE,
     myScriptPhaseCommand,
-    vp.PhaseCommands.CHECK_AUDIT,
-    vp.PhaseCommands.NPM_CI,
-    vp.PhaseCommands.CHECK_LINT
+    PhaseCommands.CHECK_AUDIT,
+    PhaseCommands.NPM_CI,
+    PhaseCommands.CHECK_LINT
   ])
   .build(app);
 ```

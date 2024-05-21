@@ -1,6 +1,6 @@
 # Continuous Deployment
 
-CD(Continuous Deployment) is a continuous method of software delivery, where you continuously deploy iterative code changes through out various stages.
+CD (Continuous Deployment) is a continuous method of software delivery, where you continuously deploy iterative code changes through out various stages.
 
 This iterative process helps reduce the chance that you develop new code based on buggy or failed previous versions. The {{ project_name }} can catch bugs early in the development cycle, and help ensure that all the code deployed to production complies with your established code standards.
 

@@ -1,5 +1,11 @@
 # Audit project dependencies
 
+From the package.json you get the following commands which you can run via the cli like this:
+
+```bash
+npm run audit ### check below the list of sub-scripts
+```
+
 ```json
 {
     ...

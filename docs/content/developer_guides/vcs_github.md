@@ -1,6 +1,6 @@
 # GitHub Integration - AWS CodeStar Connection
 
-To be able to use GitHub repositories in AWS CodePipeline with vanilla-pipeline, an AWS CodeStar Connection needs to be established. For more details go to the [GitHub connection](https://docs.aws.amazon.com/codepipeline/latest/userguide/connections-github.html) page.
+To be able to use GitHub repositories in AWS CodePipeline with {{ project_name }}, an AWS CodeStar Connection needs to be established. For more details go to the [GitHub connection](https://docs.aws.amazon.com/codepipeline/latest/userguide/connections-github.html) page.
 
 ## Quick Setup
 
@@ -19,6 +19,22 @@ This will initialize the connection from the AWS side. As a follow up go to the 
   - codestar-connections:ListConnections
   - codestar-connections:CreateConnection
   - codestar-connections:UpdateConnectionInstallation
+
+## Changing default branch
+
+You can change the default branch which is picked up by the CodePipeline to trigger the pipeline with the following code snippet (during the pipeline definition):
+
+```bash
+import { BasicRepositoryProvider, PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+
+const pipeline = PipelineBlueprint.builder()
+.repositoryProvider(new BasicRepositoryProvider({
+      repositoryType: 'GITHUB',
+      branch: 'main',
+      name: 'my-repo',
+    }))
+...
+```
 
 ### Known Issues
 

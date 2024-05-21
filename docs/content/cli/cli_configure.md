@@ -1,6 +1,6 @@
 # Configure
 
-The `npx {{npm_cli}} configure` script uses a series of prompts and user input to build a bash script that can be used to `source` your environment variables into your active shell/terminal. Additionally, the configure script sets values in the config section of the `package.json` file. The created `export_vars.sh` can be modified or duplicated to assist developers moving between potentially different test environments.
+The `npx {{npm_cli}} configure` script uses a series of prompts and user input to build a bash script that can be used to `source` your environment variables into your active shell/terminal. Additionally, the configure script sets values in the config section of the `package.json` file. The created `.env` can be modified or duplicated to assist developers moving between potentially different test environments.
 
 ## {{ project_name }} Variables
 
@@ -24,3 +24,4 @@ The `npx {{npm_cli}} configure` script uses a series of prompts and user input t
 | CICD_VPC_CIDR | cicdVpcCidr | 172.31.0.0/20 | for use with `VPC` to set the CIDR block of the VPC |
 | CICD_VPC_CIDR_MASK | cicdVpcCidrMask | 24 | for use with `VPC` to set the Subnet size |
 | PROXY_SECRET_ARN |  |  | used to set the ARN for the proxy secrets to enable proxy |
+| WORKBENCH_STAGE  |  |  | used to test the CDK Stacks in a given stage, by default is DEV
