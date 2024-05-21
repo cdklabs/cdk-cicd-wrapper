@@ -225,7 +225,6 @@ describe('pipeline-stack-test-extending-STAGE', () => {
         {
           provide(context) {
             const stack = new cdk.Stack(context.scope, 'TestStack');
-
             new cdk.CfnOutput(stack, 'ConstructTest', { value: 'INT' });
           },
         },
