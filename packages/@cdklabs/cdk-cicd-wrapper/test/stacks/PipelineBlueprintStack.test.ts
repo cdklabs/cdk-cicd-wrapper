@@ -396,3 +396,51 @@ describe('pipeline-stack-disable-compliance-log-bucket', () => {
     );
   });
 });
+
+describe('pipeline-stack-stage-order', () => {
+  const app = new cdk.App();
+
+  process.env.ACCOUNT_DEV = '777777777777'; // The DEV should not appear as valid stage as it is not defined.
+  process.env.ACCOUNT_StageC = '88888888888';
+
+  const template = Template.fromStack(
+    PipelineBlueprint.builder()
+      .applicationName(TestAppConfig.applicationName)
+      .applicationQualifier(TestAppConfig.applicationQualifier)
+      .defineStages([
+        { stage: Stage.RES, ...TestAppConfig.deploymentDefinition.RES.env },
+        'StageC',
+        { stage: 'StageB', ...TestAppConfig.deploymentDefinition.DEV.env },
+        { stage: 'StageA', ...TestAppConfig.deploymentDefinition.INT.env },
+      ])
+      .disable(GlobalResources.COMPLIANCE_BUCKET)
+      .repositoryProvider(new BasicRepositoryProvider(TestRepositoryConfigGithub))
+      .synth(app),
+  );
+
+  test("Check if CodePipeline Pipeline doesn't have a compliance bucket", () => {
+    template.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
+    template.hasResourceProperties('AWS::CodePipeline::Pipeline', {
+      Stages: [
+        {
+          Name: 'Source',
+        },
+        {
+          Name: 'Build',
+        },
+        {
+          Name: 'UpdatePipeline',
+        },
+        {
+          Name: 'StageC',
+        },
+        {
+          Name: 'StageB',
+        },
+        {
+          Name: 'StageA',
+        },
+      ],
+    });
+  });
+});

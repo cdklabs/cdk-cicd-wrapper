@@ -236,6 +236,7 @@ export class PipelineBlueprintBuilder {
    * @returns This PipelineBlueprintBuilder instance.
    */
   public defineStages(stageDefinition: (IStageDefinition | string)[]) {
+    this.stageDefinitions = {};
     stageDefinition.forEach((stageDef) => {
       if (typeof stageDef === 'string') {
         const account = process.env[`ACCOUNT_${stageDef}`];
