@@ -15,5 +15,3 @@ nav:
     - "CodeCommit": "vcs_codecommit.md"
     - "GitHub": "vcs_github.md"
   - "Networking": "networking.md"
-  - "Single AWS account": "single_account.md"
-  - "Multiple {{ project_name }}s in one AWS account": "multiple_vanilla_pipelines.md"

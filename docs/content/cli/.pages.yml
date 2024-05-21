@@ -6,4 +6,3 @@ nav:
   - "Validate": "cli_validate.md"
   - "Security Scanning": "cli_security_scan.md"
   - "Dependency Scanning": "cli_check_dependencies.md"
-  - "Compliance Bucket": "cli_compliance_bucket.md"

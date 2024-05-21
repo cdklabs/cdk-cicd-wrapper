@@ -1,6 +1,6 @@
 # Frequently asked questions
 
--
+Below we list the most common issues you might encounter during the deployment using the {{ project_name }}
 
 ## Common Issues
 
@@ -19,7 +19,6 @@
 - If you have already deployed RES/DEV/INT and want to disable INT then please do the following:
   ```bash
   export ACCOUNT_INT="-"
-  cdk deploy --all --region ${AWS_REGION} --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER}
+  npx dotenv-cli -- npm run cdk deploy --all --region ${AWS_REGION} --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER}
   ```
   After performing this please do not forget to delete your CloudFormation resources on the previous INT Account.
-- `validation error detected: Value 'log-retention-..........-.......-...-DEV' at 'roleName' failed to satisfy constraint: Member must have length less than or equal to 64`: This usually happens if you use a `applicationName` in the `config/AppConfig.ts` that is longer than 20 characters. In this case, you either use different application name or modify the log retention role in the [LogRetentionRoleStack](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/src/stacks/LogRetentionRoleStack.ts).
