@@ -606,10 +606,6 @@
       
         
       
-        
-      
-        
-      
     
     
       
@@ -1047,48 +1043,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="single_account.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Single AWS account
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="multiple_vanilla_pipelines.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Multiple CDK CI/CD Wrappers in one AWS account
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1107,8 +1061,6 @@
       
         
           
-        
-      
         
       
         
@@ -1258,27 +1210,6 @@
   
   <span class="md-ellipsis">
     Dependency Scanning
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../cli/cli_compliance_bucket.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Compliance Bucket
   </span>
   
 
@@ -1464,15 +1395,15 @@
 
 
 <h1 id="addremove-cdkcontextjson-to-git-remote">Add/remove cdk.context.json to git remote</h1>
-<p>When you use a construct's .fromLookup() method, the result of the call is cached in cdk.context.json. You should commit this to the version control along with the rest of your code to make sure that future executions of your CDK app (in the pipeline) use the same value. The CDK Toolkit includes commands to manage the context cache, so you can refresh specific entries when need be. For more information, see <a href="https://docs.aws.amazon.com/cdk/v2/guide/context.html">Runtime context</a>. In case you decide to put the cdk.context.json into .gitignore to avoid committing your test account ids then you need to:</p>
+<p>When you use a construct's <code>.fromLookup()</code> method, the result of the call is cached in cdk.context.json. You should commit this to the version control along with the rest of your code to make sure that future executions of your CDK app (in the pipeline) use the same value. The CDK Toolkit includes commands to manage the context cache, so you can refresh specific entries when need be. For more information, see <a href="https://docs.aws.amazon.com/cdk/v2/guide/context.html">Runtime context</a>. In case you decide to put the cdk.context.json into .gitignore to avoid committing your test account ids then you need to:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">### 1. Remove cdk.context.json from .gitignore</span>
 vi<span class="w"> </span>.gitignore<span class="w"> </span><span class="c1">### remove cdk.context.json</span>
 <span class="c1">### 2. Generate the cdk.context.json</span>
-<span class="nb">source</span><span class="w"> </span>exports_vars.sh<span class="w"> </span><span class="c1">### source the env vars with the right account ids and profiles for RES/DEV/INT/PROD...</span>
-npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>synth<span class="w"> </span><span class="c1">### this command generates the cdk.context.json</span>
+<span class="nb">source</span><span class="w"> </span>.env<span class="w"> </span><span class="c1">### source the env vars with the right account ids and profiles for RES/DEV/INT/PROD...</span>
+npx<span class="w"> </span>dotenv-cli<span class="w"> </span>--<span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>synth<span class="w"> </span><span class="c1">### this command generates the cdk.context.json</span>
 <span class="c1">### 3. Add the cdk.context.json to git remote</span>
 git<span class="w"> </span>add<span class="w"> </span>cdk.context.json<span class="w"> </span><span class="c1">### re-add cdk.context.json</span>
-git<span class="w"> </span>commit<span class="w"> </span>-am<span class="w"> </span><span class="s2">&quot;Re-added cdk.context.json&quot;</span>
+git<span class="w"> </span>commit<span class="w"> </span>-am<span class="w"> </span><span class="s2">&quot;feat: re-added cdk.context.json&quot;</span>
 git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span><span class="c1">### Push changes to remote</span>
 </code></pre></div>
 
@@ -1495,7 +1426,7 @@ git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-04-08
+    2024-05-21
   </span>
 
     

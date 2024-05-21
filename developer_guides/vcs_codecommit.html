@@ -69,6 +69,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#aws-codecommit-integration" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -601,10 +606,6 @@
       
         
       
-        
-      
-        
-      
     
     
       
@@ -976,6 +977,19 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    CodeCommit
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="vcs_codecommit.html" class="md-nav__link md-nav__link--active">
         
@@ -986,6 +1000,52 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Setup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-default-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changing default branch
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pointers-to-external-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pointers to external documentation
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1042,48 +1102,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="single_account.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Single AWS account
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="multiple_vanilla_pipelines.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Multiple CDK CI/CD Wrappers in one AWS account
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1102,8 +1120,6 @@
       
         
           
-        
-      
         
       
         
@@ -1253,27 +1269,6 @@
   
   <span class="md-ellipsis">
     Dependency Scanning
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../cli/cli_compliance_bucket.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Compliance Bucket
   </span>
   
 
@@ -1439,6 +1434,43 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Setup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-default-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changing default branch
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pointers-to-external-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pointers to external documentation
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1456,9 +1488,34 @@
   
 
 
-  <h1>CodeCommit</h1>
+<h1 id="aws-codecommit-integration">AWS CodeCommit Integration</h1>
+<p>To be able to use AWS CodeCommit repositories in AWS CodePipeline with vanilla-pipeline, you can do this directly in the configure step.</p>
+<h2 id="quick-setup">Quick Setup</h2>
+<p>After the configure has finished and generated the .env file then you need to add the changes into git and commit them.</p>
+<p>You need to configure the downstream of the repository for deployment. In your local machine you need to install the <code>git-remote-codecommit</code> using the following command:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>pip3<span class="w"> </span>install<span class="w"> </span>git-remote-codecommit
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nv">CURRENT_BRANCH</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--abbrev-ref<span class="w"> </span>HEAD<span class="k">)</span><span class="p">;</span>
+git<span class="w"> </span>remote<span class="w"> </span>add<span class="w"> </span>downstream<span class="w"> </span>codecommit::<span class="si">${</span><span class="nv">AWS_REGION</span><span class="si">}</span>://<span class="si">${</span><span class="nv">RES_ACCOUNT_AWS_PROFILE</span><span class="si">}</span>@<span class="si">${</span><span class="nv">GIT_REPOSITORY</span><span class="si">}</span><span class="p">;</span>
+git<span class="w"> </span>commit<span class="w"> </span>-am<span class="w"> </span><span class="s2">&quot;feat: init downstream&quot;</span><span class="p">;</span>
+git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>downstream<span class="w"> </span><span class="si">${</span><span class="nv">CURRENT_BRANCH</span><span class="si">}</span>:main<span class="w"> </span><span class="c1">### default branch for CodePipeline can be configured in config/AppConfig.ts</span>
+</code></pre></div>
+<h2 id="changing-default-branch">Changing default branch</h2>
+<p>You can change the default branch which is picked up by the CodePipeline to trigger the pipeline with the following code snippet (during the pipeline definition):</p>
+<div class="highlight"><pre><span></span><code>import<span class="w"> </span><span class="o">{</span><span class="w"> </span>BasicRepositoryProvider,<span class="w"> </span>PipelineBlueprint<span class="w"> </span><span class="o">}</span><span class="w"> </span>from<span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
 
-
+const<span class="w"> </span><span class="nv">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>PipelineBlueprint.builder<span class="o">()</span>
+.repositoryProvider<span class="o">(</span>new<span class="w"> </span>BasicRepositoryProvider<span class="o">({</span>
+<span class="w">      </span>repositoryType:<span class="w"> </span><span class="s1">&#39;GITHUB&#39;</span>,
+<span class="w">      </span>branch:<span class="w"> </span><span class="s1">&#39;main&#39;</span>,
+<span class="w">      </span>name:<span class="w"> </span><span class="s1">&#39;my-repo&#39;</span>,
+<span class="w">    </span><span class="o">}))</span>
+...
+</code></pre></div>
+<h2 id="pointers-to-external-documentation">Pointers to external documentation</h2>
+<ul>
+<li><a href="https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-git-remote-codecommit.html?icmpid=docs_acc_console_connect">Setup steps for HTTPS connections to AWS CodeCommit with git-remote-codecommit</a></li>
+</ul>
 
 
 
@@ -1479,7 +1536,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-04-08
+    2024-05-21
   </span>
 
     

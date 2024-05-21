@@ -606,10 +606,6 @@
       
         
       
-        
-      
-        
-      
     
     
       
@@ -1048,7 +1044,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Quick Setup">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-default-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changing default branch
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changing default branch">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1112,48 +1117,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="single_account.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Single AWS account
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="multiple_vanilla_pipelines.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Multiple CDK CI/CD Wrappers in one AWS account
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1172,8 +1135,6 @@
       
         
           
-        
-      
         
       
         
@@ -1323,27 +1284,6 @@
   
   <span class="md-ellipsis">
     Dependency Scanning
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../cli/cli_compliance_bucket.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Compliance Bucket
   </span>
   
 
@@ -1525,7 +1465,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Quick Setup">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-default-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changing default branch
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changing default branch">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1570,7 +1519,7 @@
 
 
 <h1 id="github-integration-aws-codestar-connection">GitHub Integration - AWS CodeStar Connection</h1>
-<p>To be able to use GitHub repositories in AWS CodePipeline with vanilla-pipeline, an AWS CodeStar Connection needs to be established. For more details go to the <a href="https://docs.aws.amazon.com/codepipeline/latest/userguide/connections-github.html">GitHub connection</a> page.</p>
+<p>To be able to use GitHub repositories in AWS CodePipeline with CDK CI/CD Wrapper, an AWS CodeStar Connection needs to be established. For more details go to the <a href="https://docs.aws.amazon.com/codepipeline/latest/userguide/connections-github.html">GitHub connection</a> page.</p>
 <h2 id="quick-setup">Quick Setup</h2>
 <p>To create the AWS CodeStar Connection go to the desired AWS account where the AWS CodePipeline is planned to be placed and execute the following command.</p>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>codestar-connections<span class="w"> </span>create-connection<span class="w"> </span>--provider-type<span class="w"> </span>GitHub<span class="w"> </span>--profile<span class="w"> </span><span class="nv">$RES_ACCOUNT_AWS_PROFILE</span><span class="w"> </span>--region<span class="w"> </span><span class="si">${</span><span class="nv">AWS_REGION</span><span class="si">}</span><span class="w"> </span>--connection-name<span class="w"> </span>MyConnection
@@ -1584,6 +1533,18 @@
 <li>codestar-connections:CreateConnection</li>
 <li>codestar-connections:UpdateConnectionInstallation</li>
 </ul>
+<h2 id="changing-default-branch">Changing default branch</h2>
+<p>You can change the default branch which is picked up by the CodePipeline to trigger the pipeline with the following code snippet (during the pipeline definition):</p>
+<div class="highlight"><pre><span></span><code>import<span class="w"> </span><span class="o">{</span><span class="w"> </span>BasicRepositoryProvider,<span class="w"> </span>PipelineBlueprint<span class="w"> </span><span class="o">}</span><span class="w"> </span>from<span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+
+const<span class="w"> </span><span class="nv">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>PipelineBlueprint.builder<span class="o">()</span>
+.repositoryProvider<span class="o">(</span>new<span class="w"> </span>BasicRepositoryProvider<span class="o">({</span>
+<span class="w">      </span>repositoryType:<span class="w"> </span><span class="s1">&#39;GITHUB&#39;</span>,
+<span class="w">      </span>branch:<span class="w"> </span><span class="s1">&#39;main&#39;</span>,
+<span class="w">      </span>name:<span class="w"> </span><span class="s1">&#39;my-repo&#39;</span>,
+<span class="w">    </span><span class="o">}))</span>
+...
+</code></pre></div>
 <h3 id="known-issues">Known Issues</h3>
 <ul>
 <li>Careful if you see a page like this when you open the <a href="https://console.aws.amazon.com/codesuite/settings/connections">Console</a> <img alt="AccessDeniedExxception" src="../assets/images/codestarconnection-common-issues-01.png" /> You might be using a wrong <strong>region</strong> or you don't have the right permissions.</li>
@@ -1614,7 +1575,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-04-08
+    2024-05-21
   </span>
 
     
