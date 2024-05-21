@@ -97,6 +97,9 @@ export class BasicRepositoryProvider implements RepositoryProvider {
               phases: {
                 build: {
                   commands: phaseDefinition.getCommands(...INTEGRATION_PHASES),
+                  env: {
+                    CDK_QUALIFIER: applicationQualifier,
+                  },
                 },
               },
             }),
