@@ -1,10 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DeploymentHookConfig, IPipelineConfig, IStackProvider, ResourceContext } from '../';
 import * as cdk from 'aws-cdk-lib';
 import { Step } from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
+import { DeploymentHookConfig, IPipelineConfig, IStackProvider, ResourceContext } from '../';
 
 /**
  * Abstract base class for providing stacks to a deployment pipeline.
