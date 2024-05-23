@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/getting_started/prerequisites.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/modularizing_stacks.html">
       
       
-        <link rel="prev" href="projen_with_taskfile.html">
+        <link rel="prev" href="global_resource.html">
       
       
-        <link rel="next" href="../developer_guides/index.html">
+        <link rel="next" href="cdk_context.html">
       
       
       <link rel="icon" href="../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Prerequisites - CDK CI/CD Wrapper</title>
+        <title>Modularizing Stacks - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#prerequisites" class="md-skip">
+        <a href="#modularizing-stacks-with-basestackprovider" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Prerequisites
+              Modularizing Stacks
             
           </span>
         </div>
@@ -202,13 +202,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="index.html" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../getting_started/index.html" class="md-tabs__link">
           
   
     
@@ -224,11 +222,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../developer_guides/index.html" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
           
   
     
@@ -422,6 +422,159 @@
       
   
   
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../getting_started/index.html" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/migration_guide.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Migration Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/projen.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CDK CI/CD Wrapper with Projen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/projen_with_taskfile.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CDK CI/CD Wrapper with Projen and Taskfile
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/prerequisites.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -431,6 +584,20 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -454,300 +621,12 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
             <a href="index.html" class="md-nav__link ">
-              
-  
-  <span class="md-ellipsis">
-    Getting started
-  </span>
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
-            <span class="md-nav__icon md-icon"></span>
-            Getting started
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="migration_guide.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Migration Guide
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="projen.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    CDK CI/CD Wrapper with Projen
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="projen_with_taskfile.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    CDK CI/CD Wrapper with Projen and Taskfile
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Prerequisites
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="prerequisites.html" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    Prerequisites
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#aws-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      AWS Account
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#operating-system" class="md-nav__link">
-    <span class="md-ellipsis">
-      Operating System
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#terminal" class="md-nav__link">
-    <span class="md-ellipsis">
-      Terminal
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker" class="md-nav__link">
-    <span class="md-ellipsis">
-      Docker
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#aws-cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      AWS CLI
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#aws-credentials-and-profiles" class="md-nav__link">
-    <span class="md-ellipsis">
-      AWS Credentials and Profiles
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#nodejs-and-npm" class="md-nav__link">
-    <span class="md-ellipsis">
-      Node.js and NPM
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jq-command-line-json-processor" class="md-nav__link">
-    <span class="md-ellipsis">
-      jq Command-line JSON Processor
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#additional-dependencies-for-python-lambda-functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Additional Dependencies for Python Lambda Functions
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
-        
-          
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../developer_guides/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -758,13 +637,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Developer Guides
@@ -780,7 +659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/variables.html" class="md-nav__link">
+      <a href="variables.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -801,7 +680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/ci.html" class="md-nav__link">
+      <a href="ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -822,7 +701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/cd.html" class="md-nav__link">
+      <a href="cd.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -885,7 +764,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/global_resource.html" class="md-nav__link">
+      <a href="global_resource.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -911,10 +790,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../developer_guides/modularizing_stacks.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Modularizing Stacks
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="modularizing_stacks.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -923,6 +822,53 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-custom-stack-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a Custom Stack Provider
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leveraging-the-custom-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      Leveraging the Custom Provider
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -935,7 +881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/cdk_context.html" class="md-nav__link">
+      <a href="cdk_context.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -956,7 +902,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/security.html" class="md-nav__link">
+      <a href="security.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -977,7 +923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/python_dependencies.html" class="md-nav__link">
+      <a href="python_dependencies.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1040,7 +986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/private_npm_registry.html" class="md-nav__link">
+      <a href="private_npm_registry.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1113,7 +1059,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/vcs_codecommit.html" class="md-nav__link">
+      <a href="vcs_codecommit.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1134,7 +1080,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/vcs_github.html" class="md-nav__link">
+      <a href="vcs_github.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1163,7 +1109,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/networking.html" class="md-nav__link">
+      <a href="networking.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1519,81 +1465,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#aws-account" class="md-nav__link">
+  <a href="#creating-a-custom-stack-provider" class="md-nav__link">
     <span class="md-ellipsis">
-      AWS Account
+      Creating a Custom Stack Provider
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#operating-system" class="md-nav__link">
+  <a href="#leveraging-the-custom-provider" class="md-nav__link">
     <span class="md-ellipsis">
-      Operating System
+      Leveraging the Custom Provider
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#terminal" class="md-nav__link">
+  <a href="#best-practices" class="md-nav__link">
     <span class="md-ellipsis">
-      Terminal
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker" class="md-nav__link">
-    <span class="md-ellipsis">
-      Docker
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#aws-cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      AWS CLI
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#aws-credentials-and-profiles" class="md-nav__link">
-    <span class="md-ellipsis">
-      AWS Credentials and Profiles
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#nodejs-and-npm" class="md-nav__link">
-    <span class="md-ellipsis">
-      Node.js and NPM
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jq-command-line-json-processor" class="md-nav__link">
-    <span class="md-ellipsis">
-      jq Command-line JSON Processor
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#additional-dependencies-for-python-lambda-functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Additional Dependencies for Python Lambda Functions
+      Best Practices
     </span>
   </a>
   
@@ -1617,46 +1509,39 @@
   
 
 
-<h1 id="prerequisites">Prerequisites</h1>
-<p>This documentation provides a step-by-step guide for setting up the necessary prerequisites to work with AWS Lambda functions and CDK (Cloud Development Kit) pipelines. Before proceeding, ensure you have the following dependencies installed and configured correctly.</p>
-<h2 id="aws-account">AWS Account</h2>
+<h1 id="modularizing-stacks-with-basestackprovider">Modularizing Stacks with BaseStackProvider</h1>
+<p>In complex CDK projects, managing inlined stacks within <code>PipelineBlueprint.builder()</code> can become cumbersome. To enhance organization and reusability, the <code>BaseStackProvider</code> abstraction offers a powerful solution.</p>
+<h2 id="creating-a-custom-stack-provider">Creating a Custom Stack Provider</h2>
+<p>The <code>BaseStackProvider</code> serves as an abstract base class that you can extend to define your stack provisioning logic. The core implementation lies within the mandatory <code>stacks()</code> function.</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Stage</span><span class="p">,</span><span class="w"> </span><span class="nx">BaseStackProvider</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+
+<span class="k">export</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nx">ExampleProvider</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="nx">BaseStackProvider</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">  </span><span class="nx">stacks</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">Stack</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Define your stack configuration here</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">Stack</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ExampleStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">this.env</span><span class="p">,</span>
+<span class="w">      </span><span class="c1">// ... other stack properties</span>
+<span class="w">    </span><span class="p">});</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="leveraging-the-custom-provider">Leveraging the Custom Provider</h2>
+<p>Once you've created your custom provider, integrate it seamlessly within your pipeline blueprint:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">ExampleProvider</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;./example-provider&#39;</span><span class="p">;</span><span class="w"> </span><span class="c1">// Assuming your provider is in a separate file</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">addStack</span><span class="p">(</span><span class="ow">new</span><span class="w"> </span><span class="nx">ExampleProvider</span><span class="p">())</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
+<h2 id="best-practices">Best Practices</h2>
 <ul>
-<li>You need to have access to an AWS account for the respective environments (RES/DEV/INT/PROD).</li>
+<li><strong>Modular Organization:</strong> For optimal maintainability, create separate providers for distinct logical units within your application. This promotes code clarity and simplifies future modifications.</li>
+<li><strong>Extensibility with Hooks:</strong> The BaseStackProvider provides optional preHooks and postHooks methods that you can override to execute custom logic before and after stack creation, respectively. This empowers you to inject additional processing steps into your pipeline as needed.</li>
 </ul>
-<h2 id="operating-system">Operating System</h2>
-<ul>
-<li>The setup can be performed on macOS, Linux, or Windows. If you're using Windows, it's recommended to use the Linux Subsystem for Windows (WSL) or a Cloud9 environment with Ubuntu Server 22.04 LTS Platform in your RES account.</li>
-</ul>
-<h2 id="terminal">Terminal</h2>
-<ul>
-<li>You need to have a terminal emulator installed, such as Bash or ZSH.</li>
-</ul>
-<h2 id="docker">Docker</h2>
-<ul>
-<li>Install Docker version 24.0.x or later.</li>
-</ul>
-<h2 id="aws-cli">AWS CLI</h2>
-<ul>
-<li>Install the AWS Command Line Interface (AWS CLI) version 2 by following the instructions <a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html">here</a>.</li>
-</ul>
-<h2 id="aws-credentials-and-profiles">AWS Credentials and Profiles</h2>
-<ul>
-<li>Configure your AWS credentials and profiles for each environment (RES/DEV/INT/PROD) by following the instructions <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html">here</a>. The credentials should be stored in the <code>~/.aws/config</code> file.</li>
-</ul>
-<h2 id="nodejs-and-npm">Node.js and NPM</h2>
-<ul>
-<li>Install Node.js version 18.18.<em> or higher and NPM version 10.2.</em> or higher.</li>
-</ul>
-<h2 id="jq-command-line-json-processor">jq Command-line JSON Processor</h2>
-<ul>
-<li>Install the <code>jq</code> command-line JSON processor by following the instructions for your operating system <a href="https://stedolan.github.io/jq/download/">here</a>.</li>
-</ul>
-<h2 id="additional-dependencies-for-python-lambda-functions">Additional Dependencies for Python Lambda Functions</h2>
-<p>If you're developing Python Lambda functions, you'll need the following additional dependencies:</p>
-<ul>
-<li>Install Python version 3.11 or later.</li>
-<li>Install Pipenv version 2023.* or later by following the instructions <a href="https://pipenv.pypa.io/en/latest/">here</a>.</li>
-</ul>
+<p>By adhering to these guidelines, you'll establish a well-structured, scalable approach to managing CDK stacks within your development workflows.</p>
 
 
 
@@ -1677,7 +1562,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-05-07
+    2024-05-23
   </span>
 
     
