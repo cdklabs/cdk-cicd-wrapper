@@ -12,7 +12,7 @@ import * as cdk from 'aws-cdk-lib';
 
 export class ExampleProvider extends BaseStackProvider {
 
-  stack(): cdk.Stack {
+  stacks(): cdk.Stack {
     // Define your stack configuration here
     return new cdk.Stack(this.scope, 'ExampleStack', {
       env: this.env,
