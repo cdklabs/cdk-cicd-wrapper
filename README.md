@@ -69,7 +69,7 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
    }}).synth(app);
    ```
 
-   **Note**: Refer to the [Developer Guide](../developer_guides/index.md) for more information on the `PipelineBlueprint`.
+   **Note**: Refer to the [Developer Guide](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/index.html) for more information on the `PipelineBlueprint`.
 
   4. The CDK CI/CD Wrapper expects to have the `validate`, `lint`, `test`, `audit` scripts defines. If you are missing any of the `npm run` scripts (e.g., ), or want to use the provided CLI tool for one or more actions, you can add the following definitions to your `package.json` file:
 
