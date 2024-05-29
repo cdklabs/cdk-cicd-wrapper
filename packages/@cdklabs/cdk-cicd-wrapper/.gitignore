@@ -35,7 +35,6 @@ junit.xml
 !/.prettierignore
 !/.prettierrc.json
 !/test/
-!/tsconfig.json
 !/tsconfig.dev.json
 !/src/
 /lib
@@ -44,3 +43,5 @@ junit.xml
 /dist/changelog.md
 /dist/version.txt
 !/.eslintrc.js
+.jsii
+tsconfig.json

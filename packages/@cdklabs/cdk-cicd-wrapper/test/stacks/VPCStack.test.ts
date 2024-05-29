@@ -11,7 +11,7 @@ describe('vpc-stack-test-with-proxy', () => {
   const app = new cdk.App();
 
   const vpcConfig: IVpcConfig = {
-    type: 'VPC',
+    vpcType: 'VPC',
     vpc: {
       cidrBlock: '172.31.0.0/20',
       subnetCidrMask: 24,
@@ -67,7 +67,7 @@ describe('vpc-stack-test-without-proxy', () => {
   const app = new cdk.App();
 
   const vpcConfig: IVpcConfig = {
-    type: 'VPC',
+    vpcType: 'VPC',
     vpc: {
       cidrBlock: '172.31.0.0/20',
       subnetCidrMask: 24,
@@ -103,7 +103,7 @@ describe('vpc-stack-test-omission', () => {
   const app = new cdk.App();
 
   const vpcConfig: IVpcConfig = {
-    type: 'NO_VPC',
+    vpcType: 'NO_VPC',
   };
 
   const template = Template.fromStack(
@@ -132,7 +132,7 @@ describe('vpc-stack-from-lookup', () => {
   const app = new cdk.App();
 
   const vpcConfig: IVpcConfig = {
-    type: 'VPC_FROM_LOOK_UP',
+    vpcType: 'VPC_FROM_LOOK_UP',
     vpcFromLookUp: {
       vpcId: 'vpc-12345',
     },
@@ -170,7 +170,7 @@ describe('vpc-stack-from-lookup-with-ssm', () => {
   const vpcStack2 = new VPCStack(app, 'VPCStackFromLookUpFromSsm', {
     env: TestAppConfig.deploymentDefinition.RES.env,
     vpcConfig: {
-      type: 'VPC_FROM_LOOK_UP',
+      vpcType: 'VPC_FROM_LOOK_UP',
       vpcFromLookUp: {
         vpcId: 'resolve:ssm:/ssm/path',
       },

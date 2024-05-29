@@ -17,6 +17,7 @@ import {
   IStackProvider,
   DeploymentHookConfig,
 } from '../common';
+import { IDeploymentHookConfigProvider } from '../resource-providers';
 
 /**
  * Base class for pipeline blueprints.
@@ -158,12 +159,12 @@ export class PipelineBlueprintBase extends cdk.Stack {
 
     this.resourceContext._scoped(scope, () => {
       stacksProviders.forEach((stackProvider) => {
-        const hookConfig = stackProvider.provide(this.resourceContext);
-
-        if (hookConfig) {
-          hooks.push(hookConfig);
-        }
+        stackProvider.provide(this.resourceContext);
       });
+
+      const hookConfig = this.resourceContext.get(GlobalResources.HOOK) as IDeploymentHookConfigProvider;
+
+      hooks.push(hookConfig.config);
     });
 
     return hooks;

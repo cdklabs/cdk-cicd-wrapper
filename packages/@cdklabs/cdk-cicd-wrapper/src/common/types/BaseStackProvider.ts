@@ -4,7 +4,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { Step } from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
-import { DeploymentHookConfig, IPipelineConfig, IStackProvider, ResourceContext } from '../';
+import { GlobalResources, IPipelineConfig, IStackProvider, ResourceContext } from '../';
+import { IDeploymentHookConfigProvider } from '../../resource-providers';
 
 /**
  * Abstract base class for providing stacks to a deployment pipeline.
@@ -31,7 +32,7 @@ export abstract class BaseStackProvider implements IStackProvider {
    * @param context The resource context containing the scope, stage, environment, and blueprint properties.
    * @returns The deployment hook configuration with pre and post hooks.
    */
-  provide(context: ResourceContext): DeploymentHookConfig {
+  provide(context: ResourceContext): void {
     this._context = context;
     this._scope = context.scope;
     this._stageName = context.stage;
@@ -42,10 +43,10 @@ export abstract class BaseStackProvider implements IStackProvider {
 
     this.stacks(context);
 
-    return {
-      pre: this.preHooks(),
-      post: this.postHooks(),
-    };
+    const hookConfigProvider = ResourceContext.instance().get(GlobalResources.HOOK) as IDeploymentHookConfigProvider;
+
+    this.preHooks().forEach((hook) => hookConfigProvider.addPreHook(hook));
+    this.postHooks().forEach((hook) => hookConfigProvider.addPostHook(hook));
   }
 
   /**

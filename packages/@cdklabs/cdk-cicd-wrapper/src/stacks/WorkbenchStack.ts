@@ -29,7 +29,7 @@ export class WorkbenchStack extends PipelineBlueprintBase {
     super(scope, id, env, config);
 
     // Initialize the stage for the workbench stack
-    this.resourceContext.initStage(config.workbench!.options.stageToUse);
+    this.resourceContext.initStage(config.workbench!.options!.stageToUse!);
 
     // Retrieve the encryption key from the global resources
     this.resourceContext.get(GlobalResources.ENCRYPTION);
