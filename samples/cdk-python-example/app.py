@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 from cdklabs.cdk_cicd_wrapper import PipelineBlueprint, PipelinePhases
 from aws_cdk import App, Environment
