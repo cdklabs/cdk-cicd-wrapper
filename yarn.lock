@@ -3143,9 +3143,9 @@ downlevel-dts@^0.11.0:
     typescript next
 
 electron-to-chromium@^1.4.668:
-  version "1.4.784"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.784.tgz#729a80154cee6ee9cb8bc3948af83431ab5cb394"
-  integrity sha512-9CZwh+sDrhDAeOEFh8s3PqwduzTyYIeYwZolc1b9ENAUt3ePu7R1sJSCWr/820ISssRxCJUyHI9Wb7j+0Uo1AA==
+  version "1.4.786"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.786.tgz#974d7eeac61c5ffa285dc55555d06b97b05f6831"
+  integrity sha512-i/A2UB0sxYViMN0M2zIotQFRIOt1jLuVXudACHBDiJ5gGuAUzf/crZxwlBTdA0O52Hy4CNtTzS7AKRAacs/08Q==
 
 emittery@^0.13.1:
   version "0.13.1"
@@ -5360,10 +5360,10 @@ process-nextick-args@~2.0.0:
   resolved "https://registry.yarnpkg.com/process-nextick-args/-/process-nextick-args-2.0.1.tgz#7820d9b16120cc55ca9ae7792680ae7dba6d7fe2"
   integrity sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==
 
-projen@^0.82.1:
-  version "0.82.1"
-  resolved "https://registry.yarnpkg.com/projen/-/projen-0.82.1.tgz#d1b4fac6db2921c42bcc1d0ed7ae948b152c6e02"
-  integrity sha512-Qa0lALlR9XjcugOuLZbWYMO4NaGu964LavudwC993I2NLpYj3DFv/TdRJOfwxvYsIJI7609luI162Ts5Sz69sw==
+projen@^0.82.2:
+  version "0.82.2"
+  resolved "https://registry.yarnpkg.com/projen/-/projen-0.82.2.tgz#5d450a919e598dcb240655531d93b0b77248b353"
+  integrity sha512-FMS73lMtFukF9v1LexWu+LLCHSlPrVj691lZ5wJyJ2HULBVs0HPyVOIS0CZhPfad9E/sS0jf0ibw+TcL/rbXKg==
   dependencies:
     "@iarna/toml" "^2.2.5"
     case "^1.6.3"
@@ -6112,9 +6112,9 @@ typescript@^5.4.5, typescript@~5.4:
   integrity sha512-vcI4UpRgg81oIRUFwR0WSIHKt11nJ7SAVlYNIu+QpqeyXP+gpQJy/Z4+F0aGxSE4MqwjyXvW/TzgkLAx2AGHwQ==
 
 typescript@next:
-  version "5.5.0-dev.20240529"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.5.0-dev.20240529.tgz#4114477a867c50190135cd2d2752a37a0e3b8a66"
-  integrity sha512-34CFeA0HRSumpIVAIjPrDgHMSEvsoPkzoIQjQnxlXvSsVpU9fsD/f4Ot4VJmRyxnYV0igAAZBYONrQ82olWbag==
+  version "5.5.0-dev.20240530"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.5.0-dev.20240530.tgz#90a13ecaabb535086e036e910b8d0fa703bd579b"
+  integrity sha512-r/4r/a9tbtPRHfif0An0GLycB70C3ci3m9fhpgiv6Ekyl7mxYc4w8aX/R+vQ4OJlmPosJJUCjUbljH11g6C56g==
 
 unbox-primitive@^1.0.2:
   version "1.0.2"

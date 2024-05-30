@@ -29657,7 +29657,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-electron-to-chromium 1.4.784
+electron-to-chromium 1.4.786
 ISC
 Copyright 2018 Kilian Valkhof
 
@@ -50173,7 +50173,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.**
 
 
-projen 0.82.1
+projen 0.82.2
 Apache-2.0
 
                                  Apache License
@@ -52996,7 +52996,7 @@ If the Work includes a "NOTICE" text file as part of its distribution, then any 
 END OF TERMS AND CONDITIONS
 
 
-typescript 5.5.0-dev.20240529
+typescript 5.5.0-dev.20240530
 Apache-2.0
 Apache License
 
