@@ -143,19 +143,19 @@ new JSIIComponent(pipeline, {
     distName: `cdklabs.${packageBasename}`,
     module: `cdklabs.${changeDelimiter(packageBasename, '_')}`,
   },
-  // publishToMaven: {
-  //   javaPackage: `io.github.cdklabs.${changeDelimiter(packageBasename, '.')}`,
-  //   mavenGroupId: `io.github.cdklabs`,
-  //   mavenArtifactId: packageBasename,
-  //   mavenEndpoint: 'https://s01.oss.sonatype.org',
-  // },
+  publishToMaven: {
+    javaPackage: `io.github.cdklabs.${changeDelimiter(packageBasename, '.')}`,
+    mavenGroupId: `io.github.cdklabs`,
+    mavenArtifactId: packageBasename,
+    mavenEndpoint: 'https://s01.oss.sonatype.org',
+  },
   publishToNuget: {
     dotNetNamespace: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
     packageId: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
   },
-  // publishToGo: {
-  //   moduleName: `github.com/cdklabs/${packageBasename}-go`,
-  // },
+  publishToGo: {
+    moduleName: `github.com/cdklabs/${packageBasename}-go`,
+  },
 });
 
 // Copy non TS sources to the package
