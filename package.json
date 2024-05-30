@@ -29,6 +29,10 @@
     "validate:fix": "npx projen validate:fix",
     "projen": "npx projen"
   },
+  "author": {
+    "name": "CDK CI/CD Wrapper Team",
+    "organization": false
+  },
   "devDependencies": {
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^19.2.2",
@@ -45,7 +49,7 @@
     "husky": "^9.0.11",
     "node-fetch": "^2",
     "prettier": "^3.2.5",
-    "projen": "^0.81.16",
+    "projen": "^0.82.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },

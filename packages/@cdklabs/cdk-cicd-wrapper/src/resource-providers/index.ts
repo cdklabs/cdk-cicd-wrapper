@@ -12,6 +12,11 @@ export * from './ComplianceBucketProvider';
 export * from './EncryptionProvider';
 
 /**
+ * Provider for creating Hooks.
+ */
+export * from './HooksProvider';
+
+/**
  * Provider for creating parameters.
  */
 export * from './ParameterProvider';

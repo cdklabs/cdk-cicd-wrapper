@@ -56,36 +56,36 @@ export interface DefaultCodeBuildFactoryProps {
   /**
    * The account ID of the RES stage
    */
-  resAccount: string;
+  readonly resAccount: string;
   /**
    * The VPC to use for the CodeBuild project
    * Default value is undefined (no VPC)
    */
-  vpc?: ec2.IVpc;
+  readonly vpc?: ec2.IVpc;
   /**
    * Configuration for an HTTP proxy
    * Default value is undefined
    */
-  proxyConfig?: IProxyConfig;
+  readonly proxyConfig?: IProxyConfig;
   /**
    * Configuration for an NPM registry
    * Default value is undefined
    */
-  npmRegistry?: NPMRegistryConfig;
+  readonly npmRegistry?: NPMRegistryConfig;
   /**
    * Environment settings for the CodeBuild project
    * Default value is undefined
    */
-  codeBuildEnvSettings?: codebuild.BuildEnvironment;
+  readonly codeBuildEnvSettings?: codebuild.BuildEnvironment;
   /**
    * Provider for Parameter Store parameters
    */
-  parameterProvider: IParameterConstruct;
+  readonly parameterProvider: IParameterConstruct;
   /**
    * Additional IAM policy statements to be added to the CodeBuild project role
    * Default value is undefined
    */
-  additionalRolePolicies?: iam.PolicyStatement[];
+  readonly additionalRolePolicies?: iam.PolicyStatement[];
 }
 
 /**

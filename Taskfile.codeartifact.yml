@@ -55,11 +55,25 @@ tasks:
       - '[ ! $(aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}describe-package-version --domain {{.DOMAIN}} --repository {{.REPOSITORY}} --format npm --package {{.PACKAGE}} --namespace {{.NAMESPACE}} --version {{.VERSION}} {{with .AWS_REGION}} --region {{.}} {{end}}) ]'
 
   publish:pipeline:
+    desc: Publish the pipeline package
+    internal: true
+    cmds:
+      - task: publish:pipeline:js
+      - task: publish:pipeline:python
+
+  publish:pipeline:js:
     desc: Publish the pipeline package locally
     dir: packages/@cdklabs/cdk-cicd-wrapper/dist/js/
     internal: true
     cmds:
       - npm publish
+
+  publish:pipeline:python:
+    desc: Publish the pipeline package locally
+    dir: packages/@cdklabs/cdk-cicd-wrapper/dist/python/
+    internal: false
+    cmds:
+      - twine upload -r codeartifact *.tar.gz
 
   publish:cli:
     desc: Publish the cli package
@@ -109,6 +123,8 @@ tasks:
     cmds:
       - test -f .npmrc && rm -rf ./.npmrc && echo "[Warning] Project level .npmrc file has been removed." || true
       - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --namespace cdklabs --tool npm
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --tool pip
+      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --tool twine
       - task: set-token-secret
     silent: true
     preconditions:

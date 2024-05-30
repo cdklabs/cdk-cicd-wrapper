@@ -5,7 +5,7 @@ vars:
   DEVELOPMENT_DIR: "development/project"
   SAMPLES_APP_DIR: "samples"
   # Default sample app to use
-  SAMPLE_APP: "cdk-ts-example"
+  SAMPLE_APP: '{{.SAMPLE_APP | default "cdk-ts-example"}}'
   STAGES_ENABLED: "DEV"
 
 tasks:

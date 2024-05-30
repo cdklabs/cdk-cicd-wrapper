@@ -46,7 +46,7 @@ export interface PostDeployExecutorStackProps extends cdk.StackProps {
  * Stack for creating an IAM role used for Post Deploy command executions.
  */
 export class PostDeployExecutorStack extends cdk.Stack {
-  public static POST_DEPLOY_ROLE_ARN = 'postDeployRoleArn';
+  public static readonly POST_DEPLOY_ROLE_ARN = 'postDeployRoleArn';
 
   /**
    * The prefix to use for resource names.

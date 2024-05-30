@@ -45,7 +45,7 @@ export interface IVpcConfigFromLookUp {
  * Interface representing VPC configuration
  */
 export interface IVpcConfig {
-  type: VpcType;
+  vpcType: VpcType;
   vpc?: IVpcConfigNewVpc;
   vpcFromLookUp?: IVpcConfigFromLookUp;
 }
@@ -54,7 +54,7 @@ export interface IVpcConfig {
  * Backward compatibility settings for VPC
  */
 const defaultVPC = {
-  type: (process.env.CICD_VPC_TYPE || process.env.npm_package_config_cicdVpcType) as VpcType,
+  vpcType: (process.env.CICD_VPC_TYPE || process.env.npm_package_config_cicdVpcType) as VpcType,
   vpc: {
     // preserving original functionality where vpc is created from defaults.
     cidrBlock: process.env.CICD_VPC_CIDR || process.env.npm_package_config_cicdVpcCidr || '172.31.0.0/20',

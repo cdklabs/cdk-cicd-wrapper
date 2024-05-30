@@ -284,5 +284,6 @@ export enum GlobalResources {
   COMPLIANCE_BUCKET = 'compliance-bucket',
   PIPELINE = 'pipeline',
   PHASE = 'phase',
+  HOOK = 'hook',
   ADDON_STORE = 'addon-store',
 }

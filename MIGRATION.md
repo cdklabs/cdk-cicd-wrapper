@@ -6,6 +6,69 @@ This document outlines the notable migration and cleanup tasks involved in upgra
 
 Each section details the changes introduced between specific version ranges (e.g., [0.0.0] - [0.0.6]).
 
+### [0.0.12] - [0.1.0] Migration - Updates for Multiple Languages and Hooks
+
+This upgrade brings exciting new features like support for Python, Java, Go, and C# in your CDK CI/CD projects! Additionally, there are some changes to how hooks are defined.
+
+#### Breaking changes:
+
+* **Property Renaming:** The type property on the IVpcConfig object has been renamed to vpcType. Make sure to update your code accordingly to avoid errors.
+
+* **Hook Specification Update:** Previously, the provide function in IStackProvider returned a DeploymentHookConfig object. Now, it returns void instead. To add hooks, use the new Hook.addPreHook(Step) and Hook.addPostHook(Step) functions.
+
+#### Here's how to update your code:
+
+* **Fix IVpcConfig property:**
+
+Find all instances of IVpcConfig.type and rename them to IVpcConfig.vpcType.
+
+* **Update Hook Definition:**
+
+If you were using the provide function to return a DeploymentHookConfig object for hooks, remove that functionality.
+Instead, use the new Hook.addPreHook(Step) and Hook.addPostHook(Step) functions to define pre- and post-deployment hooks as needed.
+
+```TypeScript
+PipelineBlueprint.builder()
+  .workbench({
+    // ... your workbench definition
+  })
+  .definePhase(PipelinePhases.POST_DEPLOY, [
+    new ShellCommandPhaseCommand('ls -l'), // Example command execution
+  ])
+  .addStack({
+    provide(context) {
+        // ... your main stack definition 
+
+        return {
+          pre: [yourPreHook],
+          post: [yourPostHook],
+        }
+    },
+  })
+  .synth(app);
+```
+
+to
+
+```TypeScript
+PipelineBlueprint.builder()
+  .workbench({
+    // ... your workbench definition
+  })
+  .definePhase(PipelinePhases.POST_DEPLOY, [
+    new ShellCommandPhaseCommand('ls -l'), // Example command execution
+  ])
+  .addStack({
+    provide(context) {
+        // ... your main stack definition 
+
+        Hook.addPreHook(yourPreHook);
+        Hook.addPostHook(yourPostHook);
+    },
+  })
+  .synth(app);
+```
+
 ## [0.0.0] - [0.0.6] Migration
 
 ### Changes:

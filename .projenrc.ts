@@ -1,6 +1,7 @@
 import * as pj from 'projen';
 import { yarn } from 'cdklabs-projen-project-types';
 import { Eslint } from 'projen/lib/javascript';
+import { JSIIComponent } from './projenrc/jsiicomponent';
 
 const repositoryUrl = 'https://github.com/cdklabs/cdk-cicd-wrapper.git';
 
@@ -16,8 +17,11 @@ const cdkVersion = '2.130.0';
 const cdkNagVersion = '2.28.0';
 const constructsVersion = '10.3.0';
 
+const authorName = 'CDK CI/CD Wrapper Team';
+
 const root = new yarn.Monorepo({
   name: 'cdk-cicd-wrapper',
+  authorName,
   description: 'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
   repository: repositoryUrl,
   homepage: repositoryUrl,
@@ -103,6 +107,7 @@ const root = new yarn.Monorepo({
 const pipeline = new yarn.TypeScriptWorkspace({
   parent: root,
   name: '@cdklabs/cdk-cicd-wrapper',
+  authorName,
   description: 'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
   keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
   releasableCommits: pj.ReleasableCommits.featuresAndFixes('.'),
@@ -117,6 +122,7 @@ const pipeline = new yarn.TypeScriptWorkspace({
   peerDeps: [`cdk-nag@^${cdkNagVersion}`, `aws-cdk-lib@^${cdkVersion}`, `constructs@^${constructsVersion}`],
   bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check'],
   jest: true,
+  disableTsconfig: true,
 });
 
 // Keep the projen module as optional dependency, while we can leverage it in our samples
@@ -129,6 +135,27 @@ Eslint.of(pipeline)?.addRules({
       peerDependencies: true,
     },
   ],
+});
+
+const packageBasename = 'cdk-cicd-wrapper';
+new JSIIComponent(pipeline, {
+  publishToPypi: {
+    distName: `cdklabs.${packageBasename}`,
+    module: `cdklabs.${changeDelimiter(packageBasename, '_')}`,
+  },
+  publishToMaven: {
+    javaPackage: `io.github.cdklabs.${changeDelimiter(packageBasename, '.')}`,
+    mavenGroupId: `io.github.cdklabs`,
+    mavenArtifactId: packageBasename,
+    mavenEndpoint: 'https://s01.oss.sonatype.org',
+  },
+  publishToNuget: {
+    dotNetNamespace: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
+    packageId: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
+  },
+  publishToGo: {
+    moduleName: `github.com/cdklabs/${packageBasename}-go`,
+  },
 });
 
 // Copy non TS sources to the package
@@ -280,4 +307,14 @@ function setupAllContributors(project: pj.javascript.NodeProject) {
     exec: 'all-contributors check | grep "Missing contributors" -A 1 | tail -n1 | sed -e "s/,//g" | xargs -n1 | grep -v "\\[bot\\]" | grep -v "cdklabs-automation" | grep -v "amazon-auto" | xargs -n1 -I{} all-contributors add {} code',
   });
   project.npmignore?.exclude('/.all-contributorsrc');
+}
+
+function upperCaseName(str: string) {
+  let words = str.split('-');
+  words = words.map((w) => w[0].toUpperCase() + w.substring(1));
+  return words.join('');
+}
+
+function changeDelimiter(str: string, delim: string) {
+  return str.split('-').join(delim);
 }

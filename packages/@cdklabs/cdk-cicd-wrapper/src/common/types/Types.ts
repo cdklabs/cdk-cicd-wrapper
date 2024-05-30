@@ -178,12 +178,12 @@ export interface WorkbenchConfig {
   /**
    * The stack provider for the workbench.
    */
-  stackProvider: IStackProvider;
+  readonly stackProvider: IStackProvider;
 
   /**
    * The options for the workbench.
    */
-  options: Required<WorkbenchOptions>;
+  readonly options: WorkbenchOptions;
 }
 
 /**
@@ -193,12 +193,12 @@ export interface WorkbenchOptions {
   /**
    * The stage to use for the workbench (optional).
    */
-  stageToUse?: string;
+  readonly stageToUse?: string;
 
   /**
    * The prefix for the workbench (optional).
    */
-  workbenchPrefix?: string;
+  readonly workbenchPrefix?: string;
 }
 
 /**
@@ -243,12 +243,12 @@ export interface DeploymentHookConfig {
   /**
    * The pre-deployment steps (optional).
    */
-  pre?: Step[];
+  readonly pre?: Step[];
 
   /**
    * The post-deployment steps (optional).
    */
-  post?: Step[];
+  readonly post?: Step[];
 }
 
 /**
@@ -259,7 +259,7 @@ export interface IStackProvider {
    * Provides the deployment hook configuration or void.
    * @param context The resource context.
    */
-  provide(context: ResourceContext): DeploymentHookConfig | void;
+  provide(context: ResourceContext): void;
 }
 
 /**

@@ -22,6 +22,7 @@ import {
   RequiredRESStage,
   WorkbenchOptions,
 } from '../common';
+import { HookProvider } from '../resource-providers';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketConfigProvider } from '../resource-providers/ComplianceBucketProvider';
 import { DisabledProvider } from '../resource-providers/DisabledProvider';
@@ -97,6 +98,7 @@ export class PipelineBlueprintBuilder {
     this.resourceProvider(GlobalResources.PIPELINE, new PipelineProvider());
     this.resourceProvider(GlobalResources.COMPLIANCE_BUCKET, new ComplianceBucketConfigProvider());
     this.resourceProvider(GlobalResources.PHASE, new PhaseCommandProvider());
+    this.resourceProvider(GlobalResources.HOOK, new HookProvider());
 
     this.defineStages([Stage.RES, Stage.DEV, Stage.INT]);
 

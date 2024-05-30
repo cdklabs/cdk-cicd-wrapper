@@ -41,7 +41,7 @@ export class VPCStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: VPCStackProps) {
     super(scope, id, props);
 
-    switch (props.vpcConfig.type) {
+    switch (props.vpcConfig.vpcType) {
       case 'NO_VPC':
         break;
 
