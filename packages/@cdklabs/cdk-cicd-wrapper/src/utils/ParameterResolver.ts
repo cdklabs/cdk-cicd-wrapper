@@ -12,7 +12,7 @@ export class ParameterResolver {
    * The prefix used to identify parameter resolution from AWS Systems Manager Parameter Store.
    * @default 'resolve'
    */
-  static PREFIX = 'resolve';
+  static readonly PREFIX = 'resolve';
 
   /**
    * Resolves the value of a parameter, either from an SSM parameter or using the provided string value.
