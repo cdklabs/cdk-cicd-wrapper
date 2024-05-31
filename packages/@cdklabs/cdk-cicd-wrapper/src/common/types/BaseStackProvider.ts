@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import { Step } from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
 import { GlobalResources, IPipelineConfig, IStackProvider, ResourceContext } from '../';
@@ -14,23 +15,17 @@ import { IDeploymentHookConfigProvider } from '../../resource-providers';
  */
 export abstract class BaseStackProvider implements IStackProvider {
   private _context?: ResourceContext;
-
   private _scope?: Construct;
-
   private _env?: cdk.Environment;
-
   private _stageName?: string;
-
   private _applicationName?: string;
-
   private _applicationQualifier?: string;
-
   private _properties?: IPipelineConfig;
+  private _encryptionKey?: cdk.aws_kms.Key;
 
   /**
    * Provides the deployment hook configuration for this stack provider.
    * @param context The resource context containing the scope, stage, environment, and blueprint properties.
-   * @returns The deployment hook configuration with pre and post hooks.
    */
   provide(context: ResourceContext): void {
     this._context = context;
@@ -40,6 +35,7 @@ export abstract class BaseStackProvider implements IStackProvider {
     this._applicationQualifier = context.blueprintProps.applicationQualifier;
     this._env = context.environment;
     this._properties = context.blueprintProps;
+    this._encryptionKey = context.get(GlobalResources.ENCRYPTION).kmsKey;
 
     this.stacks(context);
 
@@ -125,5 +121,22 @@ export abstract class BaseStackProvider implements IStackProvider {
    */
   protected get properties(): IPipelineConfig {
     return this._properties!;
+  }
+
+  /**
+   * Getter for the encryption key.
+   * @returns The encryption key used in the deployment.
+   */
+  protected get encryptionKey(): kms.Key {
+    return this._encryptionKey!;
+  }
+
+  /**
+   * Resolves the value of an SSM parameter.
+   * @param ssmParameterName The name of the SSM parameter to resolve.
+   * @returns The resolved value of the SSM parameter.
+   */
+  public resolve(ssmParameterName: string): string {
+    return this.context.get(`resolve:ssm:${ssmParameterName}`);
   }
 }
