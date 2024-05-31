@@ -7,3 +7,5 @@
  * provided by this package.
  */
 export * from './aspects';
+
+export * from './ParameterResolver';

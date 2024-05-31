@@ -12,9 +12,9 @@ import * as cdk from 'aws-cdk-lib';
 
 export class ExampleProvider extends BaseStackProvider {
 
-  stacks(): cdk.Stack {
+  stacks(): void {
     // Define your stack configuration here
-    return new cdk.Stack(this.scope, 'ExampleStack', {
+    new cdk.Stack(this.scope, 'ExampleStack', {
       env: this.env,
       // ... other stack properties
     });
@@ -38,5 +38,7 @@ const pipeline = PipelineBlueprint.builder()
 ## Best Practices
 - **Modular Organization:** For optimal maintainability, create separate providers for distinct logical units within your application. This promotes code clarity and simplifies future modifications.
 - **Extensibility with Hooks:** The BaseStackProvider provides optional preHooks and postHooks methods that you can override to execute custom logic before and after stack creation, respectively. This empowers you to inject additional processing steps into your pipeline as needed.
+- **Secure Key Management:** Utilize a dedicated AWS Key Management Service (KMS) key for encryption purposes. This key can be retrieved using the this.encryptionKey property within your custom provider class.
+- **Centralized Configuration Management:** Access and leverage SSM Parameters to store and retrieve configuration values securely. You can utilize the resolve(ssmParameterName: string) function provided by the BaseStackProvider to retrieve these parameters within your stacks
 
 By adhering to these guidelines, you'll establish a well-structured, scalable approach to managing CDK stacks within your development workflows.
