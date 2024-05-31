@@ -153,9 +153,10 @@ new JSIIComponent(pipeline, {
     dotNetNamespace: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
     packageId: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
   },
-  publishToGo: {
-    moduleName: `github.com/cdklabs/${packageBasename}-go`,
-  },
+  // Disabled as the go repository is not available
+  // publishToGo: {
+  //   moduleName: `github.com/cdklabs/${packageBasename}-go`,
+  // },
 });
 
 // Copy non TS sources to the package
