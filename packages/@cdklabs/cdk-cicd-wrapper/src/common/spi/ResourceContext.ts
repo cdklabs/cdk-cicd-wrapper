@@ -3,7 +3,6 @@
 
 import { Construct } from 'constructs';
 import { IPipelineBlueprintProps } from '../../stacks';
-import { ParameterResolver } from '../../utils';
 import { IStage, Environment, Stage } from '../types/Types';
 
 /**
@@ -227,11 +226,6 @@ export class ResourceContext {
       return this.globalScope.get(name);
     }
     const scopedValue = this.stagedScope!.get(name);
-
-    // If the scoped value is undefined, try to resolve as ssm parameter value
-    if (!scopedValue && name.startsWith(ParameterResolver.PREFIX)) {
-      return ParameterResolver.resolveValue(this._scope, name);
-    }
 
     return scopedValue;
   }
