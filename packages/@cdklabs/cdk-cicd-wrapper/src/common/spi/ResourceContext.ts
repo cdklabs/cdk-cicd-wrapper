@@ -3,7 +3,6 @@
 
 import { Construct } from 'constructs';
 import { IPipelineBlueprintProps } from '../../stacks';
-import { ParameterResolver } from '../../utils';
 import { IStage, Environment, Stage } from '../types/Types';
 
 /**
