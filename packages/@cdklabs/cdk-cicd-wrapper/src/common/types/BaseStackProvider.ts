@@ -7,6 +7,7 @@ import { Step } from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
 import { GlobalResources, IPipelineConfig, IStackProvider, ResourceContext } from '../';
 import { IDeploymentHookConfigProvider } from '../../resource-providers';
+import { ParameterResolver } from '../../utils/ParameterResolver';
 
 /**
  * Abstract base class for providing stacks to a deployment pipeline.
@@ -137,6 +138,6 @@ export abstract class BaseStackProvider implements IStackProvider {
    * @returns The resolved value of the SSM parameter.
    */
   public resolve(ssmParameterName: string): string {
-    return this.context.get(`resolve:ssm:${ssmParameterName}`);
+    return ParameterResolver.resolveValue(this.scope, `resolve:ssm:${ssmParameterName}`);
   }
 }
