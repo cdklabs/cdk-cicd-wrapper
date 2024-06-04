@@ -404,12 +404,7 @@ export enum PipelinePhases {
 /**
  * The phases in an integration pipeline.
  */
-export const INTEGRATION_PHASES = [
-  PipelinePhases.INITIALIZE,
-  PipelinePhases.PRE_BUILD,
-  PipelinePhases.BUILD,
-  PipelinePhases.TESTING,
-];
+export const INTEGRATION_PHASES = [PipelinePhases.PRE_BUILD, PipelinePhases.BUILD, PipelinePhases.TESTING];
 
 /**
  * Represents a phase command.

@@ -8,7 +8,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { CodeBuildOptions } from 'aws-cdk-lib/pipelines';
 import { IParameterConstruct } from '.';
 import { IProxyConfig } from './ProxyProvider';
-import { ResourceContext, IResourceProvider, GlobalResources, NPMRegistryConfig } from '../common';
+import { ResourceContext, IResourceProvider, GlobalResources, NPMRegistryConfig, PipelinePhases } from '../common';
 
 /**
  * Interface for a factory that provides CodeBuild options for the pipeline.
@@ -40,6 +40,7 @@ export class CodeBuildFactoryProvider implements IResourceProvider {
 
     const vpc = context.get(GlobalResources.VPC).vpc;
     const parameterProvider = context.get(GlobalResources.PARAMETER_STORE);
+    const phaseCommandsProvider = context.get(GlobalResources.PHASE);
 
     return new DefaultCodeBuildFactory({
       resAccount: context.blueprintProps.deploymentDefinition.RES.env.account,
@@ -48,6 +49,7 @@ export class CodeBuildFactoryProvider implements IResourceProvider {
       npmRegistry: context.blueprintProps.npmRegistry,
       codeBuildEnvSettings: context.blueprintProps.codeBuildEnvSettings,
       parameterProvider,
+      installCommands: phaseCommandsProvider.getCommands(PipelinePhases.INITIALIZE),
     });
   }
 }
@@ -81,6 +83,10 @@ export interface DefaultCodeBuildFactoryProps {
    * Provider for Parameter Store parameters
    */
   readonly parameterProvider: IParameterConstruct;
+  /**
+   * The install commands to run before the build phase
+   */
+  readonly installCommands?: string[];
   /**
    * Additional IAM policy statements to be added to the CodeBuild project role
    * Default value is undefined
@@ -167,6 +173,8 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
       commands.push('echo "--- Proxy Test ---"'); // Print a message for the proxy test
       commands.push(`curl -Is --connect-timeout 5 ${props.proxyConfig.proxyTestUrl} | grep "HTTP/"`); // Test the proxy by making a request and checking for an HTTP response
     }
+
+    props.installCommands?.forEach((command) => commands.push(command));
 
     return commands;
   }
