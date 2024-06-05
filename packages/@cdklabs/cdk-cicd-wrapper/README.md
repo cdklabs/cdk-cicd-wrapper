@@ -47,7 +47,7 @@ Before you begin, ensure that you have the following dependencies installed:
 - AWS CLI v2 ([installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html))
 - AWS credentials and profiles for each environment in `~/.aws/config` ([configuration guide](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html))
 - Node.js >= v18.17._ && NPM >= v10.2._
-- jq command-line JSON processor (jq-1.5)
+- jq command-line JSON processor (jq-1.7)
 
 For developing Python Lambdas, you'll also need:
 
