@@ -56,5 +56,6 @@ node_modules
 /lib
 /dist/
 !/.eslintrc.json
+packages/@cdklabs/cdk-cicd-wrapper/tsconfig.json
 !/.projenrc.ts
 !/.github/workflows/release.yml
