@@ -153,10 +153,9 @@ new JSIIComponent(pipeline, {
     dotNetNamespace: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
     packageId: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
   },
-  publishToGo: {
-    moduleName: `github.com/cdklabs/${packageBasename}-go`,
-  },
 });
+
+root.addGitIgnore(pipeline.workspaceDirectory + '/tsconfig.json');
 
 // Copy non TS sources to the package
 pipeline.addDevDeps('copyfiles');
