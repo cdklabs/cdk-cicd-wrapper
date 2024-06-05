@@ -1,6 +1,6 @@
 # Environment Variables
 
-CDK CI/CD Wrapper uses a environment variables, to set up the CDK projects with multi-stage deployment.
+CDK CI/CD Wrapper uses environment variables, to set up the CDK projects with multi-stage deployment.
 
 ## Variables
 
