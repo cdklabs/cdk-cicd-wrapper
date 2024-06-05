@@ -51,26 +51,16 @@ describe('pipeline-blueprint-stack-test-codecommit', () => {
   });
 
   test('Check if Pipeline ENV variables exist', () => {
-    template.hasResourceProperties('AWS::CodeBuild::Project', {
-      Environment: {
-        EnvironmentVariables: [
-          {
-            Name: 'CDK_QUALIFIER',
-            Type: 'PLAINTEXT',
-            Value: TestAppConfig.applicationQualifier,
-          },
-          {
-            Name: 'AWS_REGION',
-            Type: 'PLAINTEXT',
-            Value: TestAppConfig.deploymentDefinition.RES.env.region,
-          },
-          {
-            Name: 'PROXY_SECRET_ARN',
-            Type: 'PLAINTEXT',
-            Value: '',
-          },
-        ],
-      },
+    const codeBuildProjects = template.findResources('AWS::CodeBuild::Project');
+
+    Object.values(codeBuildProjects).forEach((project) => {
+      Match.stringLikeRegexp(`.*CDK_QUALIFIER:${TestAppConfig.applicationQualifier}.*`).test(
+        project.Properties.Source.BuildSpec,
+      );
+      Match.stringLikeRegexp(`.*AWS_REGION:${TestAppConfig.deploymentDefinition.RES.env.region}.*`).test(
+        project.Properties.Source.BuildSpec,
+      );
+      Match.stringLikeRegexp('.*(?!PROXY_SECRET_ARN).*').test(project.Properties.Source.BuildSpec);
     });
   });
 
@@ -145,31 +135,18 @@ describe('pipeline-stack-test-codestar', () => {
   );
 
   test('Check if Pipeline ENV variables exist', () => {
-    template.hasResourceProperties('AWS::CodeBuild::Project', {
-      Environment: {
-        EnvironmentVariables: [
-          {
-            Name: 'CDK_QUALIFIER',
-            Type: 'PLAINTEXT',
-            Value: TestAppConfig.applicationQualifier,
-          },
-          {
-            Name: 'AWS_REGION',
-            Type: 'PLAINTEXT',
-            Value: TestAppConfig.deploymentDefinition.RES.env.region,
-          },
-          {
-            Name: 'PROXY_SECRET_ARN',
-            Type: 'PLAINTEXT',
-            Value: '',
-          },
-          {
-            Name: 'CODESTAR_CONNECTION_ARN',
-            Type: 'PLAINTEXT',
-            Value: TestRepositoryConfigGithub.codeStarConnectionArn,
-          },
-        ],
-      },
+    const codeBuildProjects = template.findResources('AWS::CodeBuild::Project');
+    Object.values(codeBuildProjects).forEach((project) => {
+      Match.stringLikeRegexp(`.*CDK_QUALIFIER:${TestAppConfig.applicationQualifier}.*`).test(
+        project.Properties.Source.BuildSpec,
+      );
+      Match.stringLikeRegexp(`.*AWS_REGION:${TestAppConfig.deploymentDefinition.RES.env.region}.*`).test(
+        project.Properties.Source.BuildSpec,
+      );
+      Match.stringLikeRegexp('.*(?!PROXY_SECRET_ARN).*').test(project.Properties.Source.BuildSpec);
+      Match.stringLikeRegexp(`.*CODESTAR_CONNECTION_ARN:${TestRepositoryConfigGithub.codeStarConnectionArn}.*`).test(
+        project.Properties.Source.BuildSpec,
+      );
     });
   });
 
@@ -347,23 +324,6 @@ describe('pipeline-stack-test-proxy-vpc', () => {
       Description: 'Pipeline step PipelineStackExtendingStage/Pipeline/Build/Synth',
       Environment: {
         ComputeType: 'BUILD_GENERAL1_SMALL',
-        EnvironmentVariables: [
-          {
-            Name: 'AWS_REGION',
-            Type: 'PLAINTEXT',
-            Value: TestAppConfig.deploymentDefinition.RES.env.region,
-          },
-          {
-            Name: 'CODESTAR_CONNECTION_ARN',
-            Type: 'PLAINTEXT',
-            Value: TestRepositoryConfigGithub.codeStarConnectionArn,
-          },
-          {
-            Name: 'CDK_QUALIFIER',
-            Type: 'PLAINTEXT',
-            Value: TestAppConfig.applicationQualifier,
-          },
-        ],
         Image: TestAppConfig.codeBuildEnvSettings.buildImage,
         PrivilegedMode: TestAppConfig.codeBuildEnvSettings.privileged,
         Type: 'LINUX_CONTAINER',

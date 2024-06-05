@@ -158,7 +158,7 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
    * @returns An object containing the build environment variables
    */
   protected generateBuildEnvironmentVariables(props: DefaultCodeBuildFactoryProps): Record<string, string> {
-    const proxyConfig = props.proxyConfig;
+    const { proxyConfig, npmRegistry } = props;
     const envVariables: Record<string, string> = {};
 
     envVariables.CDK_QUALIFIER = props.applicationQualifier;
@@ -167,6 +167,13 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     if (proxyConfig) {
       envVariables.AWS_STS_REGIONAL_ENDPOINTS = 'regional';
       envVariables.NO_PROXY = proxyConfig.noProxy.join(','); // Comma-separated list of hosts that should bypass the proxy
+      envVariables.PROXY_SECRET_ARN = proxyConfig.proxySecretArn;
+    }
+
+    if (npmRegistry) {
+      envVariables.NPM_REGISTRY = npmRegistry.url;
+      envVariables.NPM_BASIC_AUTH_SECRET_ID = npmRegistry.basicAuthSecretArn;
+      envVariables.NPM_SCOPE = npmRegistry.scope ?? '';
     }
 
     return envVariables;
