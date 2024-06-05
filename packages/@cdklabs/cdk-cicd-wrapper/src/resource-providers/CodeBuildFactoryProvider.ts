@@ -43,6 +43,8 @@ export class CodeBuildFactoryProvider implements IResourceProvider {
     const phaseCommandsProvider = context.get(GlobalResources.PHASE);
 
     return new DefaultCodeBuildFactory({
+      applicationQualifier: context.blueprintProps.applicationQualifier,
+      region: context.blueprintProps.deploymentDefinition.RES.env.region,
       resAccount: context.blueprintProps.deploymentDefinition.RES.env.account,
       vpc,
       proxyConfig,
@@ -55,6 +57,14 @@ export class CodeBuildFactoryProvider implements IResourceProvider {
 }
 
 export interface DefaultCodeBuildFactoryProps {
+  /**
+   * The applicationQualifier used for the pipeline.
+   */
+  readonly applicationQualifier: string;
+  /**
+   * The AWS region to set.
+   */
+  readonly region: string;
   /**
    * The account ID of the RES stage
    */
@@ -150,6 +160,9 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
   protected generateBuildEnvironmentVariables(props: DefaultCodeBuildFactoryProps): Record<string, string> {
     const proxyConfig = props.proxyConfig;
     const envVariables: Record<string, string> = {};
+
+    envVariables.CDK_QUALIFIER = props.applicationQualifier;
+    envVariables.AWS_REGION = props.region;
 
     if (proxyConfig) {
       envVariables.AWS_STS_REGIONAL_ENDPOINTS = 'regional';
