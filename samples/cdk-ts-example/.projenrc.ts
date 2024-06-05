@@ -6,6 +6,13 @@ import { CdkCICDWrapper } from '@cdklabs/cdk-cicd-wrapper-projen';
 
 const cdkQualifier = process.env.CDK_QUALIFIER || 'simple';
 
+const eslintDeps = [
+  'eslint@^8',
+  '@typescript-eslint/eslint-plugin@^7',
+  '@typescript-eslint/parser@^7',
+  '@typescript-eslint/typescript-estree@^7',
+];
+
 const project = new awscdk.AwsCdkTypeScriptApp({
   cdkVersion: '2.1.0',
   defaultReleaseBranch: 'main',
@@ -14,6 +21,8 @@ const project = new awscdk.AwsCdkTypeScriptApp({
   packageManager: javascript.NodePackageManager.NPM,
   release: false,
 });
+
+project.addDevDeps(...eslintDeps);
 
 //@ts-ignore Projen Versions can be different during the upgrade process and would resolve complains about assignability issues.
 new CdkCICDWrapper(project, {

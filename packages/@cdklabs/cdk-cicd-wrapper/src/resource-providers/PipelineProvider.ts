@@ -31,14 +31,6 @@ export class PipelineProvider implements IResourceProvider {
       repositoryInput: repositoryProvider.pipelineInput,
       branch: repositoryProvider.repositoryBranch,
       pipelineVariables: {
-        PROXY_SECRET_ARN: proxy?.proxySecretArn ?? '',
-        ...(blueprintProps.npmRegistry
-          ? {
-              NPM_REGISTRY: blueprintProps.npmRegistry.url,
-              NPM_BASIC_AUTH_SECRET_ID: blueprintProps.npmRegistry.basicAuthSecretArn,
-              NPM_SCOPE: blueprintProps.npmRegistry.scope ?? '',
-            }
-          : {}),
         ...repositoryProvider.pipelineEnvVars,
       },
       vpcProps: vpcProvider.vpc
