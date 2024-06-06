@@ -63,8 +63,29 @@ export class VPCStack extends cdk.Stack {
    */
   subnets: ec2.ISubnet | undefined;
 
+  /**
+   * The list of default CodeBuild VPC InterfacesVpcEndpointAwsServices
+   */
+  defaultCodeBuildVPCInterfaces: ec2.InterfaceVpcEndpointAwsService[];
+
+  /**
+   * The list of default CodeBuild VPC GatewayEndpointAwsServices
+   */
+  defaultCodeBuildVPCGateways: ec2.GatewayVpcEndpointAwsService[];
+
   constructor(scope: Construct, id: string, props: VPCStackProps) {
     super(scope, id, props);
+
+    this.defaultCodeBuildVPCGateways = [ec2.GatewayVpcEndpointAwsService.S3];
+
+    this.defaultCodeBuildVPCInterfaces = [
+      ec2.InterfaceVpcEndpointAwsService.SSM,
+      ec2.InterfaceVpcEndpointAwsService.STS,
+      ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+      ec2.InterfaceVpcEndpointAwsService.CLOUDFORMATION,
+      ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+      ec2.InterfaceVpcEndpointAwsService.KMS,
+    ];
 
     switch (props.vpcConfig.vpcType) {
       case 'NO_VPC':
@@ -122,14 +143,7 @@ export class VPCStack extends cdk.Stack {
     });
     this.securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
 
-    [
-      ec2.InterfaceVpcEndpointAwsService.SSM,
-      ec2.InterfaceVpcEndpointAwsService.STS,
-      ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
-      ec2.InterfaceVpcEndpointAwsService.CLOUDFORMATION,
-      ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-      ec2.InterfaceVpcEndpointAwsService.KMS,
-    ].forEach((service: ec2.InterfaceVpcEndpointAwsService) => {
+    [...this.defaultCodeBuildVPCInterfaces].forEach((service: ec2.InterfaceVpcEndpointAwsService) => {
       vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
         service,
         open: false,
@@ -137,10 +151,11 @@ export class VPCStack extends cdk.Stack {
       });
     });
 
-    vpc.addGatewayEndpoint('VpcGatewayS3', {
-      service: ec2.GatewayVpcEndpointAwsService.S3,
+    [...this.defaultCodeBuildVPCGateways].forEach((service: ec2.GatewayVpcEndpointAwsService) => {
+      vpc.addGatewayEndpoint(`VpcGateway${service.name}`, {
+        service,
+      });
     });
-
     return vpc;
   }
 
