@@ -142,15 +142,15 @@ export class VPCStack extends cdk.Stack {
 
     this.securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
 
-    [...this.defaultCodeBuildVPCInterfaces, ...props.codeBuildVPCInterfaces!].forEach(
-      (service: ec2.InterfaceVpcEndpointAwsService) => {
-        vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
-          service,
-          open: false,
-          securityGroups: [this.securityGroup!],
+    props.codeBuildVPCInterfaces && props.codeBuildVPCInterfaces.length > 0
+      ? [...this.defaultCodeBuildVPCInterfaces, ...props.codeBuildVPCInterfaces]
+      : [...this.defaultCodeBuildVPCInterfaces].forEach((service: ec2.InterfaceVpcEndpointAwsService) => {
+          vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
+            service,
+            open: false,
+            securityGroups: [this.securityGroup!],
+          });
         });
-      },
-    );
 
     vpc.addGatewayEndpoint('VpcGatewayS3', {
       service: ec2.GatewayVpcEndpointAwsService.S3,
