@@ -3,7 +3,7 @@
 
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Provider } from 'aws-cdk-lib/custom-resources';
@@ -24,6 +24,16 @@ export interface ComplianceLogBucketStackProps extends cdk.StackProps {
    * The vpc where the ComplianceLogBucket CR Lambda must be attached to
    */
   readonly vpc?: IVpc;
+
+  /**
+   * The security group of the vpc
+   */
+  readonly securityGroup?: ISecurityGroup;
+
+  /**
+   * The subnet selection of the vpc
+   */
+  readonly subnetSelection?: SubnetSelection;
 }
 
 /**
@@ -79,6 +89,14 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
       serviceToken: provider.serviceToken,
       properties: {
         BucketName: props.complianceLogBucketName,
+        ...(props.securityGroup && props.subnetSelection
+          ? {
+              VpcConfig: {
+                SecurityGroupIds: [props.securityGroup].map((sg) => sg.securityGroupId),
+                SubnetIds: props.vpc?.selectSubnets(props.subnetSelection).subnetIds,
+              },
+            }
+          : {}),
       },
     });
 

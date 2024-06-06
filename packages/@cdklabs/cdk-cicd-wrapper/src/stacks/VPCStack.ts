@@ -66,7 +66,7 @@ export class VPCStack extends cdk.Stack {
   /**
    * The subnets attached to the VPC
    */
-  subnets: ec2.ISubnet | undefined;
+  subnetType: ec2.SubnetType | undefined;
 
   /**
    * The list of default CodeBuild VPC InterfacesVpcEndpointAwsServices
@@ -120,6 +120,7 @@ export class VPCStack extends cdk.Stack {
    * @returns The created VPC.
    */
   private launchVPCIsolated(props: VPCStackProps) {
+    this.subnetType = ec2.SubnetType.PRIVATE_ISOLATED;
     const vpc = new ec2.Vpc(this, 'vpc', {
       ipAddresses: ec2.IpAddresses.cidr(props.vpcConfig.vpc?.cidrBlock!),
       restrictDefaultSecurityGroup: props.restrictDefaultSecurityGroup || true,
@@ -127,7 +128,7 @@ export class VPCStack extends cdk.Stack {
         {
           cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
           name: 'private-isolated',
-          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+          subnetType: this.subnetType,
         },
       ],
       maxAzs: props.vpcConfig.vpc?.maxAzs,
@@ -160,11 +161,12 @@ export class VPCStack extends cdk.Stack {
   }
 
   /**
-   * Launches a VPC with a private subnet with egress and a public subnet.
+   * Launches a VPC with a private subnet with egress.
    * @param props The properties for configuring the VPC.
    * @returns The created VPC.
    */
   private launchVPCWithEgress(props: VPCStackProps) {
+    this.subnetType = ec2.SubnetType.PRIVATE_WITH_EGRESS;
     const vpc = new ec2.Vpc(this, 'vpc', {
       ipAddresses: ec2.IpAddresses.cidr(props.vpcConfig.vpc?.cidrBlock!),
       restrictDefaultSecurityGroup: true,
@@ -172,7 +174,7 @@ export class VPCStack extends cdk.Stack {
         {
           cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
           name: 'private-egress',
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+          subnetType: this.subnetType,
         },
         {
           cidrMask: props.vpcConfig.vpc?.subnetCidrMask,

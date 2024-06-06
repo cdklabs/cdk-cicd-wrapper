@@ -32,6 +32,10 @@ describe('compliance-log-bucket-stack-test', () => {
       env: TestAppConfig.deploymentDefinition.RES.env,
       complianceLogBucketName: 'compliance-log-bucket',
       vpc: vpcStack.vpc,
+      securityGroup: vpcStack.securityGroup,
+      subnetSelection: vpcStack.vpc?.selectSubnets({
+        subnetType: vpcStack.subnetType,
+      }),
     }),
   );
 
@@ -40,16 +44,12 @@ describe('compliance-log-bucket-stack-test', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Handler: 'make-compliance-log-bucket.handler',
       Runtime: 'python3.12',
+      // VpcConfig: {
+      //   SubnetIds: expect.any(Array),
+      //   SecurityGroupIds: expect.any(Array),
+      // },
     });
   });
-
-  // test('Check if VPC is attached to the Lambda CR', () => {
-  //   const lambdaResources = template.findResources('AWS::Lambda::Function');
-  //   const lambdaResourceObjects = Object.values(lambdaResources);
-  //   const lambdaCrObject = lambdaResourceObjects[0];
-  //   expect(lambdaCrObject.Properties.VpcConfig.SubnetIds).toBe(Array);
-  //   expect(lambdaCrObject.Properties.VpcConfig.SecurityGroupIds).toBe(Array);
-  // });
 
   test('Check if Custom Resource exists', () => {
     template.resourceCountIs('AWS::CloudFormation::CustomResource', 1);
