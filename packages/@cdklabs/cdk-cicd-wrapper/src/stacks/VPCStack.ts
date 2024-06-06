@@ -46,7 +46,7 @@ export interface VPCStackProps extends cdk.StackProps {
   /**
    * The list of CodeBuild VPC InterfacesVpcEndpointAwsServices to extend the defaultCodeBuildVPCInterfaces
    */
-  readonly codeBuildVPCInterfaces: ec2.InterfaceVpcEndpointAwsService[];
+  readonly codeBuildVPCInterfaces?: ec2.InterfaceVpcEndpointAwsService[];
 }
 
 /**
@@ -142,7 +142,7 @@ export class VPCStack extends cdk.Stack {
 
     this.securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
 
-    [...this.defaultCodeBuildVPCInterfaces, ...props.codeBuildVPCInterfaces].forEach(
+    [...this.defaultCodeBuildVPCInterfaces, ...props.codeBuildVPCInterfaces!].forEach(
       (service: ec2.InterfaceVpcEndpointAwsService) => {
         vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
           service,
