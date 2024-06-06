@@ -42,6 +42,11 @@ export interface VPCStackProps extends cdk.StackProps {
    * default and all egress traffic must be explicitly authorized.
    */
   readonly allowAllOutbound?: boolean;
+
+  /**
+   * The list of CodeBuild VPC InterfacesVpcEndpointAwsServices to extend the defaultCodeBuildVPCInterfaces
+   */
+  readonly codeBuildVPCInterfaces: ec2.InterfaceVpcEndpointAwsService[];
 }
 
 /**
@@ -137,13 +142,15 @@ export class VPCStack extends cdk.Stack {
 
     this.securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
 
-    [...this.defaultCodeBuildVPCInterfaces].forEach((service: ec2.InterfaceVpcEndpointAwsService) => {
-      vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
-        service,
-        open: false,
-        securityGroups: [this.securityGroup!],
-      });
-    });
+    [...this.defaultCodeBuildVPCInterfaces, ...props.codeBuildVPCInterfaces].forEach(
+      (service: ec2.InterfaceVpcEndpointAwsService) => {
+        vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
+          service,
+          open: false,
+          securityGroups: [this.securityGroup!],
+        });
+      },
+    );
 
     vpc.addGatewayEndpoint('VpcGatewayS3', {
       service: ec2.GatewayVpcEndpointAwsService.S3,
