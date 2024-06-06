@@ -27,6 +27,21 @@ export interface VPCStackProps extends cdk.StackProps {
    * The name of the S3 bucket for VPC flow logs.
    */
   readonly flowLogsBucketName?: string;
+
+  /**
+   * If set to true then the default inbound & outbound rules will be removed
+   * from the default security group
+   */
+  readonly restrictDefaultSecurityGroup?: boolean;
+
+  /**
+   * Whether to allow all outbound traffic by default.
+   *
+   * If this is set to true, there will only be a single egress rule which allows all
+   * outbound traffic. If this is set to false, no outbound traffic will be allowed by
+   * default and all egress traffic must be explicitly authorized.
+   */
+  readonly allowAllOutbound?: boolean;
 }
 
 /**
@@ -37,6 +52,16 @@ export class VPCStack extends cdk.Stack {
    * The VPC created or looked up by this stack.
    */
   readonly vpc: ec2.IVpc | undefined;
+
+  /**
+   * The security group attached to the VPC
+   */
+  securityGroup: ec2.ISecurityGroup | undefined;
+
+  /**
+   * The subnets attached to the VPC
+   */
+  subnets: ec2.ISubnet | undefined;
 
   constructor(scope: Construct, id: string, props: VPCStackProps) {
     super(scope, id, props);
@@ -78,7 +103,7 @@ export class VPCStack extends cdk.Stack {
   private launchVPCIsolated(props: VPCStackProps) {
     const vpc = new ec2.Vpc(this, 'vpc', {
       ipAddresses: ec2.IpAddresses.cidr(props.vpcConfig.vpc?.cidrBlock!),
-      restrictDefaultSecurityGroup: true,
+      restrictDefaultSecurityGroup: props.restrictDefaultSecurityGroup || true,
       subnetConfiguration: [
         {
           cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
@@ -89,13 +114,13 @@ export class VPCStack extends cdk.Stack {
       maxAzs: props.vpcConfig.vpc?.maxAzs,
     });
 
-    const securityGroup = new ec2.SecurityGroup(this, 'VpcSecurityGroup', {
+    this.securityGroup = new ec2.SecurityGroup(this, 'VpcSecurityGroup', {
       vpc: vpc,
       description: 'Allow traffic between CodeBuildStep and AWS Service VPC Endpoints',
       securityGroupName: 'Security Group for AWS Service VPC Endpoints',
-      allowAllOutbound: true,
+      allowAllOutbound: props.allowAllOutbound || true,
     });
-    securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
+    this.securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
 
     [
       ec2.InterfaceVpcEndpointAwsService.SSM,
@@ -108,7 +133,7 @@ export class VPCStack extends cdk.Stack {
       vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
         service,
         open: false,
-        securityGroups: [securityGroup],
+        securityGroups: [this.securityGroup!],
       });
     });
 

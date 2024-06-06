@@ -3,14 +3,35 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { IVpcConfig } from '../../../src/resource-providers';
+import { VPCStack } from '../../../src/stacks';
 import { ComplianceLogBucketStack } from '../../../src/stacks/compliance-bucket/ComplianceBucketStack';
+import { TestAppConfig, TestComplianceLogBucketName } from '../../TestConfig';
 
-describe('encryption-stack-test', () => {
+describe('compliance-log-bucket-stack-test', () => {
   const app = new cdk.App();
 
+  const vpcConfig: IVpcConfig = {
+    vpcType: 'VPC',
+    vpc: {
+      cidrBlock: '172.31.0.0/20',
+      subnetCidrMask: 24,
+      maxAzs: 2,
+    },
+  };
+
+  const vpcStack = new VPCStack(app, 'VPCStackComplianceLogBucket', {
+    env: TestAppConfig.deploymentDefinition.RES.env,
+    vpcConfig: vpcConfig,
+    useProxy: false,
+    flowLogsBucketName: TestComplianceLogBucketName.RES,
+  });
+
   const template = Template.fromStack(
-    new ComplianceLogBucketStack(app, 'EncryptionStack', {
+    new ComplianceLogBucketStack(app, 'ComplianceLogBucketStack', {
+      env: TestAppConfig.deploymentDefinition.RES.env,
       complianceLogBucketName: 'compliance-log-bucket',
+      vpc: vpcStack.vpc,
     }),
   );
 
@@ -21,6 +42,14 @@ describe('encryption-stack-test', () => {
       Runtime: 'python3.12',
     });
   });
+
+  // test('Check if VPC is attached to the Lambda CR', () => {
+  //   const lambdaResources = template.findResources('AWS::Lambda::Function');
+  //   const lambdaResourceObjects = Object.values(lambdaResources);
+  //   const lambdaCrObject = lambdaResourceObjects[0];
+  //   expect(lambdaCrObject.Properties.VpcConfig.SubnetIds).toBe(Array);
+  //   expect(lambdaCrObject.Properties.VpcConfig.SecurityGroupIds).toBe(Array);
+  // });
 
   test('Check if Custom Resource exists', () => {
     template.resourceCountIs('AWS::CloudFormation::CustomResource', 1);

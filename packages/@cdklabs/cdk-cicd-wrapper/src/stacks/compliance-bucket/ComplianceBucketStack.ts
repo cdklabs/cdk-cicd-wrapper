@@ -3,6 +3,7 @@
 
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
+import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Provider } from 'aws-cdk-lib/custom-resources';
@@ -18,6 +19,11 @@ export interface ComplianceLogBucketStackProps extends cdk.StackProps {
    * The name of the compliance log bucket to be created.
    */
   readonly complianceLogBucketName: string;
+
+  /**
+   * The vpc where the ComplianceLogBucket CR Lambda must be attached to
+   */
+  readonly vpc?: IVpc;
 }
 
 /**
@@ -46,6 +52,7 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
      * Lambda function to create the compliance log bucket.
      */
     const lambdaFunction = new lambda.Function(this, 'LambdaFunction', {
+      ...props,
       runtime: lambda.Runtime.PYTHON_3_12, // Default runtime for the Lambda function
       handler: 'make-compliance-log-bucket.handler', // Default handler for the Lambda function
       code: lambda.Code.fromAsset(path.resolve(__dirname, './lambda-functions')), // Path to the Lambda function code
