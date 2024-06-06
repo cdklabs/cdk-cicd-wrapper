@@ -68,15 +68,8 @@ export class VPCStack extends cdk.Stack {
    */
   defaultCodeBuildVPCInterfaces: ec2.InterfaceVpcEndpointAwsService[];
 
-  /**
-   * The list of default CodeBuild VPC GatewayEndpointAwsServices
-   */
-  defaultCodeBuildVPCGateways: ec2.GatewayVpcEndpointAwsService[];
-
   constructor(scope: Construct, id: string, props: VPCStackProps) {
     super(scope, id, props);
-
-    this.defaultCodeBuildVPCGateways = [ec2.GatewayVpcEndpointAwsService.S3];
 
     this.defaultCodeBuildVPCInterfaces = [
       ec2.InterfaceVpcEndpointAwsService.SSM,
@@ -141,6 +134,7 @@ export class VPCStack extends cdk.Stack {
       securityGroupName: 'Security Group for AWS Service VPC Endpoints',
       allowAllOutbound: props.allowAllOutbound || true,
     });
+
     this.securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
 
     [...this.defaultCodeBuildVPCInterfaces].forEach((service: ec2.InterfaceVpcEndpointAwsService) => {
@@ -151,11 +145,10 @@ export class VPCStack extends cdk.Stack {
       });
     });
 
-    [...this.defaultCodeBuildVPCGateways].forEach((service: ec2.GatewayVpcEndpointAwsService) => {
-      vpc.addGatewayEndpoint(`VpcGateway${service.name}`, {
-        service,
-      });
+    vpc.addGatewayEndpoint('VpcGatewayS3', {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
     });
+
     return vpc;
   }
 
