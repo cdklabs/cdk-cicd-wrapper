@@ -22,9 +22,7 @@ export class ParameterResolver {
    */
   public static resolveValue(scope: Construct, param: string) {
     if (param.startsWith('resolve:ssm:')) {
-      return cdk.Lazy.string({
-        produce: () => ssm.StringParameter.valueForStringParameter(scope, param.substring(12)),
-      });
+      return ssm.StringParameter.valueForStringParameter(scope, param.substring(12));
     }
     return param;
   }
