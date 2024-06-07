@@ -73,7 +73,7 @@ export class VPCStack extends cdk.Stack {
   /**
    * The subnets attached to the VPC
    */
-  readonly subnetType: ec2.SubnetType;
+  readonly subnetType?: ec2.SubnetType;
 
   /**
    * The list of CodeBuild VPC InterfacesVpcEndpointAwsServices
