@@ -4,9 +4,9 @@
 import * as cdk from 'aws-cdk-lib';
 import { aws_s3 } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { IVpcConfig } from '../resource-providers';
-import { ParameterResolver } from '../utils';
 
 /**
  * Properties for the VPCStack.
@@ -103,20 +103,18 @@ export class VPCStack extends cdk.Stack {
 
       case 'VPC_FROM_LOOK_UP':
         const vpcConfig = props.vpcConfig.vpcFromLookUp!;
-        const vpcId = ParameterResolver.resolveValue(this, vpcConfig.vpcId);
+        const vpcId = vpcConfig.vpcId.startsWith('resolve:ssm:')
+          ? StringParameter.valueFromLookup(this, vpcConfig.vpcId.replace('resolve:ssm:', ''))
+          : vpcConfig.vpcId;
         this.vpc = ec2.Vpc.fromLookup(this, 'vpc', {
           vpcId,
         });
         break;
 
       case 'VPC':
-        if (props.useProxy) {
-          this.subnetType = props.subnetType || ec2.SubnetType.PRIVATE_ISOLATED;
-          this.vpc = this.launchVPCIsolated(props);
-        } else {
-          this.subnetType = props.subnetType || ec2.SubnetType.PRIVATE_WITH_EGRESS;
-          this.vpc = this.launchVPCWithEgress(props);
-        }
+        this.subnetType =
+          props.subnetType || (props.useProxy ? ec2.SubnetType.PRIVATE_ISOLATED : ec2.SubnetType.PRIVATE_WITH_EGRESS);
+        this.vpc = props.useProxy ? this.launchVPCIsolated(props) : this.launchVPCWithEgress(props);
 
         const vpcFlowLogsDestinationS3 = aws_s3.Bucket.fromBucketName(
           this,
@@ -182,7 +180,7 @@ export class VPCStack extends cdk.Stack {
   private launchVPCWithEgress(props: VPCStackProps) {
     const vpc = new ec2.Vpc(this, 'vpc', {
       ipAddresses: ec2.IpAddresses.cidr(props.vpcConfig.vpc?.cidrBlock!),
-      restrictDefaultSecurityGroup: true,
+      restrictDefaultSecurityGroup: props.restrictDefaultSecurityGroup || true,
       subnetConfiguration: [
         {
           cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
