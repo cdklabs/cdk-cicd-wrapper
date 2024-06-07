@@ -196,6 +196,13 @@ export class VPCStack extends cdk.Stack {
       maxAzs: props.vpcConfig.vpc?.maxAzs,
     });
 
+    this._securityGroup = new ec2.SecurityGroup(this, 'VpcSecurityGroup', {
+      vpc: vpc,
+      description: 'Use this as the default VPC Security Group',
+      securityGroupName: 'Security Group for the VPC with Egress + Public Subnets',
+      allowAllOutbound: props.allowAllOutbound || true,
+    });
+
     return vpc;
   }
 }

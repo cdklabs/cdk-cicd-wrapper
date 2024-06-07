@@ -86,6 +86,9 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
      */
     const provider = new Provider(this, 'Provider', {
       onEventHandler: lambdaFunction,
+      vpc: props.vpc,
+      securityGroups: props.securityGroup ? [props.securityGroup!] : undefined,
+      vpcSubnets: props.subnetSelection,
     });
 
     /**
@@ -95,7 +98,6 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
       serviceToken: provider.serviceToken,
       properties: {
         BucketName: this.bucketName,
-        VpcConfig: this.createVpcConfig(),
       },
     });
 
