@@ -7,6 +7,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { IVpcConfig } from '../resource-providers';
+import { ParameterResolver } from '../utils';
 
 /**
  * Properties for the VPCStack.
@@ -47,6 +48,13 @@ export interface VPCStackProps extends cdk.StackProps {
    * The list of CodeBuild VPC InterfacesVpcEndpointAwsServices to extend the defaultCodeBuildVPCInterfaces
    */
   readonly codeBuildVPCInterfaces?: ec2.InterfaceVpcEndpointAwsService[];
+
+  /**
+   * The subnets attached to the VPC
+   * 
+   * @default - Private Subnet only
+   */
+  readonly subnetType?: ec2.SubnetType;
 }
 
 /**
@@ -56,34 +64,41 @@ export class VPCStack extends cdk.Stack {
   /**
    * The VPC created or looked up by this stack.
    */
-  readonly vpc: ec2.IVpc | undefined;
+  readonly vpc?: ec2.IVpc;
 
   /**
    * The security group attached to the VPC
    */
-  securityGroup: ec2.ISecurityGroup | undefined;
+  private _securityGroup?: ec2.ISecurityGroup;
 
   /**
    * The subnets attached to the VPC
    */
-  subnetType: ec2.SubnetType | undefined;
+  readonly subnetType: ec2.SubnetType;
 
   /**
-   * The list of default CodeBuild VPC InterfacesVpcEndpointAwsServices
+   * The list of CodeBuild VPC InterfacesVpcEndpointAwsServices
    */
-  defaultCodeBuildVPCInterfaces: ec2.InterfaceVpcEndpointAwsService[];
+  readonly codeBuildVPCInterfaces: ec2.InterfaceVpcEndpointAwsService[];
+
+  get securityGroup(): ec2.ISecurityGroup | undefined {
+    return this._securityGroup;
+  }
 
   constructor(scope: Construct, id: string, props: VPCStackProps) {
     super(scope, id, props);
 
-    this.defaultCodeBuildVPCInterfaces = [
+    this.codeBuildVPCInterfaces = [
       ec2.InterfaceVpcEndpointAwsService.SSM,
       ec2.InterfaceVpcEndpointAwsService.STS,
       ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
       ec2.InterfaceVpcEndpointAwsService.CLOUDFORMATION,
       ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
       ec2.InterfaceVpcEndpointAwsService.KMS,
+      ...(props.codeBuildVPCInterfaces || []),
     ];
+
+    this.subnetType = props.subnetType || ec2.SubnetType.PRIVATE_WITH_EGRESS;
 
     switch (props.vpcConfig.vpcType) {
       case 'NO_VPC':
@@ -91,9 +106,7 @@ export class VPCStack extends cdk.Stack {
 
       case 'VPC_FROM_LOOK_UP':
         const vpcConfig = props.vpcConfig.vpcFromLookUp!;
-        const vpcId = vpcConfig.vpcId.startsWith('resolve:ssm:')
-          ? StringParameter.valueFromLookup(this, vpcConfig.vpcId.replace('resolve:ssm:', ''))
-          : vpcConfig.vpcId;
+        const vpcId = ParameterResolver.resolveValue(this, vpcConfig.vpcId);
         this.vpc = ec2.Vpc.fromLookup(this, 'vpc', {
           vpcId,
         });
@@ -120,7 +133,6 @@ export class VPCStack extends cdk.Stack {
    * @returns The created VPC.
    */
   private launchVPCIsolated(props: VPCStackProps) {
-    this.subnetType = ec2.SubnetType.PRIVATE_ISOLATED;
     const vpc = new ec2.Vpc(this, 'vpc', {
       ipAddresses: ec2.IpAddresses.cidr(props.vpcConfig.vpc?.cidrBlock!),
       restrictDefaultSecurityGroup: props.restrictDefaultSecurityGroup || true,
@@ -134,24 +146,22 @@ export class VPCStack extends cdk.Stack {
       maxAzs: props.vpcConfig.vpc?.maxAzs,
     });
 
-    this.securityGroup = new ec2.SecurityGroup(this, 'VpcSecurityGroup', {
+    this._securityGroup = new ec2.SecurityGroup(this, 'VpcSecurityGroup', {
       vpc: vpc,
       description: 'Allow traffic between CodeBuildStep and AWS Service VPC Endpoints',
       securityGroupName: 'Security Group for AWS Service VPC Endpoints',
       allowAllOutbound: props.allowAllOutbound || true,
     });
 
-    this.securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
+    this._securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
 
-    props.codeBuildVPCInterfaces && props.codeBuildVPCInterfaces.length > 0
-      ? [...this.defaultCodeBuildVPCInterfaces, ...props.codeBuildVPCInterfaces]
-      : [...this.defaultCodeBuildVPCInterfaces].forEach((service: ec2.InterfaceVpcEndpointAwsService) => {
-          vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
-            service,
-            open: false,
-            securityGroups: [this.securityGroup!],
-          });
-        });
+    this.codeBuildVPCInterfaces.forEach((service: ec2.InterfaceVpcEndpointAwsService) => {
+      vpc.addInterfaceEndpoint(`VpcEndpoint${service.shortName}`, {
+        service,
+        open: false,
+        securityGroups: [this._securityGroup!],
+      });
+    });
 
     vpc.addGatewayEndpoint('VpcGatewayS3', {
       service: ec2.GatewayVpcEndpointAwsService.S3,
@@ -166,7 +176,6 @@ export class VPCStack extends cdk.Stack {
    * @returns The created VPC.
    */
   private launchVPCWithEgress(props: VPCStackProps) {
-    this.subnetType = ec2.SubnetType.PRIVATE_WITH_EGRESS;
     const vpc = new ec2.Vpc(this, 'vpc', {
       ipAddresses: ec2.IpAddresses.cidr(props.vpcConfig.vpc?.cidrBlock!),
       restrictDefaultSecurityGroup: true,

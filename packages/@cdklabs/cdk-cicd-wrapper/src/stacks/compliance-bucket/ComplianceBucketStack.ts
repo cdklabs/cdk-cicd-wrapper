@@ -45,6 +45,9 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
    * The name of the bucket created by this stack.
    */
   readonly bucketName: string;
+  readonly vpc?: IVpc;
+  readonly securityGroup?: ISecurityGroup;
+  readonly subnetSelection?: SubnetSelection;
 
   /**
    * Constructs a new instance of the ComplianceLogBucketStack.
@@ -57,6 +60,9 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
     super(scope, id, props);
 
     this.bucketName = props.complianceLogBucketName;
+    this.vpc = props.vpc;
+    this.securityGroup = props.securityGroup;
+    this.subnetSelection = props.subnetSelection;
 
     /**
      * Lambda function to create the compliance log bucket.
@@ -70,7 +76,7 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
       initialPolicy: [
         new iam.PolicyStatement({
           actions: ['s3:CreateBucket', 's3:GetBucketLocation', 's3:PutBucketPolicy'],
-          resources: [`arn:aws:s3:::${props.complianceLogBucketName}`],
+          resources: [`arn:aws:s3:::${this.bucketName}`],
         }),
       ],
     });
@@ -88,15 +94,8 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
     new cdk.CustomResource(this, 'CustomResource', {
       serviceToken: provider.serviceToken,
       properties: {
-        BucketName: props.complianceLogBucketName,
-        ...(props.securityGroup && props.subnetSelection
-          ? {
-              VpcConfig: {
-                SecurityGroupIds: [props.securityGroup].map((sg) => sg.securityGroupId),
-                SubnetIds: props.vpc?.selectSubnets(props.subnetSelection).subnetIds,
-              },
-            }
-          : {}),
+        BucketName: this.bucketName,
+        VpcConfig: this.createVpcConfig(),
       },
     });
 
@@ -143,5 +142,16 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
       ],
       true,
     );
+  }
+
+  createVpcConfig(): object | undefined {
+    if (this.securityGroup && this.subnetSelection) {
+      return {
+        SecurityGroupIds: [this.securityGroup].map((sg) => sg.securityGroupId),
+        SubnetIds: this.vpc?.selectSubnets(this.subnetSelection).subnetIds,
+      };
+    }
+
+    return undefined;
   }
 }
