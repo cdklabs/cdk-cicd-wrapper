@@ -144,7 +144,7 @@ export class VPCStack extends cdk.Stack {
         {
           cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
           name: 'private-isolated',
-          subnetType: this.subnetType,
+          subnetType: this.subnetType!,
         },
       ],
       maxAzs: props.vpcConfig.vpc?.maxAzs,
@@ -187,7 +187,7 @@ export class VPCStack extends cdk.Stack {
         {
           cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
           name: 'private-egress',
-          subnetType: this.subnetType,
+          subnetType: this.subnetType!,
         },
         {
           cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
