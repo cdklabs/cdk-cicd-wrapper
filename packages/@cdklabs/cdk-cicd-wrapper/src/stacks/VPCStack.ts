@@ -4,7 +4,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { aws_s3 } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { IVpcConfig } from '../resource-providers';
 import { ParameterResolver } from '../utils';
