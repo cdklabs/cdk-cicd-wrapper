@@ -51,7 +51,7 @@ export interface VPCStackProps extends cdk.StackProps {
 
   /**
    * The subnets attached to the VPC
-   * 
+   *
    * @default - Private Subnet only
    */
   readonly subnetType?: ec2.SubnetType;
