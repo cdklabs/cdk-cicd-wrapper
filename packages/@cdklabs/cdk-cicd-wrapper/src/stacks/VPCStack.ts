@@ -97,8 +97,6 @@ export class VPCStack extends cdk.Stack {
       ...(props.codeBuildVPCInterfaces || []),
     ];
 
-    this.subnetType = props.subnetType || ec2.SubnetType.PRIVATE_WITH_EGRESS;
-
     switch (props.vpcConfig.vpcType) {
       case 'NO_VPC':
         break;
@@ -112,7 +110,14 @@ export class VPCStack extends cdk.Stack {
         break;
 
       case 'VPC':
-        this.vpc = props.useProxy ? this.launchVPCIsolated(props) : this.launchVPCWithEgress(props);
+        if (props.useProxy) {
+          this.subnetType = props.subnetType || ec2.SubnetType.PRIVATE_ISOLATED;
+          this.vpc = this.launchVPCIsolated(props);
+        } else {
+          this.subnetType = props.subnetType || ec2.SubnetType.PRIVATE_WITH_EGRESS;
+          this.vpc = this.launchVPCWithEgress(props);
+        }
+
         const vpcFlowLogsDestinationS3 = aws_s3.Bucket.fromBucketName(
           this,
           'VpcFlowLogsBucket',
