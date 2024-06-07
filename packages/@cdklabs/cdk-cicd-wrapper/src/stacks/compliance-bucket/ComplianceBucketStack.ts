@@ -9,7 +9,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
-import { IComplianceBucketConfig } from '../../resource-providers';
+import { IComplianceBucket } from '../../resource-providers';
 
 /**
  * Properties for the ComplianceLogBucketStack.
@@ -40,7 +40,7 @@ export interface ComplianceLogBucketStackProps extends cdk.StackProps {
  * Stack for creating a compliance log bucket.
  * Implements the IComplianceBucketConfig interface to provide the bucket name.
  */
-export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBucketConfig {
+export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBucket {
   /**
    * The name of the bucket created by this stack.
    */

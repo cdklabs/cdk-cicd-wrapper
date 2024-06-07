@@ -282,6 +282,11 @@ export interface DeploymentDefinition {
    * @default for DEV stage it is false otherwise true
    */
   readonly manualApprovalRequired: boolean;
+
+  /**
+   * The complianceLogBucketName Name
+   */
+  readonly complianceLogBucketName?: string;
 }
 
 /**
@@ -309,6 +314,11 @@ export interface IStageDefinition {
    * @default for DEV stage it is false otherwise true
    */
   manualApprovalRequired?: boolean;
+
+  /**
+   * The complianceBucket Name
+   */
+  complianceLogBucketName?: string;
 }
 
 /**

@@ -3,7 +3,7 @@
 
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { IConstruct } from 'constructs';
-import { GlobalResources, ResourceContext, IResourceProvider } from '../common';
+import { GlobalResources, ResourceContext, IResourceProvider, Scope } from '../common';
 import { VPCStack } from '../stacks';
 
 /**
@@ -71,12 +71,18 @@ const defaultVPC = {
  */
 export interface IVpcConstruct extends IConstruct {
   readonly vpc?: ec2.IVpc;
+
+  readonly securityGroup?: ec2.ISecurityGroup;
+
+  readonly subnetType?: ec2.SubnetType;
 }
 
 /**
  * Legacy VPC Provider that defines the VPC used by the CI/CD process
  */
 export class VPCProvider implements IResourceProvider {
+  scope?: Scope.PER_STAGE;
+
   constructor(readonly vpc: IVpcConfig = defaultVPC) {}
 
   /**
@@ -87,10 +93,12 @@ export class VPCProvider implements IResourceProvider {
   provide(context: ResourceContext): any {
     const { scope, blueprintProps, environment } = context;
 
+    const complianceLogBucketName = blueprintProps.deploymentDefinition[context.stage].complianceLogBucketName;
+
     return new VPCStack(scope, `${blueprintProps.applicationName}VPCStack`, {
       env: environment,
       vpcConfig: this.vpc,
-      flowLogsBucketName: context.get(GlobalResources.COMPLIANCE_BUCKET)?.bucketName,
+      flowLogsBucketName: complianceLogBucketName,
       useProxy: context.has(GlobalResources.PROXY),
     });
   }
