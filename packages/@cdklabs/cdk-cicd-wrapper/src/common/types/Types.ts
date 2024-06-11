@@ -12,11 +12,6 @@ import { ResourceContext } from '../spi';
 export type IStage = 'RES' | 'DEV' | 'INT' | 'PROD' | string;
 
 /**
- * Represents a deployment stage in the pipeline, excluding the 'PROD' stage.
- */
-export type DeploymentStage = Exclude<IStage, 'PROD'>;
-
-/**
  * Represents an environment with an account and region.
  */
 export interface Environment {
