@@ -141,6 +141,15 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
             },
           ],
         },
+        {
+          id: 'AwsSolutions-IAM4',
+          reason: 'Suppress AwsSolutions-IAM4 approved managed policies',
+          appliesTo: [
+            {
+              regex: '/(.*)(AWSLambdaVPCAccessExecutionRole)(.*)$/g',
+            },
+          ],
+        },
       ],
       true,
     );

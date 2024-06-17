@@ -1,10 +1,10 @@
 {
   "license": {
-    "package.json": "8d8292e6219ab5cbf74715c8e3d345e4984d39f4cddf60c5859db8b21bba6da7",
+    "package.json": "14242e81694773f86838259713b0a97f6f2fef33fec4b94946043dc9912842fd",
     "samples/cdk-ts-example/package.json": "54e2441af495ddf02e1e232fdd1ed4edc697c31fe03671776290a254e52ba2a6",
-    "packages/@cdklabs/cdk-cicd-wrapper/package.json": "ef8b62df9616c9fd0c267300bd017f904fc152fc8f8bca84c67b0f3c55d85114",
-    "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "ddc66713409d73d74fb75915b44194f7dbdca08faa2592a8c2f3f2c2e6d9f871",
-    "packages/@cdklabs/cdk-cicd-wrapper-projen/package.json": "080a77024f78c645c33b0b3919fc307980fdb9840876375aaafe1572618a9852",
+    "packages/@cdklabs/cdk-cicd-wrapper/package.json": "3c794df22347bf85b546fec3f652cd02b9cc6c7ba602d19ead4170c7c8503072",
+    "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "fb9dacc17a2cfd84d04c3b7c7b1f39123752d644b528571d6414ed448d6c495d",
+    "packages/@cdklabs/cdk-cicd-wrapper-projen/package.json": "e2f49aba754667ba2816306b24925bb1c4a63d6bf7aeae0b0ad1e5c358c2bdc8",
     "projectList": "5790138ec76401840b75a0409a66d8e7e10445628567d18dbe5b2feedd20f463"
   },
   "npm-lock-file": "46f92812e2f9a639b665fa72ffeca533875af0e2167ea8a5a9aa1a1d6161c04c"
