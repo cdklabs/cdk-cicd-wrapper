@@ -59,7 +59,7 @@ tasks:
     internal: true
     cmds:
       - task: publish:pipeline:js
-      - task: publish:pipeline:python
+      # - task: publish:pipeline:python
 
   publish:pipeline:js:
     desc: Publish the pipeline package locally
@@ -123,8 +123,8 @@ tasks:
     cmds:
       - test -f .npmrc && rm -rf ./.npmrc && echo "[Warning] Project level .npmrc file has been removed." || true
       - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --namespace cdklabs --tool npm
-      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --tool pip
-      - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --tool twine
+      # - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --tool pip
+      # - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}login --domain {{.DOMAIN}} --repository {{.REPOSITORY}} {{with .AWS_REGION}} --region {{.}} {{end}} --tool twine
       - task: set-token-secret
     silent: true
     preconditions:
