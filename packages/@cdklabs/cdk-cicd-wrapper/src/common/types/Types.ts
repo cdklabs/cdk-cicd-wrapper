@@ -3,6 +3,7 @@
 
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Step } from 'aws-cdk-lib/pipelines';
+import { IVpcConfig } from '../../resource-providers/VPCProvider';
 import { ResourceContext } from '../spi';
 
 /**
@@ -282,6 +283,11 @@ export interface DeploymentDefinition {
    * The complianceLogBucketName Name
    */
   readonly complianceLogBucketName?: string;
+
+  /**
+   * The VPC configuration for the deployment.
+   */
+  readonly vpc?: IVpcConfig;
 }
 
 /**
@@ -314,6 +320,11 @@ export interface IStageDefinition {
    * The complianceBucket Name
    */
   complianceLogBucketName?: string;
+
+  /**
+   * The VPC configuration for the stage.
+   */
+  vpc?: IVpcConfig;
 }
 
 /**

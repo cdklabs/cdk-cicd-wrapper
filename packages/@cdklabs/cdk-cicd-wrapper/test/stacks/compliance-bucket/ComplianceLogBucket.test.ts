@@ -3,8 +3,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
-import { IVpcConfig } from '../../../src/resource-providers';
-import { VPCStack } from '../../../src/stacks';
+import { ManagedVPCStack } from '../../../src/stacks';
 import { ComplianceLogBucketStack } from '../../../src/stacks/compliance-bucket/ComplianceBucketStack';
 import { TestAppConfig, TestComplianceLogBucketName } from '../../TestConfig';
 
@@ -35,18 +34,11 @@ describe('compliance-log-bucket-stack-test-without-vpc', () => {
 describe('compliance-log-bucket-stack-test-with-vpc', () => {
   const app = new cdk.App();
 
-  const vpcConfig: IVpcConfig = {
-    vpcType: 'VPC',
-    vpc: {
-      cidrBlock: '172.31.0.0/20',
-      subnetCidrMask: 24,
-      maxAzs: 2,
-    },
-  };
-
-  const vpcStack = new VPCStack(app, 'VPCStackComplianceLogBucket', {
+  const vpcStack = new ManagedVPCStack(app, 'VPCStackComplianceLogBucket', {
     env: TestAppConfig.deploymentDefinition.RES.env,
-    vpcConfig: vpcConfig,
+    cidrBlock: '172.31.0.0/20',
+    subnetCidrMask: 24,
+    maxAzs: 2,
     useProxy: false,
     flowLogsBucketName: TestComplianceLogBucketName.RES,
   });

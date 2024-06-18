@@ -380,6 +380,7 @@ export class PipelineBlueprintBuilder {
         manualApprovalRequired:
           providedDefinition.manualApprovalRequired ?? !(stage === Stage.DEV || stage === Stage.RES),
         complianceLogBucketName: this.generateComplianceLogBucketName(providedDefinition, account, region),
+        vpc: providedDefinition.vpc,
       };
     });
 

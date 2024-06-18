@@ -3,7 +3,7 @@
     "package.json": "14242e81694773f86838259713b0a97f6f2fef33fec4b94946043dc9912842fd",
     "samples/cdk-ts-example/package.json": "54e2441af495ddf02e1e232fdd1ed4edc697c31fe03671776290a254e52ba2a6",
     "packages/@cdklabs/cdk-cicd-wrapper/package.json": "3c794df22347bf85b546fec3f652cd02b9cc6c7ba602d19ead4170c7c8503072",
-    "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "fb9dacc17a2cfd84d04c3b7c7b1f39123752d644b528571d6414ed448d6c495d",
+    "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "cf9e0b49d97b17f0dfdfc0cb38355660c3fc1371c7fa4e8277e1c11a86879aec",
     "packages/@cdklabs/cdk-cicd-wrapper-projen/package.json": "e2f49aba754667ba2816306b24925bb1c4a63d6bf7aeae0b0ad1e5c358c2bdc8",
     "projectList": "5790138ec76401840b75a0409a66d8e7e10445628567d18dbe5b2feedd20f463"
   },

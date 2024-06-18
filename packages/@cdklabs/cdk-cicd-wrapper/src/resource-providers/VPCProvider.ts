@@ -2,19 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { IConstruct } from 'constructs';
-import { GlobalResources, ResourceContext, IResourceProvider, Scope } from '../common';
-import { VPCStack } from '../stacks';
-
-/**
- * Legacy VPC Type Definitions
- */
-export type VpcType = 'NO_VPC' | 'VPC' | 'VPC_FROM_LOOK_UP';
+import { GlobalResources, ResourceContext, IResourceProvider, Scope, Stage } from '../common';
+import { ManagedVPCStack } from '../stacks/vpc/ManagedVPCStack';
+import { NoVPCStack } from '../stacks/vpc/NoVPCStack';
+import { VPCFromLookUpStack } from '../stacks/vpc/VPCFromLookUpStack';
 
 /**
  * VPC Configuration for new VPC
  */
-export interface IVpcConfigNewVpc {
+export interface IManagedVpcConfig {
   /**
    * CIDR block for the VPC. default is: 172.31.0.0/20
    */
@@ -45,31 +41,32 @@ export interface IVpcConfigFromLookUp {
  * Interface representing VPC configuration
  */
 export interface IVpcConfig {
-  vpcType: VpcType;
-  vpc?: IVpcConfigNewVpc;
-  vpcFromLookUp?: IVpcConfigFromLookUp;
+  managedVPC?: IManagedVpcConfig;
+  vpcFromLookUp?: string;
 }
 
 /**
  * Backward compatibility settings for VPC
  */
 const defaultVPC = {
-  vpcType: (process.env.CICD_VPC_TYPE || process.env.npm_package_config_cicdVpcType) as VpcType,
-  vpc: {
-    // preserving original functionality where vpc is created from defaults.
-    cidrBlock: process.env.CICD_VPC_CIDR || process.env.npm_package_config_cicdVpcCidr || '172.31.0.0/20',
-    subnetCidrMask: parseInt(process.env.CICD_VPC_CIDR_MASK || process.env.npm_package_config_cicdVpcCidrMask || '24'),
-    maxAzs: parseInt(process.env.CICD_VPC_MAXAZS || process.env.npm_package_config_cicdVpcMaxAZs || '2'),
-  },
-  vpcFromLookUp: {
-    vpcId: process.env.CICD_VPC_ID || process.env.npm_package_config_cicdVpcId || '',
-  },
+  managedVPC:
+    (process.env.CICD_VPC_TYPE || process.env.npm_package_config_cicdVpcType) === 'VPC'
+      ? {
+          // preserving original functionality where vpc is created from defaults.
+          cidrBlock: process.env.CICD_VPC_CIDR || process.env.npm_package_config_cicdVpcCidr || '172.31.0.0/20',
+          subnetCidrMask: parseInt(
+            process.env.CICD_VPC_CIDR_MASK || process.env.npm_package_config_cicdVpcCidrMask || '24',
+          ),
+          maxAzs: parseInt(process.env.CICD_VPC_MAXAZS || process.env.npm_package_config_cicdVpcMaxAZs || '2'),
+        }
+      : undefined,
+  vpcFromLookUp: process.env.CICD_VPC_ID || process.env.npm_package_config_cicdVpcId,
 };
 
 /**
  * VPC construct that provides the VPC and HTTP proxy settings
  */
-export interface IVpcConstruct extends IConstruct {
+export interface IVpcConstruct {
   readonly vpc?: ec2.IVpc;
 
   readonly securityGroup?: ec2.ISecurityGroup;
@@ -81,9 +78,9 @@ export interface IVpcConstruct extends IConstruct {
  * Legacy VPC Provider that defines the VPC used by the CI/CD process
  */
 export class VPCProvider implements IResourceProvider {
-  scope?: Scope.PER_STAGE;
+  scope? = Scope.PER_STAGE;
 
-  constructor(readonly vpc: IVpcConfig = defaultVPC) {}
+  constructor(readonly legacyConfig: IVpcConfig = defaultVPC) {}
 
   /**
    * Provides the VPC resource
@@ -95,11 +92,27 @@ export class VPCProvider implements IResourceProvider {
 
     const complianceLogBucketName = blueprintProps.deploymentDefinition[context.stage].complianceLogBucketName;
 
-    return new VPCStack(scope, `${blueprintProps.applicationName}VPCStack`, {
-      env: environment,
-      vpcConfig: this.vpc,
-      flowLogsBucketName: complianceLogBucketName,
-      useProxy: context.has(GlobalResources.PROXY),
-    });
+    const stageSpecificVpcConfig = blueprintProps.deploymentDefinition[context.stage].vpc;
+
+    // Backward compatibility for VPC settings, only configure the VPC for the RES stage
+    const vpcConfig = stageSpecificVpcConfig || (context.stage == Stage.RES ? this.legacyConfig : {});
+
+    if (vpcConfig.managedVPC) {
+      return new ManagedVPCStack(scope, `${blueprintProps.applicationName}VPCStack`, {
+        env: environment,
+        cidrBlock: vpcConfig.managedVPC.cidrBlock,
+        subnetCidrMask: vpcConfig.managedVPC.subnetCidrMask,
+        maxAzs: vpcConfig.managedVPC.maxAzs,
+        flowLogsBucketName: complianceLogBucketName,
+        useProxy: context.has(GlobalResources.PROXY),
+      });
+    } else if (vpcConfig.vpcFromLookUp) {
+      return new VPCFromLookUpStack(scope, `${blueprintProps.applicationName}VPCFromLookUpStack`, {
+        env: environment,
+        vpcId: vpcConfig.vpcFromLookUp,
+      });
+    } else {
+      return new NoVPCStack();
+    }
   }
 }

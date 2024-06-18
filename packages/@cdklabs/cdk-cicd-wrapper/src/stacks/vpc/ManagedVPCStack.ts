@@ -4,18 +4,26 @@
 import * as cdk from 'aws-cdk-lib';
 import { aws_s3 } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { IVpcConfig } from '../resource-providers';
 
 /**
  * Properties for the VPCStack.
  */
-export interface VPCStackProps extends cdk.StackProps {
+export interface ManagedVPCStackProps extends cdk.StackProps {
   /**
-   * The configuration for the VPC to be created or looked up.
+   * CIDR block for the VPC.
    */
-  readonly vpcConfig: IVpcConfig;
+  readonly cidrBlock: string;
+
+  /**
+   * Subnets CIDR masks.
+   */
+  readonly subnetCidrMask: number;
+
+  /**
+   * Max AZs.
+   */
+  readonly maxAzs: number;
 
   /**
    * Whether to use a proxy for the VPC.
@@ -31,6 +39,8 @@ export interface VPCStackProps extends cdk.StackProps {
   /**
    * If set to true then the default inbound & outbound rules will be removed
    * from the default security group
+   *
+   * @default true
    */
   readonly restrictDefaultSecurityGroup?: boolean;
 
@@ -40,6 +50,8 @@ export interface VPCStackProps extends cdk.StackProps {
    * If this is set to true, there will only be a single egress rule which allows all
    * outbound traffic. If this is set to false, no outbound traffic will be allowed by
    * default and all egress traffic must be explicitly authorized.
+   *
+   * @default true
    */
   readonly allowAllOutbound?: boolean;
 
@@ -59,11 +71,11 @@ export interface VPCStackProps extends cdk.StackProps {
 /**
  * A stack that creates or looks up a VPC and configures its settings.
  */
-export class VPCStack extends cdk.Stack {
+export class ManagedVPCStack extends cdk.Stack {
   /**
    * The VPC created or looked up by this stack.
    */
-  readonly vpc?: ec2.IVpc;
+  readonly vpc: ec2.IVpc;
 
   /**
    * The security group attached to the VPC
@@ -80,12 +92,28 @@ export class VPCStack extends cdk.Stack {
    */
   readonly codeBuildVPCInterfaces: ec2.InterfaceVpcEndpointAwsService[];
 
+  readonly cidrBlock: string;
+
+  readonly restrictDefaultSecurityGroup: boolean;
+
+  readonly allowAllOutbound: boolean;
+
+  readonly subnetCidrMask: number;
+
+  readonly maxAzs: number;
+
   get securityGroup(): ec2.ISecurityGroup | undefined {
     return this._securityGroup;
   }
 
-  constructor(scope: Construct, id: string, props: VPCStackProps) {
+  constructor(scope: Construct, id: string, props: ManagedVPCStackProps) {
     super(scope, id, props);
+
+    this.cidrBlock = props.cidrBlock;
+    this.restrictDefaultSecurityGroup = props.restrictDefaultSecurityGroup || true;
+    this.allowAllOutbound = props.allowAllOutbound || true;
+    this.subnetCidrMask = props.subnetCidrMask;
+    this.maxAzs = props.maxAzs;
 
     this.codeBuildVPCInterfaces = [
       ec2.InterfaceVpcEndpointAwsService.SSM,
@@ -97,36 +125,17 @@ export class VPCStack extends cdk.Stack {
       ...(props.codeBuildVPCInterfaces || []),
     ];
 
-    switch (props.vpcConfig.vpcType) {
-      case 'NO_VPC':
-        break;
+    this.subnetType =
+      props.subnetType || (props.useProxy ? ec2.SubnetType.PRIVATE_ISOLATED : ec2.SubnetType.PRIVATE_WITH_EGRESS);
 
-      case 'VPC_FROM_LOOK_UP':
-        const vpcConfig = props.vpcConfig.vpcFromLookUp!;
-        const vpcId = vpcConfig.vpcId.startsWith('resolve:ssm:')
-          ? StringParameter.valueFromLookup(this, vpcConfig.vpcId.replace('resolve:ssm:', ''))
-          : vpcConfig.vpcId;
-        this.vpc = ec2.Vpc.fromLookup(this, 'vpc', {
-          vpcId,
-        });
-        break;
+    this.vpc = props.useProxy ? this.launchVPCIsolated() : this.launchVPCWithEgress();
 
-      case 'VPC':
-        this.subnetType =
-          props.subnetType || (props.useProxy ? ec2.SubnetType.PRIVATE_ISOLATED : ec2.SubnetType.PRIVATE_WITH_EGRESS);
-        this.vpc = props.useProxy ? this.launchVPCIsolated(props) : this.launchVPCWithEgress(props);
+    const vpcFlowLogsDestinationS3 = aws_s3.Bucket.fromBucketName(this, 'VpcFlowLogsBucket', props.flowLogsBucketName!);
 
-        const vpcFlowLogsDestinationS3 = aws_s3.Bucket.fromBucketName(
-          this,
-          'VpcFlowLogsBucket',
-          props.flowLogsBucketName!,
-        );
-        this.vpc.addFlowLog('vpcFlowLogs', {
-          destination: ec2.FlowLogDestination.toS3(vpcFlowLogsDestinationS3),
-          trafficType: ec2.FlowLogTrafficType.ALL,
-        });
-        break;
-    }
+    this.vpc.addFlowLog('vpcFlowLogs', {
+      destination: ec2.FlowLogDestination.toS3(vpcFlowLogsDestinationS3),
+      trafficType: ec2.FlowLogTrafficType.ALL,
+    });
   }
 
   /**
@@ -134,25 +143,25 @@ export class VPCStack extends cdk.Stack {
    * @param props The properties for configuring the VPC.
    * @returns The created VPC.
    */
-  private launchVPCIsolated(props: VPCStackProps) {
+  private launchVPCIsolated() {
     const vpc = new ec2.Vpc(this, 'vpc', {
-      ipAddresses: ec2.IpAddresses.cidr(props.vpcConfig.vpc?.cidrBlock!),
-      restrictDefaultSecurityGroup: props.restrictDefaultSecurityGroup || true,
+      ipAddresses: ec2.IpAddresses.cidr(this.cidrBlock),
+      restrictDefaultSecurityGroup: this.restrictDefaultSecurityGroup,
       subnetConfiguration: [
         {
-          cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
+          cidrMask: this.subnetCidrMask,
           name: 'private-isolated',
           subnetType: this.subnetType!,
         },
       ],
-      maxAzs: props.vpcConfig.vpc?.maxAzs,
+      maxAzs: this.maxAzs,
     });
 
     this._securityGroup = new ec2.SecurityGroup(this, 'VpcSecurityGroup', {
       vpc: vpc,
       description: 'Allow traffic between CodeBuildStep and AWS Service VPC Endpoints',
       securityGroupName: 'Security Group for AWS Service VPC Endpoints',
-      allowAllOutbound: props.allowAllOutbound || true,
+      allowAllOutbound: this.allowAllOutbound,
     });
 
     this._securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'HTTPS Traffic');
@@ -177,30 +186,30 @@ export class VPCStack extends cdk.Stack {
    * @param props The properties for configuring the VPC.
    * @returns The created VPC.
    */
-  private launchVPCWithEgress(props: VPCStackProps) {
+  private launchVPCWithEgress() {
     const vpc = new ec2.Vpc(this, 'vpc', {
-      ipAddresses: ec2.IpAddresses.cidr(props.vpcConfig.vpc?.cidrBlock!),
-      restrictDefaultSecurityGroup: props.restrictDefaultSecurityGroup || true,
+      ipAddresses: ec2.IpAddresses.cidr(this.cidrBlock),
+      restrictDefaultSecurityGroup: this.restrictDefaultSecurityGroup,
       subnetConfiguration: [
         {
-          cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
+          cidrMask: this.subnetCidrMask,
           name: 'private-egress',
           subnetType: this.subnetType!,
         },
         {
-          cidrMask: props.vpcConfig.vpc?.subnetCidrMask,
+          cidrMask: this.subnetCidrMask,
           name: 'public',
           subnetType: ec2.SubnetType.PUBLIC,
         },
       ],
-      maxAzs: props.vpcConfig.vpc?.maxAzs,
+      maxAzs: this.maxAzs,
     });
 
     this._securityGroup = new ec2.SecurityGroup(this, 'VpcSecurityGroup', {
       vpc: vpc,
       description: 'Use this as the default VPC Security Group',
       securityGroupName: 'Security Group for the VPC with Egress + Public Subnets',
-      allowAllOutbound: props.allowAllOutbound || true,
+      allowAllOutbound: this.allowAllOutbound,
     });
 
     return vpc;
