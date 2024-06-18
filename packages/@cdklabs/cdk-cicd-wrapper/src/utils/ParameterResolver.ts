@@ -1,6 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-import * as cdk from 'aws-cdk-lib';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -22,9 +21,7 @@ export class ParameterResolver {
    */
   public static resolveValue(scope: Construct, param: string) {
     if (param.startsWith('resolve:ssm:')) {
-      return cdk.Lazy.string({
-        produce: () => ssm.StringParameter.valueForStringParameter(scope, param.substring(12)),
-      });
+      return ssm.StringParameter.valueForStringParameter(scope, param.substring(12));
     }
     return param;
   }

@@ -24,7 +24,7 @@ import {
 } from '../common';
 import { HookProvider } from '../resource-providers';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
-import { ComplianceBucketConfigProvider } from '../resource-providers/ComplianceBucketProvider';
+import { ComplianceBucketProvider } from '../resource-providers/ComplianceBucketProvider';
 import { DisabledProvider } from '../resource-providers/DisabledProvider';
 import { EncryptionProvider } from '../resource-providers/EncryptionProvider';
 import { ParameterProvider } from '../resource-providers/ParameterProvider';
@@ -96,7 +96,7 @@ export class PipelineBlueprintBuilder {
     this.resourceProvider(GlobalResources.STAGE_PROVIDER, new StageProvider());
     this.resourceProvider(GlobalResources.CODEBUILD_FACTORY, new CodeBuildFactoryProvider());
     this.resourceProvider(GlobalResources.PIPELINE, new PipelineProvider());
-    this.resourceProvider(GlobalResources.COMPLIANCE_BUCKET, new ComplianceBucketConfigProvider());
+    this.resourceProvider(GlobalResources.COMPLIANCE_BUCKET, new ComplianceBucketProvider());
     this.resourceProvider(GlobalResources.PHASE, new PhaseCommandProvider());
     this.resourceProvider(GlobalResources.HOOK, new HookProvider());
 
@@ -368,14 +368,19 @@ export class PipelineBlueprintBuilder {
     const definitions: AllStage<DeploymentDefinition> = {};
 
     Object.entries(this.stageDefinitions).forEach(([stage, providedDefinition]) => {
+      const region = providedDefinition.region || this._region!;
+      const account = providedDefinition.account!;
+
       definitions[stage] = {
         env: {
-          account: providedDefinition.account!,
-          region: providedDefinition.region || this._region!,
+          account,
+          region,
         },
         stacksProviders: [...(stage != Stage.RES ? this.stacksCommon : []), ...(this.stacksByStage[stage] || [])],
         manualApprovalRequired:
           providedDefinition.manualApprovalRequired ?? !(stage === Stage.DEV || stage === Stage.RES),
+        complianceLogBucketName: this.generateComplianceLogBucketName(providedDefinition, account, region),
+        vpc: providedDefinition.vpc,
       };
     });
 
@@ -384,6 +389,18 @@ export class PipelineBlueprintBuilder {
     }
 
     return definitions as RequiredRESStage<DeploymentDefinition>;
+  }
+
+  private generateComplianceLogBucketName(
+    providedDefinition: Partial<IStageDefinition>,
+    account: string,
+    region: string,
+  ) {
+    if (this.props.resourceProviders![GlobalResources.COMPLIANCE_BUCKET] instanceof DisabledProvider) {
+      return undefined;
+    }
+
+    return providedDefinition.complianceLogBucketName ?? `compliance-log-${account}-${region}`;
   }
 }
 

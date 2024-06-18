@@ -54,7 +54,7 @@ export class ShellScriptPhaseCommand implements IPhaseCommand {
    * Returns the command to be executed for the given shell script.
    */
   get command() {
-    // Check script file exists and executable
+    // Check script file exists and is executable
     if (!fs.existsSync(path.resolve(this.script))) {
       throw new Error(`Script file ${this.script} does not exist`);
     }
@@ -132,19 +132,19 @@ export class InlineShellPhaseCommand implements IPhaseCommand {
  */
 export const PhaseCommands = {
   /**
-   * This command configures the HTTP Proxy settings
+   * This command runs the npm run build script, that builds the source code.
    */
-  CONFIGURE_HTTP_PROXY: new InlineShellPhaseCommand('proxy.sh'),
+  BUILD: new NPMPhaseCommand('build'),
 
   /**
-   * This command configures NPM authentication for private registries.
+   * This command executes the CDK synth without look up.
    */
-  NPM_LOGIN: new InlineShellPhaseCommand('npm-login.sh'),
+  CDK_SYNTH_NO_LOOK_UP: new InlineShellPhaseCommand('cdk-synth-no-lookups.sh'),
 
   /**
-   * This command runs the npm run validate script, that validates the package-lock.json is not tempered with.
+   * This command executes the CDK synth with look up.
    */
-  VALIDATE: new NPMPhaseCommand('validate'),
+  CDK_SYNTH: new InlineShellPhaseCommand('cdk-synth.sh'),
 
   /**
    * This command runs the npm run audit script, that audit the dependencies and source codes of the project.
@@ -157,6 +157,11 @@ export const PhaseCommands = {
   CHECK_LINT: new NPMPhaseCommand('lint'),
 
   /**
+   * This command configures the HTTP Proxy settings
+   */
+  CONFIGURE_HTTP_PROXY: new InlineShellPhaseCommand('proxy.sh'),
+
+  /**
    * This command populates build-env variables from the SSM Parameter store.
    */
   ENVIRONMENT_PREPARATION: new InlineShellPhaseCommand('warming.sh', true),
@@ -167,9 +172,9 @@ export const PhaseCommands = {
   NPM_CI: new NPMPhaseCommand('ci'),
 
   /**
-   * This command runs the npm run build script, that builds the source code.
+   * This command configures NPM authentication for private registries.
    */
-  BUILD: new NPMPhaseCommand('build'),
+  NPM_LOGIN: new InlineShellPhaseCommand('npm-login.sh'),
 
   /**
    * This command runs the npm run test script, that tests the source code.
@@ -177,14 +182,9 @@ export const PhaseCommands = {
   TEST: new NPMPhaseCommand('test'),
 
   /**
-   * This command executes the CDK synth with look up.
+   * This command runs the npm run validate script, that validates the package-lock.json is not tempered with.
    */
-  CDK_SYNTH: new InlineShellPhaseCommand('cdk-synth.sh'),
-
-  /**
-   * This command executes the CDK synth without look up.
-   */
-  CDK_SYNTH_NO_LOOK_UP: new InlineShellPhaseCommand('cdk-synth-no-lookup.sh'),
+  VALIDATE: new NPMPhaseCommand('validate'),
 };
 
 /**

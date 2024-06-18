@@ -113,9 +113,10 @@ export class CdkCICDWrapper extends projen.Component {
       repositoryName: this.repositoryName,
       repositoryType: this.repositoryType,
       cicdVpcType: options.cicdVpcType || 'NO_VPC',
-      ...(options.cicdVpcCidr ? { cicdVpcId: options.cicdVpcId } : {}),
+      ...(options.cicdVpcId ? { cicdVpcId: options.cicdVpcId } : {}),
+      ...(options.cicdVpcCidr ? { cicdVpcCidr: options.cicdVpcCidr } : {}),
       ...(options.cicdVpcCidrMask ? { cicdVpcCidrMask: options.cicdVpcCidrMask } : {}),
-      ...(options.cicdVpcMaxAZs ? { cicdVpcId: options.cicdVpcMaxAZs } : {}),
+      ...(options.cicdVpcMaxAZs ? { cicdVpcMaxAZs: options.cicdVpcMaxAZs } : {}),
     });
 
     new CICommands(project, {

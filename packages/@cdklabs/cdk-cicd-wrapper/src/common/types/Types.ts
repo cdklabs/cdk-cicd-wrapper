@@ -3,6 +3,7 @@
 
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Step } from 'aws-cdk-lib/pipelines';
+import { IVpcConfig } from '../../resource-providers/VPCProvider';
 import { ResourceContext } from '../spi';
 
 /**
@@ -10,11 +11,6 @@ import { ResourceContext } from '../spi';
  * Valid stages are: 'RES', 'DEV', 'INT', 'PROD', or any other string value.
  */
 export type IStage = 'RES' | 'DEV' | 'INT' | 'PROD' | string;
-
-/**
- * Represents a deployment stage in the pipeline, excluding the 'PROD' stage.
- */
-export type DeploymentStage = Exclude<IStage, 'PROD'>;
 
 /**
  * Represents an environment with an account and region.
@@ -282,6 +278,16 @@ export interface DeploymentDefinition {
    * @default for DEV stage it is false otherwise true
    */
   readonly manualApprovalRequired: boolean;
+
+  /**
+   * The complianceLogBucketName Name
+   */
+  readonly complianceLogBucketName?: string;
+
+  /**
+   * The VPC configuration for the deployment.
+   */
+  readonly vpc?: IVpcConfig;
 }
 
 /**
@@ -309,6 +315,16 @@ export interface IStageDefinition {
    * @default for DEV stage it is false otherwise true
    */
   manualApprovalRequired?: boolean;
+
+  /**
+   * The complianceBucket Name
+   */
+  complianceLogBucketName?: string;
+
+  /**
+   * The VPC configuration for the stage.
+   */
+  vpc?: IVpcConfig;
 }
 
 /**
