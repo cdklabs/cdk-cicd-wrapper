@@ -6,6 +6,14 @@ This document outlines the notable migration and cleanup tasks involved in upgra
 
 Each section details the changes introduced between specific version ranges (e.g., [0.0.0] - [0.0.6]).
 
+### [0.1.5] - [0.2.0] Migration - Compliance Bucket Name definition
+
+This upgrade introduces a new property to define the name of the compliance bucket. This is required to ensure that the compliance bucket name is unique across all AWS accounts.
+
+#### Breaking changes:
+
+* **Compliance Bucket Name:** The compliance bucket name can be defined for each deployment stage separately. The default value is still the same as before. If you want to use the default value, you don't need to make any changes.
+
 ### [0.0.12] - [0.1.0] Migration - Updates for Multiple Languages and Hooks
 
 This upgrade brings exciting new features like support for Python, Java, Go, and C# in your CDK CI/CD projects! Additionally, there are some changes to how hooks are defined.
