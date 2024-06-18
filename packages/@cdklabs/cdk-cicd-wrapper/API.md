@@ -10029,18 +10029,18 @@ public readonly config: BaseRepositoryProviderProps;
 ---
 
 
-### ComplianceBucketConfigProvider <a name="ComplianceBucketConfigProvider" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketConfigProvider"></a>
+### ComplianceBucketProvider <a name="ComplianceBucketProvider" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketProvider"></a>
 
 - *Implements:* <a href="#@cdklabs/cdk-cicd-wrapper.IResourceProvider">IResourceProvider</a>
 
 Compliance bucket provider which uses existing previously created buckets.
 
-#### Initializers <a name="Initializers" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketConfigProvider.Initializer"></a>
+#### Initializers <a name="Initializers" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketProvider.Initializer"></a>
 
 ```typescript
-import { ComplianceBucketConfigProvider } from '@cdklabs/cdk-cicd-wrapper'
+import { ComplianceBucketProvider } from '@cdklabs/cdk-cicd-wrapper'
 
-new ComplianceBucketConfigProvider()
+new ComplianceBucketProvider()
 ```
 
 | **Name** | **Type** | **Description** |
@@ -10052,17 +10052,17 @@ new ComplianceBucketConfigProvider()
 
 | **Name** | **Description** |
 | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.ComplianceBucketConfigProvider.provide">provide</a></code> | *No description.* |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ComplianceBucketProvider.provide">provide</a></code> | *No description.* |
 
 ---
 
-##### `provide` <a name="provide" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketConfigProvider.provide"></a>
+##### `provide` <a name="provide" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketProvider.provide"></a>
 
 ```typescript
 public provide(context: ResourceContext): any
 ```
 
-###### `context`<sup>Required</sup> <a name="context" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketConfigProvider.provide.parameter.context"></a>
+###### `context`<sup>Required</sup> <a name="context" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketProvider.provide.parameter.context"></a>
 
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.ResourceContext">ResourceContext</a>
 
@@ -10073,11 +10073,11 @@ public provide(context: ResourceContext): any
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.ComplianceBucketConfigProvider.property.scope">scope</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.Scope">Scope</a></code> | *No description.* |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ComplianceBucketProvider.property.scope">scope</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.Scope">Scope</a></code> | *No description.* |
 
 ---
 
-##### `scope`<sup>Optional</sup> <a name="scope" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketConfigProvider.property.scope"></a>
+##### `scope`<sup>Optional</sup> <a name="scope" id="@cdklabs/cdk-cicd-wrapper.ComplianceBucketProvider.property.scope"></a>
 
 ```typescript
 public readonly scope: Scope;
@@ -12810,7 +12810,7 @@ public readonly repositoryBranch: string;
 
 ### IResourceProvider <a name="IResourceProvider" id="@cdklabs/cdk-cicd-wrapper.IResourceProvider"></a>
 
-- *Implemented By:* <a href="#@cdklabs/cdk-cicd-wrapper.BasicRepositoryProvider">BasicRepositoryProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.ComplianceBucketConfigProvider">ComplianceBucketConfigProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.EncryptionProvider">EncryptionProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.HttpProxyProvider">HttpProxyProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.ParameterProvider">ParameterProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.PhaseCommandProvider">PhaseCommandProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.StageProvider">StageProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.VPCProvider">VPCProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.IResourceProvider">IResourceProvider</a>
+- *Implemented By:* <a href="#@cdklabs/cdk-cicd-wrapper.BasicRepositoryProvider">BasicRepositoryProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.ComplianceBucketProvider">ComplianceBucketProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.EncryptionProvider">EncryptionProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.HttpProxyProvider">HttpProxyProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.ParameterProvider">ParameterProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.PhaseCommandProvider">PhaseCommandProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.StageProvider">StageProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.VPCProvider">VPCProvider</a>, <a href="#@cdklabs/cdk-cicd-wrapper.IResourceProvider">IResourceProvider</a>
 
 Generic resource provider interface.
 

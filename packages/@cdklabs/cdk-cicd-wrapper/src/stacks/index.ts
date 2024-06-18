@@ -22,9 +22,19 @@ export * from './CodeStarConnectRepositoryStack';
 export * from './SSMParameterStack';
 
 /**
- * Re-exports all constructs and utilities from the VPCStack.
+ * Re-exports all constructs and utilities from the ManagedVPCStack.
  */
-export * from './VPCStack';
+export * from './vpc/ManagedVPCStack';
+
+/**
+ * Re-exports all constructs and utilities from the NoVPCStack.
+ */
+export * from './vpc/NoVPCStack';
+
+/**
+ * Re-exports all constructs and utilities from the VPCFromLookUpStack.
+ */
+export * from './vpc/VPCFromLookUpStack';
 
 /**
  * Re-exports all constructs and utilities from the PipelineBlueprint.
