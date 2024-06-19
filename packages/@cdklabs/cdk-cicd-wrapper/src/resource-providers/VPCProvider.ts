@@ -107,7 +107,7 @@ export class VPCProvider implements IResourceProvider {
         useProxy: context.has(GlobalResources.PROXY),
       });
     } else if (vpcConfig.vpcFromLookUp) {
-      return new VPCFromLookUpStack(scope, `${blueprintProps.applicationName}VPCFromLookUpStack`, {
+      return new VPCFromLookUpStack(scope, `${blueprintProps.applicationName}VPCStack`, {
         env: environment,
         vpcId: vpcConfig.vpcFromLookUp,
       });

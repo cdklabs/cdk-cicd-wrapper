@@ -21,7 +21,9 @@ import {
   AllStage,
   RequiredRESStage,
   WorkbenchOptions,
+  IPlugin,
 } from '../common';
+import { Plugins } from '../plugins';
 import { HookProvider } from '../resource-providers';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketProvider } from '../resource-providers/ComplianceBucketProvider';
@@ -50,6 +52,15 @@ const defaultConfigs = {
     buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
   },
   resourceProviders: {},
+  plugins: {
+    [Plugins.DestroyEncryptionKeysOnDeletePlugin.name]: Plugins.DestroyEncryptionKeysOnDeletePlugin,
+    [Plugins.AccessLogsForBucketPlugin.name]: Plugins.AccessLogsForBucketPlugin,
+    [Plugins.DisablePublicIPAssignmentForEC2Plugin.name]: Plugins.DisablePublicIPAssignmentForEC2Plugin,
+    [Plugins.EncryptBucketOnTransitPlugin.name]: Plugins.EncryptBucketOnTransitPlugin,
+    [Plugins.EncryptCloudWatchLogGroupsPlugin.name]: Plugins.EncryptCloudWatchLogGroupsPlugin,
+    [Plugins.EncryptSNSTopicOnTransitPlugin.name]: Plugins.EncryptSNSTopicOnTransitPlugin,
+    [Plugins.RotateEncryptionKeysPlugin.name]: Plugins.RotateEncryptionKeysPlugin,
+  },
   deploymentDefinition: {},
   primaryOutputDirectory: './cdk.out',
   workbenchPrefix: process.env.USER || 'workbench',
@@ -138,6 +149,8 @@ export class PipelineBlueprintBuilder {
   private stacksByStage: AllStage<IStackProvider[]> = {};
 
   private _region?: string = defaultRegion;
+
+  private _plugins: Record<string, IPlugin> = {};
 
   /**
    * Constructor for the PipelineBlueprintBuilder class.
@@ -286,6 +299,11 @@ export class PipelineBlueprintBuilder {
   public disable(name: string): this {
     this.props.resourceProviders![name] = new DisabledProvider(name);
 
+    return this;
+  }
+
+  public plugin(plugin: IPlugin): this {
+    this._plugins[plugin.name] = plugin;
     return this;
   }
 
@@ -476,6 +494,11 @@ export interface IPipelineBlueprintProps extends IPipelineConfig {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   resourceProviders: { [key in string]: IResourceProvider };
+
+  /**
+   * The plugins configured for the pipeline
+   */
+  plugins: Record<string, IPlugin>;
 }
 
 /**
