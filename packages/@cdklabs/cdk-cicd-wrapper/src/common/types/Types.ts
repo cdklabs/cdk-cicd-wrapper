@@ -3,6 +3,7 @@
 
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Step } from 'aws-cdk-lib/pipelines';
+import { Construct } from 'constructs';
 import { IVpcConfig } from '../../resource-providers/VPCProvider';
 import { ResourceContext } from '../spi';
 
@@ -430,4 +431,34 @@ export interface IPhaseCommand {
    * The command to run during the phase.
    */
   readonly command: string;
+}
+
+/**
+ * Represents a pipeline plugin
+ */
+export interface IPlugin {
+  /**
+   * The name of the plugin.
+   */
+  readonly name: string;
+
+  /**
+   * The version of the plugin.
+   */
+  readonly version: string;
+
+  /**
+   * The method called when the Pipeline configuration finalized.
+   */
+  create?(context: ResourceContext): void;
+
+  /**
+   * The method called before the stage is created.
+   */
+  beforeStage?(scope: Construct, context: ResourceContext): void;
+
+  /**
+   * The method called after the stage is created.
+   */
+  afterStage?(scope: Construct, context: ResourceContext): void;
 }

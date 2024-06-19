@@ -3799,7 +3799,7 @@
         },
         "locationInModule": {
           "filename": "src/code-pipeline/AppStage.ts",
-          "line": 35
+          "line": 34
         },
         "parameters": [
           {
@@ -3834,7 +3834,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/code-pipeline/AppStage.ts",
-        "line": 27
+        "line": 26
       },
       "name": "AppStage",
       "symbolId": "src/code-pipeline/AppStage:AppStage"
@@ -3859,7 +3859,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/code-pipeline/AppStage.ts",
-        "line": 17
+        "line": 16
       },
       "name": "AppStageProps",
       "properties": [
@@ -3871,7 +3871,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/code-pipeline/AppStage.ts",
-            "line": 18
+            "line": 17
           },
           "name": "context",
           "type": {
@@ -4670,7 +4670,7 @@
       "kind": "enum",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 68
+        "line": 69
       },
       "members": [
         {
@@ -5761,7 +5761,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 264
+        "line": 265
       },
       "name": "DeploymentDefinition",
       "properties": [
@@ -5774,7 +5774,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 268
+            "line": 269
           },
           "name": "env",
           "type": {
@@ -5791,7 +5791,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 280
+            "line": 281
           },
           "name": "manualApprovalRequired",
           "type": {
@@ -5807,7 +5807,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 273
+            "line": 274
           },
           "name": "stacksProviders",
           "type": {
@@ -5828,7 +5828,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 285
+            "line": 286
           },
           "name": "complianceLogBucketName",
           "optional": true,
@@ -5845,7 +5845,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 290
+            "line": 291
           },
           "name": "vpc",
           "optional": true,
@@ -5867,7 +5867,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 238
+        "line": 239
       },
       "name": "DeploymentHookConfig",
       "properties": [
@@ -5880,7 +5880,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 247
+            "line": 248
           },
           "name": "post",
           "optional": true,
@@ -5902,7 +5902,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 242
+            "line": 243
           },
           "name": "pre",
           "optional": true,
@@ -6118,7 +6118,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 18
+        "line": 19
       },
       "name": "Environment",
       "properties": [
@@ -6131,7 +6131,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 22
+            "line": 23
           },
           "name": "account",
           "type": {
@@ -6147,7 +6147,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 27
+            "line": 28
           },
           "name": "region",
           "type": {
@@ -6508,7 +6508,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 338
+        "line": 339
       },
       "name": "ICodeCommitConfig",
       "properties": [
@@ -6520,7 +6520,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 352
+            "line": 353
           },
           "name": "branch",
           "type": {
@@ -6535,7 +6535,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 357
+            "line": 358
           },
           "name": "codeGuruReviewer",
           "type": {
@@ -6550,7 +6550,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 347
+            "line": 348
           },
           "name": "description",
           "type": {
@@ -6565,7 +6565,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 342
+            "line": 343
           },
           "name": "name",
           "type": {
@@ -6865,7 +6865,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 428
+        "line": 429
       },
       "name": "IPhaseCommand",
       "properties": [
@@ -6878,7 +6878,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 432
+            "line": 433
           },
           "name": "command",
           "type": {
@@ -6954,10 +6954,30 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/stacks/PipelineBlueprint.ts",
-        "line": 410
+        "line": 428
       },
       "name": "IPipelineBlueprintProps",
       "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "stability": "stable",
+            "summary": "The plugins configured for the pipeline."
+          },
+          "locationInModule": {
+            "filename": "src/stacks/PipelineBlueprint.ts",
+            "line": 440
+          },
+          "name": "plugins",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "fqn": "@cdklabs/cdk-cicd-wrapper.IPlugin"
+              },
+              "kind": "map"
+            }
+          }
+        },
         {
           "abstract": true,
           "docs": {
@@ -6967,7 +6987,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 417
+            "line": 435
           },
           "name": "resourceProviders",
           "type": {
@@ -6992,7 +7012,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 118
+        "line": 119
       },
       "name": "IPipelineConfig",
       "properties": [
@@ -7004,7 +7024,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 122
+            "line": 123
           },
           "name": "applicationName",
           "type": {
@@ -7019,7 +7039,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 127
+            "line": 128
           },
           "name": "applicationQualifier",
           "type": {
@@ -7034,7 +7054,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 147
+            "line": 148
           },
           "name": "codeBuildEnvSettings",
           "type": {
@@ -7049,7 +7069,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 137
+            "line": 138
           },
           "name": "deploymentDefinition",
           "type": {
@@ -7069,7 +7089,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 142
+            "line": 143
           },
           "name": "logRetentionInDays",
           "type": {
@@ -7084,7 +7104,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 157
+            "line": 158
           },
           "name": "phases",
           "type": {
@@ -7099,7 +7119,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 162
+            "line": 163
           },
           "name": "primaryOutputDirectory",
           "type": {
@@ -7114,7 +7134,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 152
+            "line": 153
           },
           "name": "codeGuruScanThreshold",
           "optional": true,
@@ -7130,7 +7150,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 132
+            "line": 133
           },
           "name": "npmRegistry",
           "optional": true,
@@ -7146,7 +7166,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 167
+            "line": 168
           },
           "name": "workbench",
           "optional": true,
@@ -7167,7 +7187,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 203
+        "line": 204
       },
       "name": "IPipelinePhases",
       "properties": [
@@ -7179,7 +7199,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 207
+            "line": 208
           },
           "name": "initialize",
           "optional": true,
@@ -7200,7 +7220,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 232
+            "line": 233
           },
           "name": "postDeploy",
           "optional": true,
@@ -7221,7 +7241,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 212
+            "line": 213
           },
           "name": "preBuild",
           "optional": true,
@@ -7242,7 +7262,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 227
+            "line": 228
           },
           "name": "preDeploy",
           "optional": true,
@@ -7263,7 +7283,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 217
+            "line": 218
           },
           "name": "runBuild",
           "optional": true,
@@ -7284,7 +7304,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 222
+            "line": 223
           },
           "name": "testing",
           "optional": true,
@@ -7299,6 +7319,129 @@
         }
       ],
       "symbolId": "src/common/types/Types:IPipelinePhases"
+    },
+    "@cdklabs/cdk-cicd-wrapper.IPlugin": {
+      "assembly": "@cdklabs/cdk-cicd-wrapper",
+      "docs": {
+        "stability": "stable",
+        "summary": "Represents a pipeline plugin."
+      },
+      "fqn": "@cdklabs/cdk-cicd-wrapper.IPlugin",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/common/types/Types.ts",
+        "line": 439
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "docs": {
+            "stability": "stable",
+            "summary": "The method called after the stage is created."
+          },
+          "locationInModule": {
+            "filename": "src/common/types/Types.ts",
+            "line": 463
+          },
+          "name": "afterStage",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "context",
+              "type": {
+                "fqn": "@cdklabs/cdk-cicd-wrapper.ResourceContext"
+              }
+            }
+          ]
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "stability": "stable",
+            "summary": "The method called before the stage is created."
+          },
+          "locationInModule": {
+            "filename": "src/common/types/Types.ts",
+            "line": 458
+          },
+          "name": "beforeStage",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "context",
+              "type": {
+                "fqn": "@cdklabs/cdk-cicd-wrapper.ResourceContext"
+              }
+            }
+          ]
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "stability": "stable",
+            "summary": "The method called when the Pipeline configuration finalized."
+          },
+          "locationInModule": {
+            "filename": "src/common/types/Types.ts",
+            "line": 453
+          },
+          "name": "create",
+          "parameters": [
+            {
+              "name": "context",
+              "type": {
+                "fqn": "@cdklabs/cdk-cicd-wrapper.ResourceContext"
+              }
+            }
+          ]
+        }
+      ],
+      "name": "IPlugin",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "stability": "stable",
+            "summary": "The name of the plugin."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/common/types/Types.ts",
+            "line": 443
+          },
+          "name": "name",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "stability": "stable",
+            "summary": "The version of the plugin."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/common/types/Types.ts",
+            "line": 448
+          },
+          "name": "version",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/common/types/Types:IPlugin"
     },
     "@cdklabs/cdk-cicd-wrapper.IProxyConfig": {
       "assembly": "@cdklabs/cdk-cicd-wrapper",
@@ -7513,7 +7656,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 253
+        "line": 254
       },
       "methods": [
         {
@@ -7524,7 +7667,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 258
+            "line": 259
           },
           "name": "provide",
           "parameters": [
@@ -7553,7 +7696,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 296
+        "line": 297
       },
       "name": "IStageDefinition",
       "properties": [
@@ -7565,7 +7708,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 300
+            "line": 301
           },
           "name": "stage",
           "type": {
@@ -7580,7 +7723,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 305
+            "line": 306
           },
           "name": "account",
           "optional": true,
@@ -7596,7 +7739,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 322
+            "line": 323
           },
           "name": "complianceLogBucketName",
           "optional": true,
@@ -7613,7 +7756,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 317
+            "line": 318
           },
           "name": "manualApprovalRequired",
           "optional": true,
@@ -7629,7 +7772,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 310
+            "line": 311
           },
           "name": "region",
           "optional": true,
@@ -7645,7 +7788,7 @@
           },
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 327
+            "line": 328
           },
           "name": "vpc",
           "optional": true,
@@ -8336,7 +8479,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 98
+        "line": 99
       },
       "name": "NPMRegistryConfig",
       "properties": [
@@ -8349,7 +8492,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 107
+            "line": 108
           },
           "name": "basicAuthSecretArn",
           "type": {
@@ -8365,7 +8508,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 102
+            "line": 103
           },
           "name": "url",
           "type": {
@@ -8381,7 +8524,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 112
+            "line": 113
           },
           "name": "scope",
           "optional": true,
@@ -8779,7 +8922,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/stacks/PipelineBlueprint.ts",
-        "line": 423
+        "line": 446
       },
       "methods": [
         {
@@ -8790,7 +8933,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 428
+            "line": 451
           },
           "name": "builder",
           "returns": {
@@ -8818,7 +8961,7 @@
         },
         "locationInModule": {
           "filename": "src/stacks/PipelineBlueprint.ts",
-          "line": 91
+          "line": 104
         },
         "parameters": [
           {
@@ -8837,7 +8980,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/stacks/PipelineBlueprint.ts",
-        "line": 76
+        "line": 87
       },
       "methods": [
         {
@@ -8848,7 +8991,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 299
+            "line": 317
           },
           "name": "addStack",
           "parameters": [
@@ -8887,7 +9030,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 134
+            "line": 147
           },
           "name": "applicationName",
           "parameters": [
@@ -8915,7 +9058,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 164
+            "line": 177
           },
           "name": "applicationQualifier",
           "parameters": [
@@ -8943,7 +9086,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 194
+            "line": 207
           },
           "name": "codeBuildEnvSettings",
           "parameters": [
@@ -8971,7 +9114,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 204
+            "line": 217
           },
           "name": "codeGuruScanThreshold",
           "parameters": [
@@ -8999,7 +9142,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 321
+            "line": 339
           },
           "name": "definePhase",
           "parameters": [
@@ -9041,7 +9184,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 240
+            "line": 258
           },
           "name": "defineStages",
           "parameters": [
@@ -9081,7 +9224,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 229
+            "line": 242
           },
           "name": "disable",
           "parameters": [
@@ -9106,7 +9249,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 124
+            "line": 137
           },
           "name": "id",
           "parameters": [
@@ -9134,7 +9277,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 184
+            "line": 197
           },
           "name": "logRetentionInDays",
           "parameters": [
@@ -9162,7 +9305,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 144
+            "line": 157
           },
           "name": "npmRegistry",
           "parameters": [
@@ -9184,13 +9327,36 @@
         },
         {
           "docs": {
+            "stability": "stable"
+          },
+          "locationInModule": {
+            "filename": "src/stacks/PipelineBlueprint.ts",
+            "line": 248
+          },
+          "name": "plugin",
+          "parameters": [
+            {
+              "name": "plugin",
+              "type": {
+                "fqn": "@cdklabs/cdk-cicd-wrapper.IPlugin"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "fqn": "@cdklabs/cdk-cicd-wrapper.PipelineBlueprintBuilder"
+            }
+          }
+        },
+        {
+          "docs": {
             "returns": "This PipelineBlueprintBuilder instance.",
             "stability": "stable",
             "summary": "Sets the proxy configuration for the Pipeline Blueprint."
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 154
+            "line": 167
           },
           "name": "proxy",
           "parameters": [
@@ -9220,7 +9386,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 174
+            "line": 187
           },
           "name": "region",
           "parameters": [
@@ -9248,7 +9414,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 214
+            "line": 227
           },
           "name": "repositoryProvider",
           "parameters": [
@@ -9276,7 +9442,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 224
+            "line": 237
           },
           "name": "resourceProvider",
           "parameters": [
@@ -9313,7 +9479,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 331
+            "line": 349
           },
           "name": "synth",
           "parameters": [
@@ -9341,7 +9507,7 @@
           },
           "locationInModule": {
             "filename": "src/stacks/PipelineBlueprint.ts",
-            "line": 284
+            "line": 302
           },
           "name": "workbench",
           "parameters": [
@@ -9385,7 +9551,7 @@
       "kind": "enum",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 388
+        "line": 389
       },
       "members": [
         {
@@ -10189,7 +10355,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 363
+        "line": 364
       },
       "name": "RepositoryConfig",
       "properties": [
@@ -10202,7 +10368,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 372
+            "line": 373
           },
           "name": "branch",
           "type": {
@@ -10218,7 +10384,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 377
+            "line": 378
           },
           "name": "name",
           "type": {
@@ -10234,7 +10400,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 367
+            "line": 368
           },
           "name": "repositoryType",
           "type": {
@@ -10250,7 +10416,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 382
+            "line": 383
           },
           "name": "description",
           "optional": true,
@@ -10771,98 +10937,6 @@
       "name": "Scope",
       "symbolId": "src/common/spi/ResourceContext:Scope"
     },
-    "@cdklabs/cdk-cicd-wrapper.SecurityControls": {
-      "assembly": "@cdklabs/cdk-cicd-wrapper",
-      "docs": {
-        "stability": "stable",
-        "summary": "Implements security controls across various AWS services."
-      },
-      "fqn": "@cdklabs/cdk-cicd-wrapper.SecurityControls",
-      "initializer": {
-        "docs": {
-          "stability": "stable",
-          "summary": "Constructs a new instance of SecurityControls."
-        },
-        "locationInModule": {
-          "filename": "src/utils/aspects.ts",
-          "line": 31
-        },
-        "parameters": [
-          {
-            "docs": {
-              "summary": "The KMS key to use for encryption."
-            },
-            "name": "kmsKey",
-            "type": {
-              "fqn": "aws-cdk-lib.aws_kms.Key"
-            }
-          },
-          {
-            "docs": {
-              "summary": "The deployment stage (e.g., dev, prod)."
-            },
-            "name": "stage",
-            "type": {
-              "primitive": "string"
-            }
-          },
-          {
-            "docs": {
-              "summary": "The number of days to retain logs."
-            },
-            "name": "logRetentionInDays",
-            "type": {
-              "primitive": "string"
-            }
-          },
-          {
-            "docs": {
-              "summary": "The name of the S3 bucket for compliance logs."
-            },
-            "name": "complianceLogBucketName",
-            "optional": true,
-            "type": {
-              "primitive": "string"
-            }
-          }
-        ]
-      },
-      "interfaces": [
-        "aws-cdk-lib.IAspect"
-      ],
-      "kind": "class",
-      "locationInModule": {
-        "filename": "src/utils/aspects.ts",
-        "line": 17
-      },
-      "methods": [
-        {
-          "docs": {
-            "stability": "stable",
-            "summary": "Visits an AWS CDK construct and applies security controls."
-          },
-          "locationInModule": {
-            "filename": "src/utils/aspects.ts",
-            "line": 43
-          },
-          "name": "visit",
-          "overrides": "aws-cdk-lib.IAspect",
-          "parameters": [
-            {
-              "docs": {
-                "summary": "The construct to visit."
-              },
-              "name": "node",
-              "type": {
-                "fqn": "constructs.IConstruct"
-              }
-            }
-          ]
-        }
-      ],
-      "name": "SecurityControls",
-      "symbolId": "src/utils/aspects:SecurityControls"
-    },
     "@cdklabs/cdk-cicd-wrapper.ShellCommandPhaseCommand": {
       "assembly": "@cdklabs/cdk-cicd-wrapper",
       "docs": {
@@ -11001,7 +11075,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 43
+        "line": 44
       },
       "name": "Stage",
       "properties": [
@@ -11014,7 +11088,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 52
+            "line": 53
           },
           "name": "DEV",
           "static": true,
@@ -11031,7 +11105,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 57
+            "line": 58
           },
           "name": "INT",
           "static": true,
@@ -11048,7 +11122,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 62
+            "line": 63
           },
           "name": "PROD",
           "static": true,
@@ -11065,7 +11139,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 47
+            "line": 48
           },
           "name": "RES",
           "static": true,
@@ -11499,7 +11573,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 173
+        "line": 174
       },
       "name": "WorkbenchConfig",
       "properties": [
@@ -11512,7 +11586,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 182
+            "line": 183
           },
           "name": "options",
           "type": {
@@ -11528,7 +11602,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 177
+            "line": 178
           },
           "name": "stackProvider",
           "type": {
@@ -11549,7 +11623,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/common/types/Types.ts",
-        "line": 188
+        "line": 189
       },
       "name": "WorkbenchOptions",
       "properties": [
@@ -11562,7 +11636,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 192
+            "line": 193
           },
           "name": "stageToUse",
           "optional": true,
@@ -11579,7 +11653,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/common/types/Types.ts",
-            "line": 197
+            "line": 198
           },
           "name": "workbenchPrefix",
           "optional": true,
@@ -11592,5 +11666,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "TMfqVAMo/b/nxg5CATbRQXHYRazQVbQl6Mf14Qw8zZ4="
+  "fingerprint": "73DpdMSqm4QU9DcYLpCAF8qOkvcDXeUasFaHAKkrcpw="
 }

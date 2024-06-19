@@ -17,7 +17,7 @@ describe('codecommit-repository-construct', () => {
     [GlobalResources.PARAMETER_STORE]: parameterProvider,
   };
 
-  new ResourceContext(new cdk.App(), new cdk.Stack(), { ...TestAppConfig, resourceProviders });
+  new ResourceContext(new cdk.App(), new cdk.Stack(), { ...TestAppConfig, resourceProviders, plugins: {} });
 
   new CodeCommitRepositoryConstruct(stack, 'CodeCommit', {
     applicationName: TestAppConfig.applicationName,

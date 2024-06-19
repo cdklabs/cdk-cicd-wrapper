@@ -16,7 +16,7 @@ describe('repository-stack-test-codecommit', () => {
     [GlobalResources.PARAMETER_STORE]: parameterProvider,
   };
 
-  new ResourceContext(app, new cdk.Stack(), { ...TestAppConfig, resourceProviders });
+  new ResourceContext(app, new cdk.Stack(), { ...TestAppConfig, resourceProviders, plugins: {} });
 
   const template = Template.fromStack(
     new CodeCommitRepositoryStack(app, 'RepositoryStack', {
