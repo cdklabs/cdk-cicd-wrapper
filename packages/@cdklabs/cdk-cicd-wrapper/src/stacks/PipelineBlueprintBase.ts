@@ -44,6 +44,8 @@ export class PipelineBlueprintBase extends cdk.Stack {
 
     this.resourceContext = new ResourceContext(scope, this, config);
 
+    Object.values(config.plugins).forEach((plugin) => (plugin.create ? plugin.create(this.resourceContext) : null));
+
     this.resourceContext.initStage(Stage.RES);
   }
 
@@ -58,8 +60,15 @@ export class PipelineBlueprintBase extends cdk.Stack {
     const deploymentEnvironment = deploymentDefinition.env;
 
     if (stage == Stage.RES) {
+      Object.values(this.config.plugins).forEach((plugin) =>
+        plugin.beforeStage ? plugin.beforeStage(this.resourceContext.scope, this.resourceContext) : null,
+      );
       // Allow to define additional stacks for RES stage
       deploymentDefinition.stacksProviders.forEach((stackProvider) => stackProvider.provide(this.resourceContext));
+
+      Object.values(this.config.plugins).forEach((plugin) =>
+        plugin.afterStage ? plugin.afterStage(this.resourceContext.scope, this.resourceContext) : null,
+      );
       return;
     }
 
@@ -158,10 +167,16 @@ export class PipelineBlueprintBase extends cdk.Stack {
     const hooks: DeploymentHookConfig[] = [];
 
     this.resourceContext._scoped(scope, () => {
+      Object.values(this.config.plugins).forEach((plugin) =>
+        plugin.beforeStage ? plugin.beforeStage(this.resourceContext.scope, this.resourceContext) : null,
+      );
       stacksProviders.forEach((stackProvider) => {
         stackProvider.provide(this.resourceContext);
       });
 
+      Object.values(this.config.plugins).forEach((plugin) =>
+        plugin.afterStage ? plugin.afterStage(this.resourceContext.scope, this.resourceContext) : null,
+      );
       const hookConfig = this.resourceContext.get(GlobalResources.HOOK) as IDeploymentHookConfigProvider;
 
       hooks.push(hookConfig.config);

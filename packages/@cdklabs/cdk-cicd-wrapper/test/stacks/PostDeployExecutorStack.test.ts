@@ -10,7 +10,7 @@ import { TestAppConfig } from '../TestConfig';
 describe('post-deploy-role-stack-test', () => {
   const app = new cdk.App();
 
-  new ResourceContext(app, new cdk.Stack(), { ...TestAppConfig, resourceProviders: {} });
+  new ResourceContext(app, new cdk.Stack(), { ...TestAppConfig, resourceProviders: {}, plugins: {} });
   ResourceContext.instance().initStage(Stage.DEV);
 
   const template = Template.fromStack(

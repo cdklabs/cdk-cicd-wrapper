@@ -4,8 +4,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { Construct } from 'constructs';
-import { GlobalResources, ResourceContext } from '../common';
-import { SecurityControls } from '../utils';
+import { ResourceContext } from '../common';
 
 /**
  * Interface for the properties required to create an AppStage.
@@ -37,17 +36,7 @@ export class AppStage extends cdk.Stage {
 
     const context = props.context;
 
-    const logRetentionInDays = context.blueprintProps.logRetentionInDays;
-    const stage = context.stage;
-
     context._scoped(this, () => {
-      const complianceLogBucketName = context.get(GlobalResources.COMPLIANCE_BUCKET)?.bucketName;
-
-      const encryptionStack = context.get(GlobalResources.ENCRYPTION)!;
-
-      cdk.Aspects.of(this).add(
-        new SecurityControls(encryptionStack.kmsKey, stage, logRetentionInDays, complianceLogBucketName),
-      );
       cdk.Aspects.of(this).add(new AwsSolutionsChecks({ verbose: false }));
     });
   }

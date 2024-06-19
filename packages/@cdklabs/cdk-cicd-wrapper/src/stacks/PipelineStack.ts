@@ -1,13 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IPipelineBlueprintProps } from './PipelineBlueprint';
 import { PipelineBlueprintBase } from './PipelineBlueprintBase';
-import { Stage, GlobalResources } from '../common';
-
-import { SecurityControls } from '../utils';
+import { GlobalResources } from '../common';
 
 /**
  * PipelineStack class responsible for creating the pipeline and its stages based on the provided deployment definition.
@@ -29,16 +26,6 @@ export class PipelineStack extends PipelineBlueprintBase {
     this.resourceContext.get(GlobalResources.ENCRYPTION);
     this.resourceContext.get(GlobalResources.VPC);
     const pipeline = this.resourceContext.get(GlobalResources.PIPELINE)!;
-
-    // Add security controls aspect
-    cdk.Aspects.of(scope).add(
-      new SecurityControls(
-        this.resourceContext.get(GlobalResources.ENCRYPTION)!.kmsKey,
-        Stage.RES,
-        config.logRetentionInDays,
-        this.resourceContext.get(GlobalResources.COMPLIANCE_BUCKET)?.bucketName,
-      ),
-    );
 
     // Render stages based on the deployment definition
     Object.entries(config.deploymentDefinition).forEach(([deploymentStage, deploymentDefinition]) => {

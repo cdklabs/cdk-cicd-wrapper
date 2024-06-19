@@ -1,12 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IPipelineBlueprintProps } from './PipelineBlueprint';
 import { PipelineBlueprintBase } from './PipelineBlueprintBase';
-import { Environment, Stage, GlobalResources } from '../common';
-import { SecurityControls } from '../utils';
+import { Environment } from '../common';
 
 /**
  * Represents a workbench stack within the pipeline blueprint.
@@ -30,19 +28,6 @@ export class WorkbenchStack extends PipelineBlueprintBase {
 
     // Initialize the stage for the workbench stack
     this.resourceContext.initStage(config.workbench!.options!.stageToUse!);
-
-    // Retrieve the encryption key from the global resources
-    this.resourceContext.get(GlobalResources.ENCRYPTION);
-
-    // Add security controls to the stack
-    cdk.Aspects.of(scope).add(
-      new SecurityControls(
-        this.resourceContext.get(GlobalResources.ENCRYPTION)!.kmsKey,
-        Stage.RES,
-        config.logRetentionInDays,
-        this.resourceContext.get(GlobalResources.COMPLIANCE_BUCKET)!.bucketName,
-      ),
-    );
 
     // Render the stacks for the workbench
     this.renderStacks(this, [config.workbench?.stackProvider!]);
