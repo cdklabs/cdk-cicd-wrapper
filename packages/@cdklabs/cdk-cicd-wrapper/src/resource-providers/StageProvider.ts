@@ -24,7 +24,6 @@ export class StageProvider implements IResourceProvider {
 
     return new AppStage(scope, stage, {
       env: environment,
-      context,
     });
   }
 }

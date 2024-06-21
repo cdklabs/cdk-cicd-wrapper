@@ -205,7 +205,7 @@ export class PipelineBlueprintBuilder {
    * @returns This PipelineBlueprintBuilder instance.
    */
   public codeBuildEnvSettings(codeBuildEnvSettings: codebuild.BuildEnvironment) {
-    this.props.codeBuildEnvSettings = codeBuildEnvSettings;
+    this.props.codeBuildEnvSettings = { ...this.props.codeBuildEnvSettings, ...codeBuildEnvSettings };
     return this;
   }
 
