@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
@@ -18,6 +19,7 @@ export interface ComplianceLogBucketStackProps extends cdk.StackProps {
    * The name of the compliance log bucket to be created.
    */
   readonly complianceLogBucketName: string;
+  readonly vpc: ec2.IVpc | undefined;
 }
 
 /**
@@ -50,6 +52,7 @@ export class ComplianceLogBucketStack extends cdk.Stack implements IComplianceBu
       handler: 'make-compliance-log-bucket.handler', // Default handler for the Lambda function
       code: lambda.Code.fromAsset(path.resolve(__dirname, './lambda-functions')), // Path to the Lambda function code
       timeout: cdk.Duration.seconds(30), // Default timeout for the Lambda function
+      vpc!: props.
       initialPolicy: [
         new iam.PolicyStatement({
           actions: ['s3:CreateBucket', 's3:GetBucketLocation', 's3:PutBucketPolicy'],

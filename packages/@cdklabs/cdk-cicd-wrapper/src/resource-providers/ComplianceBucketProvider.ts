@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ResourceContext, IResourceProvider, Scope } from '../common';
+import {GlobalResources, ResourceContext, IResourceProvider, Scope } from '../common';
 import { ComplianceLogBucketStack } from '../stacks';
 
 /**
@@ -34,6 +34,8 @@ export class ComplianceBucketConfigProvider implements IResourceProvider {
    */
   provide(context: ResourceContext): any {
     const { account, region } = context.environment;
+
+    const vpcProvider = context.get(GlobalResources.VPC)!;
 
     return new ComplianceLogBucketStack(
       context.scope,
