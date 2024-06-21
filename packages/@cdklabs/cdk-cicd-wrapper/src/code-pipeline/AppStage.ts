@@ -3,7 +3,6 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
-import { Construct } from 'constructs';
 import { ResourceContext } from '../common';
 
 /**
@@ -24,20 +23,8 @@ export interface AppStageProps extends cdk.StageProps {
  * @extends cdk.Stage - Inherits functionality from the cdk.Stage class.
  */
 export class AppStage extends cdk.Stage {
-  /**
-   * Creates an instance of AppStage.
-   * @constructor
-   * @param {Construct} scope - The scope in which the stage is created.
-   * @param {string} id - The unique identifier for the stage.
-   * @param {AppStageProps} props - The properties required to create the stage.
-   */
-  constructor(scope: Construct, id: string, props: AppStageProps) {
-    super(scope, id, props);
-
-    const context = props.context;
-
-    context._scoped(this, () => {
-      cdk.Aspects.of(this).add(new AwsSolutionsChecks({ verbose: false }));
-    });
+  synth(options?: cdk.StageSynthesisOptions | undefined): cdk.cx_api.CloudAssembly {
+    cdk.Aspects.of(this).add(new AwsSolutionsChecks({ verbose: false }));
+    return super.synth(options);
   }
 }
