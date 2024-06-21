@@ -2,18 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import {GlobalResources, ResourceContext, IResourceProvider, Scope } from '../common';
 =======
 import { IVpcConstruct } from './VPCProvider';
 import { ResourceContext, IResourceProvider, Scope, GlobalResources } from '../common';
 >>>>>>> e8d8dbc (feat!: running custom resources in the VPC if the VPC is configured)
+=======
+import {GlobalResources, ResourceContext, IResourceProvider, Scope } from '../common';
+>>>>>>> d89793e (feat: added config validator in synth)
 import { ComplianceLogBucketStack } from '../stacks';
 
 /**
  * Compliance Bucket configuration interface.
  * This interface defines the configuration properties for a compliance bucket.
  */
-export interface IComplianceBucket {
+export interface IComplianceBucketConfig {
   /**
    * The name of the compliance bucket.
    */
@@ -24,7 +28,7 @@ export interface IComplianceBucket {
  * Compliance bucket provider which uses existing previously created buckets.
  * This class is responsible for providing a compliance bucket resource using an existing bucket.
  */
-export class ComplianceBucketProvider implements IResourceProvider {
+export class ComplianceBucketConfigProvider implements IResourceProvider {
   /**
    * The scope of the provider, which is set to PER_STAGE by default.
    * This means that the provider will create a separate resource for each stage.
@@ -38,9 +42,9 @@ export class ComplianceBucketProvider implements IResourceProvider {
    * @returns The ComplianceLogBucketStack instance representing the compliance bucket resource.
    */
   provide(context: ResourceContext): any {
-    const complianceLogBucketName = context.blueprintProps.deploymentDefinition[context.stage].complianceLogBucketName!;
+    const { account, region } = context.environment;
 
-    const vpcConstruct = context.get(GlobalResources.VPC) as IVpcConstruct;
+    const vpcProvider = context.get(GlobalResources.VPC)!;
 
     const vpcProvider = context.get(GlobalResources.VPC)!;
 
@@ -48,12 +52,7 @@ export class ComplianceBucketProvider implements IResourceProvider {
       context.scope,
       `${context.blueprintProps.applicationName}ComplianceLogBucketStack`,
       {
-        complianceLogBucketName,
-        vpc: vpcConstruct.vpc,
-        securityGroup: vpcConstruct.securityGroup,
-        subnetSelection: vpcConstruct.vpc?.selectSubnets({
-          subnetType: vpcConstruct.subnetType,
-        }),
+        complianceLogBucketName: `compliance-log-${account}-${region}`,
       },
     );
   }
