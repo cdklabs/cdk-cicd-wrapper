@@ -15,12 +15,12 @@ export interface DefaultStackProviderOptions {
    * Indicates whether to use the application name or not.
    * @default false
    */
-  useApplicationName?: boolean;
+  readonly useApplicationName?: boolean;
 
   /**
    * The name of the provider.
    */
-  providerName?: string;
+  readonly providerName?: string;
 }
 
 /**
