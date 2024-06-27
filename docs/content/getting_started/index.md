@@ -67,14 +67,14 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 
    ```bash
    CDK_QUALIFIER=$(jq -r '.config.cdkQualifier' package.json)
-   npm run cdk bootstrap -- --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} aws://${ACCOUNT_RES}/${AWS_REGION}
+   npx dotenv-cli -- npm run cdk bootstrap -- --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} aws://${ACCOUNT_RES}/${AWS_REGION}
    ```
 
 2. **Prepare the DEV stage**:
 
    ```bash
    CDK_QUALIFIER=$(jq -r '.config.cdkQualifier' package.json)
-   npm run cdk bootstrap -- --profile $DEV_ACCOUNT_AWS_PROFILE  --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
+   npx dotenv-cli -- npm run cdk bootstrap -- --profile $DEV_ACCOUNT_AWS_PROFILE  --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
    arn:aws:iam::aws:policy/AdministratorAccess \
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_DEV}/${AWS_REGION}
    ```
@@ -83,7 +83,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 
    ```bash
    CDK_QUALIFIER=$(jq -r '.config.cdkQualifier' package.json)
-   npm run cdk bootstrap -- --profile $INT_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
+   npx dotenv-cli -- npm run cdk bootstrap -- --profile $INT_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
    arn:aws:iam::aws:policy/AdministratorAccess \
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_INT}/${AWS_REGION}
    ```
@@ -92,7 +92,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
 
    ```bash
    CDK_QUALIFIER=$(jq -r '.config.cdkQualifier' package.json)
-   npm run cdk bootstrap -- --profile $PROD_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
+   npx dotenv-cli -- npm run cdk bootstrap -- --profile $PROD_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER} --cloudformation-execution-policies \
    arn:aws:iam::aws:policy/AdministratorAccess \
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_PROD}/${AWS_REGION}
    ```
