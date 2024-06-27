@@ -82,6 +82,61 @@ const defaultConfigs = {
 };
 
 /**
+ * Validates the environment variables and default configurations.
+ * Throws an error if any validation fails.
+ */
+function validateConfig(props: IPipelineBlueprintProps, stageDefinitions: AllStage<Partial<IStageDefinition>>, region: string) {
+  const envVars = [
+    { name: 'AWS_REGION', pattern: /^[a-z]{2}-[a-z]+-\d{1}$/, errorMessage: 'Invalid AWS region format' },
+    { name: 'ACCOUNT_RES', pattern: /^\d{12}$/, errorMessage: 'Invalid RES account number format' },
+    { name: 'RES_ACCOUNT_AWS_PROFILE', pattern: /^[a-zA-Z0-9-_]+$/, errorMessage: 'Invalid AWS profile name format' },
+    { name: 'ACCOUNT_DEV', pattern: /^\d{12}$/, errorMessage: 'Invalid DEV account number format' },
+    { name: 'DEV_ACCOUNT_AWS_PROFILE', pattern: /^[a-zA-Z0-9-_]+$/, errorMessage: 'Invalid AWS profile name format' },
+    { name: 'ACCOUNT_INT', pattern: /^\d{12}$/, errorMessage: 'Invalid INT account number format' },
+    { name: 'INT_ACCOUNT_AWS_PROFILE', pattern: /^[a-zA-Z0-9-_]+$/, errorMessage: 'Invalid AWS profile name format' },
+    { name: 'PROXY_SECRET_ARN', pattern: /^arn:aws:[a-z-]+:[a-z0-9-]+:\d{12}:secret\/[a-zA-Z0-9-_]+$/, errorMessage: 'Invalid ARN format' },
+  ];
+
+  envVars.forEach((envVar) => {
+    const value = process.env[envVar.name];
+    if (value && !envVar.pattern.test(value)) {
+      throw new Error(`Environment variable ${envVar.name} is invalid: ${envVar.errorMessage}`);
+    }
+  });
+
+  if (!props.applicationName) {
+    throw new Error('Application name is required');
+  }
+
+  if (!props.applicationQualifier) {
+    throw new Error('Application qualifier is required');
+  } else if (!/^[a-zA-Z0-9-_]+$/.test(props.applicationQualifier)) {
+    throw new Error('Invalid application qualifier format');
+  }
+
+  if (!region) {
+    throw new Error('AWS region is required');
+  } else if (!/^[a-z]{2}-[a-z]+-\d{1}$/.test(region)) {
+    throw new Error('Invalid AWS region format');
+  }
+
+  if (!stageDefinitions.RES) {
+    throw new Error('At least RES stage is required');
+  }
+
+  Object.entries(stageDefinitions).forEach(([stage, providedDefinition]) => {
+    if (!providedDefinition.account) {
+      throw new Error(`Stage ${stage} does not have an associated account.`);
+    } else if (!/^\d{12}$/.test(providedDefinition.account)) {
+      throw new Error(`Invalid account number format for stage ${stage}`);
+    }
+    if (providedDefinition.region && !/^[a-z]{2}-[a-z]+-\d{1}$/.test(providedDefinition.region)) {
+      throw new Error(`Invalid AWS region format for stage ${stage}`);
+    }
+  });
+}
+
+/**
  * Class for building a Pipeline Blueprint.
  */
 export class PipelineBlueprintBuilder {
@@ -347,6 +402,10 @@ export class PipelineBlueprintBuilder {
    * @returns The created stack.
    */
   public synth(app: cdk.App) {
+
+    // Validate the entire configuration
+    validateConfig(this.props, this.stageDefinitions, this._region!);
+
     this.props.deploymentDefinition = this.generateDeploymentDefinitions();
 
     let stack: cdk.Stack;
