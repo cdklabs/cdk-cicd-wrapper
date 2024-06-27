@@ -411,7 +411,7 @@ class Command implements yargs.CommandModule {
   /**
    * The command description.
    */
-  describe = 'Scan the codebase for security vulnerabilities';
+  describe = 'scan the codebase for security vulnerabilities';
 
   /**
    * Configures the command options.
