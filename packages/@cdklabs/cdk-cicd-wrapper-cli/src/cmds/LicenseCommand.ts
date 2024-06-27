@@ -890,7 +890,7 @@ class LicenseChecker {
 class Command implements yargs.CommandModule {
   command = 'license';
 
-  describe = 'Controls the projects NOTICE file';
+  describe = 'check the projects NOTICE file';
 
   builder(args: yargs.Argv) {
     args.option('fix', {

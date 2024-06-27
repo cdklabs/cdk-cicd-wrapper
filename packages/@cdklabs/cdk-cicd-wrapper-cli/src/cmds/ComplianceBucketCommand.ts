@@ -25,7 +25,7 @@ class Command implements yargs.CommandModule {
   /**
    * A description of the command.
    */
-  describe = 'Configures the vanilla-pipeline';
+  describe = 'configure the Compliance Log Bucket';
 
   /**
    * Builds the command arguments.
