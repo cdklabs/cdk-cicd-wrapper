@@ -165,8 +165,8 @@ You would typically do this when testing new features or fixes that you are tryi
 - Bash/ZSH terminal
 - Task installed using the [installation guide](https://taskfile.dev/installation/)
 - Maven installed depending on your OS:
-  - [Linux](https://maven.apache.org/download.cgi)
-  - [macOs via Homebrew](https://formulae.brew.sh/formula/maven)
+    - [Linux](https://maven.apache.org/download.cgi)
+    - [macOs via Homebrew](https://formulae.brew.sh/formula/maven)
 - aws-cli v2 [here](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 - AWS credentials and profiles for each environment under ~/.aws/config [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html)
 
