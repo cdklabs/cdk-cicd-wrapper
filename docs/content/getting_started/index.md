@@ -157,8 +157,12 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
    **Note**: Refer to the [Developer Guide](../developer_guides/index.md) for more information on the `PipelineBlueprint`.
 
-  4. The {{ project_name }} expects to have the `validate`, `lint`, `test`, `audit` scripts defines. If you are missing any of the `npm run` scripts (e.g., ), or want to use the provided CLI tool for one or more actions, you can add the following definitions to your `package.json` file:
+  4. The {{ project_name }} expects to have the `validate`, `lint`, `test`, `audit` scripts defined. If you are missing any of the `npm run` scripts (e.g., ), or want to use the provided CLI tool for one or more actions, you should add the following definitions to your `package.json` file:
 
+  4. 0. Adding cdk script (necessay when you run the `npm run cdk` and uses the local cdk version rather than the global one)
+  ```bash
+   jq --arg key "cdk" --arg val "npx aws-cdk@2.142.1" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+  ```
   4. 1. Adding validate script
    ```bash
    jq --arg key "validate" --arg val "cdk-cicd validate" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
@@ -189,19 +193,20 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
    {
      ...
      "scripts": {
-       "validate": "cdk-cicd validate",
-       "validate:fix": "cdk-cicd validate --fix",
-       "audit": "npx concurrently 'npm:audit:*(!fix)'",
        "audit:deps:nodejs": "cdk-cicd check-dependencies --npm",
        "audit:deps:python": "cdk-cicd check-dependencies --python",
-       "audit:scan:security": "cdk-cicd security-scan --bandit --semgrep --shellcheck --ci",
-       "audit:license": "npm run license",
        "audit:fix:license": "npm run license:fix",
-       "license": "cdk-cicd license",
+       "audit:license": "npm run license",
+       "audit:scan:security": "cdk-cicd security-scan --bandit --semgrep --shellcheck --ci",
+       "audit": "npx concurrently 'npm:audit:*(!fix)'",
+       "cdk": "npx aws-cdk@2.142.1",
        "license:fix": "cdk-cicd license --fix",
-       "lint": "eslint . --ext .ts --max-warnings 0",
+       "license": "cdk-cicd license",
        "lint:fix": "eslint . --ext .ts --fix",
-       "test": "jest"
+       "lint": "eslint . --ext .ts --max-warnings 0",
+       "test": "jest",
+       "validate:fix": "cdk-cicd validate --fix",
+       "validate": "cdk-cicd validate",
        ...
      }
      ...
