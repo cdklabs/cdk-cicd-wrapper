@@ -1700,7 +1700,7 @@ npx<span class="w"> </span>cz<span class="w"> </span><span class="c1"># launch c
 <h2 id="code-of-conduct">Code of Conduct</h2>
 <p>This project has adopted the <a href="https://aws.github.io/code-of-conduct">Amazon Open Source Code of Conduct</a>.
 For more information see the <a href="https://aws.github.io/code-of-conduct-faq">Code of Conduct FAQ</a> or contact
-opensource-codeofconduct@amazon.com with any additional questions or comments.</p>
+<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#111;&#112;&#101;&#110;&#115;&#111;&#117;&#114;&#99;&#101;&#45;&#99;&#111;&#100;&#101;&#111;&#102;&#99;&#111;&#110;&#100;&#117;&#99;&#116;&#64;&#97;&#109;&#97;&#122;&#111;&#110;&#46;&#99;&#111;&#109;">&#111;&#112;&#101;&#110;&#115;&#111;&#117;&#114;&#99;&#101;&#45;&#99;&#111;&#100;&#101;&#111;&#102;&#99;&#111;&#110;&#100;&#117;&#99;&#116;&#64;&#97;&#109;&#97;&#122;&#111;&#110;&#46;&#99;&#111;&#109;</a> with any additional questions or comments.</p>
 <h2 id="security-issue-notifications">Security issue notifications</h2>
 <p>If you discover a potential security issue in this project we ask that you notify AWS/Amazon Security via our <a href="http://aws.amazon.com/security/vulnerability-reporting/">vulnerability reporting page</a>. Please do <strong>not</strong> create a public github issue.</p>
 <h2 id="licensing">Licensing</h2>
@@ -1708,14 +1708,26 @@ opensource-codeofconduct@amazon.com with any additional questions or comments.</
 <p>We may ask you to sign a <a href="http://en.wikipedia.org/wiki/Contributor_License_Agreement">Contributor License Agreement (CLA)</a> for larger changes.</p>
 <h2 id="working-with-documentation">Working with documentation</h2>
 <p>The documentation for the CDK CI/CD Wrapper Core is stored under the docs/ (index file: index.md) and is designed to be viewed as an MkDocs html site. Before heading to the documentation we highly recommend you:</p>
-<p>test
-- Run the build docs script <code>task docs</code> using you UNIX cli
-- Start the local mkdocs webserver to view locally the ConfigBuilder documentation site with the <code>task docs:local</code> command; the documentation will then be available at http://localhost:8000</p>
+<p>test</p>
+<ul>
+<li>Run the build docs script <code>task docs</code> using you UNIX cli</li>
+<li>Start the local mkdocs webserver to view locally the ConfigBuilder documentation site with the <code>task docs:local</code> command; the documentation will then be available at <a href="http://localhost:8000">http://localhost:8000</a></li>
+</ul>
 <h2 id="testing-packages-locally">Testing Packages locally</h2>
 <p>This section explains how you can run local versions of the CDK CI/CD Wrapper packages that you have made changes to.
 You would typically do this when testing new features or fixes that you are trying to contribute to this project.</p>
 <h3 id="prerequisite">Prerequisite</h3>
-<p>An AWS account available for testing with Administrator access.</p>
+<ul>
+<li>An AWS account available for testing with Administrator access.</li>
+<li>Mac OS / Cloud9 with Ubuntu Server 22.04 LTS Platform</li>
+<li>Bash/ZSH terminal</li>
+<li>Task installed using the <a href="https://taskfile.dev/installation/">installation guide</a></li>
+<li>Maven installed depending on your OS:</li>
+<li><a href="https://maven.apache.org/download.cgi">Linux</a></li>
+<li><a href="https://formulae.brew.sh/formula/maven">macOs via Homebrew</a></li>
+<li>aws-cli v2 <a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html">here</a></li>
+<li>AWS credentials and profiles for each environment under ~/.aws/config <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html">here</a></li>
+</ul>
 <h3 id="first-steps">First steps</h3>
 <p>Configure the following environment variables.</p>
 <table>
@@ -1791,10 +1803,10 @@ The command might fail with message like <code>exit status 255</code> or similar
 <p>The available samples can be listed, with the <code>task samples:list</code> command.
 Set the <code>SAMPLE_APP</code> environment variable name as the folder is called inside the sample folder.
 Once you've selected a sample, that you'd like to use as baseline you need to then go ahead and initialize a project based on that running the following commands:</p>
-<p><div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">SAMPLE_APP</span><span class="o">=</span>cdk-ts-example<span class="p">;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">SAMPLE_APP</span><span class="o">=</span>cdk-ts-example<span class="p">;</span>
 task<span class="w"> </span>samples:dev:init
 </code></pre></div>
-The last command creates the <code>development/project</code> temporarily folder and initialize the project with <a href="https://projen.io/">Projen</a>.</p>
+<p>The last command creates the <code>development/project</code> temporarily folder and initialize the project with <a href="https://projen.io/">Projen</a>.</p>
 <h4 id="configure-environment-variables-for-the-sample-application">Configure environment variables for the sample application</h4>
 <p>The environment variables listed on the <a href="../developer_guides/variables.html">Variables</a> page.
 These variables can be included into the <code>.env</code> file in either the root or in the <code>development/project</code> folder.</p>
@@ -1806,7 +1818,7 @@ You can execute it with the <code>task samples:dev:bootstrap</code>.</p>
 <h4 id="update-the-cdk-cicd-wrapper-libraries-in-the-development">Update the cdk-cicd-wrapper libraries in the development</h4>
 <p>You can update the packages with the <code>task samples:dev:update</code> command that ensures the latest CDK CI/CD Wrapper is used.</p>
 <h4 id="deploy-the-pipeline-to-the-account">Deploy the pipeline to the account</h4>
-<p>You can deploy the pipelines from the development folder with the <code>task samples:dev:deploy</code> command. </p>
+<p>You can deploy the pipelines from the development folder with the <code>task samples:dev:deploy</code> command.</p>
 <h4 id="push-the-sources-of-the-sample-application-up-to-the-generated-repository-aws-codecommit">Push the sources of the sample application up to the generated repository AWS CodeCommit</h4>
 <p>You can push the changes made into the sample from the folder with the <code>task samples:dev:git:push</code></p>
 <h4 id="deploy-workbench-stacks">Deploy workbench stacks</h4>
@@ -1834,7 +1846,7 @@ You can execute it with the <code>task samples:dev:bootstrap</code>.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-05-08
+    2024-06-27
   </span>
 
     
