@@ -5,6 +5,7 @@
 import * as yargs from 'yargs';
 import checkDependencies from './cmds/CheckDependenciesCommand';
 import complianceBucket from './cmds/ComplianceBucketCommand';
+import analyzer from './cmds/AnalyzerCommand';
 import configure from './cmds/ConfigureCommand';
 import license from './cmds/LicenseCommand';
 import security from './cmds/SecurityCommand';
@@ -23,6 +24,7 @@ async function main() {
   ya.command(license);
   ya.command(complianceBucket);
   ya.command(security);
+  ya.command(analyzer);
   ya.command(checkDependencies);
 
   // Enable command recommendations and strict command handling

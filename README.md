@@ -184,6 +184,37 @@ You should not fork this repository and expect to reproduce the same in your AWS
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
 
+## Envoirnment Variables 
+
+To set up the required environment variables, you can either define them in your .env file, set them up in the environment variables of your CLI instance, or define them in code using the builder. At the very minimum, you need to define an account number for the RES account and a profile.
+
+Here are all the environment variables you can set up in the .env file:
+```
+GIT_REPOSITORY=git-repo-name
+CDK_QUALIFIER=valid-qualifier
+AWS_REGION=valid-region
+ACCOUNT_RES=valid-account-id
+RES_ACCOUNT_AWS_PROFILE=valid-profile
+ACCOUNT_DEV=valid-account-id
+DEV_ACCOUNT_AWS_PROFILE=valid-profile
+ACCOUNT_INT=valid-account-id (optional)
+INT_ACCOUNT_AWS_PROFILE=valid-profile (optional)
+PROXY_SECRET_ARN=valid-proxy-arn (optional)
+```
+
+Alternatively, it is recommended to set these variables up using your pipeline builder like so:
+
+```
+PipelineBlueprint.builder()
+  .defineStages([{ stage: 'RES', account: '12345678', region: 'us-east-1' }])
+  .repositoryProvider(new BasicRepositoryProvider({ name: 'repo-name', repositoryType: 'COMMIT', branch: 'main' }))
+  .applicationName('appname')
+  .proxy({ proxySecretArn: 'validarn', proxyTestUrl: 'url' });
+```
+This is not exhaustive and is just an example of a few. It is recommended that the documentation of the builder should be referred to when defining these custom parameters.
+
+Note also that the hierarchy of privilege here is the CLI environment variables, the .env variables, and then finally the variables defined in code as above. So the CLI environment variables take the most precedence, and if not available, it will fall down the list.
+
 ## License
 
 This project is licensed under the Apache-2.0 License.
