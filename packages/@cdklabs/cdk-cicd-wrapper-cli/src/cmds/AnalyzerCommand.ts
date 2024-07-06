@@ -20,7 +20,7 @@ class Command implements yargs.CommandModule {
   /**
    * A description of the command.
    */
-  describe = 'Analyzes the environment and pipeline configuration to spot potential common issues.';
+  describe = 'analyzes the environment and pipeline configuration to spot potential common issues.';
 
   /**
    * Builds the command arguments.
@@ -67,12 +67,12 @@ class Command implements yargs.CommandModule {
     const codebuildClient = new CodeBuild(sdkConfig);
     const kmsClient = new KMS(sdkConfig);
 
-    console.log('Analyzing for common issues...')
+    console.log('analyzing for common issues...')
     try {
       const pipelines = await pipelineClient.listPipelines({});
       for (const pipeline of pipelines.pipelines || []) {
         if (pipeline.name?.includes(cdkQualifier)) {
-          console.log('Retrieving pipeline details...')
+          console.log('retrieving pipeline details...')
           const pipelineDetails = await pipelineClient.send(
             new GetPipelineCommand({ name: pipeline.name })
           );
@@ -82,24 +82,24 @@ class Command implements yargs.CommandModule {
           } else {
 
             //Pipeline sanity check against .env
-            console.log('Preforming pipeline sanity check against env vars...')
+            console.log('preforming pipeline sanity check against env vars...')
             if (process.env.ACCOUNT_DEV && process.env.ACCOUNT_DEV !== '-') {
               const hasDevStage = pipelineDetails.pipeline?.stages.some(stage => stage.name === 'DEV');
               if (!hasDevStage) {
-                console.warn(`NOTE : Pipeline failed sanity check, your .env / env vars specify a DEV stage but your pipeline does not have one`);
+                console.warn(`NOTE : pipeline failed sanity check, your .env / env vars specify a DEV stage but your pipeline does not have one`);
               }
             }
             
             if (process.env.ACCOUNT_INT && process.env.ACCOUNT_INT !== '-') {
               const hasIntStage = pipelineDetails.pipeline?.stages.some(stage => stage.name === 'INT');
               if (!hasIntStage) {
-                console.warn(`NOTE : Pipeline failed sanity check, your .env / env vars specify an INT stage but your pipeline does not have one`);
+                console.warn(`NOTE : pipeline failed sanity check, your .env / env vars specify an INT stage but your pipeline does not have one`);
               }
             }
 
 
 
-            console.log('Checking CodeBuilds...')
+            console.log('checking codebuilds...')
             for (const stage of pipelineDetails.pipeline?.stages) {
               for (const action of stage.actions || []) {
                 // Codebuild Checks
@@ -148,7 +148,7 @@ async function checkEnvVarsCodeBuildProject(codebuildClient: CodeBuild, projectN
     const project = projectDetails.projects?.[0];
     if (project) {
       const envVars = project.environment?.environmentVariables || [];
-      console.log('Build Stage Environment Variables:', envVars);
+      console.log('build stage environment variables:', envVars);
 
       const proxySecretArn = envVars.find(env => env.name === 'PROXY_SECRET_ARN');
       const codestarConnectionArn = envVars.find(env => env.name === 'CODESTAR_CONNECTION_ARN');
@@ -157,19 +157,19 @@ async function checkEnvVarsCodeBuildProject(codebuildClient: CodeBuild, projectN
       console.log('codestarConnectionArn:', codestarConnectionArn);
 
       if (!proxySecretArn || proxySecretArn.value === '' || proxySecretArn.value === '-') {
-        console.warn(`NOTE: You do not have a PROXY_SECRET_ARN configured in the Synth stage of your pipeline. If your organization uses a network proxy, your CodeBuild may fail.`);
+        console.warn(`NOTE: you do not have a PROXY_SECRET_ARN configured in the synth stage of your pipeline. if your organization uses a network proxy, your CodeBuild may fail.`);
       } else if (proxySecretArn.value && !isValidArn(proxySecretArn.value)) {
         console.error(`ERROR : Invalid ARN format for PROXY_SECRET_ARN in CodeBuild project ${projectName}.`);
       }
 
       if (!codestarConnectionArn || codestarConnectionArn.value === '' || codestarConnectionArn.value === '-') {
-        console.warn(`NOTE: Your CODESTAR_CONNECTION_ARN is empty in the Synth stage of your pipeline. If you are not using CodeCommit as your repository, you need to define a valid CodeStar connection ARN.`);
+        console.warn(`NOTE: your CODESTAR_CONNECTION_ARN is empty in the Synth stage of your pipeline. If you are not using CodeCommit as your repository, you need to define a valid CodeStar connection ARN.`);
       } else if (codestarConnectionArn.value && !isValidArn(codestarConnectionArn.value)) {
-        console.error(`ERROR : Invalid ARN format for CODESTAR_CONNECTION_ARN in CodeBuild project ${projectName}.`);
+        console.error(`ERROR : invalid arn format for CODESTAR_CONNECTION_ARN in codebuild project ${projectName}.`);
       }
     }
   } catch (err) {
-    console.error(`ERROR : Failed to retrieve details for CodeBuild project ${projectName}:`, err);
+    console.error(`ERROR : failed to retrieve details for codebuild project ${projectName}:`, err);
   }
 }
 
@@ -195,14 +195,14 @@ async function checkKMSCodeBuildProject(codebuildClient: CodeBuild, kmsClient: K
         );
 
         if (kmsKeyDetails.KeyMetadata?.KeyState === 'Disabled') {
-          console.error(`ERROR : KMS Key ${encryptionKey} for project ${projectName} is disabled.`);
+          console.error(`ERROR : KMS key ${encryptionKey} for project ${projectName} is disabled.`);
         }
       } else {
-        console.warn(`NOTE : No KMS Key configured for project ${projectName}.`);
+        console.warn(`NOTE : no KMS key configured for project ${projectName}.`);
       }
     }
   } catch (err) {
-    console.error(`ERROR : Failed to retrieve details for CodeBuild project ${projectName}:`, err);
+    console.error(`ERROR : failed to retrieve details for codebuild project ${projectName}:`, err);
   }
 }
 
