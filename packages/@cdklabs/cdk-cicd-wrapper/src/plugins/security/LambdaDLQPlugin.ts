@@ -1,8 +1,5 @@
-/**
- * Copyright 2022 Amazon.com Inc. or its affiliates.
- * Provided as part of Amendment No. 5 to Definitive Agreement No. 8,
- * Activity/Deliverable 10 (to the Strategic Framework Agreement dated March 26, 2019).
- */
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -27,9 +24,6 @@ export class LambdaDLQPlugin implements IPlugin {
 
   constructor(props?: LambdaDLQPluginProps) {
     this.retentionPeriod = props?.retentionPeriod ?? cdk.Duration.days(14);
-
-    // eslint-disable-next-line
-    console.log('LambdaDLQPlugin constructor');
   }
 
   afterStage(scope: Construct, context: ResourceContext): void {
