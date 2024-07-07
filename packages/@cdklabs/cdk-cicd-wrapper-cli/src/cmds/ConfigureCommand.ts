@@ -23,7 +23,7 @@ class Command implements yargs.CommandModule {
   /**
    * A description of the command.
    */
-  describe = 'Configures the CDK-CICD-Wrapper pipeline';
+  describe = 'configure the CDK-CICD-Wrapper pipeline';
 
   /**
    * Builds the command arguments.

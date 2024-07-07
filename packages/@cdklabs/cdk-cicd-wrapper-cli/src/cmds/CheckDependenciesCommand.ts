@@ -25,7 +25,7 @@ class Command implements yargs.CommandModule {
   /**
    * A brief description of the command.
    */
-  describe = 'Audit dependencies';
+  describe = 'check 3rd party dependencies, e.g: (python, npm)';
 
   /**
    * Configures the command arguments.
@@ -36,13 +36,13 @@ class Command implements yargs.CommandModule {
     args.option('python', {
       type: 'boolean',
       default: false,
-      description: 'Audit python dependencies',
+      description: 'Check Python dependencies',
     });
 
     args.option('npm', {
       type: 'boolean',
       default: false,
-      description: 'Audit NPM dependencies',
+      description: 'Check NPM dependencies',
     });
 
     return args;
@@ -54,7 +54,7 @@ class Command implements yargs.CommandModule {
    */
   handler(args: yargs.Arguments) {
     if (args.python) {
-      console.log('Auditing Python dependencies');
+      console.log('Checking Python dependencies');
       const command = path.join(__dirname, CHECK_DEPENDENCIES_PYTHON);
 
       const result = spawnSync(command, { stdio: 'inherit' });
@@ -65,7 +65,7 @@ class Command implements yargs.CommandModule {
     }
 
     if (args.npm) {
-      console.log('Auditing NPM dependencies');
+      console.log('Checking NPM dependencies');
 
       const result = spawnSync(
         'npx',

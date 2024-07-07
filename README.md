@@ -207,6 +207,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/gmuslia"><img src="https://avatars.githubusercontent.com/u/102723839?v=4?s=100" width="100px;" alt="Gezim Musliaj"/><br /><sub><b>Gezim Musliaj</b></sub></a><br /><a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits?author=gmuslia" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/gyalai-aws"><img src="https://avatars.githubusercontent.com/u/142315836?v=4?s=100" width="100px;" alt="Milan Gyalai @ AWS"/><br /><sub><b>Milan Gyalai @ AWS</b></sub></a><br /><a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits?author=gyalai-aws" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/dainovsv"><img src="https://avatars.githubusercontent.com/u/95890653?v=4?s=100" width="100px;" alt="Vladimir Dainovski"/><br /><sub><b>Vladimir Dainovski</b></sub></a><br /><a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits?author=dainovsv" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/thoulen"><img src="https://avatars.githubusercontent.com/u/1113986?v=4&size=100" width="100px;" alt="Fabrizio Manfredi F."/><br /><sub><b>Fabrizio Manfredi F.</b></sub></a><br /><a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits?author=thoulen" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
