@@ -47,6 +47,7 @@ export class PipelineProvider implements IResourceProvider {
       pipelineName: blueprintProps.applicationName,
       pipelineCommands: phaseDefinition.getCommands(...INTEGRATION_PHASES),
       codeBuildDefaults: codebuildFactory.provideCodeBuildOptions(),
+      options: blueprintProps.pipelineOptions,
     });
   }
 }

@@ -249,7 +249,6 @@ export class PipelineBlueprintBuilder {
     this._plugins[plugin.name] = plugin;
     return this;
   }
-
   /**
    * Defines the stages for the Pipeline Blueprint.
    * @param stageDefinition An array of stage definitions or stage names.
@@ -348,6 +347,7 @@ export class PipelineBlueprintBuilder {
    */
   public synth(app: cdk.App) {
     this.props.deploymentDefinition = this.generateDeploymentDefinitions();
+    this.props.plugins = { ...this.props.plugins, ...this._plugins };
 
     let stack: cdk.Stack;
 

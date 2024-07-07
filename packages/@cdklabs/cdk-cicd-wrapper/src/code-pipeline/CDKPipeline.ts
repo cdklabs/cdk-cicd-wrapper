@@ -61,6 +61,46 @@ export interface ProxyProps {
   readonly proxyTestUrl: string;
 }
 
+export interface PipelineOptions {
+  /**
+   * Whether the pipeline should allow self-mutation.
+   */
+  readonly selfMutation?: boolean;
+
+  /**
+   * Publish assets in multiple CodeBuild projects
+   *
+   * If set to false, use one Project per type to publish all assets.
+   *
+   * Publishing in parallel improves concurrency and may reduce publishing
+   * latency, but may also increase overall provisioning time of the CodeBuild
+   * projects.
+   *
+   * Experiment and see what value works best for you.
+   *
+   * @default true
+   */
+  readonly publishAssetsInParallel?: boolean;
+  /**
+   * A list of credentials used to authenticate to Docker registries.
+   *
+   * Specify any credentials necessary within the pipeline to build, synth, update, or publish assets.
+   *
+   * @default []
+   */
+  readonly dockerCredentials?: pipelines.DockerCredential[];
+
+  /**
+   * Deploy every stack by creating a change set and executing it
+   *
+   * When enabled, creates a "Prepare" and "Execute" action for each stack. Disable
+   * to deploy the stack in one pipeline action.
+   *
+   * @default true
+   */
+  readonly useChangeSets?: boolean;
+}
+
 /**
  * Props for configuring the pipeline.
  */
@@ -110,6 +150,11 @@ export interface PipelineProps {
    * Default options for CodeBuild projects in the pipeline.
    */
   readonly codeBuildDefaults: pipelines.CodeBuildOptions;
+
+  /**
+   * Additional Pipeline options.
+   */
+  readonly options?: PipelineOptions;
 }
 
 // ensure that VPC is detached from codebuild project on VPC deletion
@@ -164,6 +209,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
         primaryOutputDirectory: props.primaryOutputDirectory,
       }),
       codeBuildDefaults: props.codeBuildDefaults,
+      ...(props.options ?? {}),
     });
 
     this.codeGuruScanThreshold = props.codeGuruScanThreshold;
