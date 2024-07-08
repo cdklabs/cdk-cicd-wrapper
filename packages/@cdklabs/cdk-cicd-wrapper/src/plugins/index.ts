@@ -11,7 +11,6 @@ import { DisablePublicIPAssignmentForEC2Plugin } from './security/DisablePublicI
 import { EncryptBucketOnTransitPlugin } from './security/EncryptBucketOnTransitPlugin';
 import { EncryptCloudWatchLogGroupsPlugin } from './security/EncryptCloudWatchLogGroupsPlugin';
 import { EncryptSNSTopicOnTransitPlugin } from './security/EncryptSNSTopicOnTransitPlugin';
-import { LambdaDLQPlugin } from './security/LambdaDLQPlugin';
 import { RotateEncryptionKeysPlugin } from './security/RotateEncryptionKeysPlugin';
 
 /**
@@ -24,7 +23,7 @@ export * from './security/EncryptBucketOnTransitPlugin';
 export * from './security/EncryptCloudWatchLogGroupsPlugin';
 export * from './security/EncryptSNSTopicOnTransitPlugin';
 export * from './security/RotateEncryptionKeysPlugin';
-export * from './security/LambdaDLQPlugin'
+export * from './security/LambdaDLQPlugin';
 
 /**
  * Class containing static instances of various security and optimization plugins.
