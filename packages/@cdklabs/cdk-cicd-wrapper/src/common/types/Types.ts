@@ -4,6 +4,7 @@
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Step } from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
+import { PipelineOptions } from '../../code-pipeline';
 import { IVpcConfig } from '../../resource-providers/VPCProvider';
 import { ResourceContext } from '../spi';
 
@@ -166,6 +167,11 @@ export interface IPipelineConfig {
    * The configuration for the workbench (optional).
    */
   workbench?: WorkbenchConfig;
+
+  /**
+   * Additional pipelineOptions.
+   */
+  pipelineOptions?: PipelineOptions;
 }
 
 /**
