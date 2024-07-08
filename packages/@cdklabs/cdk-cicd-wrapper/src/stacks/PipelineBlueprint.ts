@@ -6,6 +6,7 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
+import { PipelineOptions } from '../code-pipeline';
 import {
   DeploymentDefinition,
   IPipelineConfig,
@@ -36,7 +37,6 @@ import { HttpProxyProvider, IProxyConfig } from '../resource-providers/ProxyProv
 import { BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
 import { StageProvider } from '../resource-providers/StageProvider';
 import { VPCProvider } from '../resource-providers/VPCProvider';
-import { PipelineOptions } from '../code-pipeline';
 
 const defaultRegion = process.env.AWS_REGION;
 
@@ -247,9 +247,9 @@ export class PipelineBlueprintBuilder {
   }
 
   /** Adds a plugin to the Pipeline Blueprint.
-  * @param plugin The plugin to add.
-  * @returns This PipelineBlueprintBuilder instance.
-  */
+   * @param plugin The plugin to add.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public plugin(plugin: IPlugin): this {
     this._plugins[plugin.name] = plugin;
     return this;
