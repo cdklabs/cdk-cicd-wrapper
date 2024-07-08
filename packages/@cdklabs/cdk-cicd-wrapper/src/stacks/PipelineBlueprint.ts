@@ -36,6 +36,7 @@ import { HttpProxyProvider, IProxyConfig } from '../resource-providers/ProxyProv
 import { BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
 import { StageProvider } from '../resource-providers/StageProvider';
 import { VPCProvider } from '../resource-providers/VPCProvider';
+import { PipelineOptions } from '../code-pipeline';
 
 const defaultRegion = process.env.AWS_REGION;
 
@@ -245,10 +246,23 @@ export class PipelineBlueprintBuilder {
     return this;
   }
 
+  /** Adds a plugin to the Pipeline Blueprint.
+  * @param plugin The plugin to add.
+  * @returns This PipelineBlueprintBuilder instance.
+  */
   public plugin(plugin: IPlugin): this {
     this._plugins[plugin.name] = plugin;
     return this;
   }
+
+  /**
+   * Defines the pipeline options for the Pipeline Blueprint.
+   */
+  public pipelineOptions(options: PipelineOptions): this {
+    this.props.pipelineOptions = options;
+    return this;
+  }
+
   /**
    * Defines the stages for the Pipeline Blueprint.
    * @param stageDefinition An array of stage definitions or stage names.
