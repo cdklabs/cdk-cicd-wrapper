@@ -6,6 +6,7 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
+import { PipelineOptions } from '../code-pipeline';
 import {
   DeploymentDefinition,
   IPipelineConfig,
@@ -245,10 +246,23 @@ export class PipelineBlueprintBuilder {
     return this;
   }
 
+  /** Adds a plugin to the Pipeline Blueprint.
+   * @param plugin The plugin to add.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public plugin(plugin: IPlugin): this {
     this._plugins[plugin.name] = plugin;
     return this;
   }
+
+  /**
+   * Defines the pipeline options for the Pipeline Blueprint.
+   */
+  public pipelineOptions(options: PipelineOptions): this {
+    this.props.pipelineOptions = options;
+    return this;
+  }
+
   /**
    * Defines the stages for the Pipeline Blueprint.
    * @param stageDefinition An array of stage definitions or stage names.
