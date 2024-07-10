@@ -23,6 +23,7 @@ export * from './security/EncryptBucketOnTransitPlugin';
 export * from './security/EncryptCloudWatchLogGroupsPlugin';
 export * from './security/EncryptSNSTopicOnTransitPlugin';
 export * from './security/RotateEncryptionKeysPlugin';
+export * from './security/LambdaDLQPlugin';
 
 /**
  * Class containing static instances of various security and optimization plugins.

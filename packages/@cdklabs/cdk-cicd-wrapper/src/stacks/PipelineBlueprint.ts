@@ -6,6 +6,7 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
+import { PipelineOptions } from '../code-pipeline';
 import {
   DeploymentDefinition,
   IPipelineConfig,
@@ -300,8 +301,20 @@ export class PipelineBlueprintBuilder {
     return this;
   }
 
+  /** Adds a plugin to the Pipeline Blueprint.
+   * @param plugin The plugin to add.
+   * @returns This PipelineBlueprintBuilder instance.
+   */
   public plugin(plugin: IPlugin): this {
     this._plugins[plugin.name] = plugin;
+    return this;
+  }
+
+  /**
+   * Defines the pipeline options for the Pipeline Blueprint.
+   */
+  public pipelineOptions(options: PipelineOptions): this {
+    this.props.pipelineOptions = options;
     return this;
   }
 
@@ -407,6 +420,7 @@ export class PipelineBlueprintBuilder {
     validateConfig(this.props, this.stageDefinitions, this._region!);
 
     this.props.deploymentDefinition = this.generateDeploymentDefinitions();
+    this.props.plugins = { ...this.props.plugins, ...this._plugins };
 
     let stack: cdk.Stack;
 
