@@ -15,3 +15,8 @@ export * from './types/Types';
  * Re-exports types, interfaces, classes, and functions from the './types/BaseStackProvider.ts' module.
  */
 export * from './types/BaseStackProvider';
+
+/**
+ * Re-exports types, interfaces, classes, and functions from the './types/DefaultStackProvider.ts' module.
+ */
+export * from './types/DefaultStackProvider';
