@@ -171,11 +171,8 @@ You should not fork this repository and expect to reproduce the same in your AWS
 
 - :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
 - :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions
-
 - :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
-
 - :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
-
 - :white_check_mark: Customizable CI steps to meet project requirements
 - :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
 
