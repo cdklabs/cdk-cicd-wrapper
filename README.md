@@ -169,16 +169,15 @@ On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged
 
 You should not fork this repository and expect to reproduce the same in your AWS Accounts, this repository is only used for preparing, testing and shipping all the packages used by the CDK CI/CD Wrapper. Using the CDK CI/CD Wrapper gives you the following benefits:
 
-- :white_check_mark: Automated Open Source License checking (we have provided a list of licenses which you don't want to have them present in your PRODUCTION workloads)
-- :white_check_mark: Pre/Post deploy hooks during the deployment in each of the stages (DEV/INT/PROD)
-  - :white_check_mark: PRE -> Unit Tests
-  - :white_check_mark: POST -> Functional Tests, Load Testing
-- :white_check_mark: Flexible definition of stages, the default (DEV/INT/PROD) stages can be extended with new custom stages like EXP.
-- :white_check_mark: Stacks deployment can be specified for each stages separately
-- :white_check_mark: Customizable CI steps to meet project requirements
-- :white_check_mark: Centrally store compliance logs in S3 Buckets which are pre-configured on a per-stage/environment basis
-- :white_check_mark: Build Lambda Layers for Python and scan dependencies in the CI/CD (in case of CVE findings, block the pipeline)
+- :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
+- :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions
 
+- :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
+
+- :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
+
+- :white_check_mark: Customizable CI steps to meet project requirements
+- :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
 
 ## Security
 
