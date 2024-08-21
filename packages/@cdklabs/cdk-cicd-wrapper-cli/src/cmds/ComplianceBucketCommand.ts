@@ -7,6 +7,7 @@ import * as path from 'path';
 import { S3, BucketLocationConstraint } from '@aws-sdk/client-s3';
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 import * as yargs from 'yargs';
+import { logger } from '../utils/Logging';
 
 /**
  * The default path to the policy JSON file.
@@ -92,7 +93,7 @@ class Command implements yargs.CommandModule {
         credentials: fromNodeProviderChain({ profile: profile }),
       });
 
-      console.log(`Creating bucket ${bucketName}...`);
+      logger.info(`Creating bucket ${bucketName}...`);
       try {
         await s3client.createBucket({
           Bucket: bucketName,
@@ -101,20 +102,20 @@ class Command implements yargs.CommandModule {
           },
         });
 
-        console.log(`Bucket ${bucketName} has been created.`);
+        logger.info(`Bucket ${bucketName} has been created.`);
 
-        console.log('Set bucket policy.');
+        logger.info('Set bucket policy.');
         s3client.putBucketPolicy(
           {
             Bucket: bucketName,
             Policy: policyString,
           },
           (err) => {
-            if (err) console.log(err, err.stack);
+            if (err) logger.error(err, err.stack);
           },
         );
 
-        console.log('Disable public access.');
+        logger.info('Disable public access.');
         await s3client.putPublicAccessBlock({
           Bucket: bucketName,
           PublicAccessBlockConfiguration: {
@@ -125,7 +126,7 @@ class Command implements yargs.CommandModule {
           },
         });
       } catch (err) {
-        console.error(err);
+        logger.error(err);
       }
     })();
   }

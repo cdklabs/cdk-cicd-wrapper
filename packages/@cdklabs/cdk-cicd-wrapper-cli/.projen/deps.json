@@ -88,6 +88,10 @@
       "type": "runtime"
     },
     {
+      "name": "tslog",
+      "type": "runtime"
+    },
+    {
       "name": "yargs",
       "type": "runtime"
     }

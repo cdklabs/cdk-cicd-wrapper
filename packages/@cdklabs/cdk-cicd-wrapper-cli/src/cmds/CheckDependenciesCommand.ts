@@ -5,6 +5,7 @@
 import { spawnSync } from 'child_process';
 import * as path from 'path';
 import * as yargs from 'yargs';
+import { logger } from '../utils/Logging';
 
 /**
  * The path to the Python dependency check script.
@@ -54,7 +55,7 @@ class Command implements yargs.CommandModule {
    */
   handler(args: yargs.Arguments) {
     if (args.python) {
-      console.log('Checking Python dependencies');
+      logger.info('Checking Python dependencies');
       const command = path.join(__dirname, CHECK_DEPENDENCIES_PYTHON);
 
       const result = spawnSync(command, { stdio: 'inherit' });
@@ -65,7 +66,7 @@ class Command implements yargs.CommandModule {
     }
 
     if (args.npm) {
-      console.log('Checking NPM dependencies');
+      logger.info('Checking NPM dependencies');
 
       const result = spawnSync(
         'npx',

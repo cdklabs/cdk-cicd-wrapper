@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /* eslint-disable no-console */
+
 import * as yargs from 'yargs';
 import checkDependencies from './cmds/CheckDependenciesCommand';
 import complianceBucket from './cmds/ComplianceBucketCommand';
@@ -9,6 +10,7 @@ import configure from './cmds/ConfigureCommand';
 import license from './cmds/LicenseCommand';
 import security from './cmds/SecurityCommand';
 import validate from './cmds/ValidateCommand';
+import { logger } from './utils/Logging';
 
 /**
  * The main function sets up the command-line interface (CLI) using the yargs library.
@@ -57,6 +59,6 @@ async function main() {
 
 // Start the main function and handle any errors
 main().catch((e) => {
-  console.error(e.stack); // Log the error stack trace
+  logger.error(e.stack); // Log the error stack trace
   process.exit(1); // Exit with a non-zero status code
 });
