@@ -191,6 +191,7 @@ const cli = new yarn.TypeScriptWorkspace({
     'csv',
     '@aws-sdk/client-s3',
     '@aws-sdk/credential-providers',
+    'tslog',
   ],
   jest: false,
 });

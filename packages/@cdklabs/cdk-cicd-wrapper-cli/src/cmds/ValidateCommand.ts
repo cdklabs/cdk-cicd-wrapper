@@ -1,10 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-/* eslint-disable no-console */
 import { readFileSync, existsSync } from 'fs';
 import * as yargs from 'yargs';
 import { CliHelpers } from '../utils/CliHelpers';
+import { logger } from '../utils/Logging';
 
 /**
  * The path to the package verification file.
@@ -28,7 +28,7 @@ class Command implements yargs.CommandModule {
    */
   static generateChecksum(filePath: string) {
     const hexCheckSum = CliHelpers.generateChecksum(filePath);
-    console.log(hexCheckSum);
+    logger.info(hexCheckSum);
 
     CliHelpers.persistChecksum(VERIFICATION_FILE, LOCK_FILE, hexCheckSum);
   }
@@ -43,11 +43,11 @@ class Command implements yargs.CommandModule {
   static validateChecksum(filePath: string, expectedHash: string) {
     const hexCheckSum = CliHelpers.generateChecksum(filePath);
     if (hexCheckSum !== expectedHash) {
-      console.log(
+      logger.info(
         `File at ${filePath} has checksum ${hexCheckSum}, which does not match expected value ${expectedHash}`,
       );
-      console.log('This likely means dependencies have updated. You must get the changes approved before proceeding');
-      console.log('Once you get approval, update ./package-verification.json with the new hash to proceed');
+      logger.info('This likely means dependencies have updated. You must get the changes approved before proceeding');
+      logger.info('Once you get approval, update ./package-verification.json with the new hash to proceed');
       yargs.exit(1, new Error('Checksums do not match'));
     }
   }
