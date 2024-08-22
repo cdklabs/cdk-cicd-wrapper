@@ -85,7 +85,7 @@ export class NodeLicenseCollector implements LicenseCollector {
         `NPM project ${projectInfo.name} doesn't have a lock file (package-lock.json, yarn.lock, or npm-shrinkwrap.json).`,
       );
       logger.warn("It is assumed that their dependencies are part of another project's dependency list.");
-      logger.warn('If this is not the case, please create the lock file with executing npm install.');
+      logger.warn('If this is not the case, please create the lock file by executing npm install.');
     }
   }
 
