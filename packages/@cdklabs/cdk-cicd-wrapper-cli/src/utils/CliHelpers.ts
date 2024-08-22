@@ -6,6 +6,7 @@ import { spawnSync } from 'child_process';
 import { createHash } from 'crypto';
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
+import { logger } from './Logging';
 
 /**
  * A utility class providing helper functions for various command line operations.
@@ -37,7 +38,7 @@ export class CliHelpers {
       });
 
       if (python3Results.status !== 0) {
-        console.error('Python is not installed. Security checks will not be executed');
+        logger.error('Python is not installed. Security checks will not be executed');
         throw new Error('Python is not installed. Security checks will not be executed');
       }
       return {

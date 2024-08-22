@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as globby from 'globby';
 import * as yargs from 'yargs';
 import { CliHelpers } from '../utils/CliHelpers';
+import { logger } from '../utils/Logging';
 
 // 2 min timeout
 const GLOBAL_TIMEOUT = { timeout: 2 * 60 * 1000 };
@@ -102,7 +103,7 @@ abstract class SecurityScanner {
    * @param version The version of the security scanner package to install.
    */
   install(context: ScanningContext, version: string) {
-    console.log(`Installing ${this.packageName} ${version}`);
+    logger.info(`Installing ${this.packageName} ${version}`);
 
     const commandArgs = ['install', '-q', '--upgrade', `${this.packageName}==${version}`, ...this.additionalPackages];
 
@@ -115,7 +116,7 @@ abstract class SecurityScanner {
     });
 
     if (commandResults.status !== 0) {
-      console.error(`Failed to install ${this.packageName} ${version}`);
+      logger.error(`Failed to install ${this.packageName} ${version}`);
       throw new Error(`Failed to install ${this.packageName} ${version}`);
     }
 
@@ -143,13 +144,13 @@ abstract class SecurityScanner {
     let result = 0;
     if (args[this.command]) {
       this.install(context, version);
-      console.log(`Scanning with ${this.command} ${version}`);
+      logger.info(`Scanning with ${this.command} ${version}`);
       const errorCode = this.doScan(context, args);
-      console.log(`Scanning with ${this.command} ${version} completed with status: ${errorCode}`);
+      logger.info(`Scanning with ${this.command} ${version} completed with status: ${errorCode}`);
 
       result = errorCode;
     } else {
-      console.log(`Scanning with ${this.command} has been skipped by user.`);
+      logger.info(`Scanning with ${this.command} has been skipped by user.`);
     }
     return result;
   }
@@ -221,7 +222,7 @@ class Shellcheck extends SecurityScanner {
 
     // no files to check
     if (files.length == 0) {
-      console.log('No files to analyze with Shellcheck.');
+      logger.info('No files to analyze with Shellcheck.');
 
       return 0;
     }
@@ -391,8 +392,8 @@ class Command implements yargs.CommandModule {
         scanReportFolder: scanReportFolder,
       });
     } catch (error) {
-      console.error(error);
-      console.error('Security scan failed');
+      logger.error(error);
+      logger.error('Security scan failed');
       exitCode = 1;
     } finally {
       if (workingDir) {
@@ -444,9 +445,9 @@ class Command implements yargs.CommandModule {
       });
 
       if (results === 0) {
-        console.log('Security scan completed successfully');
+        logger.info('Security scan completed successfully');
       } else {
-        console.error('Security scan has finding to resolve.');
+        logger.error('Security scan has finding to resolve.');
       }
 
       return results;
