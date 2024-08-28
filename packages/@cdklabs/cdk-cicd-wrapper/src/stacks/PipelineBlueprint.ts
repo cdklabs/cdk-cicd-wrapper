@@ -1,9 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as fs from 'fs';
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
+import * as yaml from 'js-yaml';
 import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
 import { PipelineOptions } from '../code-pipeline';
@@ -25,7 +27,7 @@ import {
   IPlugin,
 } from '../common';
 import { Plugins } from '../plugins';
-import { HookProvider } from '../resource-providers';
+import { CIDefinitionProvider, HookProvider } from '../resource-providers';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketProvider } from '../resource-providers/ComplianceBucketProvider';
 import { DisabledProvider } from '../resource-providers/DisabledProvider';
@@ -113,6 +115,7 @@ export class PipelineBlueprintBuilder {
     this.resourceProvider(GlobalResources.COMPLIANCE_BUCKET, new ComplianceBucketProvider());
     this.resourceProvider(GlobalResources.PHASE, new PhaseCommandProvider());
     this.resourceProvider(GlobalResources.HOOK, new HookProvider());
+    this.resourceProvider(GlobalResources.CI_DEFINITION, new CIDefinitionProvider());
 
     this.defineStages([Stage.RES, Stage.DEV, Stage.INT]);
 
@@ -351,6 +354,45 @@ export class PipelineBlueprintBuilder {
    */
   public definePhase(phase: PipelinePhases, commandsToExecute: IPhaseCommand[]) {
     this.props.phases![phase] = commandsToExecute;
+    return this;
+  }
+
+  /**
+   * Defines the buildSpec for the Synth step.
+   *
+   * The buildSpec takes precedence over the definedPhases.
+   *
+   * Usage:
+   *  ```typescript
+   *     PipelineBlueprint.builder().buildSpec(BuildSpec.fromObject({ phases: { build: { commands: ['npm run build'] } } }))
+   *  ```
+   *
+   * @param buildSpec - BuildSpec for the Synth step.
+   * @returns
+   */
+  public buildSpec(buildSpec: codebuild.BuildSpec) {
+    this.props.buildSpec = buildSpec;
+    return this;
+  }
+
+  /**
+   * Defines the buildSpec for the Synth step from a file.
+   *
+   * The buildSpec takes precedence over the definedPhases.
+   *
+   * Usage:
+   *  ```typescript
+   *     PipelineBlueprint.builder().buildSpecFromFile('buildspec.yml')
+   *  ```
+   *
+   * @param filePath - Path to the buildspec file.
+   * @returns
+   */
+  public buildSpecFromFile(filePath: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.props.buildSpec = codebuild.BuildSpec.fromObject(
+      yaml.load(fs.readFileSync(filePath, 'utf8')) as { [key: string]: any },
+    );
     return this;
   }
 

@@ -3,6 +3,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as process from 'process';
 import { ResourceContext, IResourceProvider, Scope, IPhaseCommand, PipelinePhases } from '../common';
 
 /**
@@ -15,17 +16,18 @@ export class NPMPhaseCommand implements IPhaseCommand {
    * Returns the command to be executed for the given NPM script.
    */
   get command() {
+    const currentDir = process.env.npm_config_local_prefix || process.cwd();
     // npm ci is not a script but essential
     if (this.script === 'ci') {
-      if (fs.existsSync(path.resolve('.projenrc.ts'))) {
+      if (fs.existsSync(path.resolve(currentDir, '.projenrc.ts'))) {
         return 'npx projen install:ci';
       }
 
-      if (fs.existsSync(path.resolve('package-lock.json'))) {
+      if (fs.existsSync(path.resolve(currentDir, 'package-lock.json'))) {
         return 'npm ci';
       }
 
-      if (fs.existsSync(path.resolve('yarn.lock'))) {
+      if (fs.existsSync(path.resolve(currentDir, 'yarn.lock'))) {
         return 'yarn install --check-files --frozen-lockfile';
       }
     }
@@ -33,11 +35,11 @@ export class NPMPhaseCommand implements IPhaseCommand {
     const command = `npm run ${this.script}`;
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const pkgJson = JSON.parse(fs.readFileSync(path.resolve('package.json'), { encoding: 'utf-8' }));
+    const pkgJson = JSON.parse(fs.readFileSync(path.resolve(currentDir, 'package.json'), { encoding: 'utf-8' }));
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (!pkgJson.scripts[this.script]) {
-      throw new Error(`Script ${this.script} does not exist in package.json`);
+      console.log(`[WARN] Script ${this.script} does not exist in package.json. Please add it to the scripts section.`);
     }
 
     return command;

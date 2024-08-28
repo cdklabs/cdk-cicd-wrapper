@@ -159,6 +159,13 @@ export interface IPipelineConfig {
   phases: IPipelinePhases;
 
   /**
+   * The build specification for the Synth phase.
+   *
+   * The buildSpec takes precedence over the phases.
+   */
+  buildSpec?: codebuild.BuildSpec;
+
+  /**
    * The primary output directory for the pipeline.
    */
   primaryOutputDirectory: string;

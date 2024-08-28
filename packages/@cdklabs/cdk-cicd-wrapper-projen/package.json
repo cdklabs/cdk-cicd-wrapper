@@ -27,18 +27,19 @@
     "@typescript-eslint/eslint-plugin": "^7",
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
+    "commit-and-tag-version": "^12",
     "constructs": "^10.0.0",
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-import-resolver-typescript": "^3.6.3",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-prettier": "^5.2.1",
     "prettier": "^3.3.3",
-    "projen": "^0.85.2",
+    "projen": "^0.86.5",
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "projen": "^0.85.2"
+    "projen": "^0.86.5"
   },
   "main": "lib/index.js",
   "license": "Apache-2.0",

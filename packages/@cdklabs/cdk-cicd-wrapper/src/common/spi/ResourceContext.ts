@@ -288,4 +288,5 @@ export enum GlobalResources {
   PHASE = 'phase',
   HOOK = 'hook',
   ADDON_STORE = 'addon-store',
+  CI_DEFINITION = 'ci-definition',
 }
