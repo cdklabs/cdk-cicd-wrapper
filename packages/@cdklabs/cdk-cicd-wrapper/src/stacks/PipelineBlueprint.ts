@@ -267,6 +267,19 @@ export class PipelineBlueprintBuilder {
   }
 
   /**
+   * Defines the primary output directory for the CDK Synth.
+   * 
+   * @default './cdk.out'
+   * 
+   * @param primaryOutputDirectory Configures the primary output directory for the synth step.
+   * @returns 
+   */
+  public primaryOutputDirectory(primaryOutputDirectory: string): this {
+    this.props.primaryOutputDirectory = primaryOutputDirectory;
+    return this;
+  }
+
+  /**
    * Defines the stages for the Pipeline Blueprint.
    * @param stageDefinition An array of stage definitions or stage names.
    * @returns This PipelineBlueprintBuilder instance.
