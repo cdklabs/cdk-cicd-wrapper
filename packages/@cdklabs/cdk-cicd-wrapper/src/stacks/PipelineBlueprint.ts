@@ -36,7 +36,7 @@ import { ParameterProvider } from '../resource-providers/ParameterProvider';
 import { PhaseCommandProvider, PhaseCommands } from '../resource-providers/PhaseCommandProvider';
 import { PipelineProvider } from '../resource-providers/PipelineProvider';
 import { HttpProxyProvider, IProxyConfig } from '../resource-providers/ProxyProvider';
-import { BaseRepositoryProviderProps, BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
+import { BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
 import { StageProvider } from '../resource-providers/StageProvider';
 import { VPCProvider } from '../resource-providers/VPCProvider';
 
