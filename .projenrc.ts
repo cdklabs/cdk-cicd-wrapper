@@ -124,6 +124,7 @@ const pipeline = new yarn.TypeScriptWorkspace({
     '@cloudcomponents/cdk-pull-request-approval-rule',
     '@cloudcomponents/cdk-pull-request-check',
     'js-yaml',
+    '@types/js-yaml',
   ],
   jest: true,
   disableTsconfig: true,
