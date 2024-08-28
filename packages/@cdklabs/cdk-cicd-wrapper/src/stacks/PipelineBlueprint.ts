@@ -36,7 +36,7 @@ import { ParameterProvider } from '../resource-providers/ParameterProvider';
 import { PhaseCommandProvider, PhaseCommands } from '../resource-providers/PhaseCommandProvider';
 import { PipelineProvider } from '../resource-providers/PipelineProvider';
 import { HttpProxyProvider, IProxyConfig } from '../resource-providers/ProxyProvider';
-import { BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
+import { BaseRepositoryProviderProps, BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
 import { StageProvider } from '../resource-providers/StageProvider';
 import { VPCProvider } from '../resource-providers/VPCProvider';
 
@@ -47,7 +47,7 @@ const defaultRegion = process.env.AWS_REGION;
  */
 const defaultConfigs = {
   applicationName: process.env.npm_package_config_applicationName || process.env.npm_package_name || '',
-  applicationQualifier: process.env.npm_package_config_cdkQualifier || 'hnb659fds',
+  applicationQualifier: '',
   region: defaultRegion,
   logRetentionInDays: '365',
   codeBuildEnvSettings: {
@@ -421,6 +421,10 @@ export class PipelineBlueprintBuilder {
     let stack: cdk.Stack;
 
     const id = this._id || this.props.applicationName || 'CiCdBlueprint';
+
+    if (this.props.applicationQualifier === '') {
+      process.env.npm_package_config_cdkQualifier || app.node.tryGetContext('@aws-cdk/core:bootstrapQualifier') || cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER;
+    }
 
     if (app.node.tryGetContext('workbench')) {
       const workbenchEnv = this.props.deploymentDefinition[this.props.workbench?.options.stageToUse!];

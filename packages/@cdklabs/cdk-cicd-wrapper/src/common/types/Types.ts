@@ -347,31 +347,6 @@ export interface IStageDefinition {
 export type RepositoryType = 'GITHUB' | 'CODECOMMIT';
 
 /**
- * Represents the configuration for a CodeCommit repository.
- */
-export interface ICodeCommitConfig {
-  /**
-   * The name of the repository.
-   */
-  name: string;
-
-  /**
-   * The description of the repository.
-   */
-  description: string;
-
-  /**
-   * The branch for the repository.
-   */
-  branch: string;
-
-  /**
-   * Whether to enable CodeGuru Reviewer for the repository.
-   */
-  codeGuruReviewer: boolean;
-}
-
-/**
  * Represents the configuration for a repository.
  */
 export interface RepositoryConfig {
