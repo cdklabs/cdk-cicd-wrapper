@@ -268,11 +268,11 @@ export class PipelineBlueprintBuilder {
 
   /**
    * Defines the primary output directory for the CDK Synth.
-   * 
+   *
    * @default './cdk.out'
-   * 
+   *
    * @param primaryOutputDirectory Configures the primary output directory for the synth step.
-   * @returns 
+   * @returns
    */
   public primaryOutputDirectory(primaryOutputDirectory: string): this {
     this.props.primaryOutputDirectory = primaryOutputDirectory;
@@ -423,7 +423,9 @@ export class PipelineBlueprintBuilder {
     const id = this._id || this.props.applicationName || 'CiCdBlueprint';
 
     if (this.props.applicationQualifier === '') {
-      process.env.npm_package_config_cdkQualifier || app.node.tryGetContext('@aws-cdk/core:bootstrapQualifier') || cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER;
+      process.env.npm_package_config_cdkQualifier ||
+        app.node.tryGetContext('@aws-cdk/core:bootstrapQualifier') ||
+        cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER;
     }
 
     if (app.node.tryGetContext('workbench')) {
