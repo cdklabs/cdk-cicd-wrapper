@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as fs from 'fs';
+import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import * as yaml from 'yaml';
-import * as path from 'path';
 import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
 import { PipelineOptions } from '../code-pipeline';
