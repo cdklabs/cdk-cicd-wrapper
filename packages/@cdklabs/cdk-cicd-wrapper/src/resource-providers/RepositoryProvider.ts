@@ -65,12 +65,11 @@ export class BasicRepositoryProvider implements RepositoryProvider {
  * Represents a repository source.
  */
 export abstract class RepositorySource {
-
   /**
    * Creates a new CodeCommit repository source.
-   * 
+   *
    * @param options The repository source options.
-   * @returns 
+   * @returns
    */
   static codecommit(options?: CodeCommitRepositorySourceOptions): RepositorySource {
     return new CodeCommitRepositorySource(options);
@@ -78,9 +77,9 @@ export abstract class RepositorySource {
 
   /**
    * Creates a new Github - CodeStar connection repository source.
-   * 
+   *
    * @param options The repository source options.
-   * @returns 
+   * @returns
    */
   static github(options?: CodeStarConnectionRepositorySourceOptions): RepositorySource {
     return new CodeStarConnectionRepositorySource(options);
@@ -88,9 +87,9 @@ export abstract class RepositorySource {
 
   /**
    * Creates a new CodeStar connection repository source.
-   * 
+   *
    * @param options The repository source options.
-   * @returns 
+   * @returns
    */
   static codestarConnection(options?: CodeStarConnectionRepositorySourceOptions): RepositorySource {
     return new CodeStarConnectionRepositorySource(options);
@@ -197,10 +196,10 @@ export interface RepositorySourceOptions {
   /**
    * The name of the repository.
    * @default - The name of the application.
-   * 
+   *
    * other options to configure:
    * in  package.json file
-   * 
+   *
    * "config": {
    *  "repositoryName": "my-repo",
    * }
@@ -222,7 +221,7 @@ export interface RepositorySourceOptions {
   /**
    * Enforce full clone for the repository.
    * Tools like semgrep and pre-commit hooks require a full clone.
-   * 
+   *
    * @default - false
    */
   readonly codeBuildCloneOutput?: boolean;
@@ -231,14 +230,14 @@ export interface RepositorySourceOptions {
 export interface CodeCommitRepositorySourceOptions extends RepositorySourceOptions {
   /**
    * Enable pull request checks.
-   * 
+   *
    * @default - true
    */
   readonly enablePullRequestChecks?: boolean;
 
   /**
    * Enable CodeGuru Reviewer.
-   * 
+   *
    * @default - false
    */
   readonly enableCodeGuruReviewer?: boolean;
@@ -247,7 +246,7 @@ export interface CodeCommitRepositorySourceOptions extends RepositorySourceOptio
 export interface CodeStarConnectionRepositorySourceOptions extends RepositorySourceOptions {
   /**
    * The ARN of the CodeStar connection.
-   * 
+   *
    * @default - The value of the CODESTAR_CONNECTION_ARN environment variable.
    */
   readonly codeStarConnectionArn?: string;
