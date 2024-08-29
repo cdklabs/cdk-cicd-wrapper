@@ -131,7 +131,7 @@ PipelineBlueprint.builder()
     PhaseCommands.NPM_CI,
     PhaseCommands.CHECK_LINT
   ])
-  .build(app);
+  .synth(app);
 ```
 
 Here, you can see how to define the [order of the commands](#how-to-define-the-order-of-the-phasecommands), for the phase.
@@ -160,7 +160,7 @@ PipelineBlueprint.builder()
     PhaseCommands.NPM_CI,
     PhaseCommands.CHECK_LINT
   ])
-  .build(app);
+  .synth(app);
 ```
 
 ## How to define a new PhaseCommand Type?
@@ -186,7 +186,7 @@ PipelineBlueprint.builder()
     PhaseCommands.NPM_CI,
     PhaseCommands.CHECK_LINT
   ])
-  .build(app);
+  .synth(app);
 ```
 
 The `npm run validation` will be executed before the `npm run my-script` command.
@@ -203,7 +203,7 @@ PipelineBlueprint.builder()
   .addStack((context) => {
     new DemoStack(context.scope, 'DemoStack');
   })
-  .build(app);
+  .synth(app);
 ```
 
 The `buildSpec.yaml` file should be placed in the root of the project and should contain the build process definition.
@@ -261,5 +261,5 @@ PipelineBlueprint.builder()
   .addStack((context) => {
     new DemoStack(context.scope, 'DemoStack');
   })
-  .build(app);
+  .synth(app);
 ```
