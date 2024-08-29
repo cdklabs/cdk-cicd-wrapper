@@ -111,11 +111,7 @@
       "type": "bundled"
     },
     {
-      "name": "@types/js-yaml",
-      "type": "bundled"
-    },
-    {
-      "name": "js-yaml",
+      "name": "yaml",
       "type": "bundled"
     },
     {

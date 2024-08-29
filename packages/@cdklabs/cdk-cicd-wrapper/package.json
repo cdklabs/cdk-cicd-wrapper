@@ -68,14 +68,12 @@
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
-    "@types/js-yaml": "^4.0.9",
-    "js-yaml": "^4.1.0"
+    "yaml": "^2.5.0"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
     "@cloudcomponents/cdk-pull-request-check",
-    "@types/js-yaml",
-    "js-yaml"
+    "yaml"
   ],
   "keywords": [
     "aws",

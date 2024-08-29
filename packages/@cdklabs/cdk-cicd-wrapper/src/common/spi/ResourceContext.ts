@@ -289,4 +289,5 @@ export enum GlobalResources {
   HOOK = 'hook',
   ADDON_STORE = 'addon-store',
   CI_DEFINITION = 'ci-definition',
+  LOGGING = 'logging',
 }

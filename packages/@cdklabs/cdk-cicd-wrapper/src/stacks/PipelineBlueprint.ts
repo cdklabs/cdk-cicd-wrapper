@@ -5,7 +5,8 @@ import * as fs from 'fs';
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
-import * as yaml from 'js-yaml';
+import * as yaml from 'yaml';
+import * as path from 'path';
 import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
 import { PipelineOptions } from '../code-pipeline';
@@ -32,6 +33,7 @@ import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactory
 import { ComplianceBucketProvider } from '../resource-providers/ComplianceBucketProvider';
 import { DisabledProvider } from '../resource-providers/DisabledProvider';
 import { EncryptionProvider } from '../resource-providers/EncryptionProvider';
+import { LoggingProvider } from '../resource-providers/LoggingProvider';
 import { ParameterProvider } from '../resource-providers/ParameterProvider';
 import { PhaseCommandProvider, PhaseCommands } from '../resource-providers/PhaseCommandProvider';
 import { PipelineProvider } from '../resource-providers/PipelineProvider';
@@ -116,6 +118,7 @@ export class PipelineBlueprintBuilder {
     this.resourceProvider(GlobalResources.PHASE, new PhaseCommandProvider());
     this.resourceProvider(GlobalResources.HOOK, new HookProvider());
     this.resourceProvider(GlobalResources.CI_DEFINITION, new CIDefinitionProvider());
+    this.resourceProvider(GlobalResources.LOGGING, new LoggingProvider());
 
     this.defineStages([Stage.RES, Stage.DEV, Stage.INT]);
 
@@ -404,7 +407,7 @@ export class PipelineBlueprintBuilder {
   public buildSpecFromFile(filePath: string) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.props.buildSpec = codebuild.BuildSpec.fromObject(
-      yaml.load(fs.readFileSync(filePath, 'utf8')) as { [key: string]: any },
+      yaml.parse(fs.readFileSync(path.resolve(filePath), 'utf8')) as { [key: string]: any },
     );
     return this;
   }

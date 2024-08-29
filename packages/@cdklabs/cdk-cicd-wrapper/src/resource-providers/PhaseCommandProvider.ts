@@ -4,6 +4,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as process from 'process';
+import { logger } from './LoggingProvider';
 import { ResourceContext, IResourceProvider, Scope, IPhaseCommand, PipelinePhases } from '../common';
 
 /**
@@ -39,6 +40,9 @@ export class NPMPhaseCommand implements IPhaseCommand {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (!pkgJson.scripts[this.script]) {
+      logger.warning(
+        `[WARN] Script ${this.script} does not exist in package.json. Please add it to the scripts section.`,
+      );
       console.log(`[WARN] Script ${this.script} does not exist in package.json. Please add it to the scripts section.`);
     }
 
