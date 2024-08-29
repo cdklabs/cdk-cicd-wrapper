@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../assets/images/logo.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.27">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.21">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.66ac8b77.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
@@ -140,7 +140,7 @@
       
     </form>
     <div class="md-search__output">
-      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+      <div class="md-search__scrollwrap" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
             Initializing search
@@ -866,6 +866,30 @@
       How to define the order of the PhaseCommands?
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-buildspec-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using BuildSpec files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using BuildSpec files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inline-buildspec-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inline BuildSpec definition
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1725,6 +1749,30 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#using-buildspec-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using BuildSpec files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using BuildSpec files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inline-buildspec-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inline BuildSpec definition
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1971,7 +2019,7 @@
 <span class="w">    </span><span class="nx">PhaseCommands</span><span class="p">.</span><span class="nx">NPM_CI</span><span class="p">,</span>
 <span class="w">    </span><span class="nx">PhaseCommands</span><span class="p">.</span><span class="nx">CHECK_LINT</span>
 <span class="w">  </span><span class="p">])</span>
-<span class="w">  </span><span class="p">.</span><span class="nx">build</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
 </code></pre></div>
 <p>Here, you can see how to define the <a href="#how-to-define-the-order-of-the-phasecommands">order of the commands</a>, for the phase.</p>
 <h3 id="define-shell-command-based-phasecommand">Define Shell command based PhaseCommand</h3>
@@ -1991,7 +2039,7 @@
 <span class="w">    </span><span class="nx">PhaseCommands</span><span class="p">.</span><span class="nx">NPM_CI</span><span class="p">,</span>
 <span class="w">    </span><span class="nx">PhaseCommands</span><span class="p">.</span><span class="nx">CHECK_LINT</span>
 <span class="w">  </span><span class="p">])</span>
-<span class="w">  </span><span class="p">.</span><span class="nx">build</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
 </code></pre></div>
 <h2 id="how-to-define-a-new-phasecommand-type">How to define a new PhaseCommand Type?</h2>
 <p>Every PhaseCommand must implement the PhaseCommand interface that has only one required command property. This command property must contain an executable command that the <code>sh</code> shell engine can execute, as this command will be added to the underlining AWS CodeBuild project <code>buildSpec.yaml</code> as part of the <a href="https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html">commands</a> list.</p>
@@ -2010,9 +2058,70 @@
 <span class="w">    </span><span class="nx">PhaseCommands</span><span class="p">.</span><span class="nx">NPM_CI</span><span class="p">,</span>
 <span class="w">    </span><span class="nx">PhaseCommands</span><span class="p">.</span><span class="nx">CHECK_LINT</span>
 <span class="w">  </span><span class="p">])</span>
-<span class="w">  </span><span class="p">.</span><span class="nx">build</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
 </code></pre></div>
 <p>The <code>npm run validation</code> will be executed before the <code>npm run my-script</code> command.</p>
+<h2 id="using-buildspec-files">Using BuildSpec files</h2>
+<p>The CDK CI/CD Wrapper allows to use the <code>buildSpec.yaml</code> file to define the build process instead of the PhaseCommands.</p>
+<p>To use the <code>buildSpec.yaml</code> file you need configure it with the <code>buildSpecFromFile()</code> method of the <code>PipelineBlueprint</code> builder..</p>
+<div class="highlight"><pre><span></span><code><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">buildSpecFromFile</span><span class="p">(</span><span class="s1">&#39;path/to/buildSpec.yaml&#39;</span><span class="p">)</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">addStack</span><span class="p">((</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">);</span>
+<span class="w">  </span><span class="p">})</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
+<p>The <code>buildSpec.yaml</code> file should be placed in the root of the project and should contain the build process definition.
+It has to contain the commands to generate the build artifacts, run the tests and synthesize the CDK stacks.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+
+<span class="nt">phases</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">install</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runtime-versions</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">nodejs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="w">    </span><span class="nt">commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">npm ci</span>
+<span class="w">  </span><span class="nt">build</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">npm run build</span>
+<span class="w">  </span><span class="nt">post_build</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">npm run test</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdk synth</span>
+</code></pre></div>
+<p>Note: The changes in the <code>buildSpec.yaml</code> will be applied after the next pipeline self-mutation.</p>
+<h3 id="inline-buildspec-definition">Inline BuildSpec definition</h3>
+<p>The <code>buildSpec.yaml</code> file can be defined inline as well.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">buildSpec</span><span class="p">(</span><span class="nx">cdk</span><span class="p">.</span><span class="nx">BuildSpec</span><span class="p">.</span><span class="nx">fromObject</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;0.2&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">phases</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">install</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">runtime</span><span class="o">-</span><span class="nx">versions</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nx">nodejs</span><span class="o">:</span><span class="w"> </span><span class="kt">20</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nx">commands</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="s1">&#39;npm ci&#39;</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nx">build</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">commands</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="s1">&#39;npm run build&#39;</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nx">post_build</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">commands</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="s1">&#39;npm run test&#39;</span><span class="p">,</span>
+<span class="w">          </span><span class="s1">&#39;cdk synth&#39;</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}))</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">addStack</span><span class="p">((</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">);</span>
+<span class="w">  </span><span class="p">})</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
 
 
 
@@ -2033,7 +2142,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-05-21
+    2024-08-29
   </span>
 
     
@@ -2099,7 +2208,7 @@
     <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "toc.follow", "navigation.indexes", "navigation.instant", "navigation.tabs"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      <script src="../assets/javascripts/bundle.a7c05c9e.min.js"></script>
       
     
   </body>
