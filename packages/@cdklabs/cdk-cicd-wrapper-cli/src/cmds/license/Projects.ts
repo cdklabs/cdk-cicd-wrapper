@@ -21,7 +21,7 @@ export class Projects {
   private verificationFilePath: string;
 
   constructor(readonly config: LicenseConfig, readonly context: ScanningContext) {
-    this.verificationFilePath = path.resolve(this.context.projectRoot, this.config.verificationFile);
+    this.verificationFilePath = path.resolve(this.context.workingDir, this.config.verificationFile);
   }
 
   public getProjects(type: string) {

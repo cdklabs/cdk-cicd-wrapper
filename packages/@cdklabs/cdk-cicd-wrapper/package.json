@@ -52,11 +52,11 @@
     "jest": "^29.7.0",
     "jest-junit": "^15",
     "jsii": "~5.4.0",
-    "jsii-diff": "^1.102.0",
-    "jsii-pacmak": "^1.102.0",
+    "jsii-diff": "^1.103.0",
+    "jsii-pacmak": "^1.103.0",
     "jsii-rosetta": "~5.4.0",
     "prettier": "^3.3.3",
-    "projen": "^0.86.3",
+    "projen": "^0.86.5",
     "ts-jest": "^29.2.5",
     "typescript": "^5.5.4"
   },
@@ -67,11 +67,13 @@
   },
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
-    "@cloudcomponents/cdk-pull-request-check": "^2.4.0"
+    "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
+    "yaml": "^2.5.0"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
-    "@cloudcomponents/cdk-pull-request-check"
+    "@cloudcomponents/cdk-pull-request-check",
+    "yaml"
   ],
   "keywords": [
     "aws",

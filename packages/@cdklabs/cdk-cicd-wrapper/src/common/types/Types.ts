@@ -159,6 +159,13 @@ export interface IPipelineConfig {
   phases: IPipelinePhases;
 
   /**
+   * The build specification for the Synth phase.
+   *
+   * The buildSpec takes precedence over the phases.
+   */
+  buildSpec?: codebuild.BuildSpec;
+
+  /**
    * The primary output directory for the pipeline.
    */
   primaryOutputDirectory: string;
@@ -338,31 +345,6 @@ export interface IStageDefinition {
  * Represents the type of a repository.
  */
 export type RepositoryType = 'GITHUB' | 'CODECOMMIT';
-
-/**
- * Represents the configuration for a CodeCommit repository.
- */
-export interface ICodeCommitConfig {
-  /**
-   * The name of the repository.
-   */
-  name: string;
-
-  /**
-   * The description of the repository.
-   */
-  description: string;
-
-  /**
-   * The branch for the repository.
-   */
-  branch: string;
-
-  /**
-   * Whether to enable CodeGuru Reviewer for the repository.
-   */
-  codeGuruReviewer: boolean;
-}
 
 /**
  * Represents the configuration for a repository.

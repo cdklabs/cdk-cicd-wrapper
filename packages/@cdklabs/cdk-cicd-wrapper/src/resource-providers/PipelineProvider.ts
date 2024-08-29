@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CDKPipeline } from '../code-pipeline';
-import { GlobalResources, ResourceContext, IResourceProvider, INTEGRATION_PHASES } from '../common';
+import { GlobalResources, ResourceContext, IResourceProvider } from '../common';
 
 /**
  * Provides CodePipeline implementation
@@ -19,7 +19,7 @@ export class PipelineProvider implements IResourceProvider {
 
     const vpcProvider = context.get(GlobalResources.VPC)!;
     const repositoryProvider = context.get(GlobalResources.REPOSITORY)!;
-    const phaseDefinition = context.get(GlobalResources.PHASE)!;
+    const ciDefinition = context.get(GlobalResources.CI_DEFINITION)!;
     const codebuildFactory = context.get(GlobalResources.CODEBUILD_FACTORY)!;
 
     let proxy;
@@ -45,7 +45,7 @@ export class PipelineProvider implements IResourceProvider {
       applicationQualifier: blueprintProps.applicationQualifier,
       primaryOutputDirectory: blueprintProps.primaryOutputDirectory,
       pipelineName: blueprintProps.applicationName,
-      pipelineCommands: phaseDefinition.getCommands(...INTEGRATION_PHASES),
+      ciBuildSpec: ciDefinition,
       codeBuildDefaults: codebuildFactory.provideCodeBuildOptions(),
       options: blueprintProps.pipelineOptions,
     });

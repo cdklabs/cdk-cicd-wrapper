@@ -190,3 +190,76 @@ PipelineBlueprint.builder()
 ```
 
 The `npm run validation` will be executed before the `npm run my-script` command.
+
+
+## Using BuildSpec files
+The {{ project_name }} allows to use the `buildSpec.yaml` file to define the build process instead of the PhaseCommands.
+
+To use the `buildSpec.yaml` file you need configure it with the `buildSpecFromFile()` method of the `PipelineBlueprint` builder..
+
+```typescript
+PipelineBlueprint.builder()
+  .buildSpecFromFile('path/to/buildSpec.yaml')
+  .addStack((context) => {
+    new DemoStack(context.scope, 'DemoStack');
+  })
+  .build(app);
+```
+
+The `buildSpec.yaml` file should be placed in the root of the project and should contain the build process definition.
+It has to contain the commands to generate the build artifacts, run the tests and synthesize the CDK stacks.
+
+```yaml
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - npm ci
+  build:
+    commands:
+      - npm run build
+  post_build:
+    commands:
+      - npm run test
+      - cdk synth
+```
+
+Note: The changes in the `buildSpec.yaml` will be applied after the next pipeline self-mutation.
+
+### Inline BuildSpec definition
+The `buildSpec.yaml` file can be defined inline as well.
+
+```typescript
+PipelineBlueprint.builder()
+  .buildSpec(cdk.BuildSpec.fromObject({
+    version: '0.2',
+    phases: {
+      install: {
+        runtime-versions: {
+          nodejs: 20
+        },
+        commands: [
+          'npm ci'
+        ]
+      },
+      build: {
+        commands: [
+          'npm run build'
+        ]
+      },
+      post_build: {
+        commands: [
+          'npm run test',
+          'cdk synth'
+        ]
+      }
+    }
+  }))
+  .addStack((context) => {
+    new DemoStack(context.scope, 'DemoStack');
+  })
+  .build(app);
+```

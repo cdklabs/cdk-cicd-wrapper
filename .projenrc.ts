@@ -120,7 +120,7 @@ const pipeline = new yarn.TypeScriptWorkspace({
   ],
 
   peerDeps: [`cdk-nag@^${cdkNagVersion}`, `aws-cdk-lib@^${cdkVersion}`, `constructs@^${constructsVersion}`],
-  bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check'],
+  bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check', 'yaml'],
   jest: true,
   disableTsconfig: true,
 });
