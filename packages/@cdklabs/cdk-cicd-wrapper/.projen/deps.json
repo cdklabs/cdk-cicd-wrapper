@@ -111,6 +111,10 @@
       "type": "bundled"
     },
     {
+      "name": "yaml",
+      "type": "bundled"
+    },
+    {
       "name": "aws-cdk-lib",
       "version": "^2.130.0",
       "type": "peer"

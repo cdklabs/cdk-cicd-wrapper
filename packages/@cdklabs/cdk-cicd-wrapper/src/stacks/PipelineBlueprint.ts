@@ -1,9 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
+import * as yaml from 'yaml';
 import { PipelineStack } from './PipelineStack';
 import { WorkbenchStack } from './WorkbenchStack';
 import { PipelineOptions } from '../code-pipeline';
@@ -25,11 +28,12 @@ import {
   IPlugin,
 } from '../common';
 import { Plugins } from '../plugins';
-import { HookProvider } from '../resource-providers';
+import { CIDefinitionProvider, HookProvider } from '../resource-providers';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketProvider } from '../resource-providers/ComplianceBucketProvider';
 import { DisabledProvider } from '../resource-providers/DisabledProvider';
 import { EncryptionProvider } from '../resource-providers/EncryptionProvider';
+import { LoggingProvider } from '../resource-providers/LoggingProvider';
 import { ParameterProvider } from '../resource-providers/ParameterProvider';
 import { PhaseCommandProvider, PhaseCommands } from '../resource-providers/PhaseCommandProvider';
 import { PipelineProvider } from '../resource-providers/PipelineProvider';
@@ -45,7 +49,7 @@ const defaultRegion = process.env.AWS_REGION;
  */
 const defaultConfigs = {
   applicationName: process.env.npm_package_config_applicationName || process.env.npm_package_name || '',
-  applicationQualifier: process.env.npm_package_config_cdkQualifier || 'hnb659fds',
+  applicationQualifier: '',
   region: defaultRegion,
   logRetentionInDays: '365',
   codeBuildEnvSettings: {
@@ -113,6 +117,8 @@ export class PipelineBlueprintBuilder {
     this.resourceProvider(GlobalResources.COMPLIANCE_BUCKET, new ComplianceBucketProvider());
     this.resourceProvider(GlobalResources.PHASE, new PhaseCommandProvider());
     this.resourceProvider(GlobalResources.HOOK, new HookProvider());
+    this.resourceProvider(GlobalResources.CI_DEFINITION, new CIDefinitionProvider());
+    this.resourceProvider(GlobalResources.LOGGING, new LoggingProvider());
 
     this.defineStages([Stage.RES, Stage.DEV, Stage.INT]);
 
@@ -264,6 +270,19 @@ export class PipelineBlueprintBuilder {
   }
 
   /**
+   * Defines the primary output directory for the CDK Synth.
+   *
+   * @default './cdk.out'
+   *
+   * @param primaryOutputDirectory Configures the primary output directory for the synth step.
+   * @returns
+   */
+  public primaryOutputDirectory(primaryOutputDirectory: string): this {
+    this.props.primaryOutputDirectory = primaryOutputDirectory;
+    return this;
+  }
+
+  /**
    * Defines the stages for the Pipeline Blueprint.
    * @param stageDefinition An array of stage definitions or stage names.
    * @returns This PipelineBlueprintBuilder instance.
@@ -355,6 +374,45 @@ export class PipelineBlueprintBuilder {
   }
 
   /**
+   * Defines the buildSpec for the Synth step.
+   *
+   * The buildSpec takes precedence over the definedPhases.
+   *
+   * Usage:
+   *  ```typescript
+   *     PipelineBlueprint.builder().buildSpec(BuildSpec.fromObject({ phases: { build: { commands: ['npm run build'] } } }))
+   *  ```
+   *
+   * @param buildSpec - BuildSpec for the Synth step.
+   * @returns
+   */
+  public buildSpec(buildSpec: codebuild.BuildSpec) {
+    this.props.buildSpec = buildSpec;
+    return this;
+  }
+
+  /**
+   * Defines the buildSpec for the Synth step from a file.
+   *
+   * The buildSpec takes precedence over the definedPhases.
+   *
+   * Usage:
+   *  ```typescript
+   *     PipelineBlueprint.builder().buildSpecFromFile('buildspec.yml')
+   *  ```
+   *
+   * @param filePath - Path to the buildspec file.
+   * @returns
+   */
+  public buildSpecFromFile(filePath: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.props.buildSpec = codebuild.BuildSpec.fromObject(
+      yaml.parse(fs.readFileSync(path.resolve(filePath), 'utf8')) as { [key: string]: any },
+    );
+    return this;
+  }
+
+  /**
    * Synthesizes the Pipeline Blueprint and creates the necessary stacks.
    * @param app The CDK app instance.
    * @returns The created stack.
@@ -366,6 +424,12 @@ export class PipelineBlueprintBuilder {
     let stack: cdk.Stack;
 
     const id = this._id || this.props.applicationName || 'CiCdBlueprint';
+
+    if (this.props.applicationQualifier === '') {
+      process.env.npm_package_config_cdkQualifier ||
+        app.node.tryGetContext('@aws-cdk/core:bootstrapQualifier') ||
+        cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER;
+    }
 
     if (app.node.tryGetContext('workbench')) {
       const workbenchEnv = this.props.deploymentDefinition[this.props.workbench?.options.stageToUse!];

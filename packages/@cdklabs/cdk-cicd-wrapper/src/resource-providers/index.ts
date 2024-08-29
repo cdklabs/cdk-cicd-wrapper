@@ -50,3 +50,13 @@ export * from './ProxyProvider';
  * Provider for creating a CodeBuild factory.
  */
 export * from './CodeBuildFactoryProvider';
+
+/**
+ * Provider for creating a CI definition.
+ */
+export * from './CIDefinitionProvider';
+
+/**
+ * Provider for creating a logging resource.
+ */
+export * from './LoggingProvider';

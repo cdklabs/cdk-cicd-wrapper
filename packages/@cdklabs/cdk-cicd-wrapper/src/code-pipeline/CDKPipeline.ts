@@ -139,9 +139,9 @@ export interface PipelineProps {
    */
   readonly primaryOutputDirectory: string;
   /**
-   * The commands to be executed during the synth step.
+   * The CI commands to be executed as part of the Synth step.
    */
-  readonly pipelineCommands: string[];
+  readonly ciBuildSpec: codebuild.BuildSpec;
   /**
    * Additional install commands to be executed before the synth step.
    */
@@ -197,10 +197,11 @@ export class CDKPipeline extends pipelines.CodePipeline {
       crossAccountKeys: true,
       enableKeyRotation: true,
       dockerEnabledForSynth: props.isDockerEnabledForSynth,
-      synth: new pipelines.ShellStep('Synth', {
+      synth: new pipelines.CodeBuildStep('Synth', {
         input: props.repositoryInput,
         installCommands: props.installCommands,
-        commands: props.pipelineCommands,
+        commands: [],
+        partialBuildSpec: props.ciBuildSpec,
         env: {
           CDK_QUALIFIER: props.applicationQualifier,
           AWS_REGION: cdk.Stack.of(scope).region,
