@@ -26,6 +26,7 @@ import {
   RequiredRESStage,
   WorkbenchOptions,
   IPlugin,
+  ResourceContext,
 } from '../common';
 import { Plugins } from '../plugins';
 import { CIDefinitionProvider, HookProvider } from '../resource-providers';
@@ -38,7 +39,11 @@ import { ParameterProvider } from '../resource-providers/ParameterProvider';
 import { PhaseCommandProvider, PhaseCommands } from '../resource-providers/PhaseCommandProvider';
 import { PipelineProvider } from '../resource-providers/PipelineProvider';
 import { HttpProxyProvider, IProxyConfig } from '../resource-providers/ProxyProvider';
-import { BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
+import {
+  BasicRepositoryProvider,
+  RepositoryProvider,
+  RepositorySource,
+} from '../resource-providers/RepositoryProvider';
 import { StageProvider } from '../resource-providers/StageProvider';
 import { VPCProvider } from '../resource-providers/VPCProvider';
 
@@ -235,6 +240,11 @@ export class PipelineBlueprintBuilder {
     return this.resourceProvider(GlobalResources.REPOSITORY, repositoryProvider);
   }
 
+  public repository(repositorySource: RepositorySource) {
+    this.props.repositorySource = repositorySource;
+    return this;
+  }
+
   /**
    * Sets a resource provider for the Pipeline Blueprint.
    * @param name The name of the resource provider.
@@ -426,7 +436,8 @@ export class PipelineBlueprintBuilder {
     const id = this._id || this.props.applicationName || 'CiCdBlueprint';
 
     if (this.props.applicationQualifier === '') {
-      process.env.npm_package_config_cdkQualifier ||
+      this.props.applicationQualifier =
+        process.env.npm_package_config_cdkQualifier ||
         app.node.tryGetContext('@aws-cdk/core:bootstrapQualifier') ||
         cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER;
     }
@@ -448,6 +459,9 @@ export class PipelineBlueprintBuilder {
     } else {
       stack = new PipelineStack(app, id, this.props as IPipelineBlueprintProps);
     }
+
+    // Ensure all the logs that are added during the pipeline definition without specifying the stack are added to the pipeline stack
+    ResourceContext.instance().get(GlobalResources.LOGGING).setScope(stack);
 
     cdk.Tags.of(app).add('Application', `${this.props.applicationName}`);
 

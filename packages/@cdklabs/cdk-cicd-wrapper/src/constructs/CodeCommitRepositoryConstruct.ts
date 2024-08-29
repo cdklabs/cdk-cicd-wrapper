@@ -73,7 +73,9 @@ export class CodeCommitRepositoryConstruct extends Construct {
       description: props.description,
     });
 
-    this.pipelineInput = pipelines.CodePipelineSource.codeCommit(repository, props.branch);
+    this.pipelineInput = pipelines.CodePipelineSource.codeCommit(repository, props.branch, {
+      codeBuildCloneOutput: props.codeBuildCloneOutput,
+    });
 
     if (props.pr) {
       this.enablePrRequest(props.applicationName, repository, props.pr);

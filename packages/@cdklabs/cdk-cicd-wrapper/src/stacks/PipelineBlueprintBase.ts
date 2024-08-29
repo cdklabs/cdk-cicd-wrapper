@@ -43,7 +43,6 @@ export class PipelineBlueprintBase extends cdk.Stack {
     super(scope, id, { env });
 
     this.resourceContext = new ResourceContext(scope, this, config);
-    this.resourceContext.get(GlobalResources.LOGGING);
 
     Object.values(config.plugins).forEach((plugin) => (plugin.create ? plugin.create(this.resourceContext) : null));
 
