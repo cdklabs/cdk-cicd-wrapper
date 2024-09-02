@@ -21,7 +21,7 @@ export class Projects {
   private verificationFilePath: string;
 
   constructor(readonly config: LicenseConfig, readonly context: ScanningContext) {
-    this.verificationFilePath = path.resolve(this.context.workingDir, this.config.verificationFile);
+    this.verificationFilePath = path.resolve(this.context.projectRoot, this.config.verificationFile);
   }
 
   public getProjects(type: string) {
@@ -72,6 +72,8 @@ export class Projects {
       this.newLicensesSection[projectRelativePath] = currentHashCode;
       if (verifiedHashCode !== currentHashCode) {
         logger.info(`File ${projectFile} has changed since last scan.`);
+        logger.debug(`Old hash: ${verifiedHashCode}`);
+        logger.debug(`New hash: ${currentHashCode}`);
         result = true;
       }
 
@@ -85,6 +87,8 @@ export class Projects {
     this.newLicensesSection[LICENSE_FILES_SUMMARY_HASH] = currentHashCodeOfProjectFiles;
     if (verifiedHashCode !== currentHashCodeOfProjectFiles) {
       logger.info('Source of licenses has changed since last scan.');
+      logger.debug(`Old hash: ${verifiedHashCode}`);
+      logger.debug(`New hash: ${currentHashCodeOfProjectFiles}`);
       result = true;
     }
 
