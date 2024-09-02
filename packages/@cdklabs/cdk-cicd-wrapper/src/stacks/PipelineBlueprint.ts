@@ -53,7 +53,7 @@ const defaultRegion = process.env.AWS_REGION;
  * Default configuration for the Pipeline Blueprint.
  */
 const defaultConfigs = {
-  applicationName: process.env.npm_package_config_applicationName || process.env.npm_package_name || '',
+  applicationName: '',
   applicationQualifier: '',
   region: defaultRegion,
   logRetentionInDays: '365',
@@ -433,6 +433,14 @@ export class PipelineBlueprintBuilder {
 
     let stack: cdk.Stack;
 
+    if (this.props.applicationName === '') {
+      if (!process.env.JSII_AGENT) {
+        this.props.applicationName = process.env.npm_package_config_applicationName || process.env.npm_package_name!;
+      } else {
+        throw new Error(`Application name must be directly set if used ${process.env.JSII_AGENT} CDK language.`);
+      }
+    }
+
     const id = this._id || this.props.applicationName || 'CiCdBlueprint';
 
     if (this.props.applicationQualifier === '') {
@@ -507,7 +515,7 @@ export class PipelineBlueprintBuilder {
     region: string,
   ) {
     if (this.props.resourceProviders![GlobalResources.COMPLIANCE_BUCKET] instanceof DisabledProvider) {
-      return undefined;
+      return providedDefinition.complianceLogBucketName;
     }
 
     return providedDefinition.complianceLogBucketName ?? `compliance-log-${account}-${region}`;

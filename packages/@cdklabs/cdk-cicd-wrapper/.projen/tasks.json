@@ -191,6 +191,9 @@
         },
         {
           "exec": "export DEP='@cloudcomponents';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;"
+        },
+        {
+          "exec": "export DEP='yaml';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;"
         }
       ]
     },

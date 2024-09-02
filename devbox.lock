@@ -502,6 +502,70 @@
           "store_path": "/nix/store/7yh2ax34jd7fgf17mjfd3c6niw1h2hsj-python3-3.12.2"
         }
       }
+    },
+    "twine@latest": {
+      "last_modified": "2024-08-27T08:49:48Z",
+      "resolved": "github:NixOS/nixpkgs/a6292e34000dc93d43bccf78338770c1c5ec8a99#twine",
+      "source": "devbox-search",
+      "version": "5.1.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/2qlcms1l0lh8cxjmryg1jbnbv0mxih4r-python3.12-twine-5.1.0",
+              "default": true
+            },
+            {
+              "name": "dist",
+              "path": "/nix/store/ya9s86ab0wjry6d6pq8izdghzbrq54w5-python3.12-twine-5.1.0-dist"
+            }
+          ],
+          "store_path": "/nix/store/2qlcms1l0lh8cxjmryg1jbnbv0mxih4r-python3.12-twine-5.1.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/w8k56bsfncdc67rl195aq98hbhgvjylx-python3.12-twine-5.1.0",
+              "default": true
+            },
+            {
+              "name": "dist",
+              "path": "/nix/store/33118r1fr0j9r3p6srpql7fpd1aha487-python3.12-twine-5.1.0-dist"
+            }
+          ],
+          "store_path": "/nix/store/w8k56bsfncdc67rl195aq98hbhgvjylx-python3.12-twine-5.1.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/aplcp7jzsxbnmxhzdldczygpv56gify8-python3.12-twine-5.1.0",
+              "default": true
+            },
+            {
+              "name": "dist",
+              "path": "/nix/store/8zq56pfskha9gdmks6dzkjv8capj4wz2-python3.12-twine-5.1.0-dist"
+            }
+          ],
+          "store_path": "/nix/store/aplcp7jzsxbnmxhzdldczygpv56gify8-python3.12-twine-5.1.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/7gxvyicpv5xhf62rhp9clpjk5wyxnzmx-python3.12-twine-5.1.0",
+              "default": true
+            },
+            {
+              "name": "dist",
+              "path": "/nix/store/70j2cmnk5fqfang6mx5h50n8pc5ghvl5-python3.12-twine-5.1.0-dist"
+            }
+          ],
+          "store_path": "/nix/store/7gxvyicpv5xhf62rhp9clpjk5wyxnzmx-python3.12-twine-5.1.0"
+        }
+      }
     }
   }
 }
