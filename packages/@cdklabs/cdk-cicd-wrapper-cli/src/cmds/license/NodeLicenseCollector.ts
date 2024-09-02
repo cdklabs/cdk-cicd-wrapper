@@ -8,7 +8,7 @@ import { parse, stringify } from 'csv/sync';
 import { LicenseCollector, LicenseConfig, ScanningContext } from './Types';
 import { logger } from '../../utils/Logging';
 
-const NPM_LICENSE_CHECKER_TOOL = 'license-checker-rseidelsohn';
+const NPM_LICENSE_CHECKER_TOOL = 'license-checker-rseidelsohn@4.3.0';
 
 enum ProjectType {
   NPM,

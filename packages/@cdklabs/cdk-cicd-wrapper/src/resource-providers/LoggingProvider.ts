@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import { Construct, IConstruct } from 'constructs';
 import { IResourceProvider, ResourceContext } from '../common';
 
 export interface ILogger {
-  info(message: string): void;
+  info(message: string, on?: IConstruct): void;
 
-  warning(message: string): void;
+  warning(message: string, on?: IConstruct): void;
 
-  error(message: string): void;
+  error(message: string, on?: IConstruct): void;
 }
 
 class Logger implements ILogger {
@@ -37,27 +37,27 @@ class Logger implements ILogger {
     };
   }
 
-  info(message: string) {
-    if (!this.scope) {
+  info(message: string, on?: IConstruct) {
+    if (!on && !this.scope) {
       this.messages.info.push(message);
     } else {
-      cdk.Annotations.of(this.scope).addInfo(message);
+      cdk.Annotations.of(on || this.scope!).addInfo(message);
     }
   }
 
-  warning(message: string) {
-    if (!this.scope) {
+  warning(message: string, on?: IConstruct) {
+    if (!on && !this.scope) {
       this.messages.warning.push(message);
     } else {
-      cdk.Annotations.of(this.scope).addWarning(message);
+      cdk.Annotations.of(on || this.scope!).addWarning(message);
     }
   }
 
-  error(message: string) {
+  error(message: string, on?: IConstruct) {
     if (!this.scope) {
       this.messages.error.push(message);
     } else {
-      cdk.Annotations.of(this.scope).addError(message);
+      cdk.Annotations.of(on || this.scope!).addError(message);
     }
   }
 }
@@ -67,8 +67,7 @@ const logger = new Logger();
 export { logger };
 
 export class LoggingProvider implements IResourceProvider {
-  provide(context: ResourceContext): any {
-    logger.setScope(context.scope);
+  provide(_: ResourceContext): any {
     return logger;
   }
 }

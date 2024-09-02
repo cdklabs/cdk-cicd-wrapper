@@ -40,10 +40,7 @@ export class NPMPhaseCommand implements IPhaseCommand {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (!pkgJson.scripts[this.script]) {
-      logger.warning(
-        `[WARN] Script ${this.script} does not exist in package.json. Please add it to the scripts section.`,
-      );
-      console.log(`[WARN] Script ${this.script} does not exist in package.json. Please add it to the scripts section.`);
+      logger.warning(`Script ${this.script} does not exist in package.json. Please add it to the scripts section.`);
     }
 
     return command;

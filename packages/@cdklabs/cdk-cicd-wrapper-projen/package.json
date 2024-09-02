@@ -35,11 +35,11 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-prettier": "^5.2.1",
     "prettier": "^3.3.3",
-    "projen": "^0.86.5",
+    "projen": "^0.86.6",
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "projen": "^0.86.5"
+    "projen": "^0.86.6"
   },
   "main": "lib/index.js",
   "license": "Apache-2.0",

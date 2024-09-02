@@ -43,7 +43,7 @@ class Command implements yargs.CommandModule {
   static validateChecksum(filePath: string, expectedHash: string) {
     const hexCheckSum = CliHelpers.generateChecksum(filePath);
     if (hexCheckSum !== expectedHash) {
-      logger.info(
+      logger.warn(
         `File at ${filePath} has checksum ${hexCheckSum}, which does not match expected value ${expectedHash}`,
       );
       logger.info('This likely means dependencies have updated. You must get the changes approved before proceeding');
