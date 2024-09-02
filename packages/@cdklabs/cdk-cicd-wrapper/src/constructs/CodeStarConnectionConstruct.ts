@@ -47,6 +47,7 @@ export class CodeStarConnectionConstruct extends Construct {
      */
     this.pipelineInput = pipelines.CodePipelineSource.connection(props.name, props.branch, {
       connectionArn: props.codeStarConnectionArn,
+      codeBuildCloneOutput: props.codeBuildCloneOutput,
     });
 
     /**

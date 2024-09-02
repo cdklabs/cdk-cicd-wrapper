@@ -95,6 +95,7 @@ const root = new yarn.Monorepo({
     'node_modules',
     '.env',
     '.env.*',
+    '.venv',
   ],
 });
 
@@ -167,6 +168,7 @@ pipeline.tasks
 // Copy bundle dependencies to the package
 const postCompile = pipeline.tasks.tryFind('post-compile')!;
 postCompile.exec("export DEP='@cloudcomponents';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;");
+postCompile.exec("export DEP='yaml';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;");
 
 //============================================
 //

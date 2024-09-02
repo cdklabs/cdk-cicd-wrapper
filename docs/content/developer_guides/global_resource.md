@@ -9,7 +9,7 @@ The benefit of the dependency injection is that the stack dependency implementat
 Let's see an example:
 
 ```typescript
-new vp.S3BucketStack(context.scope, `${context.blueprintProps.applicationName}S3Stack`, {
+new S3BucketStack(context.scope, `${context.blueprintProps.applicationName}S3Stack`, {
     bucketName: 'test-bucket',
     stageName: context.stage,
     applicationQualifier: context.blueprintProps.applicationQualifier,

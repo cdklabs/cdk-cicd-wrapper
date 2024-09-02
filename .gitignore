@@ -44,6 +44,7 @@ samples/**/package-lock.json
 node_modules
 .env
 .env.*
+.venv
 !/.github/workflows/build.yml
 !/.github/workflows/upgrade.yml
 !/.github/pull_request_template.md

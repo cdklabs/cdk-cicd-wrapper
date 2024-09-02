@@ -5,6 +5,7 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Step } from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
 import { PipelineOptions } from '../../code-pipeline';
+import { RepositorySource } from '../../resource-providers';
 import { IVpcConfig } from '../../resource-providers/VPCProvider';
 import { ResourceContext } from '../spi';
 
@@ -179,6 +180,11 @@ export interface IPipelineConfig {
    * Additional pipelineOptions.
    */
   pipelineOptions?: PipelineOptions;
+
+  /**
+   * The repository source for the pipeline.
+   */
+  repositorySource?: RepositorySource;
 }
 
 /**
@@ -369,6 +375,11 @@ export interface RepositoryConfig {
    * The description of the repository (optional).
    */
   readonly description?: string;
+
+  /**
+   * Enforce full clone for the repository.
+   */
+  readonly codeBuildCloneOutput?: boolean;
 }
 
 /**

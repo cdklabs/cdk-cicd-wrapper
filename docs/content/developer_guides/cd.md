@@ -74,7 +74,7 @@ PipelineBlueprint.builder().addStack({
         applicationName: context.blueprintProps.applicationName,
         stageName: context.stage,
     });
-}}, vp.COMMON_STAGES.DEV).addStack({
+}}, Stage.DEV).addStack({
   provide: (context) => {
     new example.S3BucketStack(context.scope, `${context.blueprintProps.applicationName}S3Stack`, {
         bucketName: 'test-bucket',
@@ -82,7 +82,7 @@ PipelineBlueprint.builder().addStack({
         applicationQualifier: context.blueprintProps.applicationQualifier,
         encryptionKey: context.get(GlobalResources.ENCRYPTION)!.kmsKey,
     });
-}}, vp.COMMON_STAGES.INT, vp.COMMON_STAGES.PROD).synth(app);
+}}, Stage.INT, Stage.PROD).synth(app);
 ```
 
 With this configuration the `LambdaStack` will be deployed in the DEV stage only and not in the INT and PROD stages where as the `S3BucketStack` will be deployed in the INT and PROD stages.
@@ -97,10 +97,10 @@ You can define custom stages through the VanillaPipelineBuilder, so that you can
 ```typescript
 PipelineBlueprint.builder()
     .defineStages([
-        vp.COMMON_STAGES.RES,
+        Stage.RES,
         { stage: 'EXP', account: '1234567891012', region: 'eu-west-1'},
-        { stage: vp.COMMON_STAGES.DEV, account: '2345678910123', region: 'eu-west-1'},
-        { stage: vp.COMMON_STAGES.INT}
+        { stage: Stage.DEV, account: '2345678910123', region: 'eu-west-1'},
+        { stage: Stage.INT}
     ])
     .addStack({
   provide: (context) => {
@@ -116,7 +116,7 @@ PipelineBlueprint.builder()
             applicationQualifier: context.blueprintProps.applicationQualifier,
             encryptionKey: context.get(GlobalResources.ENCRYPTION)!.kmsKey,
         });
-    }}, vp.COMMON_STAGES.INT, vp.COMMON_STAGES.PROD).synth(app);
+    }}, Stage.INT, Stage.PROD).synth(app);
 ```
 
 With this example you can see the options of how the Stages can be defined.

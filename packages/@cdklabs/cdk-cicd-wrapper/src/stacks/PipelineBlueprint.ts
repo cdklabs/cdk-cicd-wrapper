@@ -26,6 +26,7 @@ import {
   RequiredRESStage,
   WorkbenchOptions,
   IPlugin,
+  ResourceContext,
 } from '../common';
 import { Plugins } from '../plugins';
 import { CIDefinitionProvider, HookProvider } from '../resource-providers';
@@ -38,7 +39,11 @@ import { ParameterProvider } from '../resource-providers/ParameterProvider';
 import { PhaseCommandProvider, PhaseCommands } from '../resource-providers/PhaseCommandProvider';
 import { PipelineProvider } from '../resource-providers/PipelineProvider';
 import { HttpProxyProvider, IProxyConfig } from '../resource-providers/ProxyProvider';
-import { BasicRepositoryProvider, RepositoryProvider } from '../resource-providers/RepositoryProvider';
+import {
+  BasicRepositoryProvider,
+  RepositoryProvider,
+  RepositorySource,
+} from '../resource-providers/RepositoryProvider';
 import { StageProvider } from '../resource-providers/StageProvider';
 import { VPCProvider } from '../resource-providers/VPCProvider';
 
@@ -48,7 +53,7 @@ const defaultRegion = process.env.AWS_REGION;
  * Default configuration for the Pipeline Blueprint.
  */
 const defaultConfigs = {
-  applicationName: process.env.npm_package_config_applicationName || process.env.npm_package_name || '',
+  applicationName: '',
   applicationQualifier: '',
   region: defaultRegion,
   logRetentionInDays: '365',
@@ -233,6 +238,11 @@ export class PipelineBlueprintBuilder {
    */
   public repositoryProvider(repositoryProvider: RepositoryProvider) {
     return this.resourceProvider(GlobalResources.REPOSITORY, repositoryProvider);
+  }
+
+  public repository(repositorySource: RepositorySource) {
+    this.props.repositorySource = repositorySource;
+    return this;
   }
 
   /**
@@ -423,10 +433,19 @@ export class PipelineBlueprintBuilder {
 
     let stack: cdk.Stack;
 
+    if (this.props.applicationName === '') {
+      if (!process.env.JSII_AGENT) {
+        this.props.applicationName = process.env.npm_package_config_applicationName || process.env.npm_package_name!;
+      } else {
+        throw new Error(`Application name must be directly set if used ${process.env.JSII_AGENT} CDK language.`);
+      }
+    }
+
     const id = this._id || this.props.applicationName || 'CiCdBlueprint';
 
     if (this.props.applicationQualifier === '') {
-      process.env.npm_package_config_cdkQualifier ||
+      this.props.applicationQualifier =
+        process.env.npm_package_config_cdkQualifier ||
         app.node.tryGetContext('@aws-cdk/core:bootstrapQualifier') ||
         cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER;
     }
@@ -448,6 +467,9 @@ export class PipelineBlueprintBuilder {
     } else {
       stack = new PipelineStack(app, id, this.props as IPipelineBlueprintProps);
     }
+
+    // Ensure all the logs that are added during the pipeline definition without specifying the stack are added to the pipeline stack
+    ResourceContext.instance().get(GlobalResources.LOGGING).setScope(stack);
 
     cdk.Tags.of(app).add('Application', `${this.props.applicationName}`);
 
@@ -493,7 +515,7 @@ export class PipelineBlueprintBuilder {
     region: string,
   ) {
     if (this.props.resourceProviders![GlobalResources.COMPLIANCE_BUCKET] instanceof DisabledProvider) {
-      return undefined;
+      return providedDefinition.complianceLogBucketName;
     }
 
     return providedDefinition.complianceLogBucketName ?? `compliance-log-${account}-${region}`;
