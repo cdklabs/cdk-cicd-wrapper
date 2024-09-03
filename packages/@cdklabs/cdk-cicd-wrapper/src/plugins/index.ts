@@ -24,7 +24,7 @@ export * from './security/EncryptCloudWatchLogGroupsPlugin';
 export * from './security/EncryptSNSTopicOnTransitPlugin';
 export * from './security/RotateEncryptionKeysPlugin';
 export * from './security/LambdaDLQPlugin';
-export * from './utils/CodeArtifactBucketPlugin';
+export * from './utils/CodeArtifactPlugin';
 /**
  * Class containing static instances of various security and optimization plugins.
  */

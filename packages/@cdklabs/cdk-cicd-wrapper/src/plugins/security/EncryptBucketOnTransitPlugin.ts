@@ -5,12 +5,12 @@ import { IAspect, Aspects } from 'aws-cdk-lib';
 import { Effect, PolicyStatement, AnyPrincipal } from 'aws-cdk-lib/aws-iam';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { IPlugin, ResourceContext } from '../../common';
+import { PluginBase, ResourceContext } from '../../common';
 
 /**
  * Plugin to enforce encryption in transit for an S3 bucket.
  */
-export class EncryptBucketOnTransitPlugin implements IPlugin {
+export class EncryptBucketOnTransitPlugin extends PluginBase {
   readonly name: string = 'EncryptBucketOnTransitPlugin';
 
   readonly version: string = '1.0';

@@ -4,12 +4,12 @@
 import { IAspect, Aspects, Names } from 'aws-cdk-lib';
 import { CfnBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { GlobalResources, IPlugin, ResourceContext } from '../../common';
+import { GlobalResources, PluginBase, ResourceContext } from '../../common';
 
 /**
  * Plugin to enable access logs for an S3 bucket.
  */
-export class AccessLogsForBucketPlugin implements IPlugin {
+export class AccessLogsForBucketPlugin extends PluginBase {
   readonly name: string = 'AccessLogsForBucketPlugin';
 
   readonly version: string = '1.0';
