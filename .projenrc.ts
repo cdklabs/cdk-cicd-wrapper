@@ -13,7 +13,7 @@ const eslintDeps = [
 ];
 
 const workflowRunsOn = ['ubuntu-latest'];
-const cdkVersion = '2.130.0';
+const cdkVersion = '2.149.0';
 const cdkNagVersion = '2.28.0';
 const constructsVersion = '10.3.0';
 

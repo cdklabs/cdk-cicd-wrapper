@@ -36,10 +36,10 @@
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^3.6.3",
-    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-import": "^2.30.0",
     "eslint-plugin-prettier": "^5.2.1",
     "prettier": "^3.3.3",
-    "projen": "^0.86.6",
+    "projen": "^0.86.7",
     "typescript": "^5.5.4"
   },
   "dependencies": {
