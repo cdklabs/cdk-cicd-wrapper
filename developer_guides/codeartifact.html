@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/cli/cli_configure.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/codeartifact.html">
       
       
-        <link rel="prev" href="index.html">
+        <link rel="prev" href="python_dependencies.html">
       
       
-        <link rel="next" href="cli_license.html">
+        <link rel="next" href="private_npm_registry.html">
       
       
       <link rel="icon" href="../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Configure projects - CDK CI/CD Wrapper</title>
+        <title>AWS CodeArtifact - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#configure" class="md-skip">
+        <a href="#using-codeartifact" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Configure projects
+              AWS CodeArtifact
             
           </span>
         </div>
@@ -222,11 +222,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../developer_guides/index.html" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
           
   
     
@@ -242,13 +244,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="index.html" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../cli/index.html" class="md-tabs__link">
           
   
     
@@ -575,6 +575,8 @@
       
   
   
+    
+  
   
   
     
@@ -609,19 +611,22 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../developer_guides/index.html" class="md-nav__link ">
+            <a href="index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -632,13 +637,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Developer Guides
@@ -654,7 +659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/variables.html" class="md-nav__link">
+      <a href="variables.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -675,7 +680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/ci.html" class="md-nav__link">
+      <a href="ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -696,7 +701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/cd.html" class="md-nav__link">
+      <a href="cd.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -759,7 +764,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/global_resource.html" class="md-nav__link">
+      <a href="global_resource.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -788,7 +793,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/modularizing_stacks.html" class="md-nav__link">
+      <a href="modularizing_stacks.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -809,7 +814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/cdk_context.html" class="md-nav__link">
+      <a href="cdk_context.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -830,7 +835,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/security.html" class="md-nav__link">
+      <a href="security.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -892,10 +897,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../developer_guides/codeartifact.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    AWS CodeArtifact
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="codeartifact.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -904,6 +929,53 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuring-the-cicd-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring the CI/CD pipeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-aws-codeartifact-for-pythonswiftdotnet-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using AWS CodeArtifact for Python/Swift/dotnet packages
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -916,7 +988,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/python_dependencies.html" class="md-nav__link">
+      <a href="python_dependencies.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -942,8 +1014,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -957,11 +1031,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" checked>
         
           
           <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
@@ -975,7 +1049,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_10">
             <span class="md-nav__icon md-icon"></span>
             NPM Dependencies
@@ -986,10 +1060,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../developer_guides/codeartifact.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    AWS CodeArtifact
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="codeartifact.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -998,6 +1092,53 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuring-the-cicd-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring the CI/CD pipeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-aws-codeartifact-for-pythonswiftdotnet-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using AWS CodeArtifact for Python/Swift/dotnet packages
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1010,7 +1151,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/private_npm_registry.html" class="md-nav__link">
+      <a href="private_npm_registry.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1083,7 +1224,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/vcs_codecommit.html" class="md-nav__link">
+      <a href="vcs_codecommit.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1104,7 +1245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/vcs_github.html" class="md-nav__link">
+      <a href="vcs_github.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1133,7 +1274,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/networking.html" class="md-nav__link">
+      <a href="networking.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1158,8 +1299,6 @@
       
   
   
-    
-  
   
   
     
@@ -1182,22 +1321,19 @@
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="index.html" class="md-nav__link ">
+            <a href="../cli/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1208,13 +1344,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             CLI Reference
@@ -1227,30 +1363,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Configure projects
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="cli_configure.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../cli/cli_configure.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1259,35 +1375,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#cdk-cicd-wrapper-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      CDK CI/CD Wrapper Variables
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1300,7 +1387,7 @@
   
   
     <li class="md-nav__item">
-      <a href="cli_license.html" class="md-nav__link">
+      <a href="../cli/cli_license.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1321,7 +1408,7 @@
   
   
     <li class="md-nav__item">
-      <a href="cli_validate.html" class="md-nav__link">
+      <a href="../cli/cli_validate.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1342,7 +1429,7 @@
   
   
     <li class="md-nav__item">
-      <a href="cli_security_scan.html" class="md-nav__link">
+      <a href="../cli/cli_security_scan.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1363,7 +1450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="cli_check_dependencies.html" class="md-nav__link">
+      <a href="../cli/cli_check_dependencies.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1543,9 +1630,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#cdk-cicd-wrapper-variables" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      CDK CI/CD Wrapper Variables
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuring-the-cicd-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring the CI/CD pipeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-aws-codeartifact-for-pythonswiftdotnet-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using AWS CodeArtifact for Python/Swift/dotnet packages
     </span>
   </a>
   
@@ -1569,135 +1674,37 @@
   
 
 
-<h1 id="configure">Configure</h1>
-<p>The <code>npx @cdklabs/cdk-cicd-wrapper-cli configure</code> script uses a series of prompts and user input to build a bash script that can be used to <code>source</code> your environment variables into your active shell/terminal. Additionally, the configure script sets values in the config section of the <code>package.json</code> file. The created <code>.env</code> can be modified or duplicated to assist developers moving between potentially different test environments.</p>
-<h2 id="cdk-cicd-wrapper-variables">CDK CI/CD Wrapper Variables</h2>
-<table>
-<thead>
-<tr>
-<th>ENV Variable</th>
-<th>Package.json config</th>
-<th>Default Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>AWS_REGION</td>
-<td></td>
-<td></td>
-<td>deployment region</td>
-</tr>
-<tr>
-<td>ACCOUNT_RES</td>
-<td></td>
-<td></td>
-<td>account id for resources account where pipeline will run</td>
-</tr>
-<tr>
-<td>ACCOUNT_DEV</td>
-<td></td>
-<td></td>
-<td>account id for DEV environment account</td>
-</tr>
-<tr>
-<td>ACCOUNT_INT</td>
-<td></td>
-<td></td>
-<td>account id for INT environment account</td>
-</tr>
-<tr>
-<td>RES_ACCOUNT_AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the named profile to use for the RES account. this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td>DEV_ACCOUNT_AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the named profile to use for the DEV account. this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td>INT_ACCOUNT_AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the named profile to use for the INT account. this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td>AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the default named profile to use for aws cli or cdk commands when no <code>--profile</code> is provided. set to the same value as <code>RES_ACCOUNT_AWS_PROFILE</code> this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td></td>
-<td>applicationName</td>
-<td>Wrapper</td>
-<td>sets the name of the Application</td>
-</tr>
-<tr>
-<td>CDK_QUALIFIER</td>
-<td>cdkQualifier</td>
-<td>wrapper</td>
-<td>used to distinguish between multiple deployments of a VP project in the same account. Good practice to customize per deployment.</td>
-</tr>
-<tr>
-<td>GIT_REPOSITORY</td>
-<td>repositoryName</td>
-<td></td>
-<td>sets the name of the Git repository in the format org/name</td>
-</tr>
-<tr>
-<td></td>
-<td>repositoryType</td>
-<td></td>
-<td>sets the type of the repository, <code>GITHUB</code> or <code>CODECOMMIT</code></td>
-</tr>
-<tr>
-<td>CODESTAR_CONNECTION_ARN</td>
-<td></td>
-<td></td>
-<td>sets the codestar connection required for GITHUB type</td>
-</tr>
-<tr>
-<td>CICD_VPC_TYPE</td>
-<td>cicdVpcType</td>
-<td>NO_VPC</td>
-<td>sets the type of the VPC: <code>NO_VPC</code>, <code>VPC</code>, or <code>VPC_FROM_LOOK_UP</code>.</td>
-</tr>
-<tr>
-<td>CICD_VPC_ID</td>
-<td>cicdVpcId</td>
-<td></td>
-<td>for use with <code>VPC_FROM_LOOK_UP</code> to set the vpc ID</td>
-</tr>
-<tr>
-<td>CICD_VPC_CIDR</td>
-<td>cicdVpcCidr</td>
-<td>172.31.0.0/20</td>
-<td>for use with <code>VPC</code> to set the CIDR block of the VPC</td>
-</tr>
-<tr>
-<td>CICD_VPC_CIDR_MASK</td>
-<td>cicdVpcCidrMask</td>
-<td>24</td>
-<td>for use with <code>VPC</code> to set the Subnet size</td>
-</tr>
-<tr>
-<td>PROXY_SECRET_ARN</td>
-<td></td>
-<td></td>
-<td>used to set the ARN for the proxy secrets to enable proxy</td>
-</tr>
-<tr>
-<td>WORKBENCH_STAGE</td>
-<td></td>
-<td></td>
-<td>used to test the CDK Stacks in a given stage, by default is DEV</td>
-</tr>
-</tbody>
-</table>
+<h1 id="using-codeartifact">Using CodeArtifact</h1>
+<p>AWS CodeArtifact is a fully managed artifact repository service that makes it easy for organizations of any size to securely store, publish, and share software packages used in their development process. AWS CodeArtifact supports popular package formats and works with commonly used build tools and package managers.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>If you do not have an existing AWS CodeArtifact repository please create one using the AWS Management Console or AWS CLI. For more information, see <a href="https://docs.aws.amazon.com/codeartifact/latest/ug/getting-started.html#get-started-create-repo">Creating a repository</a>. Ensure the repository is configured to upstream the desired package sources, you must be able to fetch 'aws-cdk-lib' and 'cdklabs' packages from the repository.</li>
+</ul>
+<h2 id="configuring-the-cicd-pipeline">Configuring the CI/CD pipeline</h2>
+<p>To use AWS CodeArtifact in your pipeline, you need to configure the <code>CodeArtifactPlugin</code> plugin. This plugin is responsible for setting up the necessary commands to authenticate with the AWS CodeArtifact repository and manage the required IAM permissions for the pipeline.</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">,</span><span class="w"> </span><span class="nx">CodeArtifactPlugin</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">plugin</span><span class="p">(</span><span class="ow">new</span><span class="w"> </span><span class="nx">CodeArtifactPlugin</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">domain</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-domain&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">repositoryName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-repo&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="p">}))</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
+<p>The above snippet configures the pipeline to authenticate with the AWS CodeArtifact repository <code>my-domain/my-repo</code>. The plugin will automatically set up the necessary IAM permissions for the pipeline to access the repository.</p>
+<h2 id="using-aws-codeartifact-for-pythonswiftdotnet-packages">Using AWS CodeArtifact for Python/Swift/dotnet packages</h2>
+<p>To use AWS CodeArtifact for Python, Swift, or dotnet packages, you need to configure the plugin for those package types. The <code>CodeArtifactPlugin</code> accepts an optional <code>repositoryTypes</code> parameter that allows you to specify the package types you want to use with AWS CodeArtifact.</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">,</span><span class="w"> </span><span class="nx">CodeArtifactPlugin</span><span class="p">,</span><span class="w"> </span><span class="nx">CodeArtifactRepositoryTypes</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">plugin</span><span class="p">(</span><span class="ow">new</span><span class="w"> </span><span class="nx">CodeArtifactPlugin</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">domain</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-domain&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">repositoryName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-repo&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">repositoryTypes</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="nx">CodeArtifactRepositoryTypes</span><span class="p">.</span><span class="nx">NPM</span><span class="p">,</span><span class="w"> </span><span class="nx">CodeArtifactRepositoryTypes</span><span class="p">.</span><span class="nx">PIP</span><span class="p">,</span><span class="w"> </span><span class="nx">CodeArtifactRepositoryTypes</span><span class="p">.</span><span class="nx">SWIFT</span><span class="p">,</span><span class="w"> </span><span class="nx">CodeArtifactRepositoryTypes</span><span class="p">.</span><span class="nx">NUGET</span><span class="p">],</span>
+<span class="w">  </span><span class="p">}))</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">addStack</span><span class="p">(</span><span class="ow">new</span><span class="w"> </span><span class="nx">MyStack</span><span class="p">())</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
 
 
 
@@ -1718,7 +1725,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-05-21
+    2024-09-03
   </span>
 
     
