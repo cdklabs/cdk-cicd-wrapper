@@ -1,19 +1,19 @@
 # Using CodeArtifact
 
-AWS CodeArtifact is a fully managed artifact repository service that makes it easy for organizations of any size to securely store, publish, and share software packages used in their development process. CodeArtifact supports popular package formats and works with commonly used build tools and package managers.
+AWS CodeArtifact is a fully managed artifact repository service that makes it easy for organizations of any size to securely store, publish, and share software packages used in their development process. AWS CodeArtifact supports popular package formats and works with commonly used build tools and package managers.
 
 ## Prerequisites
-- Existing AWS CodeArtifact repository, or create a new one using the AWS Management Console or AWS CLI. For more information, see [Creating a repository](https://docs.aws.amazon.com/codeartifact/latest/ug/getting-started.html#get-started-create-repo). Ensure the repository is configured to upstream the desired package sources, you must be able to fetch 'aws-cdk-lib' and 'cdklabs' packages from the repository.
+- If you do not have an existing AWS CodeArtifact repository please create one using the AWS Management Console or AWS CLI. For more information, see [Creating a repository](https://docs.aws.amazon.com/codeartifact/latest/ug/getting-started.html#get-started-create-repo). Ensure the repository is configured to upstream the desired package sources, you must be able to fetch 'aws-cdk-lib' and 'cdklabs' packages from the repository.
 
-## Configuring the pipeline
+## Configuring the CI/CD pipeline
 
-To use CodeArtifact in your pipeline, you need to configure the `CodeArtifactPlugin` plugin. This plugin is responsible for setting up the necessary commands to authenticate with the CodeArtifact repository and manage the required IAM permissions for the pipeline.
+To use AWS CodeArtifact in your pipeline, you need to configure the `CodeArtifactPlugin` plugin. This plugin is responsible for setting up the necessary commands to authenticate with the AWS CodeArtifact repository and manage the required IAM permissions for the pipeline.
 
 ```typeScript
 import { PipelineBlueprint, CodeArtifactPlugin } from '@cdklabs/cdk-cicd-wrapper';
 
 const pipeline = PipelineBlueprint.builder()
-  .addPlugin(new CodeArtifactPlugin({
+  .plugin(new CodeArtifactPlugin({
     domain: 'my-domain',
     repositoryName: 'my-repo',
   }))
@@ -30,7 +30,7 @@ To use AWS CodeArtifact for Python, Swift, or dotnet packages, you need to confi
 import { PipelineBlueprint, CodeArtifactPlugin, CodeArtifactRepositoryTypes} from '@cdklabs/cdk-cicd-wrapper';
 
 const pipeline = PipelineBlueprint.builder()
-  .addPlugin(new CodeArtifactPlugin({
+  .plugin(new CodeArtifactPlugin({
     domain: 'my-domain',
     repositoryName: 'my-repo',
     repositoryTypes: [CodeArtifactRepositoryTypes.NPM, CodeArtifactRepositoryTypes.PIP, CodeArtifactRepositoryTypes.SWIFT, CodeArtifactRepositoryTypes.NUGET],
