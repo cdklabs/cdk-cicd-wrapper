@@ -152,6 +152,11 @@ export interface PipelineProps {
   readonly codeBuildDefaults: pipelines.CodeBuildOptions;
 
   /**
+   * Default options for the synth CodeBuild project.
+   */
+  readonly synthCodeBuildDefaults?: pipelines.CodeBuildOptions;
+
+  /**
    * Additional Pipeline options.
    */
   readonly options?: PipelineOptions;
@@ -209,6 +214,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
         },
         primaryOutputDirectory: props.primaryOutputDirectory,
       }),
+      synthCodeBuildDefaults: props.synthCodeBuildDefaults,
       codeBuildDefaults: props.codeBuildDefaults,
       ...(props.options ?? {}),
     });

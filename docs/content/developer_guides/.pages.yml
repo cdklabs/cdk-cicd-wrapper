@@ -9,8 +9,11 @@ nav:
   - "Modularizing Stacks": modularizing_stacks.md
   - "CDK Context": "cdk_context.md"
   - "Security": "security.md"
-  - "Python Dependencies": "python_dependencies.md"
+  - "Python Dependencies":
+    - "AWS CodeArtifact": "codeartifact.md"
+    - "python_dependencies.md"
   - "NPM Dependencies":
+    - "AWS CodeArtifact": "codeartifact.md"
     - "Private NPM Registry": "private_npm_registry.md"
   - "GIT Integrations":
     - "CodeCommit": "vcs_codecommit.md"

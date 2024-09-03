@@ -449,15 +449,39 @@ export interface IPlugin {
   /**
    * The method called when the Pipeline configuration finalized.
    */
-  create?(context: ResourceContext): void;
+  create(context: ResourceContext): void;
 
   /**
    * The method called before the stage is created.
    */
-  beforeStage?(scope: Construct, context: ResourceContext): void;
+  beforeStage(scope: Construct, context: ResourceContext): void;
 
   /**
    * The method called after the stage is created.
    */
-  afterStage?(scope: Construct, context: ResourceContext): void;
+  afterStage(scope: Construct, context: ResourceContext): void;
+}
+
+export abstract class PluginBase implements IPlugin {
+  abstract readonly name: string;
+
+  abstract readonly version: string;
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //@ts-ignore
+  create(context: ResourceContext): void {
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //@ts-ignore
+  beforeStage(scope: Construct, context: ResourceContext): void {
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //@ts-ignore
+  afterStage(scope: Construct, context: ResourceContext): void {
+    return;
+  }
 }

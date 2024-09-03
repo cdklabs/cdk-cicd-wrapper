@@ -4,12 +4,12 @@
 import { IAspect, Aspects } from 'aws-cdk-lib';
 import { CfnKey } from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
-import { IPlugin, ResourceContext } from '../../common';
+import { PluginBase, ResourceContext } from '../../common';
 
 /**
  * Plugin to enable key rotation for KMS keys.
  */
-export class RotateEncryptionKeysPlugin implements IPlugin {
+export class RotateEncryptionKeysPlugin extends PluginBase {
   readonly name: string = 'RotateEncryptionKeysPlugin';
 
   readonly version: string = '1.0';
