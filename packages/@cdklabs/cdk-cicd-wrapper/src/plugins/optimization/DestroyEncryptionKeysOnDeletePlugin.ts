@@ -4,17 +4,19 @@
 import { IAspect, Aspects, RemovalPolicy } from 'aws-cdk-lib';
 import { Key } from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
-import { IPlugin, ResourceContext, Stage } from '../../common';
+import { PluginBase, ResourceContext, Stage } from '../../common';
 
 /**
  * Plugin to destroy encryption keys on delete.
  */
-export class DestroyEncryptionKeysOnDeletePlugin implements IPlugin {
+export class DestroyEncryptionKeysOnDeletePlugin extends PluginBase {
   readonly name: string = 'DestroyEncryptionKeysOnDeletePlugin';
 
   readonly version: string = '1.0';
 
-  constructor(readonly stagesToRetain: Stage[] = [Stage.PROD]) {}
+  constructor(readonly stagesToRetain: Stage[] = [Stage.PROD]) {
+    super();
+  }
 
   afterStage(scope: Construct, context: ResourceContext): void {
     if (this.stagesToRetain.includes(context.stage)) {

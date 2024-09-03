@@ -5,12 +5,12 @@ import { IAspect, Aspects } from 'aws-cdk-lib';
 import { Key } from 'aws-cdk-lib/aws-kms';
 import { CfnLogGroup } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
-import { GlobalResources, IPlugin, ResourceContext } from '../../common';
+import { GlobalResources, PluginBase, ResourceContext } from '../../common';
 
 /**
  * Plugin to encrypt CloudWatch Log Groups.
  */
-export class EncryptCloudWatchLogGroupsPlugin implements IPlugin {
+export class EncryptCloudWatchLogGroupsPlugin extends PluginBase {
   readonly name: string = 'EncryptCloudWatchLogGroupsPlugin';
 
   readonly version: string = '1.0';

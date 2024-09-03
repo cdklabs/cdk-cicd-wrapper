@@ -45,7 +45,8 @@ export class PipelineProvider implements IResourceProvider {
       applicationQualifier: blueprintProps.applicationQualifier,
       primaryOutputDirectory: blueprintProps.primaryOutputDirectory,
       pipelineName: blueprintProps.applicationName,
-      ciBuildSpec: ciDefinition,
+      ciBuildSpec: ciDefinition.provideBuildSpec(),
+      synthCodeBuildDefaults: ciDefinition.provideCodeBuildDefaults(),
       codeBuildDefaults: codebuildFactory.provideCodeBuildOptions(),
       options: blueprintProps.pipelineOptions,
     });

@@ -4,12 +4,12 @@
 import { IAspect, Aspects } from 'aws-cdk-lib';
 import { CfnSubnet } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
-import { IPlugin, ResourceContext } from '../../common';
+import { PluginBase, ResourceContext } from '../../common';
 
 /**
  * Plugin to disable public IP assignment for EC2 instances.
  */
-export class DisablePublicIPAssignmentForEC2Plugin implements IPlugin {
+export class DisablePublicIPAssignmentForEC2Plugin extends PluginBase {
   readonly name: string = 'DisablePublicIPAssignmentForEC2Plugin';
 
   readonly version: string = '1.0';

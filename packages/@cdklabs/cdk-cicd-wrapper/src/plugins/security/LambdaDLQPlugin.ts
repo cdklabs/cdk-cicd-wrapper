@@ -7,22 +7,23 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as nag from 'cdk-nag';
 import { Construct } from 'constructs';
-import { IPlugin, ResourceContext } from '../../';
+import { PluginBase, ResourceContext } from '../../';
 
-export interface LambdaDLQPluginProps {
+export interface ILambdaDLQPluginProps {
   /**
    * The retentionPeriod for the DLQ.
    */
   retentionPeriod?: cdk.Duration;
 }
 
-export class LambdaDLQPlugin implements IPlugin {
+export class LambdaDLQPlugin extends PluginBase {
   readonly name = 'LambdaDLQPlugin';
   readonly version = '1.0';
 
   readonly retentionPeriod: cdk.Duration;
 
-  constructor(props?: LambdaDLQPluginProps) {
+  constructor(props?: ILambdaDLQPluginProps) {
+    super();
     this.retentionPeriod = props?.retentionPeriod ?? cdk.Duration.days(14);
   }
 

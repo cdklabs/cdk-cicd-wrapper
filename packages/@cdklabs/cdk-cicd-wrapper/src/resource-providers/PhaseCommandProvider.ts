@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as process from 'process';
 import { logger } from './LoggingProvider';
-import { ResourceContext, IResourceProvider, Scope, IPhaseCommand, PipelinePhases } from '../common';
+import { ResourceContext, IResourceProvider, IPhaseCommand, PipelinePhases } from '../common';
 
 /**
  * Phase command that invokes NPM scripts from project package.json
@@ -226,8 +226,6 @@ class DefaultPhaseCommandSettings implements IPhaseCommandSettings {
  * Provides the phase commands
  */
 export class PhaseCommandProvider implements IResourceProvider {
-  scope? = Scope.PER_STAGE;
-
   provide(context: ResourceContext): any {
     const { phases } = context.blueprintProps;
 
