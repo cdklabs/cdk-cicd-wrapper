@@ -53,7 +53,7 @@ The {{ project_name }} comes with a pre-set list of PhaseCommand definitions for
 | NPMPhaseCommand | VALIDATE     | Executes the `npm run validate` command. You can define the command by yourself or you can use {{ project_name }} - [CLI Validate](../cli/cli_validate.md) command |
 | NPMPhaseCommand | CHECK_AUDIT  | Executes the `npm run audit` command. You can define the command by yourself or you can our recommended [audit definition](./audit.md).                            |
 | NPMPhaseCommand | NPM_CI       | Runs the `npm ci` command and downloads all dependencies                                                                                                           |
-| NPMPhaseCommand | CHECK_LINT   | Executes the `npm run audit` command. You can define the command by yourself                                                                                       |
+| NPMPhaseCommand | CHECK_LINT   | Executes the `npm run lint` command. You can define the command by yourself                                                                                       |
 
 ### Build Phase
 
@@ -78,7 +78,7 @@ The {{ project_name }} comes with a pre-set list of PhaseCommand definitions for
 | NPMPhaseCommand         | VALIDATE                  | Executes the `npm run validate` command. You can define the command by yourself or you can use {{ project_name }} - [CLI Validate](../cli/cli_validate.md) command    |
 | NPMPhaseCommand         | CHECK_AUDIT               | Executes the `npm run audit` command. You can define the command by yourself or you can our recommended [audit definition](./audit.md).                               |
 | NPMPhaseCommand         | NPM_CI                    | Runs the `npm ci` command and downloads all dependencies                                                                                                              |
-| NPMPhaseCommand         | CHECK_LINT                | Executes the `npm run audit` command. You can define the command by yourself                                                                                          |
+| NPMPhaseCommand         | CHECK_LINT                | Executes the `npm run lint` command. You can define the command by yourself                                                                                          |
 | NPMPhaseCommand         | BUILD                     | Executes the `npm run build` command.                                                                                                                                 |
 | NPMPhaseCommand         | TEST                      | Executes the `npm run test` command.                                                                                                                                  |
 | InlineShellPhaseCommand | CDK_SYNTH_WITH_LOOK_UP    | Executes the `cdk synth` command to synthesize the CDK project code and runs the CDK NAG. This version allows the CDK to perform [lookups](./cdk_context.md).         |
