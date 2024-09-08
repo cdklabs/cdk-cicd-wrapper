@@ -23,7 +23,7 @@ export class EncryptCloudWatchLogGroupsPlugin extends PluginBase {
 
   afterStage(scope: Construct, context: ResourceContext): void {
     Aspects.of(scope).add(
-      new EncryptCloudWatchLogGroupsAspect(context.get(GlobalResources.ENCRYPTION).key, this.logRetentionInDays!),
+      new EncryptCloudWatchLogGroupsAspect(context.get(GlobalResources.ENCRYPTION).kmsKey, this.logRetentionInDays!),
     );
   }
 }
