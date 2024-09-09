@@ -68,7 +68,7 @@
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
-    "yaml": "^2.5.0"
+    "yaml": "^2.5.1"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
