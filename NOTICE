@@ -616,7 +616,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-cdk/asset-node-proxy-agent-v6 2.0.3
+@aws-cdk/asset-node-proxy-agent-v6 2.1.0
 Apache-2.0
 
                                  Apache License
@@ -25253,7 +25253,7 @@ MIT
     SOFTWARE
 
 
-@types/node 18.19.48
+@types/node 18.19.49
 MIT
     MIT License
 
@@ -25278,7 +25278,7 @@ MIT
     SOFTWARE
 
 
-@types/node 22.5.2
+@types/node 22.5.3
 MIT
     MIT License
 
@@ -56738,7 +56738,7 @@ If the Work includes a "NOTICE" text file as part of its distribution, then any 
 END OF TERMS AND CONDITIONS
 
 
-typescript 5.7.0-dev.20240903
+typescript 5.7.0-dev.20240904
 Apache-2.0
 Apache License
 
@@ -58316,6 +58316,23 @@ THIS SOFTWARE.
 
 
 yaml 2.5.0
+ISC
+Copyright Eemeli Aro <eemeli@gmail.com>
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+
+yaml 2.5.1
 ISC
 Copyright Eemeli Aro <eemeli@gmail.com>
 
