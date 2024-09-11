@@ -63,6 +63,10 @@ class Command implements yargs.CommandModule {
       if (result.error) {
         throw result.error;
       }
+
+      if (result.status !== 0) {
+        throw new Error('Python dependencies check failed');
+      }
     }
 
     if (args.npm) {
@@ -76,6 +80,10 @@ class Command implements yargs.CommandModule {
 
       if (result.error) {
         throw result.error;
+      }
+
+      if (result.status !== 0) {
+        throw new Error('NPM dependencies check failed');
       }
     }
   }
