@@ -54,7 +54,7 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper
       - name: "@cdklabs/cdk-cicd-wrapper: Upload artifact"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4.4.0
         with:
           name: cdklabs-cdk-cicd-wrapper_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper/dist
@@ -66,7 +66,7 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper-cli
       - name: "@cdklabs/cdk-cicd-wrapper-cli: Upload artifact"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4.4.0
         with:
           name: cdklabs-cdk-cicd-wrapper-cli_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper-cli/dist
@@ -78,7 +78,7 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper-projen
       - name: "@cdklabs/cdk-cicd-wrapper-projen: Upload artifact"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4.4.0
         with:
           name: cdklabs-cdk-cicd-wrapper-projen_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper-projen/dist

@@ -51,6 +51,22 @@ fi
 for pythonModule in "${REQUIREMENTS[@]}"; do
     pythonModuleFolder=`dirname $pythonModule`;
     pushd "${pythonModuleFolder}" || exit 1;
-    pipenv requirements --exclude-markers --hash > requirements.txt && pip-audit -r requirements.txt --disable-pip && rm -rf requirements.txt || exit 1;
+    pipenv requirements --exclude-markers --hash > requirements.txt;
+
+    ret_code=0;
+    if grep hash < requirements.txt &> /dev/null ; then
+    # if hash is not preset in the requirements.txt, then we will not use pip-audit as it is not supported
+        set +e;
+        pip-audit -r requirements.txt --disable-pip;
+        ret_code=$?
+        set -e;
+    fi
+    
+    rm -rf requirements.txt;
+    
+    if [ $ret_code -ne 0 ]; then
+        exit 1;
+    fi
+
     popd || exit 1;
 done
