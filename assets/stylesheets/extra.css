@@ -15,11 +15,11 @@
 
 :root .highlight > * {
   /* Code color shades */
-  --md-code-fg-color: #c9d1d9;
-  --md-code-bg-color: #0d1117;
+  /* --md-code-fg-color: #c9d1d9;
+  --md-code-bg-color: #0d1117; */
 
   /* Code highlighting color shades */
-  --md-code-hl-color: rgba(187, 128, 9, 0.25);
+  /* --md-code-hl-color: rgba(187, 128, 9, 0.25);
   --md-code-hl-number-color: #56d364;
   --md-code-hl-special-color: #388bfd;
   --md-code-hl-function-color: #d2a8ff;
@@ -31,7 +31,7 @@
   --md-code-hl-punctuation-color: #c9d1d9;
   --md-code-hl-comment-color: #8b949e;
   --md-code-hl-generic-color: #c9d1d9;
-  --md-code-hl-variable-color: #ffa657;
+  --md-code-hl-variable-color: #ffa657;*/
 
   /* Typeset color shades */
   --md-typeset-color: var(--md-primary-fg-color);
@@ -112,4 +112,45 @@ kbd {
 
 .md-content__button {
   visibility: hidden;
+}
+
+.workshop-image {
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin: 20px auto;
+  width: 90%;
+  max-width: 800px;
+  display: block;
+}
+
+.workshop-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.workshop-congrats-box {
+  border: 2px solid green;
+  border-radius: 8px;
+  background-color: #f0fdf4;
+  padding: 10px;
+}
+
+.workshop-congrats-title {
+  color: green;
+}
+
+.note {
+  background-color: #e7f5ff; /* Light blue background */
+  border-left: 4px solid #1c7ed6; /* Blue left border */
+  padding: 10px;
+  margin: 20px 0;
+  border-radius: 4px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.note strong {
+  color: #1c7ed6; /* Blue text for strong elements */
 }

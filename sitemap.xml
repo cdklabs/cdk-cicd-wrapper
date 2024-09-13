@@ -2,157 +2,162 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/index.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/cli/index.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/cli/cli_check_dependencies.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/cli/cli_configure.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/cli/cli_license.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/cli/cli_security_scan.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/cli/cli_validate.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/contributing/index.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/index.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/audit.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/cd.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/cdk_context.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/ci.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/codeartifact.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/global_resource.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/modularizing_stacks.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/networking.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/pipeline_options.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/private_npm_registry.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/python_dependencies.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/security.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/variables.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/vcs_codecommit.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/vcs_github.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/faqs/index.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/getting_started/index.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/getting_started/migration_guide.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/getting_started/prerequisites.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/getting_started/projen.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/getting_started/projen_with_taskfile.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
     </url>
     <url>
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/overview/index.html</loc>
-         <lastmod>2024-09-04</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/index.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/index.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/01-create-cdk-project.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/02-define-quality-gates-ci.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/03-create-pipeline.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/04-develop-genai-solution.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/05-deploy-stack.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/06-develop-genai-solution-part-2.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/prerequisites.html</loc>
+         <lastmod>1980-01-01</lastmod>
     </url>
 </urlset>
