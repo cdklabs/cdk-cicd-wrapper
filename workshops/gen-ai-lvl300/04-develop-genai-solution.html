@@ -24,7 +24,7 @@
     
     
       
-        <title>Develop a GenAI Solution with Workbench - CDK CI/CD Wrapper</title>
+        <title>Develop a GenAI Solution with CDK CI/CD Workbench - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#develop-a-genai-solution-with-workbench" class="md-skip">
+        <a href="#develop-a-genai-solution-with-cdk-cicd-workbench" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Develop a GenAI Solution with Workbench
+              Develop a GenAI Solution with CDK CI/CD Workbench
             
           </span>
         </div>
@@ -1550,6 +1550,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
       
@@ -1695,7 +1705,7 @@
           
   
   <span class="md-ellipsis">
-    Develop a GenAI Solution with Workbench
+    Develop a GenAI Solution with CDK CI/CD Workbench
   </span>
   
 
@@ -1706,7 +1716,7 @@
         
   
   <span class="md-ellipsis">
-    Develop a GenAI Solution with Workbench
+    Develop a GenAI Solution with CDK CI/CD Workbench
   </span>
   
 
@@ -1910,6 +1920,111 @@
   
   <span class="md-ellipsis">
     Deploy Stack with the Pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="06-develop-genai-solution-part-2.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Develop a GenAI Solution CDK CI/CD Part 2
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="07-deploy-solution.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deploy the solution with the pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="08-summary.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Summary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="09-clean-up.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Clean up
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="faq.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FAQ
   </span>
   
 
@@ -2160,7 +2275,7 @@
   
 
 
-<h1 id="develop-a-genai-solution-with-workbench">Develop a GenAI Solution with Workbench</h1>
+<h1 id="develop-a-genai-solution-with-cdk-cicd-workbench">Develop a GenAI Solution with CDK CI/CD Workbench</h1>
 <h2 id="what-is-workbench">What is Workbench?</h2>
 <p>A <strong>Workbench</strong> is a dedicated development environment where infrastructure code can be created, tested, and iterated upon before it's mature enough to be deployed through an automated pipeline. It’s particularly useful for development teams that don’t have personal AWS accounts for testing and experimentation. The Workbench allows developers to simulate their infrastructure changes in a safe environment without affecting the production pipeline. This ensures that the infrastructure code evolves and stabilizes before it’s promoted to deployment.</p>
 <p>Now, let’s go through the steps to create a GenAI solution using the Workbench.</p>
@@ -2234,6 +2349,11 @@
 <span class="w">  </span><span class="p">},</span>
 <span class="p">})</span>
 </code></pre></div>
+</li>
+<li>
+<p><strong>Import</strong> the <code>DemoStack</code> class at the top of the file:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DemoStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../lib/demo-stack&#39;</span><span class="p">;</span>
+</code></pre></div>
 <p>This code integrates the <code>DemoStack</code> into the Workbench environment.</p>
 </li>
 </ol>
@@ -2252,16 +2372,16 @@
 <span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
 
 <span class="nx">wrapper</span><span class="p">.</span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
-<span class="w">    </span><span class="p">.</span><span class="nx">defineStages</span><span class="p">([</span>
-<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.RES</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
-<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.DEV</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
-<span class="w">    </span><span class="p">])</span>
-<span class="w">    </span><span class="p">.</span><span class="nx">workbench</span><span class="p">({</span>
-<span class="w">        </span><span class="nx">provide</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">context.environment</span><span class="w"> </span><span class="p">});</span>
-<span class="w">        </span><span class="p">},</span>
-<span class="w">    </span><span class="p">})</span>
-<span class="w">    </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+<span class="p">.</span><span class="nx">defineStages</span><span class="p">([</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.RES</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.DEV</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="p">])</span>
+<span class="p">.</span><span class="nx">workbench</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">provide</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">context.environment</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">})</span>
+<span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
 </code></pre></div></p>
 </details>
 <h2 id="deploy-the-workbench">Deploy the Workbench</h2>
@@ -2394,7 +2514,7 @@ Your Team can new deploy your stack into their own Workbench environment.
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2024-09-13
+    2024-09-16
   </span>
 
     

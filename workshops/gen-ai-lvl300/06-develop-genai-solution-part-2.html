@@ -16,7 +16,7 @@
         <link rel="prev" href="05-deploy-stack.html">
       
       
-        <link rel="next" href="prerequisites.html">
+        <link rel="next" href="07-deploy-solution.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Develop a GenAI Solution Part 2 with Workbench - CDK CI/CD Wrapper</title>
+        <title>Develop a GenAI Solution CDK CI/CD Part 2 - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#develop-a-genai-solution-part-2-with-workbench" class="md-skip">
+        <a href="#develop-a-genai-solution-cdk-cicd-part-2" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Develop a GenAI Solution Part 2 with Workbench
+              Develop a GenAI Solution CDK CI/CD Part 2
             
           </span>
         </div>
@@ -1550,6 +1550,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
       
@@ -1686,7 +1696,7 @@
         
   
   <span class="md-ellipsis">
-    Develop a GenAI Solution with Workbench
+    Develop a GenAI Solution with CDK CI/CD Workbench
   </span>
   
 
@@ -1708,6 +1718,253 @@
   
   <span class="md-ellipsis">
     Deploy Stack with the Pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Develop a GenAI Solution CDK CI/CD Part 2
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="06-develop-genai-solution-part-2.html" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Develop a GenAI Solution CDK CI/CD Part 2
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enhance-the-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enhance the Solution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enhance the Solution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-create-the-fargate-task-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Create the Fargate Task Definition
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-create-the-streamlit-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Create the Streamlit Application
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-deploy-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Deploy the Workbench
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-verify-the-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Verify the Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introduce-feature-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduce Feature Flag
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Introduce Feature Flag">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-5-add-the-feature-flag-to-control-the-streamlit-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5: Add the Feature Flag to Control the Streamlit App
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-test-the-feature-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Test the Feature Flag
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-7-enable-the-feature-flag-by-default-in-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Enable the Feature Flag by Default in Workbench
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-8-commit-and-push-the-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 8: Commit and Push the Changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="07-deploy-solution.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deploy the solution with the pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="08-summary.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Summary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="09-clean-up.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Clean up
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="faq.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FAQ
   </span>
   
 
@@ -1772,6 +2029,116 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enhance-the-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enhance the Solution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enhance the Solution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-create-the-fargate-task-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Create the Fargate Task Definition
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-create-the-streamlit-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Create the Streamlit Application
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-deploy-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Deploy the Workbench
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-verify-the-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Verify the Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introduce-feature-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduce Feature Flag
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Introduce Feature Flag">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-5-add-the-feature-flag-to-control-the-streamlit-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5: Add the Feature Flag to Control the Streamlit App
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-test-the-feature-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Test the Feature Flag
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-7-enable-the-feature-flag-by-default-in-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Enable the Feature Flag by Default in Workbench
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-8-commit-and-push-the-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 8: Commit and Push the Changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1788,8 +2155,356 @@
   
 
 
-<h1 id="develop-a-genai-solution-part-2-with-workbench">Develop a GenAI Solution Part 2 with Workbench</h1>
-<p>In this section, we will continue developing the GenAI solution using the Workbench. We will create a AWS ECS Fargate task to run a <a href="https://streamlit.io/">Streamlit</a> application that will host a Python Applictaio.</p>
+<h1 id="develop-a-genai-solution-cdk-cicd-part-2">Develop a GenAI Solution CDK CI/CD Part 2</h1>
+<p>In this section, we will continue developing the GenAI solution using the Workbench. We will create an AWS ECS Fargate task to run a <a href="https://streamlit.io/">Streamlit</a> application that will host a Python web application to generate images using AWS Bedrock.</p>
+<h2 id="enhance-the-solution">Enhance the Solution</h2>
+<h3 id="step-1-create-the-fargate-task-definition">Step 1: Create the Fargate Task Definition</h3>
+<p>We’ll start by enhancing the solution with an ECS Fargate task definition to run the Streamlit application.</p>
+<ol>
+<li><strong>Open the file</strong> <code>lib/demo-stack.ts</code> and add the following code after the ECS Cluster definition:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">taskRole</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">iam</span><span class="p">.</span><span class="nx">Role</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TaskRole&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">assumedBy</span><span class="o">:</span><span class="w"> </span><span class="kt">new</span><span class="w"> </span><span class="nx">iam</span><span class="p">.</span><span class="nx">ServicePrincipal</span><span class="p">(</span><span class="s1">&#39;ecs-tasks.amazonaws.com&#39;</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">inlinePolicies</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">BedrockInvokeModel</span><span class="o">:</span><span class="w"> </span><span class="kt">new</span><span class="w"> </span><span class="nx">iam</span><span class="p">.</span><span class="nx">PolicyDocument</span><span class="p">({</span>
+<span class="w">        </span><span class="nx">statements</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="ow">new</span><span class="w"> </span><span class="nx">iam</span><span class="p">.</span><span class="nx">PolicyStatement</span><span class="p">({</span>
+<span class="w">            </span><span class="nx">actions</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;bedrock:InvokeModel&#39;</span><span class="p">],</span>
+<span class="w">            </span><span class="nx">resources</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="sb">`arn:aws:bedrock:</span><span class="si">${</span><span class="nx">cdk</span><span class="p">.</span><span class="nx">Aws</span><span class="p">.</span><span class="nx">REGION</span><span class="si">}</span><span class="sb">::foundation-model/amazon.titan-image-generator-v1`</span><span class="p">],</span>
+<span class="w">            </span><span class="p">}),</span>
+<span class="w">        </span><span class="p">],</span>
+<span class="w">        </span><span class="p">}),</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">});</span>
+
+<span class="c1">// Define a Fargate task definition</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">fargateTaskDefinition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">FargateTaskDefinition</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;StreamlitAppTaskDef&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">taskRole</span><span class="p">,</span>
+<span class="p">});</span>
+
+<span class="c1">// Add container to task definition</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">container</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">fargateTaskDefinition</span><span class="p">.</span><span class="nx">addContainer</span><span class="p">(</span><span class="s1">&#39;StreamlitContainer&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">image</span><span class="o">:</span><span class="w"> </span><span class="kt">ecs.ContainerImage.fromAsset</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;image_prompts&#39;</span><span class="p">),</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">networkMode</span><span class="o">:</span><span class="w"> </span><span class="kt">ecrAsset.NetworkMode.custom</span><span class="p">(</span><span class="s1">&#39;sagemaker&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">    </span><span class="nx">memoryLimitMiB</span><span class="o">:</span><span class="w"> </span><span class="kt">512</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">cpu</span><span class="o">:</span><span class="w"> </span><span class="kt">256</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">logging</span><span class="o">:</span><span class="w"> </span><span class="kt">new</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">AwsLogDriver</span><span class="p">({</span><span class="w"> </span><span class="nx">streamPrefix</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;streamlit-app&#39;</span><span class="w"> </span><span class="p">}),</span>
+<span class="p">});</span>
+
+<span class="c1">// Expose the container on port 8501 (Streamlit default port)</span>
+<span class="nx">container</span><span class="p">.</span><span class="nx">addPortMappings</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">containerPort</span><span class="o">:</span><span class="w"> </span><span class="kt">8501</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">protocol</span><span class="o">:</span><span class="w"> </span><span class="kt">ecs.Protocol.TCP</span><span class="p">,</span>
+<span class="p">});</span>
+
+<span class="c1">// Create Fargate service in ECS</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">loadBalancer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">ecs_patterns</span><span class="p">.</span><span class="nx">ApplicationLoadBalancedFargateService</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;StreamlitFargateService&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">cluster</span><span class="o">:</span><span class="w"> </span><span class="kt">cluster</span><span class="p">,</span><span class="w"> </span><span class="c1">// Required</span>
+<span class="w">    </span><span class="nx">taskDefinition</span><span class="o">:</span><span class="w"> </span><span class="kt">fargateTaskDefinition</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">desiredCount</span><span class="o">:</span><span class="w"> </span><span class="kt">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">publicLoadBalancer</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="p">});</span>
+
+<span class="nx">nag</span><span class="p">.</span><span class="nx">NagSuppressions</span><span class="p">.</span><span class="nx">addResourceSuppressions</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">loadBalancer</span><span class="p">,</span>
+<span class="w">    </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;AwsSolutions-EC23&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">reason</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Allow public access to loadbalancer.&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;AwsSolutions-ELB&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">reason</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;ELB access logs&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="kc">true</span>
+<span class="p">);</span>
+
+<span class="nx">nag</span><span class="p">.</span><span class="nx">NagSuppressions</span><span class="p">.</span><span class="nx">addResourceSuppressions</span><span class="p">(</span><span class="nx">fargateTaskDefinition</span><span class="p">,</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;AwsSolutions-IAM5&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">reason</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Allow * permissions.&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">appliesTo</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;Resource::*&#39;</span><span class="p">]</span>
+<span class="p">}],</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Congratulations!</strong> You've successfully defined the Fargate task to run the Streamlit app.</p>
+</blockquote>
+<h3 id="step-2-create-the-streamlit-application">Step 2: Create the Streamlit Application</h3>
+<p>Let’s create the Streamlit application that will interact with AWS Bedrock for generating images.</p>
+<h4 id="step-21-create-the-docker-setup">Step 2.1: Create the Docker Setup</h4>
+<ol>
+<li>
+<p><strong>Create a new directory</strong> called <code>image_prompts</code> in the lib folder.</p>
+</li>
+<li>
+<p><strong>Create a new file</strong> called <code>Dockerfile</code> in the <code>image_prompts</code> folder.</p>
+</li>
+<li>
+<p><strong>Add the following content</strong> to the <code>Dockerfile</code>:</p>
+</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="k">FROM</span><span class="w"> </span><span class="s">python:3.12-slim</span>
+
+<span class="c"># Set the working directory</span>
+<span class="k">WORKDIR</span><span class="w"> </span><span class="s">/app</span>
+
+<span class="c"># Install pipenv to manage dependencies</span>
+<span class="k">RUN</span><span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>pipenv
+
+<span class="c"># Copy the Pipfile and Pipfile.lock first to leverage Docker cache</span>
+<span class="k">COPY</span><span class="w"> </span>Pipfile<span class="w"> </span>Pipfile.lock<span class="w"> </span>./
+
+<span class="c"># Install project dependencies from Pipfile</span>
+<span class="k">RUN</span><span class="w"> </span>pipenv<span class="w"> </span>install<span class="w"> </span>--system<span class="w"> </span>--deploy<span class="w"> </span>--ignore-pipfile
+
+<span class="c"># Copy the rest of the application code</span>
+<span class="k">COPY</span><span class="w"> </span>.<span class="w"> </span>.
+
+<span class="c"># Expose the port on which Streamlit runs</span>
+<span class="k">EXPOSE</span><span class="w"> </span><span class="s">8501</span>
+
+<span class="c"># Command to run Streamlit app</span>
+<span class="k">CMD</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;streamlit&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;image_prompts_app.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--server.port&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;8501&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--server.address&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">]</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Well done!</strong> The Docker setup for the Streamlit app is complete.</p>
+</blockquote>
+<h4 id="step-22-define-dependencies-and-application-code">Step 2.2: Define Dependencies and Application Code</h4>
+<ol>
+<li><strong>Create a new file</strong> called <code>Pipfile</code> in the <code>image_prompts</code> folder.</li>
+<li><strong>Add the following content</strong> to the <code>Pipfile</code>:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="k">[[source]]</span>
+<span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://pypi.python.org/simple&quot;</span>
+<span class="n">verify_ssl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;pypi&quot;</span>
+
+<span class="k">[packages]</span>
+<span class="n">streamlit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;*&quot;</span>
+<span class="n">botocore</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;*&quot;</span>
+<span class="n">boto3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;*&quot;</span>
+
+<span class="k">[requires]</span>
+<span class="n">python_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;3.10&quot;</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Nice work!</strong> The dependencies for the Streamlit app have been set up.</p>
+</blockquote>
+<h4 id="step-23-add-the-streamlit-application-logic">Step 2.3: Add the Streamlit Application Logic</h4>
+<ol>
+<li><strong>Create a new file</strong> called <code>image_prompts_app.py</code> in the <code>image_prompts</code> folder.</li>
+<li><strong>Add the following content</strong> to <code>image_prompts_app.py</code>:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">streamlit</span> <span class="k">as</span> <span class="nn">st</span>
+<span class="kn">import</span> <span class="nn">image_prompts_lib</span> <span class="k">as</span> <span class="nn">glib</span>
+
+
+<span class="n">st</span><span class="o">.</span><span class="n">set_page_config</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;wide&quot;</span><span class="p">,</span> <span class="n">page_title</span><span class="o">=</span><span class="s2">&quot;Image Generation&quot;</span><span class="p">)</span>
+
+<span class="n">st</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Image Generation&quot;</span><span class="p">)</span>
+
+<span class="n">col1</span><span class="p">,</span> <span class="n">col2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">col1</span><span class="p">:</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">subheader</span><span class="p">(</span><span class="s2">&quot;Image parameters&quot;</span><span class="p">)</span>
+
+    <span class="n">prompt_text</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_area</span><span class="p">(</span><span class="s2">&quot;What you want to see in the image:&quot;</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The prompt text&quot;</span><span class="p">)</span>
+    <span class="n">negative_prompt</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_input</span><span class="p">(</span><span class="s2">&quot;What shoud not be in the image:&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The negative prompt&quot;</span><span class="p">)</span>
+
+    <span class="n">generate_button</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;Generate&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;primary&quot;</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">col2</span><span class="p">:</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">subheader</span><span class="p">(</span><span class="s2">&quot;Result&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">generate_button</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">spinner</span><span class="p">(</span><span class="s2">&quot;Drawing...&quot;</span><span class="p">):</span>
+            <span class="n">generated_image</span> <span class="o">=</span> <span class="n">glib</span><span class="o">.</span><span class="n">get_image_from_model</span><span class="p">(</span>
+                <span class="n">prompt_content</span><span class="o">=</span><span class="n">prompt_text</span><span class="p">,</span> 
+                <span class="n">negative_prompt</span><span class="o">=</span><span class="n">negative_prompt</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">generated_image</span><span class="p">)</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Awesome!</strong> The Streamlit application is ready to generate images.</p>
+</blockquote>
+<h4 id="step-24-create-the-helper-library">Step 2.4: Create the Helper Library</h4>
+<ol>
+<li><strong>Create a new file</strong> called <code>image_prompts_lib.py</code> in the <code>image_prompts</code> folder.</li>
+<li><strong>Add the following content</strong> to <code>image_prompts_lib.py</code>:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">boto3</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">from</span> <span class="nn">io</span> <span class="kn">import</span> <span class="n">BytesIO</span>
+<span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">randint</span>
+
+<span class="c1">#get the stringified request body for the InvokeModel API call</span>
+<span class="k">def</span> <span class="nf">get_titan_image_generation_request_body</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">negative_prompt</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="n">body</span> <span class="o">=</span> <span class="p">{</span> <span class="c1">#create the JSON payload to pass to the InvokeModel API</span>
+        <span class="s2">&quot;taskType&quot;</span><span class="p">:</span> <span class="s2">&quot;TEXT_IMAGE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;textToImageParams&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;imageGenerationConfig&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;numberOfImages&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># Number of images to generate</span>
+            <span class="s2">&quot;quality&quot;</span><span class="p">:</span> <span class="s2">&quot;premium&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;height&quot;</span><span class="p">:</span> <span class="mi">512</span><span class="p">,</span>
+            <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mi">512</span><span class="p">,</span>
+            <span class="s2">&quot;cfgScale&quot;</span><span class="p">:</span> <span class="mf">8.0</span><span class="p">,</span>
+            <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100000</span><span class="p">),</span>  <span class="c1">#nosec Use a random seed</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">negative_prompt</span><span class="p">:</span>
+        <span class="n">body</span><span class="p">[</span><span class="s1">&#39;textToImageParams&#39;</span><span class="p">][</span><span class="s1">&#39;negativeText&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">negative_prompt</span>
+
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+
+
+<span class="c1">#get a BytesIO object from the Titan Image Generator response</span>
+<span class="k">def</span> <span class="nf">get_titan_response_image</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;body&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+    <span class="n">images</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;images&#39;</span><span class="p">)</span>
+
+    <span class="n">image_data</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">BytesIO</span><span class="p">(</span><span class="n">image_data</span><span class="p">)</span>
+
+
+<span class="c1">#generate an image using Amazon Titan Image Generator</span>
+<span class="k">def</span> <span class="nf">get_image_from_model</span><span class="p">(</span><span class="n">prompt_content</span><span class="p">,</span> <span class="n">negative_prompt</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+
+    <span class="n">bedrock</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="n">service_name</span><span class="o">=</span><span class="s1">&#39;bedrock-runtime&#39;</span><span class="p">)</span> <span class="c1">#creates a Bedrock client</span>
+
+    <span class="n">body</span> <span class="o">=</span> <span class="n">get_titan_image_generation_request_body</span><span class="p">(</span><span class="n">prompt_content</span><span class="p">,</span> <span class="n">negative_prompt</span><span class="o">=</span><span class="n">negative_prompt</span><span class="p">)</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">bedrock</span><span class="o">.</span><span class="n">invoke_model</span><span class="p">(</span><span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">modelId</span><span class="o">=</span><span class="s2">&quot;amazon.titan-image-generator-v1&quot;</span><span class="p">,</span> <span class="n">contentType</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="n">accept</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">)</span>
+
+    <span class="n">output</span> <span class="o">=</span> <span class="n">get_titan_response_image</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">output</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Fantastic!</strong> The helper library is in place to interact with AWS Bedrock.</p>
+</blockquote>
+<h3 id="step-3-deploy-the-workbench">Step 3: Deploy the Workbench</h3>
+<p>Run the following command to deploy the Workbench environment:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>workbench<span class="w"> </span>deploy<span class="w"> </span>--<span class="w"> </span>--all
+</code></pre></div>
+<blockquote>
+<p><strong>Well done!</strong> The Workbench has been successfully deployed.</p>
+</blockquote>
+<h3 id="step-4-verify-the-deployment">Step 4: Verify the Deployment</h3>
+<p>The deployment process may take a few minutes. Once it's complete, the LoadBalancer URL will be displayed in the terminal.</p>
+<ol>
+<li><strong>Open the LoadBalancer URL</strong> in your browser to verify the deployment. The Streamlit application should be accessible.</li>
+</ol>
+<blockquote>
+<p><strong>Congratulations!</strong> Your application is up and running.</p>
+</blockquote>
+<h2 id="introduce-feature-flag">Introduce Feature Flag</h2>
+<p>Now, we need to introduce a feature flag to control whether the Streamlit application should be deployed. This allows us to work on the feature without immediately deploying it through the pipeline.</p>
+<h3 id="step-5-add-the-feature-flag-to-control-the-streamlit-app">Step 5: Add the Feature Flag to Control the Streamlit App</h3>
+<ol>
+<li>
+<p><strong>Open the <code>lib/demo-stack.ts</code> file</strong> and wrap the Streamlit app logic inside a feature flag check. The feature flag allows us to selectively enable or disable the deployment of the Streamlit app:</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">cdk</span><span class="p">.</span><span class="nx">FeatureFlags</span><span class="p">.</span><span class="k">of</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">isEnabled</span><span class="p">(</span><span class="s2">&quot;feature-streamlit&quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">info</span><span class="p">(</span><span class="s2">&quot;Feature Streamlit is enabled&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">taskRole</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">iam</span><span class="p">.</span><span class="nx">Role</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TaskRole&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ... Streamlit app definition</span>
+<span class="w">    </span><span class="p">});</span>
+
+<span class="w">    </span><span class="nx">nag</span><span class="p">.</span><span class="nx">NagSuppressions</span><span class="p">.</span><span class="nx">addResourceSuppressions</span><span class="p">(</span><span class="nx">fargateTaskDefinition</span><span class="p">.</span><span class="nx">executionRole</span><span class="o">!</span><span class="p">,</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;AwsSolutions-IAM5&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">reason</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Allow * permissions.&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">appliesTo</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;Resource::*&#39;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}],</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</li>
+</ol>
+<blockquote>
+<p><strong>Great job!</strong> The Streamlit app is now controlled by a feature flag.</p>
+</blockquote>
+<h3 id="step-6-test-the-feature-flag">Step 6: Test the Feature Flag</h3>
+<p>Let’s test if the feature flag works as expected.</p>
+<ol>
+<li>
+<p><strong>Run the following command</strong> to synthesize the CDK code <strong>without</strong> the feature flag:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>workbench<span class="w"> </span>synth
+</code></pre></div>
+</li>
+<li>
+<p>Notice there is no log about the Streamlit app in the console.</p>
+</li>
+<li>
+<p><strong>Now enable the feature flag</strong> by running this command:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>workbench<span class="w"> </span>synth<span class="w"> </span>--<span class="w"> </span>--context<span class="w"> </span>feature-streamlit<span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
+</li>
+<li>
+<p>You should see a log message indicating that the Streamlit app feature is enabled:</p>
+<div class="highlight"><pre><span></span><code>[Info at /sagemaker-user-cdk-cicd-example] Feature Streamlit is enabled
+</code></pre></div>
+</li>
+</ol>
+<blockquote>
+<p><strong>Fantastic!</strong> The feature flag works as expected.</p>
+</blockquote>
+<h3 id="step-7-enable-the-feature-flag-by-default-in-workbench">Step 7: Enable the Feature Flag by Default in Workbench</h3>
+<p>If we want to enable the feature flag by default in the Workbench environment, we can set it in the pipeline configuration.</p>
+<ol>
+<li>
+<p><strong>Open the <code>bin/cdk-cicd-example.ts</code> file</strong> and update the Workbench configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="p">.</span><span class="nx">workbench</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">provide</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">setContext</span><span class="p">(</span><span class="s1">&#39;feature-streamlit&#39;</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span>
+<span class="w">      </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">context.environment</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">})</span>
+</code></pre></div>
+</li>
+</ol>
+<blockquote>
+<p><strong>Well done!</strong> The feature flag is now enabled by default in the Workbench.</p>
+</blockquote>
+<h3 id="step-8-commit-and-push-the-changes">Step 8: Commit and Push the Changes</h3>
+<ol>
+<li>
+<p><strong>Run</strong> the following command to fix any linting issues:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>lint<span class="w"> </span>--<span class="w"> </span>--fix
+</code></pre></div>
+</li>
+<li>
+<p><strong>Add</strong> the changes to Git:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>add<span class="w"> </span>.
+</code></pre></div>
+</li>
+<li>
+<p><strong>Commit</strong> the changes with a meaningful message:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: add feature flag for Streamlit&quot;</span>
+</code></pre></div>
+</li>
+<li>
+<p><strong>Push</strong> the changes to the repository:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>push
+</code></pre></div>
+</li>
+</ol>
+<div class="workshop-congrats-box">
+  <strong class="workshop-congrats-title">✓ Congratulations!</strong><br/>
+You’ve successfully prepared the Streamlit app for deployment using a feature flag.
+</div>
+
+<p>Click <strong>Next</strong> to continue to the next section.</p>
+<p><a href="07-deploy-solution.html" class="md-button">Next</a></p>
 
 
 
@@ -1810,7 +2525,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2024-09-13
+    2024-09-16
   </span>
 
     
