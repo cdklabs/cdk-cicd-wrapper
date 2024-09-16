@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/index.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/05-deploy-stack.html">
       
       
-        <link rel="prev" href="../index.html">
+        <link rel="prev" href="04-develop-genai-solution.html">
       
       
-        <link rel="next" href="prerequisites.html">
+        <link rel="next" href="06-develop-genai-solution-part-2.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Introduction & Overview - CDK CI/CD Wrapper</title>
+        <title>Deploy Stack with the Pipeline - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#introduction-overview" class="md-skip">
+        <a href="#deploy-stack-with-the-pipeline" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Introduction & Overview
+              Deploy Stack with the Pipeline
             
           </span>
         </div>
@@ -1575,18 +1575,18 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="index.html" class="md-nav__link md-nav__link--active">
+            <a href="index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    Gen AI
+    Basics
   </span>
   
 
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_7_2" id="__nav_7_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7_2" id="__nav_7_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -1595,7 +1595,7 @@
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_2">
             <span class="md-nav__icon md-icon"></span>
-            Gen AI
+            Basics
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1608,7 +1608,7 @@
   
   
     <li class="md-nav__item">
-      <a href="prerequisites.html" class="md-nav__link">
+      <a href="00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1710,10 +1710,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="05-deploy-stack.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Deploy Stack with the Pipeline
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="05-deploy-stack.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1722,6 +1742,77 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#update-the-pipeline-to-include-the-demostack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the Pipeline to Include the DemoStack
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Update the Pipeline to Include the DemoStack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-create-the-demoprovider-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Create the DemoProvider Class
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-add-the-demoprovider-to-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Add the DemoProvider to the Pipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-commit-and-push-the-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Commit and Push the Changes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-monitor-the-pipeline-for-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Monitor the Pipeline for Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1894,38 +1985,53 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#target-audience" class="md-nav__link">
+  <a href="#update-the-pipeline-to-include-the-demostack" class="md-nav__link">
     <span class="md-ellipsis">
-      Target Audience
+      Update the Pipeline to Include the DemoStack
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Update the Pipeline to Include the DemoStack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-create-the-demoprovider-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Create the DemoProvider Class
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#background-knowledge" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#step-2-add-the-demoprovider-to-the-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Background Knowledge
+      Step 2: Add the DemoProvider to the Pipeline
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-will-learn" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#step-3-commit-and-push-the-changes" class="md-nav__link">
     <span class="md-ellipsis">
-      What You Will Learn
+      Step 3: Commit and Push the Changes
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#step-4-monitor-the-pipeline-for-deployment" class="md-nav__link">
     <span class="md-ellipsis">
-      Architecture Overview
+      Step 4: Monitor the Pipeline for Deployment
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1947,62 +2053,111 @@
   
 
 
-<h1 id="introduction-overview">Introduction &amp; Overview</h1>
-<p><strong>Welcome, and thank you for joining us!</strong></p>
-<p>We are excited to have you here to learn more about the <strong>CDK CI/CD Wrapper</strong>, a powerful tool designed to streamline your CI/CD processes using AWS CDK.</p>
-<h2 id="target-audience">Target Audience</h2>
-<p>This workshop is tailored for builders such as:</p>
-<ul>
-<li>Software Developers</li>
-<li>DevOps Engineers</li>
-<li>Cloud Engineers</li>
-</ul>
-<p>You should have prior experience with AWS CDK and be familiar with developing or maintaining cloud applications using CDK.</p>
-<ul>
-<li><strong>Expected Completion Time</strong>: 1.5 hours</li>
-</ul>
-<h2 id="background-knowledge">Background Knowledge</h2>
-<p>To successfully complete this workshop, it’s recommended that you have knowledge of the following:</p>
-<ul>
-<li><strong>TypeScript/JavaScript</strong></li>
-<li><strong>Basic Python</strong></li>
-<li><strong>Linux and Bash scripting</strong></li>
-<li><strong>Infrastructure-as-Code (IaC) with AWS CDK</strong></li>
-</ul>
-<h2 id="what-you-will-learn">What You Will Learn</h2>
-<p>In this workshop, we will guide you through the following steps:</p>
+<h1 id="deploy-stack-with-the-pipeline">Deploy Stack with the Pipeline</h1>
+<p>Now that we are satisfied with our <strong>DemoStack</strong> implementation in the Workbench, it’s time to deploy it through the pipeline. </p>
+<h2 id="update-the-pipeline-to-include-the-demostack">Update the Pipeline to Include the DemoStack</h2>
+<p>This time, we will use the <strong>BaseStackProvider</strong> class, which helps maintain cleaner and more manageable code.</p>
+<h3 id="step-1-create-the-demoprovider-class">Step 1: Create the DemoProvider Class</h3>
+<p>We’ll begin by creating a <code>bin/demo-provider.ts</code> file that will use the <code>BaseStackProvider</code> class to provide the DemoStack.</p>
 <ol>
+<li><strong>Create</strong> a file named <code>bin/demo-provider.ts</code>.</li>
+<li><strong>Add</strong> the following content to the file:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">wrapper</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DemoStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../lib/demo-stack&#39;</span><span class="p">;</span>
+
+<span class="k">export</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nx">DemoProvider</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">BaseStackProvider</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">stacks</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">this.env</span><span class="w"> </span><span class="p">});</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Congratulations!</strong> You’ve successfully created the <code>DemoProvider</code> class to manage the deployment of the <code>DemoStack</code>.</p>
+</blockquote>
+<h3 id="step-2-add-the-demoprovider-to-the-pipeline">Step 2: Add the DemoProvider to the Pipeline</h3>
+<p>Next, we will modify the <code>bin/cdk-cicd-example.ts</code> file to include the <strong>DemoProvider</strong>.</p>
+<ol>
+<li><strong>Open</strong> the <code>bin/cdk-cicd-example.ts</code> file.</li>
 <li>
-<p><strong>Creating a CDK Project &amp; Bootstrapping the AWS Account</strong><br />
-   Learn how to initiate and configure your AWS environment for CDK development.</p>
-</li>
-<li>
-<p><strong>Defining Quality Gates and Continuous Integration</strong><br />
-   Establish quality controls and build automation processes to ensure code quality and efficiency.</p>
-</li>
-<li>
-<p><strong>Creating a Pipeline and Enabling GitOps</strong><br />
-   Set up a CI/CD pipeline and integrate GitOps to streamline deployment workflows.</p>
-</li>
-<li>
-<p><strong>Developing with Workbench</strong><br />
-   Utilize the Workbench environment to accelerate development and testing workflows.</p>
-</li>
-<li>
-<p><strong>Building a GenAI Solution</strong><br />
-   Deliver a Generative AI solution from start to end, incorporating it into your CI/CD pipeline for seamless deployment.</p>
-</li>
-<li>
-<p><strong>Putting Everything Together</strong><br />
-   Combine all components to build a production-ready CI/CD pipeline that’s scalable and efficient.</p>
+<p><strong>Add</strong> the following line to include the DemoProvider class:</p>
+<p><div class="highlight"><pre><span></span><code><span class="p">.</span><span class="nx">addStack</span><span class="p">(</span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoProvider</span><span class="p">())</span>
+</code></pre></div>
+3. <strong>Import</strong> the <code>DemoProvider</code> class at the top of the file:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DemoProvider</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;./demo-provider&#39;</span><span class="p">;</span>
+</code></pre></div>
 </li>
 </ol>
-<h2 id="architecture-overview">Architecture Overview</h2>
-<p>Before we dive in, here’s an architecture diagram of the CDK CI/CD Wrapper to ensure you’re familiar with the outcome.</p>
-<p><img alt="CDK CI/CD Wrapper Architecture" src="assets/architecture.png" /></p>
-<p>The diagram illustrates how AWS services like CodeCommit, CodePipeline, and CloudFormation work together to automate the CI/CD process across different accounts, integrating security, compliance, and automation tools such as Amazon KMS, CodeGuru, and S3.</p>
-<p>Click on start to begin the workshop.</p>
-<p><a href="prerequisites.html" class="md-button">Start</a></p>
+<blockquote>
+<p><strong>Great work!</strong> You’ve successfully updated the pipeline to include the <strong>DemoProvider</strong> class.</p>
+</blockquote>
+<details>
+<summary>Show Solution</summary>
+<p>The <code>bin/cdk-cicd-example.ts</code> file should look like this:
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env node</span>
+<span class="k">import</span><span class="w"> </span><span class="s1">&#39;source-map-support/register&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">wrapper</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DemoStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../lib/demo-stack&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DemoProvider</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;./demo-provider&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
+
+<span class="nx">wrapper</span><span class="p">.</span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">defineStages</span><span class="p">([</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.RES</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.DEV</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">])</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">workbench</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">provide</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">context.environment</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">  </span><span class="p">})</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">addStack</span><span class="p">(</span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoProvider</span><span class="p">())</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div></p>
+</details>
+<h3 id="step-3-commit-and-push-the-changes">Step 3: Commit and Push the Changes</h3>
+<p>Let’s commit and push the changes to the repository so the pipeline can pick them up.</p>
+<ol>
+<li>
+<p><strong>Run</strong> the following command to fix any linting issues:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>lint<span class="w"> </span>--<span class="w"> </span>--fix
+</code></pre></div>
+</li>
+<li>
+<p><strong>Add</strong> the changes to Git:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>add<span class="w"> </span>.
+</code></pre></div>
+</li>
+<li>
+<p><strong>Commit</strong> the changes with a meaningful message:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: include DemoStack in CD&quot;</span>
+</code></pre></div>
+</li>
+<li>
+<p><strong>Push</strong> the changes to the remote repository:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>push
+</code></pre></div>
+</li>
+</ol>
+<blockquote>
+<p><strong>Fantastic!</strong> Your changes have been committed and pushed to the repository.</p>
+</blockquote>
+<h3 id="step-4-monitor-the-pipeline-for-deployment">Step 4: Monitor the Pipeline for Deployment</h3>
+<p>Once the changes are pushed, the pipeline will update, and a new <strong>DEV stage</strong> will appear for deploying the <strong>DemoStack</strong>.</p>
+<ol>
+<li><strong>Go to</strong> the AWS CodePipeline service in the AWS Management Console.</li>
+<li><strong>Select</strong> the <code>cdk-cicd-example</code> pipeline.</li>
+<li><strong>Monitor</strong> the progress of the pipeline. The <strong>UpdatePipeline</strong> step will update the pipeline configuration to include the new DEV stage.</li>
+</ol>
+<div class="workshop-congrats-box">
+  <strong class="workshop-congrats-title">✓ Congratulations!</strong><br/>
+You’ve successfully integrated the **DemoStack** into the pipeline.
+</div>
+
+<p>Click <strong>Next</strong> to continue to the next section.</p>
+<p><a href="06-develop-genai-solution-part-2.html" class="md-button">Next</a></p>
 
 
 

@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/09-clean-up.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/00-prerequisites.html">
       
       
-        <link rel="prev" href="08-summary.html">
+        <link rel="prev" href="index.html">
       
       
-        <link rel="next" href="faq.html">
+        <link rel="next" href="01-create-cdk-project.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Clean up - CDK CI/CD Wrapper</title>
+        <title>Prerequisites - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#clean-up" class="md-skip">
+        <a href="#prerequisites" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Clean up
+              Prerequisites
             
           </span>
         </div>
@@ -1579,7 +1579,7 @@
               
   
   <span class="md-ellipsis">
-    Gen AI
+    Basics
   </span>
   
 
@@ -1595,7 +1595,7 @@
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_2">
             <span class="md-nav__icon md-icon"></span>
-            Gen AI
+            Basics
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1605,10 +1605,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="prerequisites.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="00-prerequisites.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1617,6 +1637,83 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#aws-account-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      AWS Account Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AWS Account Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#amazon-bedrock-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Amazon Bedrock Setup
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workspace-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workspace Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workspace Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configure-amazon-sagemaker-studio-codeeditor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure Amazon SageMaker Studio CodeEditor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-local-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure Local Machine
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1794,30 +1891,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Clean up
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="09-clean-up.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="09-clean-up.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1826,35 +1903,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-delete-the-cloudformation-stacks" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1: Delete the CloudFormation Stacks
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1943,11 +1991,59 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#step-1-delete-the-cloudformation-stacks" class="md-nav__link">
+  <a href="#aws-account-setup" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1: Delete the CloudFormation Stacks
+      AWS Account Setup
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="AWS Account Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#amazon-bedrock-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Amazon Bedrock Setup
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workspace-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workspace Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workspace Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configure-amazon-sagemaker-studio-codeeditor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure Amazon SageMaker Studio CodeEditor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-local-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure Local Machine
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1969,10 +2065,127 @@
   
 
 
-<h1 id="clean-up">Clean Up</h1>
-<p>Congratulations! You have successfully completed the workshop. You can now clean up the resources created in this workshop.</p>
-<p>To clean up the resources, follow these steps:</p>
-<h2 id="step-1-delete-the-cloudformation-stacks">Step 1: Delete the CloudFormation Stacks</h2>
+<h1 id="prerequisites">Prerequisites</h1>
+<h2 id="aws-account-setup">AWS Account Setup</h2>
+<p>Before starting the workshop, ensure you have the following:</p>
+<ul>
+<li><strong>AWS Account</strong> with administrative access</li>
+<li><strong>Default VPC</strong> in your account</li>
+<li><strong>AWS Region</strong>: You can use any of the following regions:<ul>
+<li><code>us-east-1</code></li>
+<li><code>us-east-2</code></li>
+<li><code>us-west-2</code></li>
+<li><code>eu-central-1</code></li>
+<li><code>eu-west-1</code></li>
+<li><code>eu-west-2</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="amazon-bedrock-setup">Amazon Bedrock Setup</h3>
+<p>We will be using Amazon Bedrock to access foundation models in this workshop. Below, we configure model access in Amazon Bedrock for building and running generative AI applications. Bedrock provides models from multiple providers.</p>
+<h4 id="amazon-bedrock-setup-instructions">Amazon Bedrock Setup Instructions</h4>
+<ol>
+<li>
+<p>Search for <strong>Amazon Bedrock</strong> in the AWS console.
+<img alt="Amazon Bedrock Search" class="workshop-image" src="assets/00-images/bedrock-search.png" /></p>
+</li>
+<li>
+<p>Expand the side menu and select <strong>Model access</strong>.
+<img alt="Amazon Bedrock Model Access Link" class="workshop-image" src="assets/00-images/model-access-link.png" /></p>
+</li>
+<li>
+<p>Click <strong>Enable specific models</strong>.
+<img alt="Amazon Bedrock Model access vide" class="workshop-image" src="assets/00-images/model-access-view-subset.png" /></p>
+</li>
+<li>
+<p>Select the following models:</p>
+</li>
+<li>Amazon (All Titan models)</li>
+<li>Click <strong>Next</strong>, review, and then submit.
+<img alt="Amazon Bedrock Model Selection" class="workshop-image" src="assets/00-images/model-selection.png" /></li>
+<li>Monitor model access status and ensure <strong>Access granted</strong>.
+<img alt="Amazon Bedrock Model Submit" class="workshop-image" src="assets/00-images/model-submit.png" /></li>
+</ol>
+<div style="border: 2px solid green; border-radius: 8px; background-color: #f0fdf4; padding: 10px;">
+  <strong style="color: green;">✓ Congratulations!</strong><br/>
+you've successfully set up Amazon Bedrock!
+</div>
+
+<h2 id="workspace-setup">Workspace Setup</h2>
+<p>You will need a workspace to run the workshop. You can use the <a href="#configure-amazon-sagemaker-studio-codeeditor">Amazon SageMaker Studio CodeEditor</a> for this workshop or you can use your <a href="#configure-local-machine">local machine</a>.</p>
+<h3 id="configure-amazon-sagemaker-studio-codeeditor">Configure Amazon SageMaker Studio CodeEditor</h3>
+<ol>
+<li>Download the CloudFormation template to your local machine: <a href="assets/prerequisites/cdk-cicd-workshop.yml">cdk-cicd-workshop.yml</a></li>
+</ol>
+<h4 id="cloudformation-stack-setup">CloudFormation Stack Setup</h4>
+<p>Within your AWS account:</p>
+<ol>
+<li>Navigate to <strong>AWS CloudFormation</strong> (via AWS Console) to create a new stack.
+<img alt="AWS CloudFormation" class="workshop-image" src="assets/00-images/cloudformation.png" /></li>
+<li>On the "Create stack" screen, under the <strong>Specify a template</strong> section, select the <strong>Upload a template file</strong> option and navigate to select the <code>cdk-cicd-workshop.yml</code> file you downloaded earlier. Click <strong>Next</strong>.
+<img alt="AWS CloudFormation Upload" class="workshop-image" src="assets/00-images/cloudformation-upload.png" /></li>
+<li>On the "Specify stack details" screen, under the <strong>Stack name</strong> section, provide a name for the CloudFormation stack (e.g., <code>cdk-cicd-workshop</code>).</li>
+<li>Leave the rest of the parameters unchanged, and click <strong>Next</strong>.
+<img alt="AWS CloudFormation Upload" class="workshop-image" src="assets/00-images/cloudformation-parameters.png" /></li>
+<li>On the "Configure stack options" screen, leave the default parameters unchanged, scroll to the bottom of the page, and click <strong>Next</strong>.</li>
+<li>On the "Review" screen, scroll to the bottom of the page and check the box:<br />
+<strong>"I acknowledge that AWS CloudFormation might create IAM resources."</strong>. Click <strong>Create Stack</strong>.
+   <img alt="Acknowledge IAM resources" class="workshop-image" src="assets/00-images/01-03-acknowledge.png" /></li>
+</ol>
+<p>CloudFormation will take a few minutes to run and set up your environment. Please wait for this step to complete.</p>
+<div style="border: 2px solid green; border-radius: 8px; background-color: #f0fdf4; padding: 10px;">
+  <strong style="color: green;">✓ Congratulations!</strong><br/>
+You have successfully deployed the AWS environment for this workshop. Next, we will verify the environment.
+</div>
+
+<h4 id="open-amazon-sagemaker-studio-codeeditor">Open Amazon SageMaker Studio CodeEditor</h4>
+<ol>
+<li>In the AWS console, type "SageMaker" in the search bar and navigate to the <strong>Amazon SageMaker</strong> service page.</li>
+<li>Click on the <strong>Studio</strong> link in the left navigation pane under the <strong>Control Panel</strong>.
+<img alt="Sagemaker Studio" class="workshop-image" src="assets/00-images/navigate-to-studio.png" /></li>
+<li>
+<p>You should see a pre-configured user. Click <strong>Open Studio</strong>.
+<img alt="Sagemaker Studio" class="workshop-image" src="assets/00-images/studio-launch.png" />
+   This will open the SageMaker Studio UI in a new browser window.</p>
+</li>
+<li>
+<p>Click on the <strong>Code Editor</strong> icon under Applications and run the <code>my-space</code> application.
+<img alt="Sagemaker Studio" class="workshop-image" src="assets/00-images/codeeditor.png" /></p>
+</li>
+<li>Click <strong>Open</strong> to launch the Code Editor in a new browser tab.
+<img alt="Sagemaker Studio" class="workshop-image" src="assets/00-images/editor.png" /></li>
+<li>In the Project folder, open the <code>cdk-cicd-example</code> project, which is already initialized for you.
+<img alt="Sagemaker Studio" class="workshop-image" src="assets/00-images/editor-folder.png" /></li>
+</ol>
+<div style="border: 2px solid green; border-radius: 8px; background-color: #f0fdf4; padding: 10px;">
+  <strong style="color: green;">✓ Congratulations!</strong><br/>
+You have a ready to go CodeEditor.
+</div>
+
+<p>Click <strong>Next</strong> to continue to the next section.</p>
+<p><a href="01-create-cdk-project.html" class="md-button">Next</a></p>
+<h3 id="configure-local-machine">Configure Local Machine</h3>
+<p>Install the following tools on your local machine:</p>
+<ul>
+<li><a href="https://aws.amazon.com/cli/">AWS CLI</a></li>
+<li><a href="https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-python.html">AWS CDK</a></li>
+<li><a href="https://docs.docker.com/get-docker/">Docker</a></li>
+<li><a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">Git</a></li>
+<li><a href="https://nodejs.org/en/download/">Node.js</a></li>
+<li><a href="https://www.python.org/downloads/">Python</a></li>
+</ul>
+<p>Configure the following environment variables:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_REGION</span><span class="o">=</span>&lt;region&gt;
+<span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCOUNT_ID</span><span class="o">=</span>&lt;account-id&gt;
+<span class="nb">export</span><span class="w"> </span><span class="nv">AWS_PROFILE</span><span class="o">=</span>&lt;profile&gt;<span class="w"> </span><span class="c1"># Optional in case you have multiple profiles</span>
+</code></pre></div>
+<div style="border: 2px solid green; border-radius: 8px; background-color: #f0fdf4; padding: 10px;">
+  <strong style="color: green;">Congratulations!</strong><br/>
+You have a ready to go workspace.
+</div>
+
+<p>Click <strong>Next</strong> to continue to the next section.</p>
+<p><a href="01-create-cdk-project.html" class="md-button">Next</a></p>
 
 
 

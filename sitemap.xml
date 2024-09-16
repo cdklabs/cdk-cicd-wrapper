@@ -129,51 +129,51 @@
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/index.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/index.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/01-create-cdk-project.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/00-prerequisites.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/02-define-quality-gates-ci.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/01-create-cdk-project.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/03-create-pipeline.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/02-define-quality-gates-ci.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/04-develop-genai-solution.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/03-create-pipeline.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/05-deploy-stack.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/04-develop-genai-solution.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/06-develop-genai-solution-part-2.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/05-deploy-stack.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/07-deploy-solution.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/06-develop-genai-solution-part-2.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/08-summary.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/07-deploy-solution.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/09-clean-up.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/08-summary.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/faq.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/09-clean-up.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
     <url>
-         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/prerequisites.html</loc>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/faq.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
 </urlset>

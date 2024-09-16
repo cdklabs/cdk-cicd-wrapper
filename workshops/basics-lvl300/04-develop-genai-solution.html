@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/02-define-quality-gates-ci.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/04-develop-genai-solution.html">
       
       
-        <link rel="prev" href="01-create-cdk-project.html">
+        <link rel="prev" href="03-create-pipeline.html">
       
       
-        <link rel="next" href="03-create-pipeline.html">
+        <link rel="next" href="05-deploy-stack.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Define the Quality Gates and Continuous Integration - CDK CI/CD Wrapper</title>
+        <title>Develop a GenAI Solution with CDK CI/CD Workbench - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#define-the-quality-gates-and-continuous-integration" class="md-skip">
+        <a href="#develop-a-genai-solution-with-cdk-cicd-workbench" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Define the Quality Gates and Continuous Integration
+              Develop a GenAI Solution with CDK CI/CD Workbench
             
           </span>
         </div>
@@ -1579,7 +1579,7 @@
               
   
   <span class="md-ellipsis">
-    Gen AI
+    Basics
   </span>
   
 
@@ -1595,7 +1595,7 @@
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_2">
             <span class="md-nav__icon md-icon"></span>
-            Gen AI
+            Basics
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1608,7 +1608,7 @@
   
   
     <li class="md-nav__item">
-      <a href="prerequisites.html" class="md-nav__link">
+      <a href="00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1647,30 +1647,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Define the Quality Gates and Continuous Integration
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="02-define-quality-gates-ci.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="02-define-quality-gates-ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1679,215 +1659,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#build-test-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Build &amp; Test Steps
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Build & Test Steps">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-1-run-the-build-command-to-transpile-the-typescript-code-to-javascript" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1: Run the build command to transpile the TypeScript code to JavaScript.
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-run-the-test-command-to-execute-the-unit-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2: Run the test command to execute the Unit tests.
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#unifying-code-style-and-static-code-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      Unifying Code Style and Static Code Checks
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Unifying Code Style and Static Code Checks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-3-install-eslint" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3: Install ESLint
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-create-the-eslint-configuration-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4: Create the ESLint Configuration File
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-add-the-lint-script-to-packagejson" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5: Add the lint script to package.json
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-6-run-the-lint-script-to-test-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 6: Run the lint script to test it.
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#security-scan-of-third-party-dependencies-and-codebase" class="md-nav__link">
-    <span class="md-ellipsis">
-      Security Scan of Third-Party Dependencies and Codebase
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Security Scan of Third-Party Dependencies and Codebase">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-7-add-a-third-party-dependency-audit-step" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 7: Add a Third-Party dependency audit step
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-8-add-a-security-scan-step-for-the-codebase" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 8: Add a security scan step for the codebase
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ensure-packagejson-integrity" class="md-nav__link">
-    <span class="md-ellipsis">
-      Ensure package.json Integrity
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Ensure package.json Integrity">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-9-validate-packagejson" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 9: Validate package.json
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verifying-third-party-licenses" class="md-nav__link">
-    <span class="md-ellipsis">
-      Verifying Third-Party Licenses
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Verifying Third-Party Licenses">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-10-audit-licenses" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 10: Audit licenses
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#concurrent-execution-of-audits" class="md-nav__link">
-    <span class="md-ellipsis">
-      Concurrent Execution of Audits
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Concurrent Execution of Audits">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      Summary
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1918,10 +1689,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="04-develop-genai-solution.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Develop a GenAI Solution with CDK CI/CD Workbench
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="04-develop-genai-solution.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1930,6 +1721,188 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is Workbench?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-an-ecs-cluster-in-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create an ECS Cluster in the Workbench
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Create an ECS Cluster in the Workbench">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-create-the-infrastructure-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Create the Infrastructure Stack
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-extend-the-pipeline-with-a-dev-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Extend the Pipeline with a DEV Stage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-deploy-the-dev-stage-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Deploy the DEV Stage Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-define-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Define the Workbench
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploy-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy the Workbench
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploy the Workbench">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-5-add-a-utility-script-to-packagejson" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5: Add a Utility Script to Package.json
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-deploy-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Deploy the Workbench
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-7-resolve-cdk-nag-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Resolve CDK-Nag Errors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-8-redeploy-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 8: Redeploy the Workbench
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workbench-environment-user-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workbench Environment &amp; User Separation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#share-the-code-with-the-team" class="md-nav__link">
+    <span class="md-ellipsis">
+      Share the code with the team
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Share the code with the team">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-10-commit-and-push-the-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 10: Commit and Push the Changes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-11-observe-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 11: Observe the pipeline
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#final-notes-on-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Final Notes on Workbench
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2123,28 +2096,55 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#build-test-steps" class="md-nav__link">
+  <a href="#what-is-workbench" class="md-nav__link">
     <span class="md-ellipsis">
-      Build &amp; Test Steps
+      What is Workbench?
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Build & Test Steps">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-an-ecs-cluster-in-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create an ECS Cluster in the Workbench
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Create an ECS Cluster in the Workbench">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-run-the-build-command-to-transpile-the-typescript-code-to-javascript" class="md-nav__link">
+  <a href="#step-1-create-the-infrastructure-stack" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1: Run the build command to transpile the TypeScript code to JavaScript.
+      Step 1: Create the Infrastructure Stack
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-2-run-the-test-command-to-execute-the-unit-tests" class="md-nav__link">
+  <a href="#step-2-extend-the-pipeline-with-a-dev-stage" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 2: Run the test command to execute the Unit tests.
+      Step 2: Extend the Pipeline with a DEV Stage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-deploy-the-dev-stage-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Deploy the DEV Stage Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-define-the-workbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Define the Workbench
     </span>
   </a>
   
@@ -2156,46 +2156,46 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#unifying-code-style-and-static-code-checks" class="md-nav__link">
+  <a href="#deploy-the-workbench" class="md-nav__link">
     <span class="md-ellipsis">
-      Unifying Code Style and Static Code Checks
+      Deploy the Workbench
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unifying Code Style and Static Code Checks">
+    <nav class="md-nav" aria-label="Deploy the Workbench">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-3-install-eslint" class="md-nav__link">
+  <a href="#step-5-add-a-utility-script-to-packagejson" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 3: Install ESLint
+      Step 5: Add a Utility Script to Package.json
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-4-create-the-eslint-configuration-file" class="md-nav__link">
+  <a href="#step-6-deploy-the-workbench" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 4: Create the ESLint Configuration File
+      Step 6: Deploy the Workbench
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-5-add-the-lint-script-to-packagejson" class="md-nav__link">
+  <a href="#step-7-resolve-cdk-nag-errors" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 5: Add the lint script to package.json
+      Step 7: Resolve CDK-Nag Errors
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-6-run-the-lint-script-to-test-it" class="md-nav__link">
+  <a href="#step-8-redeploy-the-workbench" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 6: Run the lint script to test it.
+      Step 8: Redeploy the Workbench
     </span>
   </a>
   
@@ -2207,28 +2207,37 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#security-scan-of-third-party-dependencies-and-codebase" class="md-nav__link">
+  <a href="#workbench-environment-user-separation" class="md-nav__link">
     <span class="md-ellipsis">
-      Security Scan of Third-Party Dependencies and Codebase
+      Workbench Environment &amp; User Separation
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Security Scan of Third-Party Dependencies and Codebase">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#share-the-code-with-the-team" class="md-nav__link">
+    <span class="md-ellipsis">
+      Share the code with the team
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Share the code with the team">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-7-add-a-third-party-dependency-audit-step" class="md-nav__link">
+  <a href="#step-10-commit-and-push-the-changes" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 7: Add a Third-Party dependency audit step
+      Step 10: Commit and Push the Changes
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-8-add-a-security-scan-step-for-the-codebase" class="md-nav__link">
+  <a href="#step-11-observe-the-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 8: Add a security scan step for the codebase
+      Step 11: Observe the pipeline
     </span>
   </a>
   
@@ -2240,74 +2249,11 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ensure-packagejson-integrity" class="md-nav__link">
+  <a href="#final-notes-on-workbench" class="md-nav__link">
     <span class="md-ellipsis">
-      Ensure package.json Integrity
+      Final Notes on Workbench
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Ensure package.json Integrity">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-9-validate-packagejson" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 9: Validate package.json
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verifying-third-party-licenses" class="md-nav__link">
-    <span class="md-ellipsis">
-      Verifying Third-Party Licenses
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Verifying Third-Party Licenses">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-10-audit-licenses" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 10: Audit licenses
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#concurrent-execution-of-audits" class="md-nav__link">
-    <span class="md-ellipsis">
-      Concurrent Execution of Audits
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Concurrent Execution of Audits">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      Summary
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2329,210 +2275,219 @@
   
 
 
-<h1 id="define-the-quality-gates-and-continuous-integration">Define the Quality Gates and Continuous Integration</h1>
-<p>In this section, we will guide you through setting up quality gates and continuous integration (CI) in your workflow. You’ll learn how to configure checkpoints to ensure your code meets standards and how to automate integration and testing using CI tools.</p>
-<p>The setup of quality gates and CI may vary depending on the technologies and tools used in the project, but at a high level, they follow these key steps: code style checking or static code analysis (linting), vulnerability scanning for dependencies and the codebase, project building, and executing various tests.</p>
-<p>We will mainly edit the <code>package.json</code> file in this section. Open that file and follow the steps below.</p>
-<h2 id="build-test-steps">Build &amp; Test Steps</h2>
-<p>The build and test steps are already included in this workshop’s setup. Let’s test them.</p>
-<h3 id="step-1-run-the-build-command-to-transpile-the-typescript-code-to-javascript">Step 1: Run the build command to transpile the TypeScript code to JavaScript.</h3>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>build
-</code></pre></div>
-<p><img alt="CDK JSON Configuration" class="workshop-image" src="assets/02-images/02-01-build.png" /></p>
-<blockquote>
-<p><strong>Congratulations!</strong> You’ve successfully compiled the project. Your code is now transpiled from TypeScript to JavaScript.</p>
-</blockquote>
-<h3 id="step-2-run-the-test-command-to-execute-the-unit-tests">Step 2: Run the test command to execute the Unit tests.</h3>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span><span class="nb">test</span>
-</code></pre></div>
-<blockquote>
-<p><strong>Well done!</strong> You’ve completed running the unit tests. These checks ensure that your code behaves as expected.</p>
-</blockquote>
-<h2 id="unifying-code-style-and-static-code-checks">Unifying Code Style and Static Code Checks</h2>
-<h3 id="step-3-install-eslint">Step 3: Install ESLint</h3>
-<p>For NPM projects, it’s common to use <strong>eslint</strong> for code styling and static code analysis. To install eslint, run the following command:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>install<span class="w"> </span>--save-dev<span class="w"> </span>eslint<span class="w"> </span>@eslint/js<span class="w"> </span>@types/eslint__js<span class="w"> </span>typescript<span class="w"> </span>typescript-eslint<span class="w"> </span>@stylistic/eslint-plugin
-</code></pre></div>
-<h3 id="step-4-create-the-eslint-configuration-file">Step 4: Create the ESLint Configuration File</h3>
-<p>Create a file called <code>eslint.config.mjs</code> in the project root with the following content:</p>
-<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">eslint</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@eslint/js&#39;</span><span class="p">;</span>
-<span class="k">import</span><span class="w"> </span><span class="nx">tseslint</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;typescript-eslint&#39;</span><span class="p">;</span>
-<span class="k">import</span><span class="w"> </span><span class="nx">stylistic</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@stylistic/eslint-plugin&#39;</span><span class="p">;</span>
+<h1 id="develop-a-genai-solution-with-cdk-cicd-workbench">Develop a GenAI Solution with CDK CI/CD Workbench</h1>
+<h2 id="what-is-workbench">What is Workbench?</h2>
+<p>A <strong>Workbench</strong> is a dedicated development environment where infrastructure code can be created, tested, and iterated upon before it's mature enough to be deployed through an automated pipeline. It’s particularly useful for development teams that don’t have personal AWS accounts for testing and experimentation. The Workbench allows developers to simulate their infrastructure changes in a safe environment without affecting the production pipeline. This ensures that the infrastructure code evolves and stabilizes before it’s promoted to deployment.</p>
+<p>Now, let’s go through the steps to create a GenAI solution using the Workbench.</p>
+<h2 id="create-an-ecs-cluster-in-the-workbench">Create an ECS Cluster in the Workbench</h2>
+<h3 id="step-1-create-the-infrastructure-stack">Step 1: Create the Infrastructure Stack</h3>
+<p>We’ll begin by creating a file for defining an ECS Cluster.</p>
+<ol>
+<li><strong>Create a file</strong> in <code>lib/demo-stack.ts</code> and add the following content:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Construct</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;constructs&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">ecs</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib/aws-ecs&#39;</span><span class="p">;</span>
 
-<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">tseslint</span><span class="p">.</span><span class="nx">config</span><span class="p">(</span>
-<span class="w">  </span><span class="nx">eslint</span><span class="p">.</span><span class="nx">configs</span><span class="p">.</span><span class="nx">recommended</span><span class="p">,</span>
-<span class="w">  </span><span class="p">...</span><span class="nx">tseslint</span><span class="p">.</span><span class="nx">configs</span><span class="p">.</span><span class="nx">strict</span><span class="p">,</span>
-<span class="w">  </span><span class="p">...</span><span class="nx">tseslint</span><span class="p">.</span><span class="nx">configs</span><span class="p">.</span><span class="nx">stylistic</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">stylistic</span><span class="p">.</span><span class="nx">configs</span><span class="p">.</span><span class="nx">customize</span><span class="p">({</span>
-<span class="w">    </span><span class="nx">indent</span><span class="o">:</span><span class="w"> </span><span class="mf">2</span><span class="p">,</span>
-<span class="w">    </span><span class="nx">quotes</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;single&#39;</span><span class="p">,</span>
-<span class="w">    </span><span class="nx">semi</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="p">}),</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">ignores</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">      </span><span class="s1">&#39;node_modules/**/*&#39;</span><span class="p">,</span>
-<span class="w">      </span><span class="s1">&#39;cdk.out/**/*&#39;</span><span class="p">,</span>
-<span class="w">      </span><span class="s1">&#39;**/*.js&#39;</span><span class="p">,</span>
-<span class="w">    </span><span class="p">],</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="p">);</span>
-</code></pre></div>
-<blockquote>
-<p><strong>Great job!</strong> You’ve set up your ESLint configuration, which will help maintain code quality and uniformity across the project.</p>
-</blockquote>
-<h3 id="step-5-add-the-lint-script-to-packagejson">Step 5: Add the lint script to <code>package.json</code></h3>
-<p>Open the <code>package.json</code> file and insert a new script called <code>lint</code> like this: <code>"lint": "eslint ."</code></p>
-<p>Your <code>package.json</code> should look like:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd-example&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;scripts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;build&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tsc&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;test&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jest&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;lint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eslint .&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;cdk&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk&quot;</span>
+<span class="k">export</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nx">DemoStack</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">Stack</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kr">constructor</span><span class="p">(</span><span class="nx">scope</span><span class="o">:</span><span class="w"> </span><span class="kt">Construct</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">props?</span><span class="o">:</span><span class="w"> </span><span class="kt">cdk.StackProps</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">super</span><span class="p">(</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">props</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Create an ECS Cluster</span>
+<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Cluster</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoCluster&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">clusterName</span><span class="o">:</span><span class="w"> </span><span class="kt">cdk.Names.uniqueResourceName</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">maxLength</span><span class="o">:</span><span class="w"> </span><span class="kt">50</span><span class="p">,</span>
+<span class="w">      </span><span class="p">}),</span>
+<span class="w">      </span><span class="nx">enableFargateCapacityProviders</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">containerInsights</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="w">    </span><span class="p">});</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="step-6-run-the-lint-script-to-test-it">Step 6: Run the lint script to test it.</h3>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>lint
+<blockquote>
+<p><strong>Congratulations!</strong> You’ve successfully created the infrastructure definition for an ECS Cluster.</p>
+</blockquote>
+<h3 id="step-2-extend-the-pipeline-with-a-dev-stage">Step 2: Extend the Pipeline with a DEV Stage</h3>
+<ol>
+<li><strong>Open</strong> the <code>bin/cdk-cicd-example.ts</code> file and modify the pipeline to add a DEV stage as the Workbench target.</li>
+<li><strong>Replace</strong> the <code>.defineStages</code> block with the following:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="p">.</span><span class="nx">defineStages</span><span class="p">([</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.RES</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.DEV</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="p">])</span>
 </code></pre></div>
 <blockquote>
-<p><strong>Congratulations!</strong> You’ve successfully run the linter. Your code is now checked for style and potential errors.</p>
+<p><strong>Well done!</strong> You’ve extended the pipeline to include a DEV stage, which will act as your Workbench.</p>
 </blockquote>
-<h2 id="security-scan-of-third-party-dependencies-and-codebase">Security Scan of Third-Party Dependencies and Codebase</h2>
-<h3 id="step-7-add-a-third-party-dependency-audit-step">Step 7: Add a Third-Party dependency audit step</h3>
-<p>Edit the <code>package.json</code> and include the audit step for dependencies:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;audit:deps&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd check-dependencies --npm --python&quot;</span>
+<h3 id="step-3-deploy-the-dev-stage-configuration">Step 3: Deploy the DEV Stage Configuration</h3>
+<p>Since we’ve defined a new stage with an environment variable, we need to deploy this change to the AWS SSM Parameter Store.</p>
+<ol>
+<li>
+<p>Run the following command to deploy the new stage:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>deploy<span class="w"> </span>--<span class="w"> </span>--all
 </code></pre></div>
-<p>This command will analyze both NPM and Python dependencies and report any known vulnerabilities.</p>
+<p>Or you can deploy the specific SSM parameter stack:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>deploy<span class="w"> </span>--<span class="w"> </span>cdk-cicd-exampleSSMParameterStack
+</code></pre></div>
+</li>
+</ol>
 <blockquote>
-<p><strong>Awesome!</strong> You’ve added an important step to scan your third-party dependencies for vulnerabilities.</p>
+<p><strong>Great!</strong> The DEV stage has been successfully deployed.</p>
 </blockquote>
-<h3 id="step-8-add-a-security-scan-step-for-the-codebase">Step 8: Add a security scan step for the codebase</h3>
-<p>Include the security scan for the source code in <code>package.json</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;audit:security-scan&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd security-scan --bandit --semgrep --shellcheck&quot;</span>
+<h3 id="step-4-define-the-workbench">Step 4: Define the Workbench</h3>
+<ol>
+<li><strong>Update</strong> the pipeline to define the Workbench by adding the following code:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="p">.</span><span class="nx">workbench</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">provide</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">context.environment</span><span class="w"> </span><span class="p">});</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="p">})</span>
 </code></pre></div>
-<p>This will run scanners (Bandit, Semgrep, Shellcheck) on the codebase to detect security risks.</p>
+<ol>
+<li><strong>Import</strong> the <code>DemoStack</code> class at the top of the file:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DemoStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../lib/demo-stack&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p>This code integrates the <code>DemoStack</code> into the Workbench environment.</p>
 <blockquote>
-<p><strong>Well done!</strong> You’ve set up the security scan to keep your code safe from common vulnerabilities.</p>
+<p><strong>Fantastic!</strong> The Workbench has been successfully set up.</p>
 </blockquote>
-<h2 id="ensure-packagejson-integrity">Ensure <code>package.json</code> Integrity</h2>
-<h3 id="step-9-validate-packagejson">Step 9: Validate <code>package.json</code></h3>
-<p>Edit the <code>package.json</code> and include the following validation script:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;validate&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd validate&quot;</span>
-</code></pre></div>
-<p>To run the validation:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>validate
-</code></pre></div>
-<p>This may fail on the first execution since validation hasn’t been executed before. To fix it, run:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>validate<span class="w"> </span>--<span class="w"> </span>--fix
-</code></pre></div>
-<div class="note">Repeat this process anytime you modify the `package.json` file.</div>
-
-<blockquote>
-<p><strong>Fantastic!</strong> You’ve ensured that your configuration is now validated, keeping your project secure and consistent.</p>
-</blockquote>
-<h2 id="verifying-third-party-licenses">Verifying Third-Party Licenses</h2>
-<h3 id="step-10-audit-licenses">Step 10: Audit licenses</h3>
-<p>Edit <code>package.json</code> to include a license audit step:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;audit:license&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd license&quot;</span>
-</code></pre></div>
-<p>To run the license audit:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>audit:license
-</code></pre></div>
-<p>It may fail the first time because it verifies the existence of the <code>NOTICE</code> file in your repository. Fix it by running:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>audit:license<span class="w"> </span>--<span class="w"> </span>--fix
-</code></pre></div>
-<p>This will generate the <code>NOTICE</code> file and the <code>OSS_License_Summary.csv</code> summarizing the used license types in your project.</p>
-<div class="note">Repeat this process anytime you modify the package.json, requirement.txt, and / or Pipfile.</div>
-
-<blockquote>
-<p><strong>Congrats!</strong> You’ve completed the license audit, ensuring all third-party dependencies are legally valid and accounted for.</p>
-</blockquote>
-<h2 id="concurrent-execution-of-audits">Concurrent Execution of Audits</h2>
-<p>Running multiple security checks can take time, so it's beneficial to parallelize them.</p>
-<h4 id="step-10-edit-the-packagejson-to-include">Step 10: Edit the <code>package.json</code> to include:</h4>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;audit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;concurrently &#39;npm:audit:*&#39;&quot;</span>
-</code></pre></div>
-<p>Install the dependency:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>install<span class="w"> </span>--save-dev<span class="w"> </span>concurrently
-</code></pre></div>
-<p>Run the audit command:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>audit
-</code></pre></div>
-<p>If the audit fails due to <code>package.json</code> modifications, run:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>audit:license<span class="w"> </span>--<span class="w"> </span>--fix
-npm<span class="w"> </span>run<span class="w"> </span>validate<span class="w"> </span>--<span class="w"> </span>--fix
-</code></pre></div>
-<p>Then, re-run:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>audit
-</code></pre></div>
-<blockquote>
-<p><strong>Amazing!</strong> You’ve successfully parallelized your audit tasks, saving time while ensuring your code remains safe and compliant.</p>
-</blockquote>
-<h3 id="summary">Summary</h3>
-<p>By the end of this section, we have defined all the necessary steps for a high-quality, robust CI pipeline for an AWS CDK-based project. These include:</p>
-<ul>
-<li><strong>validate</strong>: Ensures our configuration isn’t tampered with.</li>
-<li><strong>build</strong>: Ensures our code compiles correctly.</li>
-<li><strong>test</strong>: Ensures tests are executed.</li>
-<li><strong>lint</strong>: Ensures code style and quality.</li>
-<li><strong>audit</strong>: Ensures dependencies are vulnerability-free and legally valid, and the codebase doesn't introduce security risks.</li>
-</ul>
 <details>
 <summary>Show Solution</summary>
-<p>The <code>package.json</code> file should look like this:
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd-example&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;bin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;cdk-cicd-example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bin/cdk-cicd-example.js&quot;</span>
+<p>The <code>bin/cdk-cicd-example.ts</code> file should look like this:
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env node</span>
+<span class="k">import</span><span class="w"> </span><span class="s1">&#39;source-map-support/register&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">wrapper</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DemoStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../lib/demo-stack&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
+
+<span class="nx">wrapper</span><span class="p">.</span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">defineStages</span><span class="p">([</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.RES</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.DEV</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">])</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">workbench</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">provide</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">context.environment</span><span class="w"> </span><span class="p">});</span>
 <span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;scripts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;build&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tsc &amp;&amp; tsc --build --clean&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;watch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tsc -w&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;test&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jest&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;lint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eslint .&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;audit:deps&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd check-dependencies --npm --python&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;audit:security-scan&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd security-scan --bandit --semgrep --shellcheck&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;validate&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd validate&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;audit:license&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk-cicd license&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;audit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;concurrently &#39;npm:audit:*&#39;&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;cdk&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk&quot;</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;devDependencies&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;@eslint/js&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^9.10.0&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@stylistic/eslint-plugin&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^2.8.0&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@types/eslint__js&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^8.42.3&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@types/jest&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^29.5.12&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@types/node&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;20.14.9&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;aws-cdk&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.150.0&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;concurrently&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^9.0.1&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;eslint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^9.10.0&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;jest&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^29.7.0&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ts-jest&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^29.1.5&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ts-node&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^10.9.2&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;typescript&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;~5.5.3&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;typescript-eslint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^8.5.0&quot;</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;dependencies&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;@cdklabs/cdk-cicd-wrapper&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^0.2.12&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@cdklabs/cdk-cicd-wrapper-cli&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^0.2.10&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;aws-cdk-lib&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.150.0&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;constructs&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^10.0.0&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;source-map-support&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^0.5.21&quot;</span>
-<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">})</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div></p>
+</details>
+<h2 id="deploy-the-workbench">Deploy the Workbench</h2>
+<p>Now that the Workbench has been set up, let’s deploy it to the AWS account.</p>
+<h3 id="step-5-add-a-utility-script-to-packagejson">Step 5: Add a Utility Script to Package.json</h3>
+<ol>
+<li><strong>Open</strong> the <code>package.json</code> file.</li>
+<li>
+<p><strong>Add</strong> a utility script element for the Workbench:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;workbench&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cdk -c workbench=true&quot;</span>
+</code></pre></div>
+</li>
+</ol>
+<blockquote>
+<p><strong>Nice job!</strong> The Workbench utility script has been added to your project.</p>
+</blockquote>
+<h3 id="step-6-deploy-the-workbench">Step 6: Deploy the Workbench</h3>
+<p>Run the following command to deploy the Workbench environment:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>workbench<span class="w"> </span>deploy<span class="w"> </span>--<span class="w"> </span>--all
+</code></pre></div>
+<p>This command will likely fail due to security checks.</p>
+<p><img alt="CDK NAG" class="workshop-image" src="assets/04-images/04-01-cdknag.png" /></p>
+<blockquote>
+<p><strong>Great start!</strong> Now, let’s address the deployment issues.</p>
+</blockquote>
+<h3 id="step-7-resolve-cdk-nag-errors">Step 7: Resolve CDK-Nag Errors</h3>
+<p>The CDK CI/CD Wrapper uses <strong>CDK-Nag</strong> to ensure secure and compliant deployments. Let’s resolve any errors that arise during the Workbench deployment.</p>
+<ol>
+<li><strong>Open</strong> the <code>lib/demo-stack.ts</code> file.</li>
+<li>
+<p><strong>Add</strong> the following line to ensure proper logging for security purposes:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">cluster</span><span class="p">.</span><span class="nx">vpc</span><span class="p">.</span><span class="nx">addFlowLog</span><span class="p">(</span><span class="s1">&#39;demo-flow-log&#39;</span><span class="p">);</span>
+</code></pre></div>
+</li>
+</ol>
+<blockquote>
+<p><strong>Well done!</strong> You’ve ensured that your infrastructure is secure and compliant.</p>
+</blockquote>
+<details>
+<summary>Show Solution</summary>
+<p>The <code>lib/demo-stack.ts</code> file should look like this:
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Construct</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;constructs&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">ecs</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib/aws-ecs&#39;</span><span class="p">;</span>
+
+<span class="k">export</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nx">DemoStack</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">Stack</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kr">constructor</span><span class="p">(</span><span class="nx">scope</span><span class="o">:</span><span class="w"> </span><span class="kt">Construct</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">props?</span><span class="o">:</span><span class="w"> </span><span class="kt">cdk.StackProps</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">super</span><span class="p">(</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">props</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Create an ECS Cluster</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">cluster</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Cluster</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoCluster&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">clusterName</span><span class="o">:</span><span class="w"> </span><span class="kt">cdk.Names.uniqueResourceName</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">maxLength</span><span class="o">:</span><span class="w"> </span><span class="kt">50</span><span class="p">,</span>
+<span class="w">      </span><span class="p">}),</span>
+<span class="w">      </span><span class="nx">enableFargateCapacityProviders</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">containerInsights</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="w">    </span><span class="p">});</span>
+
+<span class="w">    </span><span class="nx">cluster</span><span class="p">.</span><span class="nx">vpc</span><span class="p">.</span><span class="nx">addFlowLog</span><span class="p">(</span><span class="s1">&#39;demo-flow-log&#39;</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div></p>
 </details>
+<h3 id="step-8-redeploy-the-workbench">Step 8: Redeploy the Workbench</h3>
+<ol>
+<li>
+<p><strong>Run</strong> the following command to redeploy the Workbench after addressing the security checks:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>workbench<span class="w"> </span>deploy<span class="w"> </span>--<span class="w"> </span>--all
+</code></pre></div>
+<p>During deployment, you will be asked to approve new AWS IAM permissions. Type ‘y’ to confirm.</p>
+</li>
+</ol>
 <div class="workshop-congrats-box">
   <strong class="workshop-congrats-title">✓ Congratulations!</strong><br/>
-You’ve completed setting up all your quality gates and continuous integration steps. You now have a strong foundation for building, testing, and securing your AWS CDK project!
+The Workbench has been successfully deployed with the security issues resolved.
+</div>
+
+<h2 id="workbench-environment-user-separation">Workbench Environment &amp; User Separation</h2>
+<p>You might notice that the new stacks have a <code>sagemakeruser</code> prefix, which corresponds to the active username in the CodeEditor. This behavior ensures that workbench deployments are tied to individual users, allowing multiple developers to share the same AWS account without interfering with each other’s work.</p>
+<h2 id="share-the-code-with-the-team">Share the code with the team</h2>
+<h3 id="step-10-commit-and-push-the-changes">Step 10: Commit and Push the Changes</h3>
+<ol>
+<li>
+<p><strong>Run</strong> the following commands to validate and commit the changes:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>audit:license<span class="w"> </span>--<span class="w"> </span>--fix
+npm<span class="w"> </span>run<span class="w"> </span>validate<span class="w"> </span>--<span class="w"> </span>--fix
+npm<span class="w"> </span>run<span class="w"> </span>lint<span class="w"> </span>--<span class="w"> </span>--fix
+git<span class="w"> </span>add<span class="w"> </span>.
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: ECS cluster created in workbench&quot;</span>
+git<span class="w"> </span>push
+</code></pre></div>
+</li>
+</ol>
+<blockquote>
+<p><strong>Congratulations!</strong> You’ve successfully committed your changes and pushed them to the repository.</p>
+</blockquote>
+<h3 id="step-11-observe-the-pipeline">Step 11: Observe the pipeline</h3>
+<ol>
+<li><strong>Navigate</strong> to the AWS CodePipeline console.</li>
+<li><strong>Select</strong> the pipeline and observe the changes as they progress through the pipeline.</li>
+<li><strong>Notice</strong> that no changes are deployed to the development environment</li>
+</ol>
+<p><img alt="AWS CodePipeline Execution" class="workshop-image" src="assets/04-images/04-02-pipeline.png" /></p>
+<h2 id="final-notes-on-workbench">Final Notes on Workbench</h2>
+<p>The Workbench allows infrastructure code to evolve in a controlled, isolated environment. Any changes inside the Workbench are considered <strong>work in progress</strong> and are not deployed through the delivery pipeline until they are mature enough. This helps avoid long-living branches, simplifies code merging, and accelerates development by providing immediate feedback through the Workbench environment.</p>
+<div class="workshop-congrats-box">
+  <strong class="workshop-congrats-title">✓ Congratulations!</strong><br/>
+Your Team can new deploy your stack into their own Workbench environment.
 </div>
 
 <p>Click <strong>Next</strong> to continue to the next section.</p>
-<p><a href="03-create-pipeline.html" class="md-button">Next</a></p>
+<p><a href="05-deploy-stack.html" class="md-button">Next</a></p>
 
 
 

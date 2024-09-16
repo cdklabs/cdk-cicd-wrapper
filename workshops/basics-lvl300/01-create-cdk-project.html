@@ -10,11 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/faq.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/01-create-cdk-project.html">
       
       
-        <link rel="prev" href="09-clean-up.html">
+        <link rel="prev" href="00-prerequisites.html">
       
+      
+        <link rel="next" href="02-define-quality-gates-ci.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -22,7 +24,7 @@
     
     
       
-        <title>FAQ - CDK CI/CD Wrapper</title>
+        <title>Create a CDK Project & Bootstrap the AWS Account - CDK CI/CD Wrapper</title>
       
     
     
@@ -68,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#faq" class="md-skip">
+        <a href="#create-a-cdk-project-bootstrap-the-aws-account" class="md-skip">
           Skip to content
         </a>
       
@@ -101,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              FAQ
+              Create a CDK Project & Bootstrap the AWS Account
             
           </span>
         </div>
@@ -1577,7 +1579,7 @@
               
   
   <span class="md-ellipsis">
-    Gen AI
+    Basics
   </span>
   
 
@@ -1593,7 +1595,7 @@
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_2">
             <span class="md-nav__icon md-icon"></span>
-            Gen AI
+            Basics
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1606,7 +1608,7 @@
   
   
     <li class="md-nav__item">
-      <a href="prerequisites.html" class="md-nav__link">
+      <a href="00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1624,10 +1626,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="01-create-cdk-project.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Create a CDK Project & Bootstrap the AWS Account
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="01-create-cdk-project.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1636,6 +1658,71 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-create-a-cdk-typescript-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Create a CDK TypeScript Project
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-add-the-cdk-cicd-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Add the CDK CI/CD Wrapper
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-bootstrap-the-resourcing-res-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Bootstrap the Resourcing (RES) Account
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-verify-the-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Verify the Bootstrap
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-life-setup-for-multiple-aws-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Real-Life Setup for Multiple AWS Accounts
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1813,30 +1900,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    FAQ
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="faq.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="faq.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1845,35 +1912,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-clean-the-npm-cache" class="md-nav__link">
-    <span class="md-ellipsis">
-      How to clean the npm cache?
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1941,9 +1979,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-to-clean-the-npm-cache" class="md-nav__link">
+  <a href="#step-1-create-a-cdk-typescript-project" class="md-nav__link">
     <span class="md-ellipsis">
-      How to clean the npm cache?
+      Step 1: Create a CDK TypeScript Project
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-add-the-cdk-cicd-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Add the CDK CI/CD Wrapper
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-bootstrap-the-resourcing-res-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Bootstrap the Resourcing (RES) Account
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-verify-the-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Verify the Bootstrap
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-life-setup-for-multiple-aws-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Real-Life Setup for Multiple AWS Accounts
     </span>
   </a>
   
@@ -1967,11 +2041,53 @@
   
 
 
-<h1 id="faq">FAQ</h1>
-<h2 id="how-to-clean-the-npm-cache">How to clean the npm cache?</h2>
-<p>In case you have get to an npm notarget error during any <code>npm install</code> command, you can try to clean the npm cache with the following command:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>cache<span class="w"> </span>clean<span class="w"> </span>--force
+<h1 id="create-a-cdk-project-bootstrap-the-aws-account">Create a CDK Project &amp; Bootstrap the AWS Account</h1>
+<p>In this section, we will create a CDK project and bootstrap your AWS account to prepare it for deploying resources using AWS CDK.</p>
+<h3 id="step-1-create-a-cdk-typescript-project">Step 1: Create a CDK TypeScript Project</h3>
+<p>We will start by initializing a new CDK project in TypeScript.</p>
+<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>-y<span class="w"> </span>aws-cdk<span class="w"> </span>init<span class="w"> </span>--language<span class="w"> </span>typescript
 </code></pre></div>
+<h3 id="step-2-add-the-cdk-cicd-wrapper">Step 2: Add the CDK CI/CD Wrapper</h3>
+<p>To add the necessary wrapper for your project, run the following command:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>install<span class="w"> </span>--include<span class="o">=</span>dev<span class="w"> </span>--save<span class="w"> </span>@cdklabs/cdk-cicd-wrapper<span class="w"> </span>@cdklabs/cdk-cicd-wrapper-cli
+</code></pre></div>
+<h3 id="step-3-bootstrap-the-resourcing-res-account">Step 3: Bootstrap the Resourcing (RES) Account</h3>
+<p>You need to bootstrap your AWS account so it can manage CDK resources. You can refer to the official <a href="https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html">AWS CDK Bootstrapping Documentation</a> for more details.</p>
+<hr />
+<h4 id="optional-modify-cdkjson-configuration">Optional: Modify <code>cdk.json</code> Configuration</h4>
+<p>Add the following CDK configurations to your <code>cdk.json</code> file for additional control over the bootstrapping process:</p>
+<ul>
+<li><strong>toolkitStackName</strong></li>
+<li><strong>@aws-cdk/core:bootstrapQualifier</strong></li>
+</ul>
+<p><img alt="CDK JSON Configuration" class="workshop-image" src="assets/01-images/01-01-cdkjson.png" /></p>
+<hr />
+<p>Bootstrap the Account</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>bootstrap
+</code></pre></div>
+<p>If you've configured <code>@aws-cdk-core:bootstrapQualifier</code>, use the following command with the qualifier:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>bootstrap<span class="w"> </span>--<span class="w"> </span>--qualifier<span class="w"> </span>cdkcicd
+</code></pre></div>
+<h3 id="step-4-verify-the-bootstrap">Step 4: Verify the Bootstrap</h3>
+<p>After running the bootstrap command, verify that the <code>CDKToolkit</code> or if you've configured <code>toolkitStackName</code> stack is present in the AWS CloudFormation Service.</p>
+<hr />
+<h3 id="real-life-setup-for-multiple-aws-accounts">Real-Life Setup for Multiple AWS Accounts</h3>
+<p>For this workshop, we are using a single AWS account. However, in real-world scenarios, each stage (e.g., DEV, INT, PROD) would have its own dedicated AWS account. You’ll need to bootstrap each of these accounts with the same CDK qualifier and establish trust with the resourcing account.</p>
+<p>Here’s an example command to bootstrap a different account with a trust relationship:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>bootstrap<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--qualifier<span class="w"> </span>cdkcicd<span class="w">  </span><span class="se">\</span>
+<span class="w">  </span>--profile<span class="w"> </span>&lt;my_aws_profile_for_other_account&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cloudformation-execution-policies<span class="w"> </span>arn:aws:iam::aws:policy/AdministratorAccess<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--trust<span class="w"> </span>&lt;resource_account_number&gt;<span class="w"> </span>aws://&lt;stage_account_number&gt;/&lt;region&gt;
+</code></pre></div>
+<hr />
+<div class="workshop-congrats-box">
+  <strong class="workshop-congrats-title">✓ Congratulations!</strong><br/>
+You have a created a CDK project and bootstrapped your AWS account for CDK development.
+</div>
+
+<p>Click <strong>Next</strong> to continue to the next section.</p>
+<p><a href="02-define-quality-gates-ci.html" class="md-button">Next</a></p>
 
 
 

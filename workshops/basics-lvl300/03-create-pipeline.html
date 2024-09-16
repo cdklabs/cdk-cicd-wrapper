@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/gen-ai-lvl300/07-deploy-solution.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/03-create-pipeline.html">
       
       
-        <link rel="prev" href="06-develop-genai-solution-part-2.html">
+        <link rel="prev" href="02-define-quality-gates-ci.html">
       
       
-        <link rel="next" href="08-summary.html">
+        <link rel="next" href="04-develop-genai-solution.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Deploy the solution with the pipeline - CDK CI/CD Wrapper</title>
+        <title>Creating a Pipeline and Enabling GitOps - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#deploy-the-solution" class="md-skip">
+        <a href="#creating-a-pipeline-and-enabling-gitops" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Deploy the solution with the pipeline
+              Creating a Pipeline and Enabling GitOps
             
           </span>
         </div>
@@ -1579,7 +1579,7 @@
               
   
   <span class="md-ellipsis">
-    Gen AI
+    Basics
   </span>
   
 
@@ -1595,7 +1595,7 @@
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_2">
             <span class="md-nav__icon md-icon"></span>
-            Gen AI
+            Basics
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1608,7 +1608,7 @@
   
   
     <li class="md-nav__item">
-      <a href="prerequisites.html" class="md-nav__link">
+      <a href="00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1668,10 +1668,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="03-create-pipeline.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Creating a Pipeline and Enabling GitOps
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="03-create-pipeline.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1680,6 +1700,236 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#clean-up-the-example-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Clean up the Example Stack
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Clean up the Example Stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-open-the-example-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Open the Example File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-remove-the-example-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Remove the Example Stack
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-remove-the-unnecessary-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Remove the unnecessary File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-verify-the-clean-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Verify the Clean Up
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create the Pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Create the Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-5-import-the-cdk-cicd-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5: Import the CDK CI/CD Wrapper
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-define-the-pipeline-with-builder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Define the Pipeline with Builder
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploy-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy the Pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploy the Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-7-verify-the-code-can-be-synthesized" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Verify the Code Can Be Synthesized
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-8-deploy-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 8: Deploy the Pipeline
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-review-the-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      (Optional) Review the Infrastructure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enabling-gitops" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enabling GitOps
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enabling GitOps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-9-add-the-codecommit-repository-as-a-remote" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 9: Add the CodeCommit repository as a remote
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-10-install-the-codecommit-remote-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 10: Install the CodeCommit remote plugin
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-11-commit-and-push-the-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 11: Commit and push the changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observe-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Observe the Pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Observe the Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-12-access-aws-codepipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 12: Access AWS CodePipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-13-view-pipeline-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 13: View Pipeline Stages
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-14-monitor-the-pipeline-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 14: Monitor the Pipeline Execution
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1752,30 +2002,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Deploy the solution with the pipeline
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="07-deploy-solution.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="07-deploy-solution.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1784,53 +2014,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-enable-the-feature-flag-based-on-stages" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1: Enable the Feature Flag based on Stages
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-2-commit-and-push-the-changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2: Commit and Push the Changes
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-monitor-the-pipeline-for-deployment" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3: Monitor the Pipeline for Deployment
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1961,29 +2144,212 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#step-1-enable-the-feature-flag-based-on-stages" class="md-nav__link">
+  <a href="#clean-up-the-example-stack" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1: Enable the Feature Flag based on Stages
+      Clean up the Example Stack
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Clean up the Example Stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-open-the-example-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Open the Example File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-remove-the-example-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Remove the Example Stack
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-remove-the-unnecessary-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Remove the unnecessary File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-verify-the-clean-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Verify the Clean Up
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create the Pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Create the Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-5-import-the-cdk-cicd-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5: Import the CDK CI/CD Wrapper
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-define-the-pipeline-with-builder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Define the Pipeline with Builder
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploy-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy the Pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploy the Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-7-verify-the-code-can-be-synthesized" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Verify the Code Can Be Synthesized
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-8-deploy-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 8: Deploy the Pipeline
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-review-the-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      (Optional) Review the Infrastructure
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-commit-and-push-the-changes" class="md-nav__link">
+  <a href="#enabling-gitops" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 2: Commit and Push the Changes
+      Enabling GitOps
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enabling GitOps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-9-add-the-codecommit-repository-as-a-remote" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 9: Add the CodeCommit repository as a remote
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-monitor-the-pipeline-for-deployment" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#step-10-install-the-codecommit-remote-plugin" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 3: Monitor the Pipeline for Deployment
+      Step 10: Install the CodeCommit remote plugin
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-11-commit-and-push-the-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 11: Commit and push the changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observe-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Observe the Pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Observe the Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-12-access-aws-codepipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 12: Access AWS CodePipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-13-view-pipeline-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 13: View Pipeline Stages
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-14-monitor-the-pipeline-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 14: Monitor the Pipeline Execution
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2005,57 +2371,204 @@
   
 
 
-<h1 id="deploy-the-solution">Deploy the Solution</h1>
-<p>Now that we are satisfied with our DemoStack implementation in the Workbench, it’s time to enable the feature flag and deploy it through the pipeline.</p>
-<h3 id="step-1-enable-the-feature-flag-based-on-stages">Step 1: Enable the Feature Flag based on Stages</h3>
-<p>Open the <code>bin/demo-provider.ts</code> file that uses the <code>BaseStackProvider</code> class to provide the <code>DemoStack</code>.</p>
-<p>Add the following content to the <code>stacks</code> method in the <code>bin/demo-provider.ts</code> file:</p>
-<div class="highlight"><pre><span></span><code><span class="nx">stacks</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">stageName</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;DEV&#39;</span><span class="o">:</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">scope</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">setContext</span><span class="p">(</span><span class="s1">&#39;feature-streamlit&#39;</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span>
-<span class="w">        </span><span class="k">break</span><span class="p">;</span>
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;INT&#39;</span><span class="o">:</span><span class="w"> </span><span class="c1">// this.scope.node.setContext(&quot;feature-streamlit&quot;, true);</span>
-<span class="w">        </span><span class="k">break</span><span class="p">;</span>
-<span class="w">    </span><span class="nx">default</span><span class="o">:</span><span class="w"> </span><span class="kt">break</span><span class="p">;</span>
-<span class="w">    </span><span class="p">}</span>
+<h1 id="creating-a-pipeline-and-enabling-gitops">Creating a Pipeline and Enabling GitOps</h1>
+<p>In this section, we are going to create the AWS CodePipeline and the required resources with the help of the CDK CI/CD Wrapper.</p>
+<h2 id="clean-up-the-example-stack">Clean up the Example Stack</h2>
+<h3 id="step-1-open-the-example-file">Step 1: Open the Example File</h3>
+<p>First, open your <code>bin/cdk-cicd-example.ts</code> file. It should look like this:</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env node</span>
+<span class="k">import</span><span class="w"> </span><span class="s1">&#39;source-map-support/register&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">CdkCicdExampleStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../lib/cdk-cicd-example-stack&#39;</span><span class="p">;</span>
 
-<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
+<span class="ow">new</span><span class="w"> </span><span class="nx">CdkCicdExampleStack</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;CdkCicdExampleStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="cm">/* If you don&#39;t specify &#39;env&#39;, this stack will be environment-agnostic.</span>
+<span class="cm">   * Account/Region-dependent features and context lookups will not work,</span>
+<span class="cm">   * but a single synthesized template can be deployed anywhere. */</span>
+
+<span class="w">  </span><span class="cm">/* Uncomment the next line to specialize this stack for the AWS Account</span>
+<span class="cm">   * and Region that are implied by the current CLI configuration. */</span>
+<span class="w">  </span><span class="c1">// env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },</span>
+
+<span class="w">  </span><span class="cm">/* Uncomment the next line if you know exactly what Account and Region you</span>
+<span class="cm">   * want to deploy the stack to. */</span>
+<span class="w">  </span><span class="c1">// env: { account: &#39;123456789012&#39;, region: &#39;us-east-1&#39; },</span>
+
+<span class="w">  </span><span class="cm">/* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */</span>
+<span class="p">});</span>
 </code></pre></div>
-<p>With the code above, the feature flag is enabled for the <code>DEV</code> stage and disabled for the <code>INT</code> stage. In case you do not want this level of granularity, you can enable the feature flag for all stages by removing the switch statement.</p>
-<h3 id="step-2-commit-and-push-the-changes">Step 2: Commit and Push the Changes</h3>
-<p>Let’s commit and push the changes to the repository so the pipeline can pick them up.</p>
-<p>Run the following command to fix any linting issues:</p>
-<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>lint<span class="w"> </span>--<span class="w"> </span>--fix
+<h3 id="step-2-remove-the-example-stack">Step 2: Remove the Example Stack</h3>
+<p>Let’s remove the example stack by deleting the following blocks:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">CdkCicdExampleStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../lib/cdk-cicd-example-stack&#39;</span><span class="p">;</span>
 </code></pre></div>
-<p>Add the changes to Git:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>add<span class="w"> </span>.
+<p>and</p>
+<div class="highlight"><pre><span></span><code><span class="ow">new</span><span class="w"> </span><span class="nx">CdkCicdExampleStack</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;CdkCicdExampleStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="cm">/* Account/Region environment configuration */</span>
+<span class="p">});</span>
 </code></pre></div>
-<p>Commit the changes with a meaningful message:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: enable Streamlit feature flag&quot;</span>
+<h3 id="step-3-remove-the-unnecessary-file">Step 3: Remove the unnecessary File</h3>
+<p>Delete the <code>lib/cdk-cicd-example-stack.ts</code> file, as it’s no longer needed.</p>
+<h3 id="step-4-verify-the-clean-up">Step 4: Verify the Clean Up</h3>
+<p>Your <code>bin/cdk-cicd-example.ts</code> file should now look like this:</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env node</span>
+<span class="k">import</span><span class="w"> </span><span class="s1">&#39;source-map-support/register&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
 </code></pre></div>
-<p>Push the changes to the remote repository:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>push
+<h2 id="create-the-pipeline">Create the Pipeline</h2>
+<h3 id="step-5-import-the-cdk-cicd-wrapper">Step 5: Import the CDK CI/CD Wrapper</h3>
+<p>Now, let’s import the CDK CI/CD Wrapper. Add the following import statement after the <code>aws-cdk-lib</code> import:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">wrapper</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
 </code></pre></div>
+<p>The updated <code>bin/cdk-cicd-example.ts</code> file should now look like:</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env node</span>
+<span class="k">import</span><span class="w"> </span><span class="s1">&#39;source-map-support/register&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">wrapper</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
+</code></pre></div>
+<h3 id="step-6-define-the-pipeline-with-builder">Step 6: Define the Pipeline with Builder</h3>
+<p>Next, we will create the pipeline using the CDK CI/CD Wrapper. Define the pipeline stages with the following code:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">wrapper</span><span class="p">.</span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">defineStages</span><span class="p">([</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.RES</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">])</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
+<div class="note">You can also configure the <code>ACCOUNT_RES</code> environment variable with the AWS account ID instead of defining it through the <code>defineStages</code> method. The variables <code>ACCOUNT_DEV</code> and <code>ACCOUNT_INT</code> are supported as well.</div>
+
 <blockquote>
-<p><strong>Fantastic!</strong> Your changes have been committed and pushed to the repository.</p>
+<p><strong>Congratulations!</strong> Your code is ready to deploy the pipeline.</p>
 </blockquote>
-<h3 id="step-3-monitor-the-pipeline-for-deployment">Step 3: Monitor the Pipeline for Deployment</h3>
-<p>Once the changes are pushed, the pipeline will deploy the new streamlit application.</p>
-<ol>
-<li>Go to the AWS CodePipeline service in the AWS Management Console.</li>
-<li>Select the <code>cdk-cicd-example</code> pipeline.</li>
-<li>Monitor the progress of the pipeline.</li>
-</ol>
-<blockquote>
-<p><strong>Awesome!</strong> The deployment is in progress and soon your solution will be live.</p>
-</blockquote>
+<details>
+<summary>Show Solution</summary>
+<p>The <code>bin/cdk-cicd-example.ts</code> file should look like this:
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env node</span>
+<span class="k">import</span><span class="w"> </span><span class="s1">&#39;source-map-support/register&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;aws-cdk-lib&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">wrapper</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
+
+<span class="nx">wrapper</span><span class="p">.</span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">defineStages</span><span class="p">([</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">wrapper.Stage.RES</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.AWS_ACCOUNT_ID</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">])</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div></p>
+</details>
+<h2 id="deploy-the-pipeline">Deploy the Pipeline</h2>
+<h3 id="step-7-verify-the-code-can-be-synthesized">Step 7: Verify the Code Can Be Synthesized</h3>
+<p>Run the following command to synthesize the pipeline:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>synth
+</code></pre></div>
+<h3 id="step-8-deploy-the-pipeline">Step 8: Deploy the Pipeline</h3>
+<p>Deploy the pipeline using this command:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>deploy<span class="w"> </span>--<span class="w"> </span>--all
+</code></pre></div>
+<p>During the deployment process, you will be asked to review the AWS IAM policies that will be deployed. After reviewing them, type 'y'.</p>
 <div class="workshop-congrats-box">
   <strong class="workshop-congrats-title">✓ Congratulations!</strong><br/>
-You’ve successfully finished the workshop.
+The pipeline has been successfully deployed.
 </div>
 
-<p><a href="08-summary.html" class="md-button md-button--primary" style="background: green; border: green;">Finish</a></p>
+<hr />
+<h2 id="optional-review-the-infrastructure">(Optional) Review the Infrastructure</h2>
+<p>Let’s review the infrastructure that was deployed. Go to the <strong>AWS CloudFormation</strong> service and check the following stacks:</p>
+<table>
+<thead>
+<tr>
+<th>Stack</th>
+<th>Description</th>
+<th>Resources</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cdk-cicd-example</code></td>
+<td>The core stack containing the AWS CodePipeline and all related resources like AWS CodeBuilds and IAM Roles.</td>
+<td>Various resources</td>
+</tr>
+<tr>
+<td><code>cdk-cicd-exampleRepository</code></td>
+<td>AWS CodeCommit repository stack with pull request verification and AWS CodeGuru Reviewer integration.</td>
+<td>CodeCommit, CodeGuru Reviewer</td>
+</tr>
+<tr>
+<td><code>cdk-cicd-exampleSSMParameterStack</code></td>
+<td>AWS SSM Parameters for environment variable mirroring.</td>
+<td>SSM Parameters</td>
+</tr>
+<tr>
+<td><code>cdk-cicd-exampleEncryptionStack</code></td>
+<td>AWS KMS Key used for data encryption at rest.</td>
+<td>KMS Key</td>
+</tr>
+<tr>
+<td><code>cdk-cicd-exampleComplianceLogBucket</code></td>
+<td>This stack ensures that an Amazon S3 Bucket exists for logging.</td>
+<td>S3 Bucket</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="enabling-gitops">Enabling GitOps</h2>
+<p>Now that our repository and pipeline are in place, we can start pushing changes to the repository.</p>
+<h3 id="step-9-add-the-codecommit-repository-as-a-remote">Step 9: Add the CodeCommit repository as a remote</h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>remote<span class="w"> </span>add<span class="w"> </span>origin<span class="w"> </span>codecommit::<span class="nv">$AWS_REGION</span>://cdk-cicd-example
+</code></pre></div>
+<h3 id="step-10-install-the-codecommit-remote-plugin">Step 10: Install the CodeCommit remote plugin</h3>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>git-remote-codecommit
+</code></pre></div>
+<h3 id="step-11-commit-and-push-the-changes">Step 11: Commit and push the changes</h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>add<span class="w"> </span>.
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: initialize pipeline&quot;</span>
+git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>main
+</code></pre></div>
+<p>After pushing the changes, you can check the repository in the AWS Management Console.</p>
+<p><img alt="AWS CodeCommit" class="workshop-image" src="assets/03-images/03-01-codecommit.png" /></p>
+<blockquote>
+<p><strong>Congratulations!</strong> Your changes have been committed and pushed to the repository.</p>
+</blockquote>
+<h2 id="observe-the-pipeline">Observe the Pipeline</h2>
+<p>After pushing the changes to the repository, it's important to observe the progress of the pipeline in AWS CodePipeline to ensure everything is working as expected.</p>
+<h3 id="step-12-access-aws-codepipeline">Step 12: Access AWS CodePipeline</h3>
+<ol>
+<li>
+<p>Navigate to the <a href="">AWS Management Console</a>.</p>
+</li>
+<li>
+<p>In the search bar, type CodePipeline and select AWS CodePipeline from the results.</p>
+</li>
+</ol>
+<p><img alt="AWS CodePipeline" class="workshop-image" src="assets/03-images/03-02-codepipeline.png" /></p>
+<ol>
+<li>In the CodePipeline dashboard, find the pipeline named <code>cdk-cicd-example</code> (or the name you've given your pipeline).</li>
+</ol>
+<h3 id="step-13-view-pipeline-stages">Step 13: View Pipeline Stages</h3>
+<ol>
+<li>Click on the <code>cdk-cicd-example</code> pipeline to open its details.</li>
+<li>You will see the different stages of the pipeline, such as Source, Build, and UpdatePipeline.</li>
+</ol>
+<h3 id="step-14-monitor-the-pipeline-execution">Step 14: Monitor the Pipeline Execution</h3>
+<p>Each stage of the pipeline will show its current status. You can monitor the progress of each stage in real-time.</p>
+<ul>
+<li><strong>Source Stage</strong>: This stage retrieves the latest commit from the AWS CodeCommit repository.</li>
+<li><strong>Build Stage</strong>: In this stage, AWS CodeBuild runs the CI commands defined in your pipeline, compiling the code and running tests.</li>
+<li><strong>UpdatePipeline Stage</strong>: Finally, the UpdatePipeline stage uses AWS CloudFormation to self-update the pipeline.</li>
+</ul>
+<p><img alt="AWS CodePipeline Execution" class="workshop-image" src="assets/03-images/03-03-codepipeline-execution.png" /></p>
+<p>If the pipeline succeeds, all stages will be marked as Succeeded.</p>
+<div class="workshop-congrats-box">
+  <strong class="workshop-congrats-title">✓ Congratulations!</strong><br/>
+Your CI/CD pipeline is ready to be used.
+</div>
+
+<p>Click <strong>Next</strong> to continue to the next section.</p>
+<p><a href="04-develop-genai-solution.html" class="md-button">Next</a></p>
 
 
 
