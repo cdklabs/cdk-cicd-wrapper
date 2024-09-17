@@ -1801,9 +1801,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#step-1-enable-the-feature-flag-based-on-stages" class="md-nav__link">
+  <a href="#step-1-enable-the-feature-flag" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1: Enable the Feature Flag based on Stages
+      Step 1: Enable the Feature Flag
     </span>
   </a>
   
@@ -1961,9 +1961,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#step-1-enable-the-feature-flag-based-on-stages" class="md-nav__link">
+  <a href="#step-1-enable-the-feature-flag" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1: Enable the Feature Flag based on Stages
+      Step 1: Enable the Feature Flag
     </span>
   </a>
   
@@ -2007,42 +2007,13 @@
 
 <h1 id="deploy-the-solution">Deploy the Solution</h1>
 <p>Now that we are satisfied with our DemoStack implementation in the Workbench, it’s time to enable the feature flag and deploy it through the pipeline.</p>
-<h3 id="step-1-enable-the-feature-flag-based-on-stages">Step 1: Enable the Feature Flag based on Stages</h3>
-<p>Open the <code>bin/demo-provider.ts</code> file that uses the <code>BaseStackProvider</code> class to provide the <code>DemoStack</code>.</p>
-<p>Add the following content to the <code>stacks</code> method in the <code>bin/demo-provider.ts</code> file:</p>
-<div class="highlight"><pre><span></span><code><span class="nx">stacks</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">stageName</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;DEV&#39;</span><span class="o">:</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">scope</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">setContext</span><span class="p">(</span><span class="s1">&#39;feature-streamlit&#39;</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span>
-<span class="w">    </span><span class="k">break</span><span class="p">;</span>
-<span class="w">  </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;INT&#39;</span><span class="o">:</span><span class="w"> </span><span class="c1">// this.scope.node.setContext(&quot;feature-streamlit&quot;, true);</span>
-<span class="w">    </span><span class="k">break</span><span class="p">;</span>
-<span class="w">  </span><span class="nx">default</span><span class="o">:</span><span class="w"> </span><span class="kt">break</span><span class="p">;</span>
-<span class="w">  </span><span class="p">}</span>
-
-<span class="w">  </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">);</span>
+<h3 id="step-1-enable-the-feature-flag">Step 1: Enable the Feature Flag</h3>
+<p>Open the <code>cdk.json</code> file and add the following line to the context:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;context&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;feature-streamlit&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="err">...</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>With the code above, the feature flag is enabled for the <code>DEV</code> stage and disabled for the <code>INT</code> stage. In case you do not want this level of granularity, you can enable the feature flag for all stages by removing the switch statement.</p>
-<details>
-<summary>Show Solution</summary>
-<p>The <code>bin/demo-provider.ts</code> file should look like this:
-<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">wrapper</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
-<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DemoStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../lib/demo-stack&#39;</span><span class="p">;</span>
-
-<span class="k">export</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nx">DemoProvider</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="nx">wrapper</span><span class="p">.</span><span class="nx">BaseStackProvider</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">stacks</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">stageName</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;DEV&#39;</span><span class="o">:</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">scope</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">setContext</span><span class="p">(</span><span class="s1">&#39;feature-streamlit&#39;</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span>
-<span class="w">        </span><span class="k">break</span><span class="p">;</span>
-<span class="w">      </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;INT&#39;</span><span class="o">:</span><span class="w"> </span><span class="c1">// this.scope.node.setContext(&quot;feature-streamlit&quot;, true);</span>
-<span class="w">        </span><span class="k">break</span><span class="p">;</span>
-<span class="w">      </span><span class="nx">default</span><span class="o">:</span><span class="w"> </span><span class="kt">break</span><span class="p">;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">DemoStack</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DemoStack&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="kt">this.env</span><span class="w"> </span><span class="p">});</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div></p>
-</details>
 <h3 id="step-2-commit-and-push-the-changes">Step 2: Commit and Push the Changes</h3>
 <p>Let’s commit and push the changes to the repository so the pipeline can pick them up.</p>
 <p>Run the following command to fix any linting issues:</p>
