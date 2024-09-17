@@ -1,7 +1,0 @@
-
-User: hey good morning! I have a big task and I need your help! I need to create and workshop for my CDK CI/CD Wrapper tool. The workshop has to be compliant with AWS workshop formats. The level of the workshop is lvl 300. Before we start is the task clear? Do you need more context?
-
-Assistant: ... [initial setup and steps discussed in detail including building the intro, prerequisites, creating the project, etc. up to deployment and summaries]
-
-Summary of achievements and deployment, including introduction of feature flags, etc.
-
