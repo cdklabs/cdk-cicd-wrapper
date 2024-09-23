@@ -1927,6 +1927,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Architecture Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#demo-application-image-generation-using-amazon-bedrock" class="md-nav__link">
+    <span class="md-ellipsis">
+      Demo application: Image Generation using Amazon Bedrock
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -1999,8 +2014,24 @@
 </ol>
 <h2 id="architecture-overview">Architecture Overview</h2>
 <p>Before we dive in, here’s an architecture diagram of the CDK CI/CD Wrapper to ensure you’re familiar with the outcome.</p>
-<p><img alt="CDK CI/CD Wrapper Architecture" src="assets/architecture.png" /></p>
+<p><img alt="CDK CI/CD Wrapper Architecture" class="workshop-image" src="assets/architecture.png" /></p>
 <p>The diagram illustrates how AWS services like CodeCommit, CodePipeline, and CloudFormation work together to automate the CI/CD process across different accounts, integrating security, compliance, and automation tools such as Amazon KMS, CodeGuru, and S3.</p>
+<p><strong>Disclaimer</strong>: In this workshop, we are using <strong>AWS CodeCommit</strong> for simplicity and to demonstrate the core concepts of the CDK CI/CD Wrapper. However, the <strong>CDK CI/CD Wrapper</strong> is highly flexible and can be integrated with any third-party repository management system that supports <strong>AWS CodeConnections</strong>, such as GitHub, GitLab, or Bitbucket.</p>
+<h3 id="demo-application-image-generation-using-amazon-bedrock">Demo application: Image Generation using Amazon Bedrock</h3>
+<p>In this workshop, you will be deploying a demo application powered by AWS Fargate and AWS Bedrock using the CDK CI/CD Wrapper. Below is a high-level architectural overview of the demo application:</p>
+<p><img alt="Demo Application" class="workshop-image" src="assets/00-images/cdk-cicd-demoapp.png" /></p>
+<p><strong>Key Components</strong>:</p>
+<ul>
+<li>
+<p>Application Load Balancer: This component manages incoming traffic and distributes it to the underlying Fargate tasks. It ensures that your application is highly available and scalable by routing requests efficiently.</p>
+</li>
+<li>
+<p>AWS Fargate (Streamlit Application): The main application is hosted as a Streamlit web app on AWS Fargate, a serverless compute engine that runs containers. Fargate abstracts the server management, allowing us to focus on the application logic.</p>
+</li>
+<li>
+<p>Amazon Bedrock: The backend logic interacts with Amazon Bedrock to power the generative AI capabilities. The Streamlit app communicates with Amazon Bedrock to generate images based on user-provided prompts.</p>
+</li>
+</ul>
 <p>Click on start to begin the workshop.</p>
 <p><a href="00-prerequisites.html" class="md-button">Start</a></p>
 
