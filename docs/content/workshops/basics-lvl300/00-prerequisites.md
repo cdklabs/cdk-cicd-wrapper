@@ -46,7 +46,7 @@ you've successfully set up Amazon Bedrock!
 You will need a workspace to run the workshop. You can use the [Amazon SageMaker Studio CodeEditor](#configure-amazon-sagemaker-studio-codeeditor) for this workshop or you can use your [local machine](#configure-local-machine).
 
 ### Configure Amazon SageMaker Studio CodeEditor
-1. Download the CloudFormation template to your local machine: [cdk-cicd-workshop.yml](./assets/prerequisites/cdk-cicd-workshop.yml)
+1. Download the CloudFormation template to your local machine: [cdk-cicd-workshop.yml](./assets/prerequisites/cdk-cicd-workshop.yml){:cdk-cicd-workshop.yml}
 
 #### CloudFormation Stack Setup
 

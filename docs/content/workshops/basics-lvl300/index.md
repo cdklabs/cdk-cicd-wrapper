@@ -48,9 +48,26 @@ In this workshop, we will guide you through the following steps:
 
 Before we dive in, here’s an architecture diagram of the CDK CI/CD Wrapper to ensure you’re familiar with the outcome.
 
-![CDK CI/CD Wrapper Architecture](./assets/architecture.png)
+![CDK CI/CD Wrapper Architecture](./assets/architecture.png){: class="workshop-image"}
 
 The diagram illustrates how AWS services like CodeCommit, CodePipeline, and CloudFormation work together to automate the CI/CD process across different accounts, integrating security, compliance, and automation tools such as Amazon KMS, CodeGuru, and S3.
+
+**Disclaimer**: In this workshop, we are using **AWS CodeCommit** for simplicity and to demonstrate the core concepts of the CDK CI/CD Wrapper. However, the **CDK CI/CD Wrapper** is highly flexible and can be integrated with any third-party repository management system that supports **AWS CodeConnections**, such as GitHub, GitLab, or Bitbucket.
+
+### Demo application: Image Generation using Amazon Bedrock
+
+In this workshop, you will be deploying a demo application powered by AWS Fargate and AWS Bedrock using the CDK CI/CD Wrapper. Below is a high-level architectural overview of the demo application:
+
+![Demo Application](./assets/00-images/cdk-cicd-demoapp.png){: class="workshop-image"}
+
+**Key Components**:
+
+- Application Load Balancer: This component manages incoming traffic and distributes it to the underlying Fargate tasks. It ensures that your application is highly available and scalable by routing requests efficiently.
+
+- AWS Fargate (Streamlit Application): The main application is hosted as a Streamlit web app on AWS Fargate, a serverless compute engine that runs containers. Fargate abstracts the server management, allowing us to focus on the application logic.
+
+- Amazon Bedrock: The backend logic interacts with Amazon Bedrock to power the generative AI capabilities. The Streamlit app communicates with Amazon Bedrock to generate images based on user-provided prompts.
+
 
 Click on start to begin the workshop.
 

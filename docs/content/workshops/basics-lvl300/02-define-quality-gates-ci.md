@@ -37,7 +37,7 @@ npm run test
 For NPM projects, it’s common to use **eslint** for code styling and static code analysis. To install eslint, run the following command:
 
 ```bash
-npm install --save-dev eslint @eslint/js @types/eslint__js typescript typescript-eslint @stylistic/eslint-plugin
+npm install --save-dev eslint @eslint/core @eslint/js @types/eslint__js typescript typescript-eslint @stylistic/eslint-plugin
 ```
 
 ### Step 4: Create the ESLint Configuration File
