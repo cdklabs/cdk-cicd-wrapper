@@ -1,0 +1,14 @@
+---
+nav:
+  - index.md
+  - "Prerequisites": "00-prerequisites.md"
+  - "Create a CDK Project & Bootstrap the AWS Account": "01-create-cdk-project.md"
+  - "Define the Quality Gates and Continuous Integration": "02-define-quality-gates-ci.md"
+  - "Creating a Pipeline and Enabling GitOps": "03-create-pipeline.md"
+  - "Develop a GenAI Solution with CDK CI/CD Workbench": "04-develop-genai-solution.md"
+  - "Deploy Stack with the Pipeline": "05-deploy-stack.md"
+  - "Develop a GenAI Solution with CDK CI/CD Workbench Part 2": "06-develop-genai-solution-part-2.md"
+  - "Deploy the solution with the pipeline": "07-deploy-solution.md"
+  - "Summary": "08-summary.md"
+  - "Clean up": "09-clean-up.md"
+  - "FAQ": "faq.md"
