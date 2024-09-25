@@ -8,7 +8,7 @@ echo "Collecting values from the SSM Params"
 echo "Getting all SSM params for the qualifier"
 parameters=$(aws ssm get-parameters-by-path --path /${CDK_QUALIFIER}/ --query "Parameters[].[Name, Value]" --output text)
 
-# Process the list of SSM parameters with values which are in teh following format:
+# Process the list of SSM parameters with values which are in the following format:
 # /qualifier/AccountDev        123456789012
 # /qualifier/AccountInt        123456789012
 # /qualifier/AccountRes        123456789012

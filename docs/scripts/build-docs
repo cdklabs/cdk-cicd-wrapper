@@ -11,10 +11,10 @@ if [ ! -d .venv ]; then
 fi
 source .venv/bin/activate
 python3 -m pip install \
-    mkdocs~=1.6.0 \
+    mkdocs~=1.6.1 \
     pygments>=2.12 \
     mkdocs-awesome-pages-plugin~=2.9.2 \
-    mkdocs-material~=9.5.21 \
+    mkdocs-material~=9.5.34 \
     mkdocs-redirects~=1.2.0 \
     mkdocs-typedoc~=1.0.2 \
     mkdocs-macros-plugin~=1.0.4 \
