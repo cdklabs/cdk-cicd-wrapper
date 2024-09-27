@@ -284,3 +284,57 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     return this.codeBuildOptions;
   }
 }
+
+export function mergeCodeBuildOptions(a: CodeBuildOptions, b: CodeBuildOptions): CodeBuildOptions {
+  return {
+    buildEnvironment: mergeBuildEnvironments(a.buildEnvironment, b.buildEnvironment),
+    rolePolicy: definedArray([...(a.rolePolicy ?? []), ...(b.rolePolicy ?? [])]),
+    securityGroups: definedArray([...(a.securityGroups ?? []), ...(b.securityGroups ?? [])]),
+    partialBuildSpec: mergeBuildSpecs(a.partialBuildSpec, b.partialBuildSpec),
+    vpc: b.vpc ?? a.vpc,
+    subnetSelection: b.subnetSelection ?? a.subnetSelection,
+    timeout: b.timeout ?? a.timeout,
+    cache: b.cache ?? a.cache,
+    fileSystemLocations: definedArray([...(a.fileSystemLocations ?? []), ...(b.fileSystemLocations ?? [])]),
+    logging: b.logging ?? a.logging,
+  };
+}
+
+function mergeBuildEnvironments(
+  a: codebuild.BuildEnvironment,
+  b?: codebuild.BuildEnvironment,
+): codebuild.BuildEnvironment;
+function mergeBuildEnvironments(
+  a: codebuild.BuildEnvironment | undefined,
+  b: codebuild.BuildEnvironment,
+): codebuild.BuildEnvironment;
+function mergeBuildEnvironments(
+  a?: codebuild.BuildEnvironment,
+  b?: codebuild.BuildEnvironment,
+): codebuild.BuildEnvironment | undefined;
+function mergeBuildEnvironments(a?: codebuild.BuildEnvironment, b?: codebuild.BuildEnvironment) {
+  if (!a || !b) {
+    return a ?? b;
+  }
+
+  return {
+    buildImage: b.buildImage ?? a.buildImage,
+    computeType: b.computeType ?? a.computeType,
+    environmentVariables: {
+      ...a.environmentVariables,
+      ...b.environmentVariables,
+    },
+    privileged: b.privileged ?? a.privileged,
+  };
+}
+
+function definedArray<A>(xs: A[]): A[] | undefined {
+  return xs.length > 0 ? xs : undefined;
+}
+
+function mergeBuildSpecs(a?: codebuild.BuildSpec, b?: codebuild.BuildSpec) {
+  if (!a || !b) {
+    return a ?? b;
+  }
+  return codebuild.mergeBuildSpecs(a, b);
+}

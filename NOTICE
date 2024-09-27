@@ -204,7 +204,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-cdk/asset-awscli-v1 2.2.202
+@aws-cdk/asset-awscli-v1 2.2.204
 Apache-2.0
 
                                  Apache License
@@ -2259,7 +2259,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-cognito-identity 3.651.1
+@aws-sdk/client-cognito-identity 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -2464,7 +2464,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-s3 3.651.1
+@aws-sdk/client-s3 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -2669,7 +2669,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-sso-oidc 3.651.1
+@aws-sdk/client-sso-oidc 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -2874,7 +2874,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-sso 3.651.1
+@aws-sdk/client-sso 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -3079,7 +3079,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/client-sts 3.651.1
+@aws-sdk/client-sts 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -3284,7 +3284,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/core 3.651.1
+@aws-sdk/core 3.658.1
 Apache-2.0
 # `@aws-sdk/core`
 
@@ -3327,7 +3327,7 @@ If the component's functionality is downstream of a client, for example S3 pre-s
 it should be a standalone package with potentially a peer or runtime dependency on an AWS SDK client.
 
 
-@aws-sdk/credential-provider-cognito-identity 3.651.1
+@aws-sdk/credential-provider-cognito-identity 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -3532,7 +3532,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/credential-provider-env 3.649.0
+@aws-sdk/credential-provider-env 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -3736,7 +3736,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/credential-provider-http 3.649.0
+@aws-sdk/credential-provider-http 3.658.1
 Apache-2.0
 # @aws-sdk/credential-provider-http
 
@@ -3750,7 +3750,7 @@ Apache-2.0
 See https://www.npmjs.com/package/@aws-sdk/credential-providers
 
 
-@aws-sdk/credential-provider-ini 3.651.1
+@aws-sdk/credential-provider-ini 3.658.1
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -3954,7 +3954,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/credential-provider-node 3.651.1
+@aws-sdk/credential-provider-node 3.658.1
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -4158,7 +4158,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/credential-provider-process 3.649.0
+@aws-sdk/credential-provider-process 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -4362,7 +4362,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/credential-provider-sso 3.651.1
+@aws-sdk/credential-provider-sso 3.658.1
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -4566,7 +4566,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/credential-provider-web-identity 3.649.0
+@aws-sdk/credential-provider-web-identity 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -4770,7 +4770,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/credential-providers 3.651.1
+@aws-sdk/credential-providers 3.658.1
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -4974,7 +4974,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/middleware-bucket-endpoint 3.649.0
+@aws-sdk/middleware-bucket-endpoint 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -5179,7 +5179,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/middleware-expect-continue 3.649.0
+@aws-sdk/middleware-expect-continue 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -5384,7 +5384,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/middleware-flexible-checksums 3.651.1
+@aws-sdk/middleware-flexible-checksums 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -5589,7 +5589,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/middleware-host-header 3.649.0
+@aws-sdk/middleware-host-header 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -5794,7 +5794,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/middleware-location-constraint 3.649.0
+@aws-sdk/middleware-location-constraint 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -5999,7 +5999,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/middleware-logger 3.649.0
+@aws-sdk/middleware-logger 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -6203,7 +6203,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/middleware-recursion-detection 3.649.0
+@aws-sdk/middleware-recursion-detection 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -6408,7 +6408,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/middleware-sdk-s3 3.651.1
+@aws-sdk/middleware-sdk-s3 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -6613,7 +6613,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/middleware-ssec 3.649.0
+@aws-sdk/middleware-ssec 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -6818,7 +6818,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/middleware-user-agent 3.649.0
+@aws-sdk/middleware-user-agent 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -7023,7 +7023,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/region-config-resolver 3.649.0
+@aws-sdk/region-config-resolver 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -7227,7 +7227,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/signature-v4-multi-region 3.651.1
+@aws-sdk/signature-v4-multi-region 3.658.1
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -7432,7 +7432,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/token-providers 3.649.0
+@aws-sdk/token-providers 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -7636,7 +7636,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/types 3.649.0
+@aws-sdk/types 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -8044,7 +8044,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/util-endpoints 3.649.0
+@aws-sdk/util-endpoints 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -8452,7 +8452,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@aws-sdk/util-user-agent-browser 3.649.0
+@aws-sdk/util-user-agent-browser 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -8657,7 +8657,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/util-user-agent-node 3.649.0
+@aws-sdk/util-user-agent-node 3.654.0
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -8862,7 +8862,7 @@ Apache-2.0
    limitations under the License.
 
 
-@aws-sdk/xml-builder 3.649.0
+@aws-sdk/xml-builder 3.654.0
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -14177,7 +14177,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@smithy/core 2.4.3
+@smithy/core 2.4.6
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -15611,7 +15611,7 @@ Apache-2.0
    limitations under the License.
 
 
-@smithy/fetch-http-handler 3.2.7
+@smithy/fetch-http-handler 3.2.8
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -17652,7 +17652,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@smithy/middleware-retry 3.0.18
+@smithy/middleware-retry 3.0.21
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -18470,7 +18470,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@smithy/node-http-handler 3.2.2
+@smithy/node-http-handler 3.2.3
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -19902,7 +19902,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@smithy/signature-v4 4.1.3
+@smithy/signature-v4 4.1.4
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -20106,7 +20106,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@smithy/smithy-client 3.3.2
+@smithy/smithy-client 3.3.5
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -21945,7 +21945,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@smithy/util-defaults-mode-browser 3.0.18
+@smithy/util-defaults-mode-browser 3.0.21
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -22150,7 +22150,7 @@ Apache-2.0
    limitations under the License.
 
 
-@smithy/util-defaults-mode-node 3.0.18
+@smithy/util-defaults-mode-node 3.0.21
 Apache-2.0
                                 Apache License
                            Version 2.0, January 2004
@@ -23171,7 +23171,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
-@smithy/util-stream 3.1.6
+@smithy/util-stream 3.1.8
 Apache-2.0
 Apache License
                            Version 2.0, January 2004
@@ -24638,7 +24638,7 @@ MIT
     SOFTWARE
 
 
-@types/node 18.19.50
+@types/node 18.19.53
 MIT
     MIT License
 
@@ -24663,7 +24663,7 @@ MIT
     SOFTWARE
 
 
-@types/node 22.5.5
+@types/node 22.7.3
 MIT
     MIT License
 
@@ -25013,7 +25013,7 @@ OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
 
-@xmldom/xmldom 0.9.2
+@xmldom/xmldom 0.9.3
 MIT
 Copyright 2019 - present Christopher J. Brody and other contributors, as listed in: https://github.com/xmldom/xmldom/graphs/contributors
 Copyright 2012 - 2017 @jindw <jindw@xidea.org> and other contributors, as listed in: https://github.com/jindw/xmldom/graphs/contributors
@@ -26510,7 +26510,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-browserslist 4.23.3
+browserslist 4.24.0
 MIT
 The MIT License (MIT)
 
@@ -26746,7 +26746,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-caniuse-lite 1.0.30001660
+caniuse-lite 1.0.30001664
 CC-BY-4.0
 Attribution 4.0 International
 
@@ -27583,7 +27583,7 @@ Apache-2.0
    limitations under the License.
 
 
-cdklabs-projen-project-types 0.1.202
+cdklabs-projen-project-types 0.1.205
 Apache-2.0
 
                                  Apache License
@@ -28418,7 +28418,7 @@ WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
 ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-commonmark 0.31.1
+commonmark 0.31.2
 BSD-2-Clause
 Copyright (c) 2014, John MacFarlane
 
@@ -30772,7 +30772,7 @@ Apache-2.0
    limitations under the License.
 
 
-electron-to-chromium 1.5.24
+electron-to-chromium 1.5.29
 ISC
 Copyright 2018 Kilian Valkhof
 
@@ -31210,7 +31210,7 @@ Permission to use, copy, modify, and/or distribute this software for any purpose
 THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-eslint-module-utils 2.11.0
+eslint-module-utils 2.12.0
 MIT
 The MIT License (MIT)
 
@@ -32271,7 +32271,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-fast-uri 3.0.1
+fast-uri 3.0.2
 MIT
 Copyright (c) 2021 The Fastify Team
 Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae
@@ -36494,7 +36494,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-jsdom 25.0.0
+jsdom 25.0.1
 MIT
 Copyright (c) 2010 Elijah Insua
 
@@ -51753,7 +51753,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.**
 
 
-projen 0.87.3
+projen 0.88.0
 Apache-2.0
 
                                  Apache License
@@ -51984,19 +51984,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-psl 1.9.0
-MIT
-The MIT License (MIT)
-
-Copyright (c) 2017 Lupo Montero lupomontero@gmail.com
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
 punycode 2.3.1
 MIT
 Copyright Mathias Bynens <https://mathiasbynens.be/>
@@ -52044,32 +52031,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-
-querystringify 2.2.0
-MIT
-The MIT License (MIT)
-
-Copyright (c) 2015 Unshift.io, Arnout Kazemier,  the Contributors.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
 
 
 queue-microtask 1.2.3
@@ -52492,32 +52453,6 @@ LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES
 OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
 WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
 ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-
-requires-port 1.0.0
-MIT
-The MIT License (MIT)
-
-Copyright (c) 2015 Unshift.io, Arnout Kazemier,  the Contributors.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
 
 
 resolve-cwd 3.0.0
@@ -55091,6 +55026,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
+tldts-core 6.1.47
+MIT
+Copyright (c) 2017 Thomas Parisot, 2018 Rémi Berson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+tldts 6.1.47
+MIT
+Copyright (c) 2017 Thomas Parisot, 2018 Rémi Berson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
 tmp 0.0.33
 MIT
 The MIT License (MIT)
@@ -55187,7 +55156,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-tough-cookie 4.1.4
+tough-cookie 5.0.0
 BSD-3-Clause
 Copyright (c) 2015, Salesforce.com, Inc.
 All rights reserved.
@@ -55770,7 +55739,7 @@ If the Work includes a "NOTICE" text file as part of its distribution, then any 
 END OF TERMS AND CONDITIONS
 
 
-typescript 5.7.0-dev.20240917
+typescript 5.7.0-dev.20240927
 Apache-2.0
 Apache License
 
@@ -55959,30 +55928,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-universalify 0.2.0
-MIT
-(The MIT License)
-
-Copyright (c) 2017, Ryan Zimmerman <opensrc@ryanzim.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the 'Software'), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
 universalify 2.0.1
 MIT
 (The MIT License)
@@ -56020,7 +55965,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-update-browserslist-db 1.1.0
+update-browserslist-db 1.1.1
 MIT
 The MIT License (MIT)
 
@@ -56057,32 +56002,6 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY GARY COURT "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GARY COURT OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The views and conclusions contained in the software and documentation are those of the authors and should not be interpreted as representing official policies, either expressed or implied, of Gary Court.
-
-
-url-parse 1.5.10
-MIT
-The MIT License (MIT)
-
-Copyright (c) 2015 Unshift.io, Arnout Kazemier,  the Contributors.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
 
 
 util-deprecate 1.0.2

@@ -5,6 +5,29 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import { GlobalResources, INTEGRATION_PHASES, IResourceProvider, ResourceContext } from '../common';
+import { mergeCodeBuildOptions } from './CodeBuildFactoryProvider';
+
+export interface RuntimeVersionOptions {
+  readonly java?: string;
+
+  readonly php?: string;
+
+  readonly ruby?: string;
+
+  readonly golang?: string;
+
+  readonly python?: string;
+
+  readonly nodejs?: string;
+
+  readonly dotnet?: string;
+}
+
+export interface BuildOptions {
+  readonly runTimeVersions?: RuntimeVersionOptions;
+
+  readonly codeBuildDefaults?: pipelines.CodeBuildOptions;
+}
 
 export interface ICIDefinition {
   provideBuildSpec(): codebuild.BuildSpec;
@@ -22,7 +45,7 @@ export interface ICIDefinition {
 export class CIDefinitionProvider implements IResourceProvider {
   provide(context: ResourceContext): any {
     const phaseDefinition = context.get(GlobalResources.PHASE)!;
-    const { applicationQualifier, buildSpec } = context.blueprintProps;
+    const { applicationQualifier, buildSpec, buildOptions } = context.blueprintProps;
 
     const defaultBuildSpec = codebuild.BuildSpec.fromObject({
       version: '0.2',
@@ -31,10 +54,16 @@ export class CIDefinitionProvider implements IResourceProvider {
           CDK_QUALIFIER: applicationQualifier,
         },
       },
+      ...(buildOptions?.runTimeVersions
+        ? { phases: { install: { 'runtime-versions': buildOptions.runTimeVersions } } }
+        : {}),
     });
 
     if (buildSpec) {
-      return new BaseCIDefinition(codebuild.mergeBuildSpecs(defaultBuildSpec, buildSpec));
+      return new BaseCIDefinition(
+        codebuild.mergeBuildSpecs(defaultBuildSpec, buildSpec),
+        buildOptions?.codeBuildDefaults ?? {},
+      );
     }
 
     return new BaseCIDefinition(
@@ -48,17 +77,18 @@ export class CIDefinitionProvider implements IResourceProvider {
           },
         }),
       ),
+      buildOptions?.codeBuildDefaults ?? {},
     );
   }
 }
 
-class BaseCIDefinition implements ICIDefinition {
+export class BaseCIDefinition implements ICIDefinition {
   private buildSpec: codebuild.BuildSpec;
+  private buildOptions: pipelines.CodeBuildOptions;
 
-  private policyStatements: iam.PolicyStatement[] = [];
-
-  constructor(buildSpec: codebuild.BuildSpec) {
+  constructor(buildSpec: codebuild.BuildSpec, buildOptions: pipelines.CodeBuildOptions) {
     this.buildSpec = buildSpec;
+    this.buildOptions = buildOptions;
   }
 
   provideBuildSpec(): codebuild.BuildSpec {
@@ -66,11 +96,7 @@ class BaseCIDefinition implements ICIDefinition {
   }
 
   provideCodeBuildDefaults(): pipelines.CodeBuildOptions {
-    return this.policyStatements.length === 0
-      ? {}
-      : {
-          rolePolicy: this.policyStatements,
-        };
+    return this.buildOptions;
   }
 
   append(partialBuildSpec: codebuild.BuildSpec): void {
@@ -78,6 +104,10 @@ class BaseCIDefinition implements ICIDefinition {
   }
 
   additionalPolicyStatements(policyStatements: iam.PolicyStatement[]): void {
-    this.policyStatements.push(...policyStatements);
+    this.buildOptions = mergeCodeBuildOptions(this.buildOptions, { rolePolicy: policyStatements });
+  }
+
+  appendCodeBuildOptions(codeBuildOptions: pipelines.CodeBuildOptions): void {
+    this.buildOptions = mergeCodeBuildOptions(this.buildOptions, codeBuildOptions);
   }
 }

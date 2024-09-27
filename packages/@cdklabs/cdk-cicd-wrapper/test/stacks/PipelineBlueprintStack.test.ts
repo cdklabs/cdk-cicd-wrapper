@@ -3,8 +3,9 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { AwsSolutionsChecks } from 'cdk-nag';
-import { Stage, PipelinePhases, GlobalResources } from '../../src/common';
+import { Stage, PipelinePhases, GlobalResources, BaseStackProvider } from '../../src/common';
 import { BasicRepositoryProvider, sh } from '../../src/resource-providers';
 import { PipelineBlueprint } from '../../src/stacks/PipelineBlueprint';
 import {
@@ -421,5 +422,98 @@ describe('pipeline-stack-stage-order', () => {
         },
       ],
     });
+  });
+});
+
+describe('pipeline-build-options', () => {
+  const app = new cdk.App();
+
+  process.env.ACCOUNT_DEV = '777777777777'; // The DEV should not appear as valid stage as it is not defined.
+  process.env.ACCOUNT_StageC = '88888888888';
+
+  const template = Template.fromStack(
+    PipelineBlueprint.builder()
+      .applicationName(TestAppConfig.applicationName)
+      .applicationQualifier(TestAppConfig.applicationQualifier)
+      .defineStages([{ stage: Stage.RES, ...TestAppConfig.deploymentDefinition.RES.env }])
+      .buildOptions({
+        runTimeVersions: {
+          python: '3.12',
+          nodejs: '20',
+        },
+        codeBuildDefaults: {
+          buildEnvironment: {
+            computeType: codebuild.ComputeType.LARGE,
+          },
+        },
+      })
+      .addStack(TestStackProvider)
+      .repositoryProvider(new BasicRepositoryProvider(TestRepositoryConfigGithub))
+      .synth(app),
+  );
+
+  test('Check if CodePipeline have defined runtimes', () => {
+    template.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
+    const codeBuildProjects = template.findResources('AWS::CodeBuild::Project');
+    const synthProject =
+      codeBuildProjects[
+        Object.keys(codeBuildProjects).find((id) => id.startsWith('CdkPipelineBuildSynthCdkBuildProject'))!!
+      ];
+
+    expect(synthProject.Properties.Source.BuildSpec as string).toMatch(/.*"python":."3\.12".*/);
+    expect(synthProject.Properties.Source.BuildSpec as string).toMatch(/.*"nodejs":."20".*/);
+  });
+
+  test('Check if CodePipeline have defined compute type', () => {
+    template.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
+    const codeBuildProjects = template.findResources('AWS::CodeBuild::Project');
+    const synthProject =
+      codeBuildProjects[
+        Object.keys(codeBuildProjects).find((id) => id.startsWith('CdkPipelineBuildSynthCdkBuildProject'))!!
+      ];
+
+    expect(synthProject.Properties.Environment.ComputeType).toBe(codebuild.ComputeType.LARGE);
+  });
+});
+
+describe('Workbench', () => {
+  const app = new cdk.App({
+    context: {
+      workbench: true,
+    },
+  });
+
+  const stack = PipelineBlueprint.builder()
+    .applicationName(TestAppConfig.applicationName)
+    .applicationQualifier(TestAppConfig.applicationQualifier)
+    .defineStages([
+      { stage: Stage.RES, ...TestAppConfig.deploymentDefinition.RES.env },
+      { stage: Stage.DEV, ...TestAppConfig.deploymentDefinition.DEV.env },
+    ])
+    .workbench(
+      new (class extends BaseStackProvider {
+        stacks(): void {
+          new cdk.aws_s3.Bucket(this.scope, 'Bucket', {
+            enforceSSL: true,
+          });
+        }
+      })(),
+    )
+    .synth(app);
+
+  const template = Template.fromStack(stack);
+
+  test('Check if the Workbench cdk-nag asset is executed after plugins', () => {
+    // if this wouldn't be the case an AwsSolutions-S1 error would be present
+    const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'));
+    expect(errors).toHaveLength(0);
+  });
+
+  test('Check if the Workbench stack has been prefixed', () => {
+    expect(stack.stackName).toBe('sbx-CICDWrapper');
+  });
+
+  test('Check if no Pipeline stack created', () => {
+    template.resourceCountIs('AWS::CodePipeline::Pipeline', 0);
   });
 });
