@@ -284,3 +284,106 @@ export class DefaultCodeBuildFactory implements ICodeBuildFactory {
     return this.codeBuildOptions;
   }
 }
+
+/**
+ * Merges two sets of CodeBuildOptions into one, prioritizing fields from the secondary options
+ * over the primary options where applicable.
+ *
+ * @param {CodeBuildOptions} primaryOptions - The primary set of CodeBuild options.
+ * @param {CodeBuildOptions} secondaryOptions - The secondary set of CodeBuild options.
+ * @returns {CodeBuildOptions} - The merged set of CodeBuild options.
+ */
+export function mergeCodeBuildOptions(
+  primaryOptions: CodeBuildOptions,
+  secondaryOptions: CodeBuildOptions,
+): CodeBuildOptions {
+  return {
+    buildEnvironment: mergeBuildEnvironments(primaryOptions.buildEnvironment, secondaryOptions.buildEnvironment),
+    rolePolicy: definedArray([
+      ...(primaryOptions.rolePolicy ? primaryOptions.rolePolicy : []),
+      ...(secondaryOptions.rolePolicy ? secondaryOptions.rolePolicy : []),
+    ]),
+    securityGroups: definedArray([
+      ...(primaryOptions.securityGroups ? primaryOptions.securityGroups : []),
+      ...(secondaryOptions.securityGroups ? secondaryOptions.securityGroups : []),
+    ]),
+    partialBuildSpec: mergeBuildSpecs(primaryOptions.partialBuildSpec, secondaryOptions.partialBuildSpec),
+    vpc: secondaryOptions.vpc ? secondaryOptions.vpc : primaryOptions.vpc,
+    subnetSelection: secondaryOptions.subnetSelection
+      ? secondaryOptions.subnetSelection
+      : primaryOptions.subnetSelection,
+    timeout: secondaryOptions.timeout ? secondaryOptions.timeout : primaryOptions.timeout,
+    cache: secondaryOptions.cache ? secondaryOptions.cache : primaryOptions.cache,
+    fileSystemLocations: definedArray([
+      ...(primaryOptions.fileSystemLocations ? primaryOptions.fileSystemLocations : []),
+      ...(secondaryOptions.fileSystemLocations ? secondaryOptions.fileSystemLocations : []),
+    ]),
+    logging: secondaryOptions.logging ? secondaryOptions.logging : primaryOptions.logging,
+  };
+}
+
+/**
+ * Merges two CodeBuild environments, prioritizing fields from the secondary environment
+ * over the primary environment where applicable.
+ *
+ * @param {codebuild.BuildEnvironment} primaryEnvironment - The primary CodeBuild environment.
+ * @param {codebuild.BuildEnvironment} [secondaryEnvironment] - The secondary CodeBuild environment.
+ * @returns {codebuild.BuildEnvironment | undefined} - The merged CodeBuild environment, or undefined if both are undefined.
+ */
+function mergeBuildEnvironments(
+  primaryEnvironment: codebuild.BuildEnvironment,
+  secondaryEnvironment?: codebuild.BuildEnvironment,
+): codebuild.BuildEnvironment;
+function mergeBuildEnvironments(
+  primaryEnvironment: codebuild.BuildEnvironment | undefined,
+  secondaryEnvironment: codebuild.BuildEnvironment,
+): codebuild.BuildEnvironment;
+function mergeBuildEnvironments(
+  primaryEnvironment?: codebuild.BuildEnvironment,
+  secondaryEnvironment?: codebuild.BuildEnvironment,
+): codebuild.BuildEnvironment | undefined;
+function mergeBuildEnvironments(
+  primaryEnvironment?: codebuild.BuildEnvironment,
+  secondaryEnvironment?: codebuild.BuildEnvironment,
+): codebuild.BuildEnvironment | undefined {
+  if (!primaryEnvironment || !secondaryEnvironment) {
+    return primaryEnvironment ?? secondaryEnvironment;
+  }
+
+  return {
+    buildImage: secondaryEnvironment.buildImage ?? primaryEnvironment.buildImage,
+    computeType: secondaryEnvironment.computeType ?? primaryEnvironment.computeType,
+    environmentVariables: {
+      ...primaryEnvironment.environmentVariables,
+      ...secondaryEnvironment.environmentVariables,
+    },
+    privileged: secondaryEnvironment.privileged ?? primaryEnvironment.privileged,
+  };
+}
+
+/**
+ * Returns the array if it contains elements, otherwise returns undefined.
+ *
+ * @param {ArrayElement[]} array - The array to check.
+ * @returns {ArrayElement[] | undefined} - The original array if it contains elements, or undefined if it is empty.
+ */
+function definedArray<ArrayElement>(array: ArrayElement[]): ArrayElement[] | undefined {
+  return array.length > 0 ? array : undefined;
+}
+
+/**
+ * Merges two BuildSpecs, prioritizing fields from the secondary BuildSpec over the primary BuildSpec where applicable.
+ *
+ * @param {codebuild.BuildSpec} [primaryBuildSpec] - The primary CodeBuild BuildSpec.
+ * @param {codebuild.BuildSpec} [secondaryBuildSpec] - The secondary CodeBuild BuildSpec.
+ * @returns {codebuild.BuildSpec | undefined} - The merged BuildSpec, or undefined if both are undefined.
+ */
+function mergeBuildSpecs(
+  primaryBuildSpec?: codebuild.BuildSpec,
+  secondaryBuildSpec?: codebuild.BuildSpec,
+): codebuild.BuildSpec | undefined {
+  if (!primaryBuildSpec || !secondaryBuildSpec) {
+    return primaryBuildSpec ?? secondaryBuildSpec;
+  }
+  return codebuild.mergeBuildSpecs(primaryBuildSpec, secondaryBuildSpec);
+}

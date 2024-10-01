@@ -29,7 +29,7 @@ import {
   ResourceContext,
 } from '../common';
 import { Plugins } from '../plugins';
-import { CIDefinitionProvider, HookProvider } from '../resource-providers';
+import { BuildOptions, CIDefinitionProvider, HookProvider } from '../resource-providers';
 import { CodeBuildFactoryProvider } from '../resource-providers/CodeBuildFactoryProvider';
 import { ComplianceBucketProvider } from '../resource-providers/ComplianceBucketProvider';
 import { DisabledProvider } from '../resource-providers/DisabledProvider';
@@ -280,6 +280,17 @@ export class PipelineBlueprintBuilder {
   }
 
   /**
+   * Defines the build options for the Pipeline Blueprint.
+   *
+   * @param options
+   * @returns
+   */
+  public buildOptions(options: BuildOptions): this {
+    this.props.buildOptions = options;
+    return this;
+  }
+
+  /**
    * Defines the primary output directory for the CDK Synth.
    *
    * @default './cdk.out'
@@ -464,16 +475,18 @@ export class PipelineBlueprintBuilder {
         workbenchEnv.env,
         this.props as IPipelineBlueprintProps,
       );
+
+      cdk.Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: false }));
     } else {
       stack = new PipelineStack(app, id, this.props as IPipelineBlueprintProps);
+
+      cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
     }
 
     // Ensure all the logs that are added during the pipeline definition without specifying the stack are added to the pipeline stack
     ResourceContext.instance().get(GlobalResources.LOGGING).setScope(stack);
 
     cdk.Tags.of(app).add('Application', `${this.props.applicationName}`);
-
-    cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
 
     return stack;
   }
