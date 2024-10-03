@@ -61,9 +61,12 @@ class ScopedStorage {
    * @param provider The resource provider instance.
    */
   public add(name: string, provider: IResourceProvider): void {
-    if (this.providers.has(name)) {
+    if (this.resourceContext.locked && this.providers.has(name)) {
       throw new Error(`Overwriting ${name} resource during execution is not allowed.`);
+    } else if (this.initialized.find((initialized) => name === initialized)) {
+      throw new Error(`Overwriting already initialized ${name} resource is not allowed.`);
     }
+
     this.providers.set(name, provider);
   }
 
@@ -161,6 +164,7 @@ export class ResourceContext {
 
   private _currentStage: string = Stage.RES;
   private _currentEnv?: Environment;
+  private _locked: boolean = false;
 
   /**
    * Constructs a new instance of ResourceContext.
@@ -178,11 +182,7 @@ export class ResourceContext {
 
     this.globalScope = new ScopedStorage(this);
 
-    for (const [key, resourceProvider] of Object.entries(blueprintProps.resourceProviders)) {
-      if (!resourceProvider.scope || resourceProvider.scope == Scope.GLOBAL) {
-        this.globalScope.add(key, resourceProvider);
-      }
-    }
+    this.loadGlobalProviders();
   }
 
   /** @internal */
@@ -203,6 +203,9 @@ export class ResourceContext {
    * @param stage The current stage.
    */
   public initStage(stage: IStage) {
+    this.loadGlobalProviders();
+    this._locked = true;
+
     this.stagedScope = new ScopedStorage(this);
 
     this._currentStage = stage;
@@ -269,6 +272,24 @@ export class ResourceContext {
    */
   public get scope(): Construct {
     return this._scope;
+  }
+
+  public get locked(): boolean {
+    return this._locked;
+  }
+
+  private loadGlobalProviders() {
+    for (const [key, resourceProvider] of Object.entries(this.blueprintProps.resourceProviders)) {
+      if (Object(resourceProvider).registered) continue;
+      if (!resourceProvider.scope || resourceProvider.scope == Scope.GLOBAL) {
+        this.globalScope.add(key, resourceProvider);
+        Object.defineProperty(resourceProvider, 'registered', {
+          get() {
+            return true;
+          },
+        });
+      }
+    }
   }
 }
 

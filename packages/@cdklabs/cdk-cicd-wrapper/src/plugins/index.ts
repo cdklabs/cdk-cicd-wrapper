@@ -17,6 +17,7 @@ import { RotateEncryptionKeysPlugin } from './security/RotateEncryptionKeysPlugi
  * Re-exporting all imports from the respective files for ease of access.
  */
 export * from './optimization/DestroyEncryptionKeysOnDeletePlugin';
+export * from './pipeline/GitHubPipelinePlugin';
 export * from './security/AccessLogsForBucketPlugin';
 export * from './security/DisablePublicIPAssignmentForEC2Plugin';
 export * from './security/EncryptBucketOnTransitPlugin';

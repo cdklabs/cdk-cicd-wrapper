@@ -42,7 +42,7 @@ describe('CodeArtifactPlugin', () => {
         phases: {
           pre_build: {
             commands: [
-              `aws codeartifact login --domain test-domain --domain-owner ${TestAppConfig.deploymentDefinition.RES.env.account} --repository test-repo --tool npm`,
+              `aws codeartifact login --domain test-domain --domain-owner ${TestAppConfig.deploymentDefinition.RES.env.account} --region ${TestAppConfig.deploymentDefinition.RES.env.region} --repository test-repo --tool npm`,
             ],
           },
         },
@@ -84,8 +84,8 @@ describe('CodeArtifactPlugin', () => {
         phases: {
           pre_build: {
             commands: [
-              `aws codeartifact login --domain test-domain --domain-owner ${TestAppConfig.deploymentDefinition.RES.env.account} --repository test-repo --tool npm`,
-              `aws codeartifact login --domain test-domain --domain-owner ${TestAppConfig.deploymentDefinition.RES.env.account} --repository test-repo --tool pip`,
+              `aws codeartifact login --domain test-domain --domain-owner ${TestAppConfig.deploymentDefinition.RES.env.account} --region ${TestAppConfig.deploymentDefinition.RES.env.region} --repository test-repo --tool npm`,
+              `aws codeartifact login --domain test-domain --domain-owner ${TestAppConfig.deploymentDefinition.RES.env.account} --region ${TestAppConfig.deploymentDefinition.RES.env.region} --repository test-repo --tool pip`,
             ],
           },
         },

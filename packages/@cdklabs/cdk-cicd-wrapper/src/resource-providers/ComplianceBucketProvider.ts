@@ -71,6 +71,7 @@ export class ComplianceBucketProvider implements IResourceProvider {
       context.scope,
       `${context.blueprintProps.applicationName}ComplianceLogBucketStack`,
       {
+        env: context.environment,
         complianceLogBucketName,
         ...vpcProps,
       },

@@ -140,6 +140,15 @@
         }
       ]
     },
+    "integ": {
+      "name": "integ",
+      "steps": [
+        {
+          "exec": "yarn workspace @cdklabs/cdk-cicd-wrapper run integ",
+          "receiveArgs": true
+        }
+      ]
+    },
     "license": {
       "name": "license",
       "description": "Notice file checking and generation",

@@ -115,6 +115,8 @@ const pipeline = new yarn.TypeScriptWorkspace({
 
   devDeps: [
     'eslint@^8',
+    `@aws-cdk/integ-runner@${cdkVersion}-alpha.0`,
+    `@aws-cdk/integ-tests-alpha@${cdkVersion}-alpha.0`,
     '@typescript-eslint/eslint-plugin@^7',
     '@typescript-eslint/parser@^7',
     '@typescript-eslint/typescript-estree@^7',
@@ -122,6 +124,7 @@ const pipeline = new yarn.TypeScriptWorkspace({
 
   peerDeps: [`cdk-nag@^${cdkNagVersion}`, `aws-cdk-lib@^${cdkVersion}`, `constructs@^${constructsVersion}`],
   bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check', 'yaml'],
+  deps: [`cdk-pipelines-github`],
   jest: true,
   disableTsconfig: true,
 });
@@ -164,6 +167,23 @@ pipeline.addDevDeps(...eslintDeps);
 pipeline.tasks
   .tryFind('post-compile')!
   .exec('copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock src/projen/Taskfile.yaml lib');
+
+pipeline.addTask('integ', {
+  description: 'Run integration snapshot tests',
+  exec: 'yarn integ-runner --language typescript',
+  receiveArgs: true,
+});
+
+pipeline.addTask('integ:update', {
+  description: 'Run and update integration snapshot tests',
+  exec: 'yarn integ-runner --language typescript --update-on-failed',
+  receiveArgs: true,
+});
+
+root.addTask('integ', {
+  exec: 'yarn workspace @cdklabs/cdk-cicd-wrapper run integ',
+  receiveArgs: true,
+});
 
 // Copy bundle dependencies to the package
 const postCompile = pipeline.tasks.tryFind('post-compile')!;
