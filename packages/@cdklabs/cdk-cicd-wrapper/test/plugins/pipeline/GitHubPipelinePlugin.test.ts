@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
+import { Template } from 'aws-cdk-lib/assertions';
+import { BuildSpec } from 'aws-cdk-lib/aws-codebuild';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { ICIDefinition, GlobalResources, ResourceContext, GitHubPipelinePlugin, Stage } from '../../../src';
 import { TestAppConfig } from '../../TestConfig';
-import { BuildSpec } from 'aws-cdk-lib/aws-codebuild';
-import { Template } from 'aws-cdk-lib/assertions';
 
 describe('GitHubPipelinePlugin', () => {
   let mockCIDefinition: ICIDefinition;
@@ -31,7 +31,7 @@ describe('GitHubPipelinePlugin', () => {
 
   test('GitHubPipelinePlugin defines repository and pipeline resources', () => {
     const plugin = new GitHubPipelinePlugin({
-        repositoryName: 'test/repository'
+      repositoryName: 'test/repository',
     });
 
     plugin.create(context);
@@ -43,7 +43,7 @@ describe('GitHubPipelinePlugin', () => {
 
   test('GitHubPipelinePlugin defines role with OIDC', () => {
     const plugin = new GitHubPipelinePlugin({
-        repositoryName: 'test/repository'
+      repositoryName: 'test/repository',
     });
 
     plugin.create(context);
@@ -51,37 +51,36 @@ describe('GitHubPipelinePlugin', () => {
     context.initStage(Stage.RES);
     expect(context.get(GlobalResources.REPOSITORY)).toBeDefined();
 
-    Template.fromStack(context.get(GlobalResources.REPOSITORY))
-        .hasResourceProperties('AWS::IAM::Role', {
-            AssumeRolePolicyDocument: {
-                Statement: [
-                    {
-                        Action: 'sts:AssumeRoleWithWebIdentity',
-                        Condition: {
-                            StringLike: {
-                                'token.actions.githubusercontent.com:sub': ['repo:test/repository:*']
-                            }
-                        },
-                        Effect: 'Allow'
-                    }
-                ]
-            }
-        });
+    Template.fromStack(context.get(GlobalResources.REPOSITORY)).hasResourceProperties('AWS::IAM::Role', {
+      AssumeRolePolicyDocument: {
+        Statement: [
+          {
+            Action: 'sts:AssumeRoleWithWebIdentity',
+            Condition: {
+              StringLike: {
+                'token.actions.githubusercontent.com:sub': ['repo:test/repository:*'],
+              },
+            },
+            Effect: 'Allow',
+          },
+        ],
+      },
+    });
   });
 
   test('GitHubPipelinePlugin defines role with specific role name and additional policies', () => {
     const plugin = new GitHubPipelinePlugin({
-        repositoryName: 'test/repository',
-        roleName: 'my-github-role',
+      repositoryName: 'test/repository',
+      roleName: 'my-github-role',
     });
 
     mockCIDefinition.provideCodeBuildDefaults = () => ({
-        rolePolicy: [
-            new iam.PolicyStatement({
-                actions: ['ec2:*'],
-                resources: ['*'],
-            }),
-        ],
+      rolePolicy: [
+        new iam.PolicyStatement({
+          actions: ['ec2:*'],
+          resources: ['*'],
+        }),
+      ],
     });
 
     plugin.create(context);
@@ -91,32 +90,31 @@ describe('GitHubPipelinePlugin', () => {
 
     const template = Template.fromStack(context.get(GlobalResources.REPOSITORY));
     template.hasResourceProperties('AWS::IAM::Role', {
-            RoleName: 'my-github-role',
-            AssumeRolePolicyDocument: {
-                Statement: [
-                    {
-                        Action: 'sts:AssumeRoleWithWebIdentity',
-                        Condition: {
-                            StringLike: {
-                                'token.actions.githubusercontent.com:sub': ['repo:test/repository:*']
-                            }
-                        },
-                        Effect: 'Allow'
-                    }
-                ]
-            }
-        });
+      RoleName: 'my-github-role',
+      AssumeRolePolicyDocument: {
+        Statement: [
+          {
+            Action: 'sts:AssumeRoleWithWebIdentity',
+            Condition: {
+              StringLike: {
+                'token.actions.githubusercontent.com:sub': ['repo:test/repository:*'],
+              },
+            },
+            Effect: 'Allow',
+          },
+        ],
+      },
+    });
     template.hasResourceProperties('AWS::IAM::Policy', {
-        PolicyDocument: {
-            Statement: [
-                {
-                    Action: 'ec2:*',
-                    Effect: 'Allow',
-                    Resource: '*'
-                }
-            ]
-        }
+      PolicyDocument: {
+        Statement: [
+          {
+            Action: 'ec2:*',
+            Effect: 'Allow',
+            Resource: '*',
+          },
+        ],
+      },
     });
   });
-
 });
