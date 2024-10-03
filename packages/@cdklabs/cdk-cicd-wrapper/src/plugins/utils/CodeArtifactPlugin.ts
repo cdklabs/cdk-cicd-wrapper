@@ -24,6 +24,8 @@ export interface CodeArtifactPluginProps {
   readonly repositoryTypes?: CodeArtifactRepositoryTypes[];
 
   readonly npmScope?: string;
+
+  readonly region?: string;
 }
 
 /**
@@ -41,13 +43,13 @@ export class CodeArtifactPlugin extends PluginBase {
   create(context: ResourceContext): void {
     const { domain, repositoryName } = this.options;
     const account = this.options.account || context.blueprintProps.deploymentDefinition.RES.env.account;
-    const region = context.blueprintProps.deploymentDefinition.RES.env.region;
+    const region = this.options.region ?? context.blueprintProps.deploymentDefinition.RES.env.region;
     const repositoryTypes = this.options.repositoryTypes || [CodeArtifactRepositoryTypes.NPM];
 
     const commands = repositoryTypes.map((type) =>
       type === CodeArtifactRepositoryTypes.NPM && this.options.npmScope
-        ? `aws codeartifact login --domain ${domain} --domain-owner ${account} --repository ${repositoryName} --tool ${type} --namespace ${this.options.npmScope}`
-        : `aws codeartifact login --domain ${domain} --domain-owner ${account} --repository ${repositoryName} --tool ${type}`,
+        ? `aws codeartifact login --domain ${domain} --domain-owner ${account} --region ${region} --repository ${repositoryName} --tool ${type} --namespace ${this.options.npmScope}`
+        : `aws codeartifact login --domain ${domain} --domain-owner ${account} --region ${region} --repository ${repositoryName} --tool ${type}`,
     );
 
     const ciDefinition = context.get(GlobalResources.CI_DEFINITION);
