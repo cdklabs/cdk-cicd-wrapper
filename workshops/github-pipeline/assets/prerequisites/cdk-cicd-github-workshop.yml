@@ -1,0 +1,229 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. SPDX-License-Identifier: Apache-2.0
+# Disclaimer: This stack is for workshop purposes only. It is not recommended for production use.
+Parameters:
+  UserProfileName:
+    Type: String
+    Description: The user profile name for the SageMaker workshop
+    Default: 'sagemakeruser'
+  DomainName:
+    Type: String
+    Description: The domain name of the Sagemaker studio instance
+    Default: 'cdk-cicd-workshop'
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      codeeditor: arn:aws:sagemaker:us-east-1:885854791233:image/sagemaker-distribution-cpu
+    us-east-2:
+      codeeditor: arn:aws:sagemaker:us-east-2:37914896644:image/sagemaker-distribution-cpu
+    us-west-1:
+      codeeditor: arn:aws:sagemaker:us-west-1:053634841547:image/sagemaker-distribution-cpu
+    us-west-2:
+      codeeditor: arn:aws:sagemaker:us-west-2:542918446943:image/sagemaker-distribution-cpu
+    af-south-1:
+      codeeditor: arn:aws:sagemaker:af-south-1:238384257742:image/sagemaker-distribution-cpu
+    ap-east-1:
+      codeeditor: arn:aws:sagemaker:ap-east-1:523751269255:image/sagemaker-distribution-cpu
+    ap-south-1:
+      codeeditor: arn:aws:sagemaker:ap-south-1:245090515133:image/sagemaker-distribution-cpu
+    ap-northeast-2:
+      codeeditor: arn:aws:sagemaker:ap-northeast-2:064688005998:image/sagemaker-distribution-cpu
+    ap-southeast-1:
+      codeeditor: arn:aws:sagemaker:ap-southeast-1:022667117163:image/sagemaker-distribution-cpu
+    ap-southeast-2:
+      codeeditor: arn:aws:sagemaker:ap-southeast-2:648430277019:image/sagemaker-distribution-cpu
+    ap-northeast-1:
+      codeeditor: arn:aws:sagemaker:ap-northeast-1:010972774902:image/sagemaker-distribution-cpu
+    ca-central-1:
+      codeeditor: arn:aws:sagemaker:ca-central-1:481561238223:image/sagemaker-distribution-cpu
+    eu-central-1:
+      codeeditor: arn:aws:sagemaker:eu-central-1:545423591354:image/sagemaker-distribution-cpu
+    eu-west-1:
+      codeeditor: arn:aws:sagemaker:eu-west-1:819792524951:image/sagemaker-distribution-cpu
+    eu-west-2:
+      codeeditor: arn:aws:sagemaker:eu-west-2:021081402939:image/sagemaker-distribution-cpu
+    eu-west-3:
+      codeeditor: arn:aws:sagemaker:eu-west-3:856416204555:image/sagemaker-distribution-cpu
+    eu-north-1:
+      codeeditor: arn:aws:sagemaker:eu-north-1:175620155138:image/sagemaker-distribution-cpu
+    eu-south-1:
+      codeeditor: arn:aws:sagemaker:eu-south-1:810671768855:image/sagemaker-distribution-cpu
+    sa-east-1:
+      codeeditor: arn:aws:sagemaker:sa-east-1:567556641782:image/sagemaker-distribution-cpu
+
+Resources:
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+        - PolicyName: s3-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource: arn:aws:s3:::*
+        - PolicyName: lambda-deployment
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:InvokeFunction
+                  - lambda:UpdateFunctionCode
+                Resource:
+                  - "arn:aws:lambda:*:*:function:*"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - sagemaker.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSageMakerFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/AWSCloudFormationFullAccess'
+        - 'arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess'
+        - 'arn:aws:iam::aws:policy/IAMFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonSSMFullAccess'
+        # Workbench deployment
+        - 'arn:aws:iam::aws:policy/PowerUserAccess'
+
+
+  DefaultVpcLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: CFGetDefaultVpcId
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+
+          ec2 = boto3.client('ec2')
+
+          def lambda_handler(event, context):
+              if 'RequestType' in event and event['RequestType'] == 'Create':
+                  vpc_id = get_default_vpc_id()
+                  subnets =  get_subnets_for_vpc(vpc_id)
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'VpcId': vpc_id , "Subnets" : subnets}, '')
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {},'')
+
+          def get_default_vpc_id():
+              vpcs = ec2.describe_vpcs(Filters=[{'Name': 'is-default', 'Values': ['true']}])
+              vpcs = vpcs['Vpcs']
+              vpc_id = vpcs[0]['VpcId']
+              return vpc_id
+
+
+          def get_subnets_for_vpc(vpcId):
+              response = ec2.describe_subnets(
+                  Filters=[
+                      {
+                          'Name': 'vpc-id',
+                          'Values': [vpcId]
+                      }
+                  ]
+              )
+              subnet_ids = []
+              for subnet in response['Subnets']:
+                  subnet_ids.append(subnet['SubnetId'])
+              return subnet_ids
+      Description: Return default VPC ID and Subnets
+      Handler: index.lambda_handler
+      MemorySize: 512
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 5
+  DefaultVpcFinder:
+    Type: Custom::ResourceForFindingDefaultVpc
+    Properties:
+      ServiceToken: !GetAtt DefaultVpcLambda.Arn
+
+  StudioDomain:
+    Type: AWS::SageMaker::Domain
+    DependsOn: DefaultVpcLambda
+    Properties:
+      AppNetworkAccessType: PublicInternetOnly
+      AuthMode: IAM
+      DomainSettings:
+           DockerSettings:
+              EnableDockerAccess: ENABLED
+      DefaultUserSettings:
+          ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+          CodeEditorAppSettings:
+            LifecycleConfigArns:
+              - !GetAtt StudioLifecycleConfig.StudioLifecycleConfigArn
+      DomainName: !Ref DomainName
+      SubnetIds: !GetAtt DefaultVpcFinder.Subnets
+      VpcId: !GetAtt DefaultVpcFinder.VpcId
+
+  UserProfile:
+    Type: AWS::SageMaker::UserProfile
+    Properties:
+      DomainId: !GetAtt StudioDomain.DomainId
+      UserProfileName: !Ref UserProfileName
+      UserSettings:
+        ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+
+  StudioLifecycleConfig:
+    Type: AWS::SageMaker::StudioLifecycleConfig
+    Properties:
+      StudioLifecycleConfigAppType: CodeEditor
+      StudioLifecycleConfigName: my-config
+      StudioLifecycleConfigContent: c3VkbyBhcHQtZ2V0IHVwZGF0ZQpzdWRvIGFwdC1nZXQgLXkgaW5zdGFsbCBjYS1jZXJ0aWZpY2F0ZXMgY3VybCBnbnVwZwoKc3VkbyBpbnN0YWxsIC1tIDA3NTUgLWQgL2V0Yy9hcHQva2V5cmluZ3MKY3VybCAtZnNTTCBodHRwczovL2Rvd25sb2FkLmRvY2tlci5jb20vbGludXgvdWJ1bnR1L2dwZyB8IHN1ZG8gZ3BnIC0tZGVhcm1vciAtbyAvZXRjL2FwdC9rZXlyaW5ncy9kb2NrZXIuZ3BnCnN1ZG8gY2htb2QgYStyIC9ldGMvYXB0L2tleXJpbmdzL2RvY2tlci5ncGcKZWNobyBcCiAgImRlYiBbYXJjaD0kKGRwa2cgLS1wcmludC1hcmNoaXRlY3R1cmUpIHNpZ25lZC1ieT0vZXRjL2FwdC9rZXlyaW5ncy9kb2NrZXIuZ3BnXSBodHRwczovL2Rvd25sb2FkLmRvY2tlci5jb20vbGludXgvdWJ1bnR1IFwKICAkKC4gL2V0Yy9vcy1yZWxlYXNlICYmIGVjaG8gIiRWRVJTSU9OX0NPREVOQU1FIikgc3RhYmxlIiB8IFwKICBzdWRvIHRlZSAvZXRjL2FwdC9zb3VyY2VzLmxpc3QuZC9kb2NrZXIubGlzdCA+IC9kZXYvbnVsbApzdWRvIGFwdC1nZXQgLXkgdXBkYXRlCgojIHBpY2sgdGhlIGxhdGVzdCBwYXRjaCBmcm9tOgpzdWRvIGFwdC1nZXQgaW5zdGFsbCBkb2NrZXItY2UtY2xpIGRvY2tlci1jb21wb3NlLXBsdWdpbiBkb2NrZXIgLXkKCmN1cmwgLWZzU0wgaHR0cHM6Ly9nZXQuamV0aWZ5LmNvbS9kZXZib3ggfCBGT1JDRT0xIGJhc2gKbWtkaXIgY2RrLWNpY2Qtd3JhcHBlci1naXRodWIKY2QgY2RrLWNpY2Qtd3JhcHBlci1naXRodWIKCmdpdCBjb25maWcgLS1nbG9iYWwgaW5pdC5kZWZhdWx0QnJhbmNoIG1haW4KZ2l0IGNvbmZpZyAtLWdsb2JhbCB1c2VyLm5hbWUgIkNESyBDSS9DRCBXcmFwcGVyIFdvcmtzaG9wIgpnaXQgY29uZmlnIC0tZ2xvYmFsIHVzZXIuZW1haWwgIndvcmtzaG9wQGNkay1jaWNkLXdyYXBwZXIuY29tIgoKcHl0aG9uIC1tIHBpcCBpbnN0YWxsIC0tdXBncmFkZSBwaXAgCnBpcCBpbnN0YWxsIGdpdC1yZW1vdGUtY29kZWNvbW1pdApwaXAgaW5zdGFsbCBwaXBlbnYKCmVjaG8gImV4cG9ydCBET0NLRVJfQlVJTERLSVQ9MDsiID4+IH4vLmJhc2hyYwo=
+  Space:
+    Type: AWS::SageMaker::Space
+    DependsOn:
+      - UserProfile
+    Properties:
+      DomainId: !GetAtt StudioDomain.DomainId
+      SpaceName: my-space
+      OwnershipSettings:
+        OwnerUserProfileName: !Ref UserProfileName
+      SpaceSharingSettings:
+          SharingType: Private
+      SpaceSettings:
+        AppType: CodeEditor
+        CodeEditorAppSettings:
+          DefaultResourceSpec:
+            InstanceType: ml.t3.medium
+            LifecycleConfigArn: !GetAtt StudioLifecycleConfig.StudioLifecycleConfigArn
+            SageMakerImageArn: !FindInMap
+              - RegionMap
+              - !Ref 'AWS::Region'
+              - codeeditor
+        SpaceStorageSettings:
+           EbsStorageSettings: 
+            EbsVolumeSizeInGb: 5

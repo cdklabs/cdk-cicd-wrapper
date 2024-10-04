@@ -176,4 +176,40 @@
          <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/basics-lvl300/faq.html</loc>
          <lastmod>1980-01-01</lastmod>
     </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/index.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/00-prerequisites.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/01-create-cdk-project.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/02-define-quality-gates-ci.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/03-create-pipeline.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/04-deploy-stack.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/05-summary.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/06-clean-up.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/faq.html</loc>
+         <lastmod>1980-01-01</lastmod>
+    </url>
 </urlset>
