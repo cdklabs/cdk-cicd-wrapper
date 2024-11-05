@@ -2106,7 +2106,7 @@ npx<span class="w"> </span>dotenv-cli<span class="w"> </span>--<span class="w"> 
 arn:aws:iam::aws:policy/AdministratorAccess<span class="w"> </span><span class="se">\</span>
 --trust<span class="w"> </span><span class="si">${</span><span class="nv">ACCOUNT_RES</span><span class="si">}</span><span class="w"> </span>aws://<span class="si">${</span><span class="nv">ACCOUNT_PROD</span><span class="si">}</span>/<span class="si">${</span><span class="nv">AWS_REGION</span><span class="si">}</span>
 </code></pre></div>
-<p><strong>Note</strong>: Update the variables in the command with your actual account IDs and AWS region. To activate <code>PROD</code> you need to make sure to explicitly add it into the <code>.defineStages([Stage.PROD])</code> as explained in the step 2 below. For more info on how to add custom stages please refer to <a href="../developer_guides/cd.html#how-to-define-custom-stages">here</a></p>
+<p><strong>Note</strong>: Update the variables in the command with your actual account IDs and AWS region. To activate <code>PROD</code>, you must explicitly include it in the <code>.defineStages([Stage.DEV, Stage.INT, Stage.PROD])</code> as outlined in step 2 below. Always specify all the stages you require; do not add only <code>Stage.PROD</code> and assume the other stages will be included automatically. For more info on how to add custom stages please refer to <a href="../developer_guides/cd.html#how-to-define-custom-stages">here</a></p>
 <h2 id="configure-gitignore">Configure .gitignore</h2>
 <p>Ensure that the following lines are in your <code>.gitignore</code> file:</p>
 <ul>
@@ -2137,7 +2137,7 @@ arn:aws:iam::aws:policy/AdministratorAccess<span class="w"> </span><span class="
 <span class="cm">/**</span>
 <span class="cm"> * To enable the `Stage.PROD` stage in your pipeline you have to explicitly add it into the `.defineStages()` hook as below.</span>
 <span class="cm"> * In our case we have DEV, INT and PROD so we add all of them explicitly as we assume you have them all in your project.</span>
-<span class="cm"> * Attention: Leaving one of the stages outside of the defineStages() will leave them outside the pipeline.</span>
+<span class="cm"> * Attention: Any stage not included in the defineStages() function will be excluded from the pipeline.</span>
 <span class="cm"> * This is done for safety reasons, to not export accidentally `PROD` env vars and have it deployed into the wrong account.</span>
 <span class="cm"> */</span>
 <span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">().</span><span class="nx">defineStages</span><span class="p">([</span><span class="nx">Stage</span><span class="p">.</span><span class="nx">DEV</span><span class="p">,</span><span class="w"> </span><span class="nx">Stage</span><span class="p">.</span><span class="nx">INT</span><span class="p">,</span><span class="w"> </span><span class="nx">Stage</span><span class="p">.</span><span class="nx">PROD</span><span class="p">]).</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
