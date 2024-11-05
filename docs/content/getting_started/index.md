@@ -97,7 +97,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_PROD}/${AWS_REGION}
    ```
 
-   **Note**: Update the variables in the command with your actual account IDs and AWS region. To activate `PROD` you need to make sure to explicitly add it into the `.defineStages()` as explained in the step 2 below.
+   **Note**: Update the variables in the command with your actual account IDs and AWS region. To activate `PROD` you need to make sure to explicitly add it into the `.defineStages([Stage.PROD])` as explained in the step 2 below. For more info on how to add custom stages please refer to [here](../developer_guides/cd.md#how-to-define-custom-stages)
 
 ## Configure .gitignore
 
@@ -124,16 +124,16 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
    ```typescript
    import * as cdk from 'aws-cdk-lib';
-   import { PipelineBlueprint } from '{{ npm_codepipeline }}';
+   import { PipelineBlueprint, Stage } from '{{ npm_codepipeline }}';
 
    const app = new cdk.App();
 
    /**
-    * To enable the `PROD` stage in your pipeline you have to explicitly add it into the `.defineStages()` hook as below.
+    * To enable the `Stage.PROD` stage in your pipeline you have to explicitly add it into the `.defineStages()` hook as below.
     * In our case we have DEV, INT and PROD so we add all of them explicitly as we assume you have them all in your project.
-    * This is done for safety reasons, to not export accidentally PROD env vars and have it deployed into the wrong account.
+    * This is done for safety reasons, to not export accidentally `PROD` env vars and have it deployed into the wrong account.
     */
-   PipelineBlueprint.builder().defineStages(['DEV', 'INT', 'PROD']).synth(app);
+   PipelineBlueprint.builder().defineStages([Stage.DEV, Stage.INT, Stage.PROD]).synth(app);
    ```
 
    This will deploy the CI/CD pipeline with its default configuration without deploying any stacks into the staging accounts.
