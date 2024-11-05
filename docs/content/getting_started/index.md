@@ -97,7 +97,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_PROD}/${AWS_REGION}
    ```
 
-   **Note**: Update the variables in the command with your actual account IDs and AWS region. To activate `PROD` you need to make sure to explicitly add it into the `.defineStages([Stage.PROD])` as explained in the step 2 below. For more info on how to add custom stages please refer to [here](../developer_guides/cd.md#how-to-define-custom-stages)
+   **Note**: Update the variables in the command with your actual account IDs and AWS region. To activate `PROD`, you must explicitly include it in the `.defineStages([Stage.DEV, Stage.INT, Stage.PROD])` as outlined in step 2 below. Always specify all the stages you require; do not add only `Stage.PROD` and assume the other stages will be included automatically. For more info on how to add custom stages please refer to [here](../developer_guides/cd.md#how-to-define-custom-stages)
 
 ## Configure .gitignore
 
@@ -131,7 +131,7 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
    /**
     * To enable the `Stage.PROD` stage in your pipeline you have to explicitly add it into the `.defineStages()` hook as below.
     * In our case we have DEV, INT and PROD so we add all of them explicitly as we assume you have them all in your project.
-    * Attention: Leaving one of the stages outside of the defineStages() will leave them outside the pipeline.
+    * Attention: Any stage not included in the defineStages() function will be excluded from the pipeline.
     * This is done for safety reasons, to not export accidentally `PROD` env vars and have it deployed into the wrong account.
     */
    PipelineBlueprint.builder().defineStages([Stage.DEV, Stage.INT, Stage.PROD]).synth(app);
