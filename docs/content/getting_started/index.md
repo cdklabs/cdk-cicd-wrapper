@@ -97,7 +97,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_PROD}/${AWS_REGION}
    ```
 
-   **Note**: Update the variables in the command with your actual account IDs and AWS region.
+   **Note**: Update the variables in the command with your actual account IDs and AWS region. To activate `PROD` you need to make sure to explicitly add it into the `.defineStages()` as explained in the step 2 below.
 
 ## Configure .gitignore
 
@@ -128,7 +128,12 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
    const app = new cdk.App();
 
-   PipelineBlueprint.builder().synth(app);
+   /**
+    * To enable the `PROD` stage in your pipeline you have to explicitly add it into the `.defineStages()` hook as below.
+    * In our case we have DEV, INT and PROD so we add all of them explicitly as we assume you have them all in your project.
+    * This is done for safety reasons, to not export accidentally PROD env vars and have it deployed into the wrong account.
+    */
+   PipelineBlueprint.builder().defineStages(['DEV', 'INT', 'PROD']).synth(app);
    ```
 
    This will deploy the CI/CD pipeline with its default configuration without deploying any stacks into the staging accounts.
@@ -161,7 +166,7 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
   4. 0. Adding cdk script (necessay when you run the `npm run cdk` and uses the local cdk version rather than the global one)
   ```bash
-   jq --arg key "cdk" --arg val "npx aws-cdk@2.142.1" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "cdk" --arg val "npx aws-cdk@2.162.1" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
   ```
   4. 1. Adding validate script
    ```bash
@@ -199,7 +204,7 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
        "audit:license": "npm run license",
        "audit:scan:security": "cdk-cicd security-scan --bandit --semgrep --shellcheck --ci",
        "audit": "npx concurrently 'npm:audit:*(!fix)'",
-       "cdk": "npx aws-cdk@2.142.1",
+       "cdk": "npx aws-cdk@2.162.1",
        "license:fix": "cdk-cicd license --fix",
        "license": "cdk-cicd license",
        "lint:fix": "eslint . --ext .ts --fix",
