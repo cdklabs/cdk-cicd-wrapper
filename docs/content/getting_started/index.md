@@ -97,7 +97,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_PROD}/${AWS_REGION}
    ```
 
-   **Note**: Update the variables in the command with your actual account IDs and AWS region.
+   **Note**: Update the variables in the command with your actual account IDs and AWS region. To activate `PROD`, you must explicitly include it in the `.defineStages([Stage.DEV, Stage.INT, Stage.PROD])` as outlined in step 2 below. Always specify all the stages you require; do not add only `Stage.PROD` and assume the other stages will be included automatically. For more info on how to add custom stages please refer to [here](../developer_guides/cd.md#how-to-define-custom-stages)
 
 ## Configure .gitignore
 
@@ -124,11 +124,17 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
    ```typescript
    import * as cdk from 'aws-cdk-lib';
-   import { PipelineBlueprint } from '{{ npm_codepipeline }}';
+   import { PipelineBlueprint, Stage } from '{{ npm_codepipeline }}';
 
    const app = new cdk.App();
 
-   PipelineBlueprint.builder().synth(app);
+   /**
+    * To enable the `Stage.PROD` stage in your pipeline you have to explicitly add it into the `.defineStages()` hook as below.
+    * In our case we have DEV, INT and PROD so we add all of them explicitly as we assume you have them all in your project.
+    * Attention: Any stage not included in the defineStages() function will be excluded from the pipeline.
+    * This is done for safety reasons, to not export accidentally `PROD` env vars and have it deployed into the wrong account.
+    */
+   PipelineBlueprint.builder().defineStages([Stage.DEV, Stage.INT, Stage.PROD]).synth(app);
    ```
 
    This will deploy the CI/CD pipeline with its default configuration without deploying any stacks into the staging accounts.
@@ -137,11 +143,11 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
    ```typescript
    import * as cdk from 'aws-cdk-lib';
-   import { PipelineBlueprint, GlobalResources } from '@cdklabs/cdk-cicd-wrapper';
+   import { PipelineBlueprint, Stage, GlobalResources } from '@cdklabs/cdk-cicd-wrapper';
 
    const app = new cdk.App();
 
-   PipelineBlueprint.builder().addStack({
+   PipelineBlueprint.builder().defineStages([Stage.DEV, Stage.INT, Stage.PROD]).addStack({
    provide: (context) => {
       // Create your stacks here
       new YourStack(context.scope, `${context.blueprintProps.applicationName}YourStack`, {
@@ -161,7 +167,7 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
   4. 0. Adding cdk script (necessay when you run the `npm run cdk` and uses the local cdk version rather than the global one)
   ```bash
-   jq --arg key "cdk" --arg val "npx aws-cdk@2.142.1" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
+   jq --arg key "cdk" --arg val "npx aws-cdk@2.162.1" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
   ```
   4. 1. Adding validate script
    ```bash
@@ -199,7 +205,7 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
        "audit:license": "npm run license",
        "audit:scan:security": "cdk-cicd security-scan --bandit --semgrep --shellcheck --ci",
        "audit": "npx concurrently 'npm:audit:*(!fix)'",
-       "cdk": "npx aws-cdk@2.142.1",
+       "cdk": "npx aws-cdk@2.162.1",
        "license:fix": "cdk-cicd license --fix",
        "license": "cdk-cicd license",
        "lint:fix": "eslint . --ext .ts --fix",

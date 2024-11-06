@@ -8,9 +8,11 @@
 | ACCOUNT_RES |   |   | account id for resources account where pipeline will run |
 | ACCOUNT_DEV |   |   | account id for DEV environment account |
 | ACCOUNT_INT |   |   | account id for INT environment account |
+| ACCOUNT_PROD |   |   | account id for PROD environment account |
 | RES_ACCOUNT_AWS_PROFILE |   |   | sets the named profile to use for the RES account. this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
 | DEV_ACCOUNT_AWS_PROFILE |   |   | sets the named profile to use for the DEV account. this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
 | INT_ACCOUNT_AWS_PROFILE |   |   | sets the named profile to use for the INT account. this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
+| PROD_ACCOUNT_AWS_PROFILE |   |   | sets the named profile to use for the PROD account. this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
 | AWS_PROFILE |   |   | sets the default named profile to use for aws cli or cdk commands when no `--profile` is provided. set to the same value as `RES_ACCOUNT_AWS_PROFILE` this profile must exist in `~/.aws/credentials` or `~/.aws/config` |
 |             | applicationName | Wrapper | sets the name of the Application |
 | CDK_QUALIFIER | cdkQualifier | wrapper | used to distinguish between multiple deployments of a VP project in the same account. Good practice to customize per deployment. |
