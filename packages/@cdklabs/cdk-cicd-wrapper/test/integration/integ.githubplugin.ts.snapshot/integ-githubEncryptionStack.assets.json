@@ -1,0 +1,20 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "18184672328bf152afb4c40f64d647307d1c6977e845f6bf603191a04fa7e6fb": {
+      "source": {
+        "path": "integ-githubEncryptionStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "218461131457-us-east-1": {
+          "bucketName": "cdk-hnb659fds-assets-218461131457-us-east-1",
+          "objectKey": "18184672328bf152afb4c40f64d647307d1c6977e845f6bf603191a04fa7e6fb.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-file-publishing-role-218461131457-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

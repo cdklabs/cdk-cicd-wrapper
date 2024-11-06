@@ -1,0 +1,104 @@
+{
+ "Resources": {
+  "AccountRESParameter23CFB811": {
+   "Type": "AWS::SSM::Parameter",
+   "Properties": {
+    "Name": "/hnb659fds/AccountRES",
+    "Tags": {
+     "Application": "integ-github"
+    },
+    "Type": "String",
+    "Value": "218461131457"
+   }
+  },
+  "AccountDEVParameter2F4786F4": {
+   "Type": "AWS::SSM::Parameter",
+   "Properties": {
+    "Name": "/hnb659fds/AccountDEV",
+    "Tags": {
+     "Application": "integ-github"
+    },
+    "Type": "String",
+    "Value": "171469511505"
+   }
+  },
+  "AccountResParameterD6047C6F": {
+   "Type": "AWS::SSM::Parameter",
+   "Properties": {
+    "Name": "/hnb659fds/AccountRes",
+    "Tags": {
+     "Application": "integ-github"
+    },
+    "Type": "String",
+    "Value": "218461131457"
+   }
+  },
+  "AccountDevParameter59F15C7A": {
+   "Type": "AWS::SSM::Parameter",
+   "Properties": {
+    "Name": "/hnb659fds/AccountDev",
+    "Tags": {
+     "Application": "integ-github"
+    },
+    "Type": "String",
+    "Value": "171469511505"
+   }
+  },
+  "AccountINTParameterC009C7D9": {
+   "Type": "AWS::SSM::Parameter",
+   "Properties": {
+    "Name": "/hnb659fds/AccountINT",
+    "Tags": {
+     "Application": "integ-github"
+    },
+    "Type": "String",
+    "Value": "-"
+   }
+  },
+  "AccountIntParameterF6317676": {
+   "Type": "AWS::SSM::Parameter",
+   "Properties": {
+    "Name": "/hnb659fds/AccountInt",
+    "Tags": {
+     "Application": "integ-github"
+    },
+    "Type": "String",
+    "Value": "-"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

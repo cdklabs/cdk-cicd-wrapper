@@ -1,0 +1,20 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "ada9d5d9731e0e246f819f36211b3e1886554c6b7cd70cf2174dfaa0a84e3b55": {
+      "source": {
+        "path": "DEVinteggithubEncryptionStackE5A0ACCE.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "171469511505-us-east-1": {
+          "bucketName": "cdk-hnb659fds-assets-171469511505-us-east-1",
+          "objectKey": "ada9d5d9731e0e246f819f36211b3e1886554c6b7cd70cf2174dfaa0a84e3b55.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::171469511505:role/cdk-hnb659fds-file-publishing-role-171469511505-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

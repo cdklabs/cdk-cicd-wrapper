@@ -51,7 +51,7 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev,peer,prod,optional --filter=@types/node,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,prettier,projen,typescript,@aws-sdk/client-s3,@aws-sdk/credential-providers,@types/fs-extra,@types/yargs,csv,fs-extra,tslog,yargs"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/node,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,prettier,projen,typescript,@aws-sdk/client-s3,@aws-sdk/credential-providers,@types/fs-extra,@types/yargs,csv,fs-extra,tslog,yargs"
         }
       ]
     },

@@ -1,0 +1,522 @@
+{
+  "version": "36.0.0",
+  "artifacts": {
+    "assembly-DEV": {
+      "type": "cdk:cloud-assembly",
+      "properties": {
+        "directoryName": "assembly-DEV",
+        "displayName": "DEV"
+      }
+    },
+    "integ-github.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "integ-github.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "integ-github": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://218461131457/us-east-1",
+      "properties": {
+        "templateFile": "integ-github.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "Application": "integ-github"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-deploy-role-218461131457-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-cfn-exec-role-218461131457-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-218461131457-us-east-1/21fbb51d7b23f6a6c262b46a9caee79d744a3ac019fd45422d988b96d44b2a22.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "integ-github.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-lookup-role-218461131457-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "integ-github.assets"
+      ],
+      "metadata": {
+        "/integ-github": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "Application",
+                "Value": "integ-github"
+              }
+            ]
+          }
+        ],
+        "/integ-github/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/integ-github/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "integ-github"
+    },
+    "integ-githubGitHubRepositoryStack.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "integ-githubGitHubRepositoryStack.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "integ-githubGitHubRepositoryStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://unknown-account/unknown-region",
+      "properties": {
+        "templateFile": "integ-githubGitHubRepositoryStack.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "Application": "integ-github"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-deploy-role-${AWS::AccountId}-${AWS::Region}",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-cfn-exec-role-${AWS::AccountId}-${AWS::Region}",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/7f482d3c8fbe105b66c8aa3f27f7b01c781f0a58045eef912dedcd87d881162c.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "integ-githubGitHubRepositoryStack.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-lookup-role-${AWS::AccountId}-${AWS::Region}",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "integ-githubGitHubRepositoryStack.assets"
+      ],
+      "metadata": {
+        "/integ-githubGitHubRepositoryStack": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "Application",
+                "Value": "integ-github"
+              }
+            ]
+          }
+        ],
+        "/integ-githubGitHubRepositoryStack/GitHubActionRole/github-provider/Resource/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "GitHubActionRolegithubprovider6FD841C3"
+          }
+        ],
+        "/integ-githubGitHubRepositoryStack/GitHubActionRole/github-action-role/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "GitHubActionRolegithubactionrole782F2015"
+          }
+        ],
+        "/integ-githubGitHubRepositoryStack/GitHubActionRole/roleArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "GitHubActionRoleroleArnA5D64912"
+          }
+        ],
+        "/integ-githubGitHubRepositoryStack/LatestNodeRuntimeMap": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LatestNodeRuntimeMap"
+          }
+        ],
+        "/integ-githubGitHubRepositoryStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider/Role": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderRole517FED65"
+          }
+        ],
+        "/integ-githubGitHubRepositoryStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider/Handler": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderHandlerF2C543E0"
+          }
+        ],
+        "/integ-githubGitHubRepositoryStack/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/integ-githubGitHubRepositoryStack/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "integ-githubGitHubRepositoryStack"
+    },
+    "integ-githubSSMParameterStack.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "integ-githubSSMParameterStack.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "integ-githubSSMParameterStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://218461131457/us-east-1",
+      "properties": {
+        "templateFile": "integ-githubSSMParameterStack.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "Application": "integ-github"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-deploy-role-218461131457-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-cfn-exec-role-218461131457-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-218461131457-us-east-1/c56fa9b106408aa25ecd79e589d7ceb57e2ff3a29a2c4f2bb7f33c9d04b46187.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "integ-githubSSMParameterStack.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-lookup-role-218461131457-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "integ-githubSSMParameterStack.assets"
+      ],
+      "metadata": {
+        "/integ-githubSSMParameterStack": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "Application",
+                "Value": "integ-github"
+              }
+            ]
+          }
+        ],
+        "/integ-githubSSMParameterStack/AccountRESParameter/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AccountRESParameter23CFB811"
+          }
+        ],
+        "/integ-githubSSMParameterStack/AccountDEVParameter/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AccountDEVParameter2F4786F4"
+          }
+        ],
+        "/integ-githubSSMParameterStack/AccountResParameter/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AccountResParameterD6047C6F"
+          }
+        ],
+        "/integ-githubSSMParameterStack/AccountDevParameter/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AccountDevParameter59F15C7A"
+          }
+        ],
+        "/integ-githubSSMParameterStack/AccountINTParameter/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AccountINTParameterC009C7D9"
+          }
+        ],
+        "/integ-githubSSMParameterStack/AccountIntParameter/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AccountIntParameterF6317676"
+          }
+        ],
+        "/integ-githubSSMParameterStack/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/integ-githubSSMParameterStack/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "integ-githubSSMParameterStack"
+    },
+    "integ-githubEncryptionStack.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "integ-githubEncryptionStack.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "integ-githubEncryptionStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://218461131457/us-east-1",
+      "properties": {
+        "templateFile": "integ-githubEncryptionStack.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "Application": "integ-github"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-deploy-role-218461131457-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-cfn-exec-role-218461131457-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-218461131457-us-east-1/18184672328bf152afb4c40f64d647307d1c6977e845f6bf603191a04fa7e6fb.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "integ-githubEncryptionStack.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-lookup-role-218461131457-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "integ-githubEncryptionStack.assets"
+      ],
+      "metadata": {
+        "/integ-githubEncryptionStack": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "Application",
+                "Value": "integ-github"
+              }
+            ]
+          }
+        ],
+        "/integ-githubEncryptionStack/Key/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "Key961B73FD"
+          }
+        ],
+        "/integ-githubEncryptionStack/Key/Alias/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "KeyAlias910D852D"
+          }
+        ],
+        "/integ-githubEncryptionStack/KeyArnCfnOutput": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "KeyArnCfnOutput"
+          }
+        ],
+        "/integ-githubEncryptionStack/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/integ-githubEncryptionStack/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "integ-githubEncryptionStack"
+    },
+    "integ-githubComplianceLogBucketStack.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "integ-githubComplianceLogBucketStack.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "integ-githubComplianceLogBucketStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://218461131457/us-east-1",
+      "properties": {
+        "templateFile": "integ-githubComplianceLogBucketStack.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "Application": "integ-github"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-deploy-role-218461131457-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-cfn-exec-role-218461131457-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-218461131457-us-east-1/e596cc80cc34f18e3558eaba91b32844133d78c5eeae6d1a46db3f5ed629b5f4.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "integ-githubComplianceLogBucketStack.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-lookup-role-218461131457-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "integ-githubComplianceLogBucketStack.assets"
+      ],
+      "metadata": {
+        "/integ-githubComplianceLogBucketStack": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "Application",
+                "Value": "integ-github"
+              }
+            ]
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/LambdaFunction/ServiceRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LambdaFunctionServiceRoleC555A460"
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/LambdaFunction/ServiceRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LambdaFunctionServiceRoleDefaultPolicy32EEEE35"
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/LambdaFunction/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LambdaFunctionBF21E41F"
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/Provider/framework-onEvent/ServiceRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ProviderframeworkonEventServiceRole9FF04296"
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/Provider/framework-onEvent/ServiceRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ProviderframeworkonEventServiceRoleDefaultPolicy48CD2133"
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/Provider/framework-onEvent/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ProviderframeworkonEvent83C1D0A7"
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/CustomResource/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomResource"
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/integ-githubComplianceLogBucketStack/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "integ-githubComplianceLogBucketStack"
+    },
+    "IntegGithubPipelineDefaultTestDeployAssertD0D76053.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "IntegGithubPipelineDefaultTestDeployAssertD0D76053.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "IntegGithubPipelineDefaultTestDeployAssertD0D76053": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://unknown-account/unknown-region",
+      "properties": {
+        "templateFile": "IntegGithubPipelineDefaultTestDeployAssertD0D76053.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "Application": "integ-github"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-deploy-role-${AWS::AccountId}-${AWS::Region}",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-cfn-exec-role-${AWS::AccountId}-${AWS::Region}",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/21fbb51d7b23f6a6c262b46a9caee79d744a3ac019fd45422d988b96d44b2a22.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "IntegGithubPipelineDefaultTestDeployAssertD0D76053.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-lookup-role-${AWS::AccountId}-${AWS::Region}",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "IntegGithubPipelineDefaultTestDeployAssertD0D76053.assets"
+      ],
+      "metadata": {
+        "/IntegGithubPipeline/DefaultTest/DeployAssert": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "Application",
+                "Value": "integ-github"
+              }
+            ]
+          }
+        ],
+        "/IntegGithubPipeline/DefaultTest/DeployAssert/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/IntegGithubPipeline/DefaultTest/DeployAssert/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "IntegGithubPipeline/DefaultTest/DeployAssert"
+    },
+    "Tree": {
+      "type": "cdk:tree",
+      "properties": {
+        "file": "tree.json"
+      }
+    }
+  }
+}
