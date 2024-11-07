@@ -15,7 +15,7 @@ const eslintDeps = [
 const workflowRunsOn = ['ubuntu-latest'];
 const cdkVersion = '2.149.0';
 const cdkNagVersion = '2.28.0';
-const constructsVersion = '10.3.0';
+const constructsVersion = '10.0.0';
 
 const authorName = 'CDK CI/CD Wrapper Team';
 
@@ -320,6 +320,8 @@ const prepare = root.addTask('husky');
 prepare.exec('husky', { condition: '[ ! -n "$CI" ]' });
 
 setupAllContributors(root);
+
+pipeline.package.file.patch(pj.JsonPatch.add('/devDependencies/constructs', `^${constructsVersion}`));
 
 root.synth();
 

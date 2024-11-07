@@ -1,0 +1,20 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "c56fa9b106408aa25ecd79e589d7ceb57e2ff3a29a2c4f2bb7f33c9d04b46187": {
+      "source": {
+        "path": "integ-githubSSMParameterStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "218461131457-us-east-1": {
+          "bucketName": "cdk-hnb659fds-assets-218461131457-us-east-1",
+          "objectKey": "c56fa9b106408aa25ecd79e589d7ceb57e2ff3a29a2c4f2bb7f33c9d04b46187.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::218461131457:role/cdk-hnb659fds-file-publishing-role-218461131457-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

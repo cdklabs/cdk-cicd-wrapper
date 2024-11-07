@@ -1,0 +1,3 @@
+Rule ID,Resource ID,Compliance,Exception Reason,Rule Level,Rule Info
+"AwsSolutions-IAM4","integ-githubGitHubRepositoryStack/GitHubActionRole/github-action-role/Resource","Compliant","N/A","Error","The IAM user, role, or group uses AWS managed policies."
+"AwsSolutions-IAM5","integ-githubGitHubRepositoryStack/GitHubActionRole/github-action-role/Resource","Suppressed","Wildcard is required for GitHubActionRole","Error","The IAM entity contains wildcard permissions and does not have a cdk-nag rule suppression with evidence for those permission."
