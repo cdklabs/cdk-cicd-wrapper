@@ -321,6 +321,8 @@ prepare.exec('husky', { condition: '[ ! -n "$CI" ]' });
 
 setupAllContributors(root);
 
+pipeline.package.file.patch(pj.JsonPatch.add('/devDependencies/constructs', `^${constructsVersion}`));
+
 root.synth();
 
 function setupAllContributors(project: pj.javascript.NodeProject) {
