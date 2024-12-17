@@ -50,19 +50,19 @@
     "copyfiles": "^2.4.1",
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-import-resolver-typescript": "^3.6.3",
+    "eslint-import-resolver-typescript": "^3.7.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.2.1",
     "jest": "^29.7.0",
     "jest-junit": "^15",
     "jsii": "~5.4.0",
-    "jsii-diff": "^1.104.0",
-    "jsii-pacmak": "^1.104.0",
+    "jsii-diff": "^1.106.0",
+    "jsii-pacmak": "^1.106.0",
     "jsii-rosetta": "~5.4.0",
-    "prettier": "^3.3.3",
-    "projen": "^0.90.0",
+    "prettier": "^3.4.2",
+    "projen": "^0.91.1",
     "ts-jest": "^29.2.5",
-    "typescript": "^5.6.3"
+    "typescript": "^5.7.2"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.149.0",
@@ -72,8 +72,8 @@
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
-    "cdk-pipelines-github": "^0.4.126",
-    "yaml": "^2.6.0"
+    "cdk-pipelines-github": "^0.4.127",
+    "yaml": "^2.6.1"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
