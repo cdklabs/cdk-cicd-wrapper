@@ -39,12 +39,12 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.2.1",
     "prettier": "^3.4.2",
-    "projen": "^0.91.1",
+    "projen": "^0.91.5",
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.713.0",
-    "@aws-sdk/credential-providers": "^3.713.0",
+    "@aws-sdk/client-s3": "^3.721.0",
+    "@aws-sdk/credential-providers": "^3.721.0",
     "@types/fs-extra": "^11.0.4",
     "@types/yargs": "^17.0.33",
     "csv": "^6.3.11",

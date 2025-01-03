@@ -60,7 +60,7 @@
     "jsii-pacmak": "^1.106.0",
     "jsii-rosetta": "~5.4.0",
     "prettier": "^3.4.2",
-    "projen": "^0.91.1",
+    "projen": "^0.91.5",
     "ts-jest": "^29.2.5",
     "typescript": "^5.7.2"
   },
@@ -72,8 +72,8 @@
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
-    "cdk-pipelines-github": "^0.4.127",
-    "yaml": "^2.6.1"
+    "cdk-pipelines-github": "^0.4.128",
+    "yaml": "^2.7.0"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
