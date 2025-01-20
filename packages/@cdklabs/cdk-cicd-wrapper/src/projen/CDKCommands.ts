@@ -119,7 +119,7 @@ export class CDKCommands extends Component {
       project.addTask('workbench:destroy').exec('dotenv -- npm run _workbench:destroy', { receiveArgs: true });
       project
         .addTask('_workbench:destroy')
-        .exec(`cross-env cdk destroy --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
+        .exec(`cross-env cdk destroy --all --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
           receiveArgs: true,
         });
 
@@ -167,7 +167,7 @@ export class CDKCommands extends Component {
       project.tasks.tryFind('destroy')?.reset('dotenv -- npm run _destroy', { receiveArgs: true });
       project
         .addTask('_destroy')
-        .exec('cross-env cdk destroy --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
+        .exec('cross-env cdk destroy --all --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
       project.tasks.tryFind('synth')?.reset('dotenv -- npm run _synth', { receiveArgs: true });
       project.addTask('_synth').exec('cross-env cdk synth --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
       project.tasks.tryFind('diff')?.reset('dotenv -- npm run _diff', { receiveArgs: true });
