@@ -98,12 +98,14 @@ export class CDKCommands extends Component {
       // Manage CDK tasks - Ensure env variables are read from .env file
       const deployTask = project.tasks.tryFind('deploy')!;
       deployTask.reset('dotenv -- npm run _deploy', { receiveArgs: true });
-      project.addTask('_deploy').exec('cross-env cdk deploy --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
+      project
+        .addTask('_deploy')
+        .exec('cross-env cdk deploy --all --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
 
       project.addTask('workbench').exec('dotenv -- npm run _workbench', { receiveArgs: true });
       project
         .addTask('_workbench')
-        .exec(`cross-env cdk deploy --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
+        .exec(`cross-env cdk deploy --all --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
           receiveArgs: true,
         });
 
