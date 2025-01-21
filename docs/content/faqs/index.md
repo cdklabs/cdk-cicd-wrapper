@@ -22,3 +22,4 @@ Below we list the most common issues you might encounter during the deployment u
   npx dotenv-cli -- npm run cdk deploy --all --region ${AWS_REGION} --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER}
   ```
   After performing this please do not forget to delete your CloudFormation resources on the previous INT Account.
+- If you see an error `CreateRepository request is not allowed because there is no existing repository in this AWS account or AWS Organization` when performing the initial deploy step it means that your AWS Organization is not able to create new CodeCommit repositories, so you will need to choose the CodeStar option to connect to an external repository.  CodeCommit repositories can only be created in AWS Organizations that already had at least 1 CodeCommit repository in a child account on July 25, 2024.

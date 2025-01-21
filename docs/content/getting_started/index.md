@@ -15,7 +15,7 @@ Before you begin, ensure that you have the following prerequisites in place:
 3. **jq Command Line JSON Processor**: Install the `jq` command-line JSON processor (version 1.5 or later).
 4. **Docker**: Install Docker (version 24.0.x or later).
 5. **Python and Pipenv**: If you plan to develop Python Lambda functions, ensure that you have Python (version 3.11 or later) and Pipenv (version 2023 or later) installed.
-6. **Version Control System (VCS)**: The CI/CD pipeline provisions an AWS CodeCommit Git repository by default for hosting your project's source code. However, you can also choose to use your own GitHub repository.
+6. **Version Control System (VCS)**: The CI/CD pipeline provisions an AWS CodeCommit Git repository by default for hosting your project's source code. However, not all accounts can use CodeCommit after July 25, 2024.  You can also use [CodeConnections](https://docs.aws.amazon.com/dtconsole/latest/userguide/welcome-connections-supported-providers.html) so that the project source code is stored in Bitbucket Cloud, Github or Gitlab.
 
 For more detailed information on prerequisites, refer to the [Prerequisites](./prerequisites.md) documentation.
 
