@@ -112,7 +112,7 @@ PipelineBlueprint.builder().addStack({
 
 The {{ project_name }} uses environment variables to store sensitive information and configuration settings. The `CdkCICDWrapper` component creates a sample `.env` file in the root directory of your project and defines the necessary variables there. You must fill out the values for these variables.
 
-If you are using CodeConnections to access an external git repository, add the following value to the .env file with the correct values for region, account number and connection ID:
+If you are using [CodeConnections](../developer_guides/vcs_github.md) to access an external git repository, add the following value to the .env file with the correct values for region, account number and connection ID:
 
 ```
 CODESTAR_CONNECTION_ARN=arn:aws:codeconnections:[region]:[account number]:connection/[connection ID]
