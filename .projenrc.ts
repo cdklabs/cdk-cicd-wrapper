@@ -15,7 +15,7 @@ const eslintDeps = [
 const workflowRunsOn = ['ubuntu-latest'];
 const cdkVersion = '2.149.0';
 const cdkNagVersion = '2.28.0';
-const constructsVersion = '10.0.0';
+const constructsVersion = '10.3.0';
 
 const authorName = 'CDK CI/CD Wrapper Team';
 
@@ -31,6 +31,7 @@ const root = new yarn.Monorepo({
   defaultReleaseBranch: 'main',
   devDeps: [
     'cdklabs-projen-project-types',
+    `constructs@${constructsVersion}`,
     'node-fetch@^2',
     'eslint@^8',
     '@typescript-eslint/eslint-plugin@^7',
@@ -61,6 +62,7 @@ const root = new yarn.Monorepo({
   autoApproveOptions: {
     allowedUsernames: ['aws-cdk-automation', 'dependabot[bot]'],
   },
+  autoApproveUpgrades: true,
 
   release: true,
   releaseOptions: {
@@ -76,7 +78,6 @@ const root = new yarn.Monorepo({
         types: ['feat', 'fix', 'chore', 'refactor'],
       },
     },
-    mergify: false,
   },
 
   prerelease: 'alpha',
@@ -115,16 +116,26 @@ const pipeline = new yarn.TypeScriptWorkspace({
 
   devDeps: [
     'eslint@^8',
-    `@aws-cdk/integ-runner@${cdkVersion}-alpha.0`,
-    `@aws-cdk/integ-tests-alpha@${cdkVersion}-alpha.0`,
+    `@aws-cdk/integ-runner@^${cdkVersion}-alpha.0`,
+    `@aws-cdk/integ-tests-alpha@^${cdkVersion}-alpha.0`,
     '@typescript-eslint/eslint-plugin@^7',
     '@typescript-eslint/parser@^7',
     '@typescript-eslint/typescript-estree@^7',
   ],
 
-  peerDeps: [`cdk-nag@^${cdkNagVersion}`, `aws-cdk-lib@^${cdkVersion}`, `constructs@^${constructsVersion}`],
+  peerDeps: [
+    `cdk-nag@^${cdkNagVersion}`,
+    `aws-cdk-lib@^${cdkVersion}`,
+    `constructs@^${constructsVersion}`,
+    'cdk-pipelines-github',
+  ],
   bundledDeps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check', 'yaml'],
-  deps: [`cdk-pipelines-github`],
+  deps: [
+    `cdk-pipelines-github`,
+    '@cloudcomponents/cdk-pull-request-approval-rule',
+    '@cloudcomponents/cdk-pull-request-check',
+    'yaml',
+  ],
   jest: true,
   disableTsconfig: true,
 });
@@ -313,6 +324,13 @@ root.package.file.patch(
 const commitlint = root.addTask('commitlint');
 commitlint.exec('commitlint --edit', { receiveArgs: true });
 
+// Local development
+
+pipeline.tasks.tryFind('package:dotnet')?.addCondition('[ -n "$CI" ] || [ -n "$DOTNET_ENABLED" ]');
+pipeline.tasks.tryFind('package:python')?.addCondition('[ -n "$CI" ] || [ -n "$PYTHON_ENABLED" ]');
+pipeline.tasks.tryFind('package:go')?.addCondition('[ -n "$CI" ] || [ -n "$GO_ENABLED" ]');
+pipeline.tasks.tryFind('package:java')?.addCondition('[ -n "$CI" ] || [ -n "$JAVA_ENABLED" ]');
+
 // husky
 root.package.addDevDeps('husky');
 
@@ -321,10 +339,9 @@ prepare.exec('husky', { condition: '[ ! -n "$CI" ]' });
 
 setupAllContributors(root);
 
-pipeline.package.file.patch(pj.JsonPatch.add('/devDependencies/constructs', `^${constructsVersion}`));
-
 root.synth();
 
+// Util functions
 function setupAllContributors(project: pj.javascript.NodeProject) {
   project.addDevDeps('all-contributors-cli');
   project.addTask('contributors:update', {

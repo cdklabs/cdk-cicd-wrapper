@@ -176,7 +176,8 @@
         {
           "exec": "jsii-pacmak -v --target dotnet"
         }
-      ]
+      ],
+      "condition": "[ -n \"$CI\" ] || [ -n \"$DOTNET_ENABLED\" ]"
     },
     "package:java": {
       "name": "package:java",
@@ -185,7 +186,8 @@
         {
           "exec": "jsii-pacmak -v --target java"
         }
-      ]
+      ],
+      "condition": "[ -n \"$CI\" ] || [ -n \"$JAVA_ENABLED\" ]"
     },
     "package:js": {
       "name": "package:js",
@@ -203,7 +205,8 @@
         {
           "exec": "jsii-pacmak -v --target python"
         }
-      ]
+      ],
+      "condition": "[ -n \"$CI\" ] || [ -n \"$PYTHON_ENABLED\" ]"
     },
     "post-compile": {
       "name": "post-compile",
