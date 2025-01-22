@@ -109,12 +109,12 @@ export class CDKCommands extends Component {
           receiveArgs: true,
         });
 
-        project.addTask('workbenchAll').exec('dotenv -- npm run _workbench', { receiveArgs: true });
-        project
-          .addTask('_workbenchAll')
-          .exec(`cross-env cdk deploy --all --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
-            receiveArgs: true,
-          });
+      project.addTask('workbenchAll').exec('dotenv -- npm run _workbench', { receiveArgs: true });
+      project
+        .addTask('_workbenchAll')
+        .exec(`cross-env cdk deploy --all --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
+          receiveArgs: true,
+        });
 
       project.addTask('workbench:synth').exec('dotenv -- npm run _workbench:synth', { receiveArgs: true });
       project
