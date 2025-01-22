@@ -43,16 +43,16 @@
     "@typescript-eslint/typescript-estree": "^7",
     "all-contributors-cli": "^6.26.1",
     "cdklabs-projen-project-types": "^0.1.216",
-    "constructs": "^10.0.0",
+    "constructs": "10.3.0",
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-prettier": "^5.2.3",
     "husky": "^9.1.7",
     "node-fetch": "^2",
     "prettier": "^3.4.2",
-    "projen": "^0.91.5",
+    "projen": "^0.91.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.3"
   },
   "keywords": [
     "aws",

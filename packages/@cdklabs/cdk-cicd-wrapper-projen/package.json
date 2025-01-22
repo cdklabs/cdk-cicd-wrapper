@@ -33,13 +33,13 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^3.7.0",
     "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-prettier": "^5.2.3",
     "prettier": "^3.4.2",
-    "projen": "^0.91.5",
-    "typescript": "^5.7.2"
+    "projen": "^0.91.6",
+    "typescript": "^5.7.3"
   },
   "dependencies": {
-    "projen": "^0.91.5"
+    "projen": "^0.91.6"
   },
   "main": "lib/index.js",
   "license": "Apache-2.0",
