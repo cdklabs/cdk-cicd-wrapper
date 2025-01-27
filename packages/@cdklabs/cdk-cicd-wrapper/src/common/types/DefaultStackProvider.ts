@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import { Construct, IConstruct } from 'constructs';
 import { BaseStackProvider } from './BaseStackProvider';
 import { ParameterResolver } from '../../utils';
 import { ResourceContext } from '../spi/ResourceContext';
@@ -21,6 +21,12 @@ export interface DefaultStackProviderOptions {
    * The name of the provider.
    */
   readonly providerName?: string;
+
+  /**
+   * Enable stack name normalization to replace hyphens and forward slashes
+   * @default false
+   */
+  readonly normalizeStackNames?: boolean;
 }
 
 /**
@@ -67,6 +73,7 @@ export abstract class DefaultStackProvider extends BaseStackProvider {
   private _stage?: Construct;
   private _appScope?: cdk.Stack;
   private _providerScope?: cdk.Stack;
+  private readonly _normalizeStackNames: boolean;
 
   protected providerName: string;
 
@@ -77,6 +84,7 @@ export abstract class DefaultStackProvider extends BaseStackProvider {
   constructor(options: DefaultStackProviderOptions = {}) {
     super();
     this.providerName = options.providerName ?? this.constructor.name;
+    this._normalizeStackNames = options.normalizeStackNames ?? false;
   }
 
   /**
@@ -86,6 +94,11 @@ export abstract class DefaultStackProvider extends BaseStackProvider {
   provide(context: ResourceContext): void {
     this.cleanup();
     super.provide(context);
+
+    // Apply stack name normalization if enabled
+    if (this._normalizeStackNames) {
+      this.applyStackNameNormalization();
+    }
     this.cleanup();
   }
 
@@ -134,6 +147,23 @@ export abstract class DefaultStackProvider extends BaseStackProvider {
     }
 
     return this._providerScope;
+  }
+
+  private applyStackNameNormalization(): void {
+    cdk.Aspects.of(this.scope).add({
+      visit(node: IConstruct): void {
+        if (node instanceof cdk.Stack) {
+          // Create normalized stack name
+          const normalizedName = node.node.path
+            .replace(/-/g, '') // Remove hyphens
+            .replace(/\//g, '-'); // Replace forward slashes with hyphens
+
+          // Apply the normalized name
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (node as any)._stackName = normalizedName;
+        }
+      },
+    });
   }
 
   /**
