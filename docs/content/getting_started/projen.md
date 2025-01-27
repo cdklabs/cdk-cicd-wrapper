@@ -43,15 +43,33 @@ Follow these steps to initialize a new project using Projen:
    new CdkCICDWrapper(project, {
      cdkQualifier: 'wrapper',
      repositoryName: 'projen-sample-wrapper',
-     repositoryType: 'CODECOMMIT',
+     repositoryType: 'CODECOMMIT', // Must be 'GITHUB' for a codestar connection
    });
 
    project.synth();
    ```
 
-   This code configures the project with the necessary settings for the AWS CDK and the `CdkCICDWrapper` component.
+   This code configures the project with the necessary settings for the AWS CDK and the `CdkCICDWrapper` component.  Note that a PROD stage will not be created by default, so add it here if required.  eg.
 
-5. Execute the `npx projen` command to enable the project.
+   ```typescript
+   new CdkCICDWrapper(project, {
+      cdkQualifier: 'wrapper',
+      repositoryName: 'projen-sample-wrapper',
+      repositoryType: 'CODECOMMIT',
+      stages: [ // Must be a list of all stages other than RES and may include custom stages
+         'DEV',
+         'INT',
+         'PROD',
+      ]
+   });
+
+   ```
+
+5. Enable the project.
+
+```bash
+npx projen
+```
 
 6. Before deploying, run the following commands to ensure your project is ready:
 
@@ -75,7 +93,7 @@ const app = new cdk.App();
 
 PipelineBlueprint.builder().addStack({
   provide: (context) => {
-    // Create your stacks here
+    // Create your stacks here.  Note that the scope parameter must be `context.scope`, not `app`
     new YourStack(context.scope, `${context.blueprintProps.applicationName}YourStack`, {
       applicationName: context.blueprintProps.applicationName,
       stageName: context.stage,
@@ -93,6 +111,12 @@ PipelineBlueprint.builder().addStack({
 ## Step 3: Configure environment variables / create .env file
 
 The {{ project_name }} uses environment variables to store sensitive information and configuration settings. The `CdkCICDWrapper` component creates a sample `.env` file in the root directory of your project and defines the necessary variables there. You must fill out the values for these variables.
+
+If you are using [CodeConnections](../developer_guides/vcs_github.md) to access an external git repository, add the following value to the .env file with the correct values for region, account number and connection ID:
+
+```
+CODESTAR_CONNECTION_ARN=arn:aws:codeconnections:[region]:[account number]:connection/[connection ID]
+```
 
 This file is created once, and you must maintain it manually as needed.
 
@@ -120,13 +144,13 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
    npm run bootstrap INT
    ```
 
-4. **Prepare the PROD stage**:
+4. **Prepare the PROD stage (if configured)**:
 
    ```bash
    npm run bootstrap PROD
    ```
 
-   **Note**: The stages have to be defined in the `.projenrc.ts` file `CdkCICDWrapperOptions.stages` variable.
+   **Note**: The stages have to be defined in the `.projenrc.ts` file `CdkCICDWrapperOptions.stages` variable and PROD is not configured by default.  
 
 ## Step 5: Deploy the pipeline
 

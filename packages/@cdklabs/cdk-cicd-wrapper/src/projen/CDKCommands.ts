@@ -98,12 +98,21 @@ export class CDKCommands extends Component {
       // Manage CDK tasks - Ensure env variables are read from .env file
       const deployTask = project.tasks.tryFind('deploy')!;
       deployTask.reset('dotenv -- npm run _deploy', { receiveArgs: true });
-      project.addTask('_deploy').exec('cross-env cdk deploy --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
+      project
+        .addTask('_deploy')
+        .exec('cross-env cdk deploy --all --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
 
       project.addTask('workbench').exec('dotenv -- npm run _workbench', { receiveArgs: true });
       project
         .addTask('_workbench')
         .exec(`cross-env cdk deploy --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
+          receiveArgs: true,
+        });
+
+      project.addTask('workbenchAll').exec('dotenv -- npm run _workbench', { receiveArgs: true });
+      project
+        .addTask('_workbenchAll')
+        .exec(`cross-env cdk deploy --all --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
           receiveArgs: true,
         });
 
@@ -117,7 +126,7 @@ export class CDKCommands extends Component {
       project.addTask('workbench:destroy').exec('dotenv -- npm run _workbench:destroy', { receiveArgs: true });
       project
         .addTask('_workbench:destroy')
-        .exec(`cross-env cdk destroy --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
+        .exec(`cross-env cdk destroy --all --profile $${this.workbenchStage}_ACCOUNT_AWS_PROFILE -c "workbench=true"`, {
           receiveArgs: true,
         });
 
@@ -165,7 +174,7 @@ export class CDKCommands extends Component {
       project.tasks.tryFind('destroy')?.reset('dotenv -- npm run _destroy', { receiveArgs: true });
       project
         .addTask('_destroy')
-        .exec('cross-env cdk destroy --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
+        .exec('cross-env cdk destroy --all --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
       project.tasks.tryFind('synth')?.reset('dotenv -- npm run _synth', { receiveArgs: true });
       project.addTask('_synth').exec('cross-env cdk synth --profile $RES_ACCOUNT_AWS_PROFILE', { receiveArgs: true });
       project.tasks.tryFind('diff')?.reset('dotenv -- npm run _diff', { receiveArgs: true });
