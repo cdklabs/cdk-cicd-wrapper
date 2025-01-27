@@ -8,6 +8,7 @@ import { logger } from './LoggingProvider';
 import { RepositoryType, GlobalResources, ResourceContext, IResourceProvider, RepositoryConfig } from '../common';
 import { CodeStarConnectRepositoryStack } from '../stacks';
 import { CodeCommitRepositoryStack } from '../stacks/CodeCommitRepositoryStack';
+import { S3RepositoryStack } from '../stacks/S3RepositoryStack';
 
 /**
  * Default configuration for repository provider.
@@ -95,6 +96,16 @@ export abstract class RepositorySource {
     return new CodeStarConnectionRepositorySource(options);
   }
 
+  /**
+   * Creates a new S3 repository source.
+   *
+   * @param options The repository source options.
+   * @returns
+   */
+  static s3(options?: S3RepositorySourceOptions): RepositorySource {
+    return new S3RepositorySource(options);
+  }
+
   static basedType(type: RepositoryType, config?: BaseRepositoryProviderProps): RepositorySource {
     switch (type) {
       case 'GITHUB':
@@ -111,6 +122,14 @@ export abstract class RepositorySource {
           description: config?.description,
           enableCodeGuruReviewer: config?.codeGuruReviewer,
           enablePullRequestChecks: true,
+        });
+      case 'S3':
+        return this.s3({
+          bucketName: config?.name,
+          prefix: config?.name,
+          branch: config?.branch,
+          description: config?.description,
+          codeBuildCloneOutput: false,
         });
       default:
         throw new Error(`Unsupported repository type: ${type}`);
@@ -192,6 +211,26 @@ export class CodeStarConnectionRepositorySource extends RepositorySource {
   }
 }
 
+export class S3RepositorySource extends RepositorySource {
+  constructor(private options: S3RepositorySourceOptions = {}) {
+    super();
+  }
+
+  produceSourceConfig(context: ResourceContext): IRepositoryStack {
+    const encryptionKey = context.get(GlobalResources.ENCRYPTION).key;
+    return new S3RepositoryStack(context.scope, `${context.blueprintProps.applicationName}S3Repository`, {
+      env: context.blueprintProps.deploymentDefinition.RES.env,
+      bucketName:
+        this.options.bucketName ||
+        `${context.blueprintProps.applicationName}-repo-${context.blueprintProps.deploymentDefinition.RES.env.account}-${context.blueprintProps.deploymentDefinition.RES.env.region}`,
+      prefix: this.options.prefix,
+      branch: this.options.branch || defaultRepositoryConfig.branch,
+      roles: this.options.roles,
+      encryptionKey,
+    });
+  }
+}
+
 /**
  * Represents the configuration for a repository source.
  */
@@ -253,4 +292,37 @@ export interface CodeStarConnectionRepositorySourceOptions extends RepositorySou
    * @default - The value of the CODESTAR_CONNECTION_ARN environment variable.
    */
   readonly codeStarConnectionArn?: string;
+}
+
+/**
+ * Options for configuring an S3 repository source.
+ */
+export interface S3RepositorySourceOptions extends RepositorySourceOptions {
+  /**
+   * The name of the S3 bucket where the repository is stored.
+   *
+   * @default - A bucket name is generated based on the application name, account, and region.
+   */
+  readonly bucketName?: string;
+
+  /**
+   * An optional prefix to use within the S3 bucket.
+   * This can be used to specify a subdirectory within the bucket.
+   *
+   * @default - No prefix is used.
+   */
+  readonly prefix?: string;
+
+  /**
+   * An optional branch name to use for the repository.
+   * If not specified, the default branch will be used.
+   *
+   * @default - The default branch of the repository.
+   */
+  readonly branch?: string;
+
+  /**
+   * An optional list of IAM roles that are allowed to access the repository.
+   */
+  readonly roles?: string[];
 }
