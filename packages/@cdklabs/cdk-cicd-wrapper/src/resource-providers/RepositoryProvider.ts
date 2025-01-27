@@ -314,14 +314,6 @@ export interface S3RepositorySourceOptions extends RepositorySourceOptions {
   readonly prefix?: string;
 
   /**
-   * An optional branch name to use for the repository.
-   * If not specified, the default branch will be used.
-   *
-   * @default - The default branch of the repository.
-   */
-  readonly branch?: string;
-
-  /**
    * An optional list of IAM roles that are allowed to access the repository.
    */
   readonly roles?: string[];
