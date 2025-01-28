@@ -355,7 +355,7 @@ export interface IStageDefinition {
 /**
  * Represents the type of a repository.
  */
-export type RepositoryType = 'GITHUB' | 'CODECOMMIT';
+export type RepositoryType = 'GITHUB' | 'CODECOMMIT' | 'S3';
 
 /**
  * Represents the configuration for a repository.

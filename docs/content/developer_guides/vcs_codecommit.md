@@ -1,6 +1,19 @@
 # AWS CodeCommit Integration
 
-To be able to use AWS CodeCommit repositories in AWS CodePipeline with vanilla-pipeline, you can do this directly in the configure step.
+> **Note:** AWS CodeCommit will be deemphasized after July 25, 2024. Consider using S3-based or GitHub repositories instead.
+
+## Configuration
+
+Configure your pipeline to use CodeCommit:
+
+```typescript
+import { RepositorySource, PipelineBlueprint } from '{{ npm_codepipeline }}';
+
+const pipeline = PipelineBlueprint.builder()
+  .repository(RepositorySource.codecommit())
+  // ... other configuration
+  .synth(app);
+```
 
 ## Quick Setup
 
@@ -23,16 +36,16 @@ git push -u downstream ${CURRENT_BRANCH}:main ### default branch for CodePipelin
 
 You can change the default branch which is picked up by the CodePipeline to trigger the pipeline with the following code snippet (during the pipeline definition):
 
-```bash
-import { BasicRepositoryProvider, PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+```typescript
+import { BasicRepositoryProvider, PipelineBlueprint,RepositorySource } from '{{ npm_codepipeline }}';
 
 const pipeline = PipelineBlueprint.builder()
-.repositoryProvider(new BasicRepositoryProvider({
-      repositoryType: 'CODECOMMIT',
-      branch: 'main',
-      name: 'my-repo',
-    }))
-...
+  .repository(RepositorySource.codecommit({
+    repositoryName: 'my-repo',
+    branch: 'main',
+    enableCodeGuruReviewer: true,
+    enablePullRequestChecks: true
+  }))
 ```
 
 ## Pointers to external documentation
