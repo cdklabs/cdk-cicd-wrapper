@@ -13,10 +13,10 @@
         <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/vcs_s3.html">
       
       
-        <link rel="prev" href="vcs_github.html">
+        <link rel="prev" href="private_npm_registry.html">
       
       
-        <link rel="next" href="../faqs/index.html">
+        <link rel="next" href="vcs_codecommit.html">
       
       
       <link rel="icon" href="../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>S3-based Git Repository Integration - CDK CI/CD Wrapper</title>
+        <title>Amazon S3 - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#s3-based-git-repository-integration" class="md-skip">
+        <a href="#amazon-s3-based-git-repository-integration" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              S3-based Git Repository Integration
+              Amazon S3
             
           </span>
         </div>
@@ -1061,8 +1061,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1078,11 +1080,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_11" checked>
         
           
           <label class="md-nav__link" for="__nav_3_11" id="__nav_3_11_label" tabindex="0">
@@ -1096,7 +1098,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_11_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_11_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_11">
             <span class="md-nav__icon md-icon"></span>
             GIT Integrations
@@ -1107,10 +1109,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../vcd_s3.md" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Amazon S3
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="vcs_s3.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1119,6 +1141,98 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Setup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloning-the-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cloning the Repository
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-branches" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with Branches
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#large-file-storage-lfs-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Large File Storage (LFS) Support
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security Considerations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-with-aws-codepipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using with AWS CodePipeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known Limitations
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2252,14 +2366,14 @@
   
 
 
-<h1 id="s3-based-git-repository-integration">S3-based Git Repository Integration</h1>
+<h1 id="amazon-s3-based-git-repository-integration">Amazon S3 based Git Repository Integration</h1>
 <p>As AWS CodeCommit will be deemphasized after July 25, 2024, you can use S3 as a Git repository with CDK CI/CD Wrapper. This approach uses the <a href="https://github.com/awslabs/git-remote-s3">git-remote-s3</a> tool to enable S3 as a git remote and LFS server.</p>
 <h2 id="prerequisites">Prerequisites</h2>
-<ol>
-<li>Install the git-remote-s3 Python package:
+<ul>
+<li>Install the git-remote-s3 Python package:</li>
+</ul>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>git-remote-s3
-</code></pre></div></li>
-</ol>
+</code></pre></div>
 <h2 id="quick-setup">Quick Setup</h2>
 <p>Configure your pipeline to use S3 as the repository:</p>
 <div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">RepositorySource</span><span class="p">,</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
@@ -2307,11 +2421,11 @@ git<span class="w"> </span>add<span class="w"> </span>.gitattributes
 </ol>
 <h2 id="security-considerations">Security Considerations</h2>
 <ul>
-<li>All data is encrypted at rest using S3's encryption capabilities</li>
+<li>All data is encrypted at rest using Amazon S3's encryption capabilities</li>
 <li>Use bucket policies and IAM roles to control access</li>
 </ul>
 <h2 id="using-with-aws-codepipeline">Using with AWS CodePipeline</h2>
-<p>The S3-based repository automatically creates ZIP archives that can be used as source artifacts in AWS CodePipeline. The ZIP files are stored at:
+<p>The Amazon S3 based repository automatically creates ZIP archives that can be used as source artifacts in AWS CodePipeline. The ZIP files are stored at:
 <div class="highlight"><pre><span></span><code>s3://my-git-bucket/my-repo/refs/heads/&lt;branch&gt;/repo.zip
 </code></pre></div></p>
 <h2 id="known-limitations">Known Limitations</h2>
