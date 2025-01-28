@@ -10,28 +10,28 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/github-pipeline/index.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/vcs_s3.html">
       
       
-        <link rel="prev" href="../basics-lvl300/faq.html">
+        <link rel="prev" href="vcs_github.html">
       
       
-        <link rel="next" href="00-prerequisites.html">
+        <link rel="next" href="../faqs/index.html">
       
       
-      <link rel="icon" href="../../assets/images/logo.png">
+      <link rel="icon" href="../assets/images/logo.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.39">
     
     
       
-        <title>Introduction & Overview - CDK CI/CD Wrapper</title>
+        <title>S3-based Git Repository Integration - CDK CI/CD Wrapper</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.8c3ca2c6.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.8c3ca2c6.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -44,9 +44,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/extra.css">
+      <link rel="stylesheet" href="../assets/stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#introduction-overview" class="md-skip">
+        <a href="#s3-based-git-repository-integration" class="md-skip">
           Skip to content
         </a>
       
@@ -84,9 +84,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="CDK CI/CD Wrapper" class="md-header__button md-logo" aria-label="CDK CI/CD Wrapper" data-md-component="logo">
+    <a href=".." title="CDK CI/CD Wrapper" class="md-header__button md-logo" aria-label="CDK CI/CD Wrapper" data-md-component="logo">
       
-  <img src="../../assets/images/logo.png" alt="logo">
+  <img src="../assets/images/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Introduction & Overview
+              S3-based Git Repository Integration
             
           </span>
         </div>
@@ -186,7 +186,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../overview/index.html" class="md-tabs__link">
+        <a href="../overview/index.html" class="md-tabs__link">
           
   
     
@@ -206,7 +206,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../getting_started/index.html" class="md-tabs__link">
+        <a href="../getting_started/index.html" class="md-tabs__link">
           
   
     
@@ -222,11 +222,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../developer_guides/index.html" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
           
   
     
@@ -246,7 +248,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../cli/index.html" class="md-tabs__link">
+        <a href="../cli/index.html" class="md-tabs__link">
           
   
     
@@ -266,7 +268,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../faqs/index.html" class="md-tabs__link">
+        <a href="../faqs/index.html" class="md-tabs__link">
           
   
     
@@ -286,7 +288,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../contributing/index.html" class="md-tabs__link">
+        <a href="../contributing/index.html" class="md-tabs__link">
           
   
     
@@ -302,13 +304,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../index.html" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../workshops/index.html" class="md-tabs__link">
           
   
     
@@ -360,9 +360,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="CDK CI/CD Wrapper" class="md-nav__button md-logo" aria-label="CDK CI/CD Wrapper" data-md-component="logo">
+    <a href=".." title="CDK CI/CD Wrapper" class="md-nav__button md-logo" aria-label="CDK CI/CD Wrapper" data-md-component="logo">
       
-  <img src="../../assets/images/logo.png" alt="logo">
+  <img src="../assets/images/logo.png" alt="logo">
 
     </a>
     CDK CI/CD Wrapper
@@ -410,7 +410,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../overview/index.html" class="md-nav__link ">
+            <a href="../overview/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -474,7 +474,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../getting_started/index.html" class="md-nav__link ">
+            <a href="../getting_started/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -507,7 +507,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/migration_guide.html" class="md-nav__link">
+      <a href="../getting_started/migration_guide.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -528,7 +528,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/projen.html" class="md-nav__link">
+      <a href="../getting_started/projen.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -549,7 +549,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/projen_with_taskfile.html" class="md-nav__link">
+      <a href="../getting_started/projen_with_taskfile.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -570,7 +570,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/prerequisites.html" class="md-nav__link">
+      <a href="../getting_started/prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -595,6 +595,8 @@
       
   
   
+    
+  
   
   
     
@@ -629,19 +631,22 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../developer_guides/index.html" class="md-nav__link ">
+            <a href="index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -652,13 +657,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Developer Guides
@@ -674,7 +679,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/variables.html" class="md-nav__link">
+      <a href="variables.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -695,7 +700,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/ci.html" class="md-nav__link">
+      <a href="ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -716,7 +721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/cd.html" class="md-nav__link">
+      <a href="cd.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -779,7 +784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/global_resource.html" class="md-nav__link">
+      <a href="global_resource.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -808,7 +813,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/modularizing_stacks.html" class="md-nav__link">
+      <a href="modularizing_stacks.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -829,7 +834,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/cdk_context.html" class="md-nav__link">
+      <a href="cdk_context.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -850,7 +855,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/security.html" class="md-nav__link">
+      <a href="security.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -915,7 +920,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/codeartifact.html" class="md-nav__link">
+      <a href="codeartifact.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -936,7 +941,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/python_dependencies.html" class="md-nav__link">
+      <a href="python_dependencies.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1009,7 +1014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/codeartifact.html" class="md-nav__link">
+      <a href="codeartifact.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1030,7 +1035,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/private_npm_registry.html" class="md-nav__link">
+      <a href="private_npm_registry.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1103,7 +1108,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/vcs_codecommit.html" class="md-nav__link">
+      <a href="vcs_codecommit.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1124,7 +1129,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/vcs_github.html" class="md-nav__link">
+      <a href="vcs_github.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1153,7 +1158,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer_guides/networking.html" class="md-nav__link">
+      <a href="networking.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1212,7 +1217,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../cli/index.html" class="md-nav__link ">
+            <a href="../cli/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1245,7 +1250,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/cli_configure.html" class="md-nav__link">
+      <a href="../cli/cli_configure.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1266,7 +1271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/cli_license.html" class="md-nav__link">
+      <a href="../cli/cli_license.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1287,7 +1292,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/cli_validate.html" class="md-nav__link">
+      <a href="../cli/cli_validate.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1308,7 +1313,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/cli_security_scan.html" class="md-nav__link">
+      <a href="../cli/cli_security_scan.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1329,7 +1334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/cli_check_dependencies.html" class="md-nav__link">
+      <a href="../cli/cli_check_dependencies.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1378,7 +1383,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../faqs/index.html" class="md-nav__link ">
+            <a href="../faqs/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1434,7 +1439,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../contributing/index.html" class="md-nav__link ">
+            <a href="../contributing/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1466,8 +1471,6 @@
       
   
   
-    
-  
   
   
     
@@ -1484,22 +1487,19 @@
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../index.html" class="md-nav__link ">
+            <a href="../workshops/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1510,13 +1510,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Workshops
@@ -1575,7 +1575,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../basics-lvl300/index.html" class="md-nav__link ">
+            <a href="../workshops/basics-lvl300/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1608,7 +1608,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/00-prerequisites.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1629,7 +1629,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/01-create-cdk-project.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/01-create-cdk-project.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1650,7 +1650,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/02-define-quality-gates-ci.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/02-define-quality-gates-ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1671,7 +1671,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/03-create-pipeline.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/03-create-pipeline.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1692,7 +1692,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/04-develop-genai-solution.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/04-develop-genai-solution.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1713,7 +1713,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/05-deploy-stack.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/05-deploy-stack.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1734,7 +1734,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/06-develop-genai-solution-part-2.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/06-develop-genai-solution-part-2.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1755,7 +1755,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/07-deploy-solution.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/07-deploy-solution.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1776,7 +1776,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/08-summary.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/08-summary.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1797,7 +1797,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/09-clean-up.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/09-clean-up.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1818,7 +1818,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../basics-lvl300/faq.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/faq.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1844,8 +1844,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1877,16 +1875,16 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_3" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="index.html" class="md-nav__link md-nav__link--active">
+            <a href="../workshops/github-pipeline/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1897,13 +1895,13 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_7_3" id="__nav_7_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7_3" id="__nav_7_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7_3">
             <span class="md-nav__icon md-icon"></span>
             GitHub Action pipeline
@@ -1919,7 +1917,7 @@
   
   
     <li class="md-nav__item">
-      <a href="00-prerequisites.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1940,7 +1938,7 @@
   
   
     <li class="md-nav__item">
-      <a href="01-create-cdk-project.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/01-create-cdk-project.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1961,7 +1959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="02-define-quality-gates-ci.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/02-define-quality-gates-ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1982,7 +1980,7 @@
   
   
     <li class="md-nav__item">
-      <a href="03-create-pipeline.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/03-create-pipeline.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2003,7 +2001,7 @@
   
   
     <li class="md-nav__item">
-      <a href="04-deploy-stack.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/04-deploy-stack.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2024,7 +2022,7 @@
   
   
     <li class="md-nav__item">
-      <a href="05-summary.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/05-summary.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2045,7 +2043,7 @@
   
   
     <li class="md-nav__item">
-      <a href="06-clean-up.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/06-clean-up.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2066,7 +2064,7 @@
   
   
     <li class="md-nav__item">
-      <a href="faq.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/faq.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2142,45 +2140,72 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#welcome" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      Welcome
+      Prerequisites
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#target-audience" class="md-nav__link">
+  <a href="#quick-setup" class="md-nav__link">
     <span class="md-ellipsis">
-      Target Audience
+      Quick Setup
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#background-knowledge" class="md-nav__link">
+  <a href="#cloning-the-repository" class="md-nav__link">
     <span class="md-ellipsis">
-      Background Knowledge
+      Cloning the Repository
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-you-will-learn" class="md-nav__link">
+  <a href="#working-with-branches" class="md-nav__link">
     <span class="md-ellipsis">
-      What You Will Learn
+      Working with Branches
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
+  <a href="#large-file-storage-lfs-support" class="md-nav__link">
     <span class="md-ellipsis">
-      Architecture Overview
+      Large File Storage (LFS) Support
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security Considerations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-with-aws-codepipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using with AWS CodePipeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known Limitations
     </span>
   </a>
   
@@ -2204,52 +2229,75 @@
   
 
 
-<h1 id="introduction-overview">Introduction &amp; Overview</h1>
-<h2 id="welcome">Welcome</h2>
-<p>Welcome to the workshop on leveraging the <strong>GitHub Pipeline Plugin</strong> with the <strong>CDK CI/CD Wrapper</strong>. In this session, you'll learn how to seamlessly integrate your <strong>GitHub</strong> repositories with <strong>GitHub Actions</strong> to automate the deployment of AWS CDK applications to AWS environments. This workshop is designed to demonstrate how the plugin simplifies the continuous integration and deployment process by connecting GitHub and AWS.</p>
-<p>We are excited to help you explore how this new plugin can supercharge your CI/CD workflows!</p>
-<hr />
-<h2 id="target-audience">Target Audience</h2>
-<p>This workshop is aimed at:</p>
-<ul>
-<li><strong>Developers</strong>, <strong>DevOps engineers</strong>, and <strong>Cloud engineers</strong> who are managing their AWS infrastructure using AWS CDK.</li>
-<li>Teams that host their source code on <strong>GitHub</strong> and are looking to leverage <strong>GitHub Actions</strong> for continuous delivery of AWS applications.</li>
-<li>Individuals who are already familiar with CI/CD workflows and are interested in optimizing AWS deployments through <strong>GitHub Actions</strong>.</li>
-</ul>
-<p>You should have prior experience with AWS CDK and be familiar with developing or maintaining cloud applications using CDK.</p>
-<ul>
-<li><strong>Expected Completion Time</strong>: 45 minutes</li>
-</ul>
-<hr />
-<h2 id="background-knowledge">Background Knowledge</h2>
-<p>To get the most out of this workshop, the following knowledge is recommended:</p>
-<ul>
-<li><strong>AWS CDK</strong>: Familiarity with creating, maintaining, and deploying cloud infrastructure using AWS CDK.</li>
-<li><strong>GitHub &amp; GitHub Actions</strong>: Basic understanding of how GitHub repositories and GitHub Actions work to automate workflows.</li>
-<li><strong>CI/CD Concepts</strong>: Knowledge of continuous integration and continuous deployment practices, including automated testing and deployments.</li>
-<li><strong>AWS Accounts &amp; Services</strong>: You should have access to an AWS account and be familiar with core services like <strong>AWS IAM</strong>, <strong>AWS CodePipeline</strong>, <strong>AWS CloudFormation</strong>, and <strong>AWS IAM Roles</strong>.</li>
-</ul>
-<hr />
-<h2 id="what-you-will-learn">What You Will Learn</h2>
-<p>By the end of this workshop, you will learn how to:</p>
-<ul>
-<li>Use the <strong>GitHub Pipeline Plugin</strong> to connect <strong>GitHub</strong> repositories to the <strong>CDK CI/CD Wrapper</strong> for seamless deployment to AWS accounts.</li>
-<li>Create a GitHub Actions pipeline that automatically deploys your AWS CDK applications.</li>
-<li>Manage multi-account AWS deployments with ease through GitHub Actions.</li>
-<li>Implement security best practices while using GitHub to manage CI/CD workflows in AWS.</li>
-</ul>
-<hr />
-<h2 id="architecture-overview">Architecture Overview</h2>
-<p>In this workshop, we will deploy a multi-stage pipeline for an AWS CDK application using <strong>GitHub Actions</strong>. Here’s a high-level overview of the architecture:</p>
+<h1 id="s3-based-git-repository-integration">S3-based Git Repository Integration</h1>
+<p>As AWS CodeCommit will be deemphasized after July 25, 2024, you can use S3 as a Git repository with CDK CI/CD Wrapper. This approach uses the <a href="https://github.com/awslabs/git-remote-s3">git-remote-s3</a> tool to enable S3 as a git remote and LFS server.</p>
+<h2 id="prerequisites">Prerequisites</h2>
 <ol>
-<li><strong>GitHub Repository</strong>: Hosts the source code of your AWS CDK application.</li>
-<li><strong>GitHub Actions</strong>: Used to automate the testing, building, and deployment of the application to AWS environments.</li>
-<li><strong>AWS CDK CI/CD Wrapper</strong>: Manages the continuous integration and deployment of the AWS CDK application across multiple AWS accounts (DEV, INT, PROD).</li>
-<li><strong>AWS Accounts</strong>: The deployment targets where the AWS CDK application will be provisioned, using GitHub Actions for each stage of the pipeline (DEV, INT, PROD).</li>
+<li>Install the git-remote-s3 Python package:
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>git-remote-s3
+</code></pre></div></li>
 </ol>
-<p><img alt="GitHub Pipeline Plugin Architecture" src="path_to_your_architecture_diagram" /></p>
-<p>Click on start to begin the workshop.</p>
-<p><a href="00-prerequisites.html" class="md-button">Start</a></p>
+<h2 id="quick-setup">Quick Setup</h2>
+<p>Configure your pipeline to use S3 as the repository:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">RepositorySource</span><span class="p">,</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">repository</span><span class="p">(</span><span class="nx">RepositorySource</span><span class="p">.</span><span class="nx">s3</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">bucketName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-git-bucket&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">prefix</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-repo&#39;</span><span class="p">,</span><span class="w">  </span><span class="c1">// Optional: Use a prefix to organize multiple repos</span>
+<span class="w">    </span><span class="nx">branch</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;main&#39;</span><span class="p">,</span><span class="w">     </span><span class="c1">// Optional: Defaults to &#39;main&#39;</span>
+<span class="w">    </span><span class="nx">roles</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;arn:aws:iam::123456789012:role/MyRole&#39;</span><span class="p">]</span><span class="w"> </span><span class="c1">// Optional: Roles that can access the repo</span>
+<span class="w">  </span><span class="p">}))</span>
+<span class="w">  </span><span class="c1">// ... other configuration</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
+<h2 id="cloning-the-repository">Cloning the Repository</h2>
+<p>To clone a repository stored in S3:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># For repositories without a prefix</span>
+git<span class="w"> </span>clone<span class="w"> </span>s3+zip://my-git-bucket<span class="w"> </span>my-local-repo
+
+<span class="c1"># For repositories with a prefix</span>
+git<span class="w"> </span>clone<span class="w"> </span>s3+zip://my-git-bucket/my-repo<span class="w"> </span>my-local-repo
+</code></pre></div>
+<p>The <code>s3+zip://</code> protocol ensures that an additional zip archive is created alongside the git bundle, which is required for AWS CodePipeline integration.</p>
+<h2 id="working-with-branches">Working with Branches</h2>
+<p>Creating and pushing branches works as with any other Git repository:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>feature/new-feature
+git<span class="w"> </span>add<span class="w"> </span>.
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: add new feature&quot;</span>
+git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>feature/new-feature
+</code></pre></div>
+<h2 id="large-file-storage-lfs-support">Large File Storage (LFS) Support</h2>
+<p>The S3-based repository supports Git LFS. To use it:</p>
+<ol>
+<li>
+<p>Install git-lfs
+To use LFS you need to first install git-lfs. You can refer to the <a href="https://git-lfs.com/">official documentation</a> on how to do this on your system.</p>
+</li>
+<li>
+<p>In your repository:
+<div class="highlight"><pre><span></span><code>git-lfs-s3<span class="w"> </span>install
+git<span class="w"> </span>lfs<span class="w"> </span>track<span class="w"> </span><span class="s2">&quot;*.zip&quot;</span><span class="w">  </span><span class="c1"># Track large files</span>
+git<span class="w"> </span>add<span class="w"> </span>.gitattributes
+</code></pre></div></p>
+</li>
+</ol>
+<h2 id="security-considerations">Security Considerations</h2>
+<ul>
+<li>All data is encrypted at rest using S3's encryption capabilities</li>
+<li>Use bucket policies and IAM roles to control access</li>
+</ul>
+<h2 id="using-with-aws-codepipeline">Using with AWS CodePipeline</h2>
+<p>The S3-based repository automatically creates ZIP archives that can be used as source artifacts in AWS CodePipeline. The ZIP files are stored at:
+<div class="highlight"><pre><span></span><code>s3://my-git-bucket/my-repo/refs/heads/&lt;branch&gt;/repo.zip
+</code></pre></div></p>
+<h2 id="known-limitations">Known Limitations</h2>
+<ul>
+<li>No built-in pull request functionality</li>
+<li>Concurrent writes need to be managed carefully</li>
+<li>Branch deletion must be done using the <code>git-remote-s3</code> CLI</li>
+</ul>
+<p>For more information about git-remote-s3, visit the <a href="https://github.com/awslabs/git-remote-s3">official repository</a>.</p>
 
 
 
@@ -2270,7 +2318,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2024-11-07
+    2025-01-28
   </span>
 
     
@@ -2333,10 +2381,10 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy", "toc.follow", "navigation.indexes", "navigation.instant", "navigation.tabs"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "toc.follow", "navigation.indexes", "navigation.instant", "navigation.tabs"], "search": "../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.525ec568.min.js"></script>
+      <script src="../assets/javascripts/bundle.525ec568.min.js"></script>
       
     
   </body>

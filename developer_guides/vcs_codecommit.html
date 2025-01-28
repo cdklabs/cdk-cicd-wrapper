@@ -1156,6 +1156,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-setup" class="md-nav__link">
     <span class="md-ellipsis">
       Quick Setup
@@ -2209,6 +2218,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-setup" class="md-nav__link">
     <span class="md-ellipsis">
       Quick Setup
@@ -2254,7 +2272,18 @@
 
 
 <h1 id="aws-codecommit-integration">AWS CodeCommit Integration</h1>
-<p>To be able to use AWS CodeCommit repositories in AWS CodePipeline with vanilla-pipeline, you can do this directly in the configure step.</p>
+<blockquote>
+<p><strong>Note:</strong> AWS CodeCommit will be deemphasized after July 25, 2024. Consider using S3-based or GitHub repositories instead.</p>
+</blockquote>
+<h2 id="configuration">Configuration</h2>
+<p>Configure your pipeline to use CodeCommit:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">RepositorySource</span><span class="p">,</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">repository</span><span class="p">(</span><span class="nx">RepositorySource</span><span class="p">.</span><span class="nx">codecommit</span><span class="p">())</span>
+<span class="w">  </span><span class="c1">// ... other configuration</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
 <h2 id="quick-setup">Quick Setup</h2>
 <p>After the configure has finished and generated the .env file then you need to add the changes into git and commit them.</p>
 <p>You need to configure the downstream of the repository for deployment. In your local machine you need to install the <code>git-remote-codecommit</code> using the following command:</p>
@@ -2267,15 +2296,15 @@ git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span
 </code></pre></div>
 <h2 id="changing-default-branch">Changing default branch</h2>
 <p>You can change the default branch which is picked up by the CodePipeline to trigger the pipeline with the following code snippet (during the pipeline definition):</p>
-<div class="highlight"><pre><span></span><code>import<span class="w"> </span><span class="o">{</span><span class="w"> </span>BasicRepositoryProvider,<span class="w"> </span>PipelineBlueprint<span class="w"> </span><span class="o">}</span><span class="w"> </span>from<span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">BasicRepositoryProvider</span><span class="p">,</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">,</span><span class="nx">RepositorySource</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@cdklabs/cdk-cicd-wrapper&#39;</span><span class="p">;</span>
 
-const<span class="w"> </span><span class="nv">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>PipelineBlueprint.builder<span class="o">()</span>
-.repositoryProvider<span class="o">(</span>new<span class="w"> </span>BasicRepositoryProvider<span class="o">({</span>
-<span class="w">      </span>repositoryType:<span class="w"> </span><span class="s1">&#39;CODECOMMIT&#39;</span>,
-<span class="w">      </span>branch:<span class="w"> </span><span class="s1">&#39;main&#39;</span>,
-<span class="w">      </span>name:<span class="w"> </span><span class="s1">&#39;my-repo&#39;</span>,
-<span class="w">    </span><span class="o">}))</span>
-...
+<span class="kd">const</span><span class="w"> </span><span class="nx">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">repository</span><span class="p">(</span><span class="nx">RepositorySource</span><span class="p">.</span><span class="nx">codecommit</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">repositoryName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-repo&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">branch</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;main&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">enableCodeGuruReviewer</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">enablePullRequestChecks</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span>
+<span class="w">  </span><span class="p">}))</span>
 </code></pre></div>
 <h2 id="pointers-to-external-documentation">Pointers to external documentation</h2>
 <ul>
@@ -2301,7 +2330,7 @@ const<span class="w"> </span><span class="nv">pipeline</span><span class="w"> </
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2024-05-21
+    2025-01-28
   </span>
 
     
