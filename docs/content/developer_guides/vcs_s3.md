@@ -1,10 +1,11 @@
-# S3-based Git Repository Integration
+# Amazon S3 based Git Repository Integration
 
 As AWS CodeCommit will be deemphasized after July 25, 2024, you can use S3 as a Git repository with {{ project_name }}. This approach uses the [git-remote-s3](https://github.com/awslabs/git-remote-s3) tool to enable S3 as a git remote and LFS server.
 
 ## Prerequisites
 
-1. Install the git-remote-s3 Python package:
+* Install the git-remote-s3 Python package:
+
 ```bash
 pip install git-remote-s3
 ```
@@ -69,12 +70,12 @@ git add .gitattributes
 
 ## Security Considerations
 
-- All data is encrypted at rest using S3's encryption capabilities
+- All data is encrypted at rest using Amazon S3's encryption capabilities
 - Use bucket policies and IAM roles to control access
 
 ## Using with AWS CodePipeline
 
-The S3-based repository automatically creates ZIP archives that can be used as source artifacts in AWS CodePipeline. The ZIP files are stored at:
+The Amazon S3 based repository automatically creates ZIP archives that can be used as source artifacts in AWS CodePipeline. The ZIP files are stored at:
 ```
 s3://my-git-bucket/my-repo/refs/heads/<branch>/repo.zip
 ```

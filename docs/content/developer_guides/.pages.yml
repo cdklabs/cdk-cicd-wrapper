@@ -16,6 +16,7 @@ nav:
     - "AWS CodeArtifact": "codeartifact.md"
     - "Private NPM Registry": "private_npm_registry.md"
   - "GIT Integrations":
+    - "Amazon S3": "vcs_s3.md"
     - "CodeCommit": "vcs_codecommit.md"
     - "GitHub": "vcs_github.md"
   - "Networking": "networking.md"
