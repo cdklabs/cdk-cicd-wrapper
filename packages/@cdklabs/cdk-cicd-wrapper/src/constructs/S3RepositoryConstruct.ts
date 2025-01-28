@@ -68,6 +68,7 @@ export class S3RepositoryConstruct extends Construct {
     this.removalPolicy = props.removalPolicy ?? cdk.RemovalPolicy.DESTROY;
     this.repositoryBranch = props.branch ?? 'main';
     this.prefix = props.prefix ?? '';
+    const repoZipPath = `${this.prefix}/refs/heads/${this.repositoryBranch}/repo.zip`;
 
     this.bucket = new s3.Bucket(this, 'GitRepoBucket', {
       bucketName: props.bucketName,
@@ -101,20 +102,12 @@ export class S3RepositoryConstruct extends Construct {
       );
     });
 
-    this.pipelineInput = pipelines.CodePipelineSource.s3(
-      this.bucket,
-      `${this.prefix}/refs/heads/${this.repositoryBranch}/repo.zip`,
-      {
-        trigger: pipelineActions.S3Trigger.EVENTS,
-      },
-    );
-    this.pipelineInput = pipelines.CodePipelineSource.s3(
-      this.bucket,
-      `${this.prefix}/refs/heads/${this.repositoryBranch}/repo.zip`,
-      {
-        trigger: pipelineActions.S3Trigger.EVENTS,
-      },
-    );
+    this.pipelineInput = pipelines.CodePipelineSource.s3(this.bucket, repoZipPath, {
+      trigger: pipelineActions.S3Trigger.EVENTS,
+    });
+    this.pipelineInput = pipelines.CodePipelineSource.s3(this.bucket, repoZipPath, {
+      trigger: pipelineActions.S3Trigger.EVENTS,
+    });
 
     // override the onCloudTrailWriteObject method as https://github.com/aws/aws-cdk/issues/26894
     // eslint-disable-next-line dot-notation
@@ -130,7 +123,7 @@ export class S3RepositoryConstruct extends Construct {
             name: [this.bucket.bucketName],
           },
           object: {
-            key: [`${this.prefix}/refs/heads/${this.repositoryBranch}/repo.zip`],
+            key: [repoZipPath],
           },
         },
       });

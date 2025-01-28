@@ -14,19 +14,19 @@ import { S3RepositoryStack } from '../stacks/S3RepositoryStack';
  * Default configuration for repository provider.
  */
 const defaultRepositoryConfig: BaseRepositoryProviderProps = {
-  repositoryType: (process.env.npm_package_config_repositoryType as RepositoryType | undefined) || 'CODECOMMIT',
-  name: process.env.npm_package_config_repositoryName!,
   branch: 'main', // Default branch is 'main'
-  codeStarConnectionArn: process.env.CODESTAR_CONNECTION_ARN,
   codeGuruReviewer: true, // Default value for codeGuruReviewer is true
+  codeStarConnectionArn: process.env.CODESTAR_CONNECTION_ARN,
+  name: process.env.npm_package_config_repositoryName!,
+  repositoryType: (process.env.npm_package_config_repositoryType as RepositoryType | undefined) || 'CODECOMMIT',
 };
 
 /**
  * Represents a repository stack in the pipeline.
  */
 export interface IRepositoryStack extends IConstruct {
-  readonly pipelineInput: pipelines.IFileSetProducer;
   readonly pipelineEnvVars: { [key: string]: string };
+  readonly pipelineInput: pipelines.IFileSetProducer;
   readonly repositoryBranch: string;
 }
 
@@ -39,8 +39,8 @@ export type RepositoryProvider = IResourceProvider;
  * Base properties for repository provider.
  */
 export interface BaseRepositoryProviderProps extends RepositoryConfig {
-  readonly codeStarConnectionArn?: string;
   readonly codeGuruReviewer?: boolean;
+  readonly codeStarConnectionArn?: string;
 }
 
 /**
@@ -77,22 +77,22 @@ export abstract class RepositorySource {
   }
 
   /**
-   * Creates a new Github - CodeStar connection repository source.
-   *
-   * @param options The repository source options.
-   * @returns
-   */
-  static github(options?: CodeStarConnectionRepositorySourceOptions): RepositorySource {
-    return new CodeStarConnectionRepositorySource(options);
-  }
-
-  /**
    * Creates a new CodeStar connection repository source.
    *
    * @param options The repository source options.
    * @returns
    */
   static codestarConnection(options?: CodeStarConnectionRepositorySourceOptions): RepositorySource {
+    return new CodeStarConnectionRepositorySource(options);
+  }
+
+  /**
+   * Creates a new Github - CodeStar connection repository source.
+   *
+   * @param options The repository source options.
+   * @returns
+   */
+  static github(options?: CodeStarConnectionRepositorySourceOptions): RepositorySource {
     return new CodeStarConnectionRepositorySource(options);
   }
 
@@ -108,28 +108,28 @@ export abstract class RepositorySource {
 
   static basedType(type: RepositoryType, config?: BaseRepositoryProviderProps): RepositorySource {
     switch (type) {
-      case 'GITHUB':
-        return this.github({
-          repositoryName: config?.name,
-          branch: config?.branch,
-          description: config?.description,
-          codeStarConnectionArn: config?.codeStarConnectionArn,
-        });
       case 'CODECOMMIT':
         return this.codecommit({
-          repositoryName: config?.name,
           branch: config?.branch,
           description: config?.description,
           enableCodeGuruReviewer: config?.codeGuruReviewer,
           enablePullRequestChecks: true,
+          repositoryName: config?.name,
+        });
+      case 'GITHUB':
+        return this.github({
+          branch: config?.branch,
+          codeStarConnectionArn: config?.codeStarConnectionArn,
+          description: config?.description,
+          repositoryName: config?.name,
         });
       case 'S3':
         return this.s3({
-          bucketName: config?.name,
-          prefix: config?.name,
           branch: config?.branch,
-          description: config?.description,
+          bucketName: config?.name,
           codeBuildCloneOutput: false,
+          description: config?.description,
+          prefix: config?.name,
         });
       default:
         throw new Error(`Unsupported repository type: ${type}`);
@@ -157,27 +157,27 @@ export class CodeCommitRepositorySource extends RepositorySource {
 
       prConfig = {
         pr: {
-          codeGuruReviewer: this.options.enableCodeGuruReviewer || false, // Default value is false
+          buildSpec: ciDefinition.provideBuildSpec(),
           codeBuildOptions: mergeCodeBuildOptions(
             codebuildFactory.provideCodeBuildOptions(),
             ciDefinition.provideCodeBuildDefaults(),
           ),
-          buildSpec: ciDefinition.provideBuildSpec(),
+          codeGuruReviewer: this.options.enableCodeGuruReviewer || false, // Default value is false
         },
       };
     }
 
     return new CodeCommitRepositoryStack(context.scope, `${applicationName}Repository`, {
+      applicationName: applicationName,
+      applicationQualifier: applicationQualifier,
+      branch: this.options.branch || defaultRepositoryConfig.branch,
+      codeBuildCloneOutput: this.options.codeBuildCloneOutput || false,
       env: {
         account: deploymentDefinition.RES.env.account,
         region: deploymentDefinition.RES.env.region,
       },
-      applicationName: applicationName,
-      applicationQualifier: applicationQualifier,
-      repositoryType: 'CODECOMMIT',
       name: this.options.repositoryName || defaultRepositoryConfig.name || applicationName,
-      branch: this.options.branch || defaultRepositoryConfig.branch,
-      codeBuildCloneOutput: this.options.codeBuildCloneOutput || false,
+      repositoryType: 'CODECOMMIT',
       ...prConfig,
     });
   }
@@ -199,14 +199,14 @@ export class CodeStarConnectionRepositorySource extends RepositorySource {
     }
 
     return new CodeStarConnectRepositoryStack(context.scope, `${applicationName}Repository`, {
-      env: { account: deploymentDefinition.RES.env.account, region: deploymentDefinition.RES.env.region },
       applicationName: applicationName,
       applicationQualifier: applicationQualifier,
-      codeStarConnectionArn: codeStarConnectionArn,
-      repositoryType: 'GITHUB',
-      name: this.options.repositoryName || defaultRepositoryConfig.name || applicationName,
       branch: this.options.branch || defaultRepositoryConfig.branch,
       codeBuildCloneOutput: this.options.codeBuildCloneOutput || false,
+      codeStarConnectionArn: codeStarConnectionArn,
+      env: { account: deploymentDefinition.RES.env.account, region: deploymentDefinition.RES.env.region },
+      name: this.options.repositoryName || defaultRepositoryConfig.name || applicationName,
+      repositoryType: 'GITHUB',
     });
   }
 }
@@ -219,14 +219,14 @@ export class S3RepositorySource extends RepositorySource {
   produceSourceConfig(context: ResourceContext): IRepositoryStack {
     const encryptionKey = context.get(GlobalResources.ENCRYPTION).key;
     return new S3RepositoryStack(context.scope, `${context.blueprintProps.applicationName}S3Repository`, {
-      env: context.blueprintProps.deploymentDefinition.RES.env,
+      branch: this.options.branch || defaultRepositoryConfig.branch,
       bucketName:
         this.options.bucketName ||
         `${context.blueprintProps.applicationName}-repo-${context.blueprintProps.deploymentDefinition.RES.env.account}-${context.blueprintProps.deploymentDefinition.RES.env.region}`,
-      prefix: this.options.prefix,
-      branch: this.options.branch || defaultRepositoryConfig.branch,
-      roles: this.options.roles,
       encryptionKey,
+      env: context.blueprintProps.deploymentDefinition.RES.env,
+      prefix: this.options.prefix,
+      roles: this.options.roles,
     });
   }
 }
@@ -235,6 +235,26 @@ export class S3RepositorySource extends RepositorySource {
  * Represents the configuration for a repository source.
  */
 export interface RepositorySourceOptions {
+  /**
+   * The branch of the repository.
+   * @default - 'main'
+   */
+  readonly branch?: string;
+
+  /**
+   * Enforce full clone for the repository.
+   * Tools like semgrep and pre-commit hooks require a full clone.
+   *
+   * @default - false
+   */
+  readonly codeBuildCloneOutput?: boolean;
+
+  /**
+   * The description of the repository.
+   * @default - No description.
+   */
+  readonly description?: string;
+
   /**
    * The name of the repository.
    * @default - The name of the application.
@@ -247,42 +267,22 @@ export interface RepositorySourceOptions {
    * }
    */
   readonly repositoryName?: string;
-
-  /**
-   * The branch of the repository.
-   * @default - 'main'
-   */
-  readonly branch?: string;
-
-  /**
-   * The description of the repository.
-   * @default - No description.
-   */
-  readonly description?: string;
-
-  /**
-   * Enforce full clone for the repository.
-   * Tools like semgrep and pre-commit hooks require a full clone.
-   *
-   * @default - false
-   */
-  readonly codeBuildCloneOutput?: boolean;
 }
 
 export interface CodeCommitRepositorySourceOptions extends RepositorySourceOptions {
-  /**
-   * Enable pull request checks.
-   *
-   * @default - true
-   */
-  readonly enablePullRequestChecks?: boolean;
-
   /**
    * Enable CodeGuru Reviewer.
    *
    * @default - false
    */
   readonly enableCodeGuruReviewer?: boolean;
+
+  /**
+   * Enable pull request checks.
+   *
+   * @default - true
+   */
+  readonly enablePullRequestChecks?: boolean;
 }
 
 export interface CodeStarConnectionRepositorySourceOptions extends RepositorySourceOptions {

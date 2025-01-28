@@ -58,6 +58,8 @@ git push origin feature/new-feature
 The S3-based repository supports Git LFS. To use it:
 
 1. Install git-lfs
+To use LFS you need to first install git-lfs. You can refer to the [official documentation](https://git-lfs.com/) on how to do this on your system.
+
 2. In your repository:
 ```bash
 git-lfs-s3 install
