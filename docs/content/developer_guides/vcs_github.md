@@ -20,20 +20,20 @@ This will initialize the connection from the AWS side. As a follow up go to the 
   - codestar-connections:CreateConnection
   - codestar-connections:UpdateConnectionInstallation
 
-## Changing default branch
+## Configuration 
 
-You can change the default branch which is picked up by the CodePipeline to trigger the pipeline with the following code snippet (during the pipeline definition):
+Configure your pipeline to use GitHub:
 
-```bash
-import { BasicRepositoryProvider, PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+```typescript
+import { RepositorySource, PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
 
 const pipeline = PipelineBlueprint.builder()
-.repositoryProvider(new BasicRepositoryProvider({
-      repositoryType: 'GITHUB',
-      branch: 'main',
-      name: 'my-repo',
-    }))
-...
+  .repository(RepositorySource.github({
+    repositoryName: 'owner/my-repo',
+    branch: 'main',
+    codeStarConnectionArn: 'arn:aws:codestar-connections:region:account:connection/uuid'
+  }))
+  .synth(app);
 ```
 
 ### Known Issues

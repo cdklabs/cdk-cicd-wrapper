@@ -3,8 +3,16 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import { IPipelineConfig, CodeGuruSeverityThreshold, PipelinePhases, IStackProvider } from '../src/common';
-import { BaseRepositoryProviderProps } from '../src/resource-providers';
+import { IPipelineBlueprintProps } from '../src';
+import {
+  IPipelineConfig,
+  CodeGuruSeverityThreshold,
+  PipelinePhases,
+  IStackProvider,
+  ResourceContext,
+  GlobalResources,
+} from '../src/common';
+import { BaseRepositoryProviderProps, EncryptionProvider, HookProvider } from '../src/resource-providers';
 import { PhaseCommands } from '../src/resource-providers/PhaseCommandProvider';
 
 const codeBuildEnvSettings = {
@@ -69,3 +77,14 @@ export const TestStackProvider: IStackProvider = {
     });
   },
 };
+
+export const TestContext: (props?: Partial<IPipelineBlueprintProps>) => ResourceContext = (props) =>
+  new ResourceContext(new cdk.App(), new cdk.Stack(), {
+    ...TestAppConfig,
+    resourceProviders: {
+      [GlobalResources.ENCRYPTION]: new EncryptionProvider(),
+      [GlobalResources.HOOK]: new HookProvider(),
+    },
+    plugins: {},
+    ...(props ?? {}),
+  });
