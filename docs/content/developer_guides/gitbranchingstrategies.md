@@ -1,6 +1,6 @@
 # Git Branching Strategies
 
-There are various ways that the CDK CI/CD Wrapper can be used with git branching strategies.
+The CDK CI/CD Wrapper can be used with git branching strategies as described below.
 
 # Trunk-Based Development
 
@@ -27,11 +27,11 @@ PipelineBlueprint.builder()
 
 # Git(x)Flow Feature Branches
 
-GitFlow, GitHub Flow and GitLab Flow are development methodologies where work is done on branches that are merged into the main trunk when it is ready to be deployed into production.  There are three ways that the CDK CI/CD Wrapper can be used with these types of methodologies.
+GitFlow, GitHub Flow and GitLab Flow are development methodologies where work is done on branches that are merged into the main trunk when they are ready to be deployed into production.  There are three ways that the CDK CI/CD Wrapper can be used with these types of methodologies.
 
 ## Workbench Deployments
 
-Workbench deployments are deployed directly from the developer's environment.  An additional `.workbench()` section is added to the pipeline builder that includes the stacks that the developer is working on in the feature branch.  
+Workbench deployments are deployed directly from the developer's environment.  An additional `.workbench()` section is added to the pipeline builder that includes the stacks that the developer is working on in their feature branch.  The `.workbench()` section should not be committed to the trunk because it is specific to a branch and is no longer necassary when the branch is merged.
 
 ```
 PipelineBlueprint.builder()
@@ -56,23 +56,25 @@ PipelineBlueprint.builder()
     .synth(app);
 ```
 
-Changes are deployed to the workbench account with the `npm run workbench deploy` command.
+Changes are deployed to the workbench account with the `npm run workbench deploy` command.  They can be removed with `npm run workbench destroy`.
 
 ![Workbench Development](../assets/diagrams/workbench-deployment.png){ width="75%" }
 
 !!! note
 
     * Workbench resources are a copy of the stack in the `.addStack()` section, not the exact same stack.
-    * The resources that are deployed will be prefixed with the username of the currently logged in user so that multiple users can deploy into the same account
+    * The resources that are deployed will be prefixed with the username of the currently logged in user so that multiple users can deploy into the same development or sandbox account
     * No pipeline is created for the workbench deployment and the developer must manually deploy all changes
     * Compliance and encryption stacks are created for every workbench
-    * Resources must be manually cleaned up by deleting Cloudformation stacks belonging to the workbench deployment either with `workbench destroy` or by deleting Cloudformation stacks
-    * If the workbench stack includes container building they will be compiled for the architecture of the developer's device (eg. ARM64), not the CodeBuild environment used by the pipeline
+    * Resources must be manually cleaned up either with `workbench destroy` or by deleting the associated Cloudformation stacks
+    * If the workbench stack builds containers they will be compiled for the architecture of the developer's device (eg. ARM64), not the CodeBuild environment used by the pipeline
 
 
 ## Feature Pipelines
 
-Feature pipelines can be created to automatically deploy from a code branch to a set of accounts.  This is a separate pipeline that exists for the lifetime of the feature and can deploy into multiple accounts
+Feature pipelines can be created to automatically deploy from a code branch to a set of accounts.  This is a separate pipeline that exists for the lifetime of the feature and can deploy into multiple accounts.
+
+It is not possible to have both a `.workbench()` section and a second pipeline.
 
 ```
 // Main branch pipline
@@ -122,12 +124,14 @@ PipelineBlueprint.builder()
     * A repository section must be added to the pipeline builder that identifies the branch to use
     * Stages other than RES must have a full stage definition because names such as `Stage.Dev` cannot be re-used in a second pipeline
     * Application name and qualifier must be supplied to prevent duplicate resources being created
-    * Resources in stacks should use naming conventions to prevent name clashes when multiple versions are deployed into the same account
-    * Resources must be manually cleaned up by deleting Cloudformation stacks in the accounts where they are created
+    * Resources in stacks should use naming conventions that prevent name clashes when multiple versions are deployed into the same account
+    * Resources must be manually cleaned up by deleting Cloudformation stacks in the accounts where they are created when the feature branch is merged into trunk
 
 ## Developer Sandbox Pipelines
 
-Pipelines for individual developers can be created to automatically deploy from a code branch to a personal sandbox account.
+Pipelines for individual developers can be created to automatically deploy from a code branch to a personal sandbox account.  This differs from the feature branch approach above because the Code Pipeline is in the sandbox account, not the RES account.
+
+It is not possible to have both a `.workbench()` section and a second pipeline.
 
 ```
 // Main branch pipline

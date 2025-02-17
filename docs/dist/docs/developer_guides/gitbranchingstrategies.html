@@ -2206,7 +2206,7 @@
 
 
 <h1 id="git-branching-strategies">Git Branching Strategies</h1>
-<p>There are various ways that the CDK CI/CD Wrapper can be used with git branching strategies.</p>
+<p>The CDK CI/CD Wrapper can be used with git branching strategies as described below.</p>
 <h1 id="trunk-based-development">Trunk-Based Development</h1>
 <p>Trunk-based development has no branches, and changes are committed directly to the main trunk.  The PipelineBlueprint is used with default options and has the following parameters:</p>
 <div class="highlight"><pre><span></span><code>PipelineBlueprint.builder()
@@ -2225,9 +2225,9 @@
 </code></pre></div>
 <p><img alt="Trunk Based Development" src="../assets/diagrams/trunk-development.png" width="75%" /></p>
 <h1 id="gitxflow-feature-branches">Git(x)Flow Feature Branches</h1>
-<p>GitFlow, GitHub Flow and GitLab Flow are development methodologies where work is done on branches that are merged into the main trunk when it is ready to be deployed into production.  There are three ways that the CDK CI/CD Wrapper can be used with these types of methodologies.</p>
+<p>GitFlow, GitHub Flow and GitLab Flow are development methodologies where work is done on branches that are merged into the main trunk when they are ready to be deployed into production.  There are three ways that the CDK CI/CD Wrapper can be used with these types of methodologies.</p>
 <h2 id="workbench-deployments">Workbench Deployments</h2>
-<p>Workbench deployments are deployed directly from the developer's environment.  An additional <code>.workbench()</code> section is added to the pipeline builder that includes the stacks that the developer is working on in the feature branch.  </p>
+<p>Workbench deployments are deployed directly from the developer's environment.  An additional <code>.workbench()</code> section is added to the pipeline builder that includes the stacks that the developer is working on in their feature branch.  The <code>.workbench()</code> section should not be committed to the trunk because it is specific to a branch and is no longer necassary when the branch is merged.</p>
 <div class="highlight"><pre><span></span><code>PipelineBlueprint.builder()
     .defineStages([
         Stage.RES,
@@ -2249,21 +2249,22 @@
     })
     .synth(app);
 </code></pre></div>
-<p>Changes are deployed to the workbench account with the <code>npm run workbench deploy</code> command.</p>
+<p>Changes are deployed to the workbench account with the <code>npm run workbench deploy</code> command.  They can be removed with <code>npm run workbench destroy</code>.</p>
 <p><img alt="Workbench Development" src="../assets/diagrams/workbench-deployment.png" width="75%" /></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul>
 <li>Workbench resources are a copy of the stack in the <code>.addStack()</code> section, not the exact same stack.</li>
-<li>The resources that are deployed will be prefixed with the username of the currently logged in user so that multiple users can deploy into the same account</li>
+<li>The resources that are deployed will be prefixed with the username of the currently logged in user so that multiple users can deploy into the same development or sandbox account</li>
 <li>No pipeline is created for the workbench deployment and the developer must manually deploy all changes</li>
 <li>Compliance and encryption stacks are created for every workbench</li>
-<li>Resources must be manually cleaned up by deleting Cloudformation stacks belonging to the workbench deployment either with <code>workbench destroy</code> or by deleting Cloudformation stacks</li>
-<li>If the workbench stack includes container building they will be compiled for the architecture of the developer's device (eg. ARM64), not the CodeBuild environment used by the pipeline</li>
+<li>Resources must be manually cleaned up either with <code>workbench destroy</code> or by deleting the associated Cloudformation stacks</li>
+<li>If the workbench stack builds containers they will be compiled for the architecture of the developer's device (eg. ARM64), not the CodeBuild environment used by the pipeline</li>
 </ul>
 </div>
 <h2 id="feature-pipelines">Feature Pipelines</h2>
-<p>Feature pipelines can be created to automatically deploy from a code branch to a set of accounts.  This is a separate pipeline that exists for the lifetime of the feature and can deploy into multiple accounts</p>
+<p>Feature pipelines can be created to automatically deploy from a code branch to a set of accounts.  This is a separate pipeline that exists for the lifetime of the feature and can deploy into multiple accounts.</p>
+<p>It is not possible to have both a <code>.workbench()</code> section and a second pipeline.</p>
 <div class="highlight"><pre><span></span><code>// Main branch pipline
 PipelineBlueprint.builder()
     .defineStages([
@@ -2310,12 +2311,13 @@ PipelineBlueprint.builder()
 <li>A repository section must be added to the pipeline builder that identifies the branch to use</li>
 <li>Stages other than RES must have a full stage definition because names such as <code>Stage.Dev</code> cannot be re-used in a second pipeline</li>
 <li>Application name and qualifier must be supplied to prevent duplicate resources being created</li>
-<li>Resources in stacks should use naming conventions to prevent name clashes when multiple versions are deployed into the same account</li>
-<li>Resources must be manually cleaned up by deleting Cloudformation stacks in the accounts where they are created</li>
+<li>Resources in stacks should use naming conventions that prevent name clashes when multiple versions are deployed into the same account</li>
+<li>Resources must be manually cleaned up by deleting Cloudformation stacks in the accounts where they are created when the feature branch is merged into trunk</li>
 </ul>
 </div>
 <h2 id="developer-sandbox-pipelines">Developer Sandbox Pipelines</h2>
-<p>Pipelines for individual developers can be created to automatically deploy from a code branch to a personal sandbox account.</p>
+<p>Pipelines for individual developers can be created to automatically deploy from a code branch to a personal sandbox account.  This differs from the feature branch approach above because the Code Pipeline is in the sandbox account, not the RES account.</p>
+<p>It is not possible to have both a <code>.workbench()</code> section and a second pipeline.</p>
 <div class="highlight"><pre><span></span><code>// Main branch pipline
 PipelineBlueprint.builder()
     .defineStages([
