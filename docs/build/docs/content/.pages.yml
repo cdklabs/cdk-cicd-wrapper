@@ -1,0 +1,10 @@
+---
+nav:
+  - Overview: overview
+  - Getting started: getting_started
+  - Developer Guides: developer_guides
+  - CLI Reference: cli
+  - FAQs: faqs
+  - Contributing: contributing
+  - Workshops: workshops
+  - Release notes: https://github.com/cdklabs/cdk-cicd-wrapper/releases

@@ -1,0 +1,5 @@
+---
+nav:
+  - index.md
+  - "GenerativeAI Image Generation": basics-lvl300
+  - "GitHub Action pipeline": github-pipeline
