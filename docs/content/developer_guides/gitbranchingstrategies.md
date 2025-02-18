@@ -27,7 +27,7 @@ PipelineBlueprint.builder()
 
 # Git(x)Flow Feature Branches
 
-GitFlow, GitHub Flow and GitLab Flow are development methodologies where work is done on branches that are merged into the main trunk when they are ready to be deployed into production.  There are three ways that the CDK CI/CD Wrapper can be used with these types of methodologies.
+[GitFlow](https://nvie.com/posts/a-successful-git-branching-model/), [GitHub Flow](https://githubflow.github.io/) and [GitLab Flow](https://about.gitlab.com/topics/version-control/what-is-gitlab-flow/) are development methodologies where work is done on branches that are merged into the main trunk when they are ready to be deployed into production.  There are three ways that the CDK CI/CD Wrapper can be used with these types of methodologies.
 
 ## Workbench Deployments
 
