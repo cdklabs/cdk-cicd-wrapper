@@ -9,7 +9,7 @@ export class ProjenConfig extends yarn.TypeScriptWorkspace {
       description: 'This repository contains the projen support for the project',
       projenrcTs: true,
       deps: ['projen'],
-      jest: false,
+      jest: true,
     });
 
     this.addDevDeps(...root.eslintDeps);
