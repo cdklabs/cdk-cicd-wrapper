@@ -102,11 +102,17 @@ export class CdkCICDWrapper extends projen.Component {
     );
 
     project.cdkConfig.json.patch(projen.JsonPatch.add('/toolkitStackName', `CdkToolkit-${this.cdkQualifier}`));
+
     project.cdkConfig.json.patch(
-      projen.JsonPatch.add('/context', {
-        '@aws-cdk/core:bootstrapQualifier': this.cdkQualifier,
-      }),
+      ...[
+        projen.JsonPatch.test('/context', undefined, projen.TestFailureBehavior.SKIP),
+        projen.JsonPatch.add('/context', {
+          '@aws-cdk/core:bootstrapQualifier': this.cdkQualifier,
+        }),
+      ],
     );
+
+    project.cdkConfig.json.patch(projen.JsonPatch.add('/context/@aws-cdk~1core:bootstrapQualifier', this.cdkQualifier));
 
     project.package.addField('config', {
       cdkQualifier: this.cdkQualifier,
