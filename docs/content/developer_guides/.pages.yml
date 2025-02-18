@@ -20,3 +20,4 @@ nav:
     - "CodeCommit": "vcs_codecommit.md"
     - "GitHub": "vcs_github.md"
   - "Networking": "networking.md"
+  - "Git Branching Strategies": "gitbranchingstrategies.md"
