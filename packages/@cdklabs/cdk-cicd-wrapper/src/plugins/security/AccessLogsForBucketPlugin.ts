@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { IAspect, Aspects, Names, Stack } from 'aws-cdk-lib';
+import { IAspect, Aspects, Names, Stack, Annotations } from 'aws-cdk-lib';
 import { CfnBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct, IConstruct } from 'constructs';
 import { GlobalResources, PluginBase, ResourceContext } from '../../common';
@@ -45,6 +45,10 @@ class AccessLogsForBucketAspect implements IAspect {
       let complianceLogBucketName = this.complianceLogBucketName;
 
       if (stack.region !== this.mainRegion) {
+        Annotations.of(node).addWarningV2(
+          'access-logs-bucket-plugin-cross-region-used',
+          'The Access Logs Bucket plugin is used cross region',
+        );
         complianceLogBucketName = this.complianceLogBucketName.replace(this.mainRegion, stack.region);
       }
 
