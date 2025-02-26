@@ -46,8 +46,8 @@ class AccessLogsForBucketAspect implements IAspect {
 
       if (stack.region !== this.mainRegion) {
         Annotations.of(node).addWarningV2(
-          'access-logs-bucket-plugin-cross-region-used',
-          'The Access Logs Bucket plugin is used cross region',
+          'access-logs-for-bucket-plugin-cross-region-used',
+          'The Access Logs For Bucket plugin is used cross region',
         );
         complianceLogBucketName = this.complianceLogBucketName.replace(this.mainRegion, stack.region);
       }
