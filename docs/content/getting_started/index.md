@@ -294,7 +294,7 @@ If you are using GitHub, add the remote repository and push your local repositor
 
 ```bash
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD);
-git remote add origin git@github:${GIT_REPOSITORY}.git;
+git remote add origin git@github.com:${GIT_REPOSITORY}.git;
 git commit -am "feat: init origin";
 git push -u origin ${CURRENT_BRANCH}:main
 ```
