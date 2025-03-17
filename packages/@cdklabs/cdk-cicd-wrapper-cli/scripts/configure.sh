@@ -233,8 +233,8 @@ function collect_inputs() {
     echo_step "Collecting Information..."
     echo
 
-    read_input_boolean "Creating a new Vanilla Pipeline project?" "Do you want to create a new Vanilla Pipeline project?" IS_SCAFFOLDING
-
+    read_input_boolean "Creating a new CDK CI/CD Wrapper?" "Do you want to create a new CDK CI/CD Wrapper project?" IS_SCAFFOLDING
+ project
     if [[ $IS_SCAFFOLDING =~ [Yy]+ ]]; then
         collect_inputs_for_scaffolding
     else
