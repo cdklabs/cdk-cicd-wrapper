@@ -19,9 +19,7 @@ Before you begin, ensure that you have the following prerequisites in place:
 
 For more detailed information on prerequisites, refer to the [Prerequisites](./prerequisites.md) documentation.
 
-Below we explain how to integrate the {{ project_name }} into:
-- [New CDK Project](#new-cdk-project)
-- [Existing CDK Project](#existing-cdk-project)
+Below we explain how to integrate the {{ project_name }} into existing and [new CDK Projects](#new-cdk-project)
 
 ### New CDK project
 
@@ -106,17 +104,9 @@ Ensure that the following lines are in your `.gitignore` file:
 - `.npmrc` (if you are using a private NPM repository)
 - `.env`
 
-## Existing CDK project
+## CDK project setup
 
-To set up the CI/CD pipeline in your existing AWS CDK project, follow these steps:
-
-0. Install the {{ project_name }} pipeline package by running the following command:
-
-   ```bash
-   npm i {{ npm_codepipeline }} {{ npm_cli }}
-   ```
-
-   **Note**: If the `@cdklabs` scope is not available from the public NPM registry, you will need to configure a [private NPM registry](../developer_guides/private_npm_registry.md).
+To set up the CI/CD pipeline in your AWS CDK project, follow these steps:
 
 1. Open your entry file, typically located at `bin/<your-main-file>.ts` (where `your-main-file` is the name of your root project directory).
 
