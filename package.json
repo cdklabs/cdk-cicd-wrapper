@@ -35,24 +35,24 @@
     "organization": false
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.6.1",
-    "@commitlint/config-conventional": "^19.6.0",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
     "@types/node": "^18",
     "@typescript-eslint/eslint-plugin": "^7",
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
     "all-contributors-cli": "^6.26.1",
-    "cdklabs-projen-project-types": "^0.1.216",
+    "cdklabs-projen-project-types": "^0.2.4",
     "constructs": "10.3.0",
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.3",
     "husky": "^9.1.7",
     "node-fetch": "^2",
-    "prettier": "^3.4.2",
-    "projen": "^0.91.6",
+    "prettier": "^3.5.3",
+    "projen": "^0.91.17",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.8.2"
   },
   "keywords": [
     "aws",
@@ -77,6 +77,14 @@
       "packages/@cdklabs/cdk-cicd-wrapper",
       "packages/@cdklabs/cdk-cicd-wrapper-cli",
       "packages/@cdklabs/cdk-cicd-wrapper-projen"
+    ],
+    "nohoist": [
+      "@cdklabs/cdk-cicd-wrapper/@cloudcomponents/cdk-pull-request-approval-rule",
+      "@cdklabs/cdk-cicd-wrapper/@cloudcomponents/cdk-pull-request-approval-rule/**",
+      "@cdklabs/cdk-cicd-wrapper/@cloudcomponents/cdk-pull-request-check",
+      "@cdklabs/cdk-cicd-wrapper/@cloudcomponents/cdk-pull-request-check/**",
+      "@cdklabs/cdk-cicd-wrapper/yaml",
+      "@cdklabs/cdk-cicd-wrapper/yaml/**"
     ]
   },
   "jest": {
