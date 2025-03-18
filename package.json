@@ -50,7 +50,7 @@
     "husky": "^9.1.7",
     "node-fetch": "^2",
     "prettier": "^3.5.3",
-    "projen": "^0.91.17",
+    "projen": "^0.91.18",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },

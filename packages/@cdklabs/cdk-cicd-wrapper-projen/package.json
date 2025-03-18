@@ -39,12 +39,12 @@
     "jest": "^29.7.0",
     "jest-junit": "^16",
     "prettier": "^3.5.3",
-    "projen": "^0.91.17",
+    "projen": "^0.91.18",
     "ts-jest": "^29.2.6",
     "typescript": "^5.8.2"
   },
   "dependencies": {
-    "projen": "^0.91.17"
+    "projen": "^0.91.18"
   },
   "main": "lib/index.js",
   "license": "Apache-2.0",

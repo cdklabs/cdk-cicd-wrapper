@@ -65,7 +65,7 @@ export class S3RepositoryConstruct extends Construct {
   constructor(scope: Construct, id: string, props: S3RepositoryConstructProps) {
     super(scope, id);
     this.encryptionKey = props.encryptionKey;
-    this.removalPolicy = props.removalPolicy ?? cdk.RemovalPolicy.DESTROY;
+    this.removalPolicy = props.removalPolicy ?? cdk.RemovalPolicy.RETAIN;
     this.repositoryBranch = props.branch ?? 'main';
     this.prefix = props.prefix ?? '';
     const repoZipPath = `${this.prefix}/refs/heads/${this.repositoryBranch}/repo.zip`;
@@ -75,8 +75,8 @@ export class S3RepositoryConstruct extends Construct {
       versioned: true,
       encryption: s3.BucketEncryption.KMS,
       encryptionKey: props.encryptionKey,
-      removalPolicy: props.removalPolicy ?? cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: props.autoDeleteObjects ?? true,
+      removalPolicy: props.removalPolicy ?? cdk.RemovalPolicy.RETAIN,
+      autoDeleteObjects: props.autoDeleteObjects ?? false,
       eventBridgeEnabled: true,
       enforceSSL: true,
     });
@@ -102,9 +102,6 @@ export class S3RepositoryConstruct extends Construct {
       );
     });
 
-    this.pipelineInput = pipelines.CodePipelineSource.s3(this.bucket, repoZipPath, {
-      trigger: pipelineActions.S3Trigger.EVENTS,
-    });
     this.pipelineInput = pipelines.CodePipelineSource.s3(this.bucket, repoZipPath, {
       trigger: pipelineActions.S3Trigger.EVENTS,
     });

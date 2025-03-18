@@ -39,7 +39,7 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.2.3",
     "prettier": "^3.5.3",
-    "projen": "^0.91.17",
+    "projen": "^0.91.18",
     "typescript": "^5.8.2"
   },
   "dependencies": {
