@@ -42,12 +42,7 @@ async function main() {
   ya.demandCommand();
 
   // Custom version option handling
-  ya.version(false); // Disable the default --version option
-  ya.option('version', {
-    type: 'boolean',
-    description: 'Show version number',
-    global: false, // Restrict to the top-level command
-  });
+  ya.version(); // Enabling the default --version option
 
   const args = await ya.argv; // Parse the command-line arguments
 
