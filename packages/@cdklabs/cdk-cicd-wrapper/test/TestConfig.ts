@@ -3,7 +3,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import { IPipelineBlueprintProps } from '../src';
+import { IPipelineBlueprintProps, IResourceProvider } from '../src';
 import {
   IPipelineConfig,
   CodeGuruSeverityThreshold,
@@ -78,12 +78,16 @@ export const TestStackProvider: IStackProvider = {
   },
 };
 
-export const TestContext: (props?: Partial<IPipelineBlueprintProps>) => ResourceContext = (props) =>
+export const TestContext: (
+  props?: Partial<IPipelineBlueprintProps>,
+  extraResourceProviders?: { [key in string]: IResourceProvider },
+) => ResourceContext = (props, extraResourceProviders) =>
   new ResourceContext(new cdk.App(), new cdk.Stack(), {
     ...TestAppConfig,
     resourceProviders: {
       [GlobalResources.ENCRYPTION]: new EncryptionProvider(),
       [GlobalResources.HOOK]: new HookProvider(),
+      ...(extraResourceProviders ?? {}),
     },
     plugins: {},
     ...(props ?? {}),
