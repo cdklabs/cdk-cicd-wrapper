@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/cd.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/gitbranchingstrategies.html">
       
       
-        <link rel="prev" href="ci.html">
+        <link rel="prev" href="networking.html">
       
       
-        <link rel="next" href="global_resource.html">
+        <link rel="next" href="../cli/index.html">
       
       
       <link rel="icon" href="../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Continuous Deployment - CDK CI/CD Wrapper</title>
+        <title>Git Branching Strategies - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#continuous-deployment" class="md-skip">
+        <a href="#git-branching-strategies" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Continuous Deployment
+              Git Branching Strategies
             
           </span>
         </div>
@@ -720,30 +720,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Continuous Deployment
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="cd.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="cd.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -752,101 +732,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#common-terms" class="md-nav__link">
-    <span class="md-ellipsis">
-      Common terms
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Common terms">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#stage" class="md-nav__link">
-    <span class="md-ellipsis">
-      Stage
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      Stack
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-define-stacks-to-deploy-on-a-stage" class="md-nav__link">
-    <span class="md-ellipsis">
-      How to define Stacks to deploy on a Stage?
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How to define Stacks to deploy on a Stage?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#add-stacks-to-all-stages" class="md-nav__link">
-    <span class="md-ellipsis">
-      Add stacks to all stages
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#add-stack-to-a-specific-stage" class="md-nav__link">
-    <span class="md-ellipsis">
-      Add stack to a specific stage
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-define-custom-stages" class="md-nav__link">
-    <span class="md-ellipsis">
-      How to define custom Stages
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1316,10 +1201,19 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="gitbranchingstrategies.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="gitbranchingstrategies.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1328,6 +1222,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -2294,89 +2189,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#common-terms" class="md-nav__link">
-    <span class="md-ellipsis">
-      Common terms
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Common terms">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#stage" class="md-nav__link">
-    <span class="md-ellipsis">
-      Stage
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      Stack
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-define-stacks-to-deploy-on-a-stage" class="md-nav__link">
-    <span class="md-ellipsis">
-      How to define Stacks to deploy on a Stage?
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How to define Stacks to deploy on a Stage?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#add-stacks-to-all-stages" class="md-nav__link">
-    <span class="md-ellipsis">
-      Add stacks to all stages
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#add-stack-to-a-specific-stage" class="md-nav__link">
-    <span class="md-ellipsis">
-      Add stack to a specific stage
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-define-custom-stages" class="md-nav__link">
-    <span class="md-ellipsis">
-      How to define custom Stages
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -2393,112 +2205,169 @@
   
 
 
-<h1 id="continuous-deployment">Continuous Deployment</h1>
-<p>CD (Continuous Deployment) is a continuous method of software delivery, where you continuously deploy iterative code changes through out various stages.</p>
-<p>This iterative process helps reduce the chance that you develop new code based on buggy or failed previous versions. The CDK CI/CD Wrapper can catch bugs early in the development cycle, and help ensure that all the code deployed to production complies with your established code standards.</p>
-<h2 id="common-terms">Common terms</h2>
-<h3 id="stage">Stage</h3>
-<p>Stage is a representation of a <a href="https://en.wikipedia.org/wiki/Deployment_environment#:~:text=Deployment%20architectures%20vary%20significantly%2C%20but,deployed%20to%20each%20in%20order.">deployment environment</a> where the solution is deployed. The CDK CI/CD Wrapper requires the RES stage to be defined, because that is the stage where all the CI/CD infrastructure elements will be placed. We recommend to use the DEV, INT, and PROD stages, in this order, but you can define your own <a href="#how-to-define-custom-stages">Stages</a>.</p>
-<h3 id="stack">Stack</h3>
-<p>The unit of deployment in the AWS CDK is called a stack. See more details in the <a href="https://docs.aws.amazon.com/cdk/v2/guide/stacks.html">CDK documentation</a>.</p>
-<h2 id="how-to-define-stacks-to-deploy-on-a-stage">How to define Stacks to deploy on a Stage?</h2>
-<p>Stacks can be added to all of the stages or can be added only to specific stages. Any correct CDK Stacks can be added to a stage and can be deployed with the CDK CI/CD Wrapper.</p>
-<h3 id="add-stacks-to-all-stages">Add stacks to all stages</h3>
-<p>Open your <code>bin/&lt;your-main-file&gt;.ts</code> file and include a stack into the Delivery Pipeline. Here we are using two of our example stacks.</p>
-<div class="highlight"><pre><span></span><code><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">().</span><span class="nx">addStack</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">provide</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">example</span><span class="p">.</span><span class="nx">LambdaStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">context</span><span class="p">.</span><span class="nx">blueprintProps</span><span class="p">.</span><span class="nx">applicationName</span><span class="si">}</span><span class="sb">LambdaStack`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nx">applicationName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationName</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
-<span class="w">    </span><span class="p">});</span>
-<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">example</span><span class="p">.</span><span class="nx">S3BucketStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">context</span><span class="p">.</span><span class="nx">blueprintProps</span><span class="p">.</span><span class="nx">applicationName</span><span class="si">}</span><span class="sb">S3Stack`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nx">bucketName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;test-bucket&#39;</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">applicationQualifier</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationQualifier</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">encryptionKey</span><span class="o">:</span><span class="w"> </span><span class="kt">context.get</span><span class="p">(</span><span class="nx">GlobalResources</span><span class="p">.</span><span class="nx">ENCRYPTION</span><span class="p">)</span><span class="o">!</span><span class="p">.</span><span class="nx">kmsKey</span><span class="p">,</span>
-<span class="w">    </span><span class="p">});</span>
-<span class="p">}}).</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+<h1 id="git-branching-strategies">Git Branching Strategies</h1>
+<p>The CDK CI/CD Wrapper can be used with git branching strategies as described below.</p>
+<h1 id="trunk-based-development">Trunk-Based Development</h1>
+<p>Trunk-based development has no branches, and changes are committed directly to the main trunk.  The PipelineBlueprint is used with default options and has the following parameters:</p>
+<div class="highlight"><pre><span></span><code>PipelineBlueprint.builder()
+    .defineStages([
+        Stage.RES,
+        Stage.DEV,
+        Stage.INT,]
+    )
+    .addStack({
+        provide: (context) =&gt; {
+            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
+        });
+        },
+    })
+    .synth(app);
 </code></pre></div>
-<p>You can add stacks one by one as well.</p>
-<div class="highlight"><pre><span></span><code><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">().</span><span class="nx">addStack</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">provide</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">example</span><span class="p">.</span><span class="nx">LambdaStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">context</span><span class="p">.</span><span class="nx">blueprintProps</span><span class="p">.</span><span class="nx">applicationName</span><span class="si">}</span><span class="sb">LambdaStack`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nx">applicationName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationName</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
-<span class="w">    </span><span class="p">});</span>
-<span class="p">}}).</span><span class="nx">addStack</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">provide</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">example</span><span class="p">.</span><span class="nx">S3BucketStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">context</span><span class="p">.</span><span class="nx">blueprintProps</span><span class="p">.</span><span class="nx">applicationName</span><span class="si">}</span><span class="sb">S3Stack`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nx">bucketName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;test-bucket&#39;</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">applicationQualifier</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationQualifier</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">encryptionKey</span><span class="o">:</span><span class="w"> </span><span class="kt">context.get</span><span class="p">(</span><span class="nx">GlobalResources</span><span class="p">.</span><span class="nx">ENCRYPTION</span><span class="p">)</span><span class="o">!</span><span class="p">.</span><span class="nx">kmsKey</span><span class="p">,</span>
-<span class="w">    </span><span class="p">});</span>
-<span class="p">}}).</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+<p><img alt="Trunk Based Development" src="../assets/diagrams/trunk-development.png" width="75%" /></p>
+<h1 id="gitxflow-feature-branches">Git(x)Flow Feature Branches</h1>
+<p><a href="https://nvie.com/posts/a-successful-git-branching-model/">GitFlow</a>, <a href="https://githubflow.github.io/">GitHub Flow</a> and <a href="https://about.gitlab.com/topics/version-control/what-is-gitlab-flow/">GitLab Flow</a> are development methodologies where work is done on branches that are merged into the main trunk when they are ready to be deployed into production.  There are three ways that the CDK CI/CD Wrapper can be used with these types of methodologies.</p>
+<h2 id="workbench-deployments">Workbench Deployments</h2>
+<p>Workbench deployments are deployed directly from the developer's environment.  An additional <code>.workbench()</code> section is added to the pipeline builder that includes the stacks that the developer is working on in their feature branch.  The <code>.workbench()</code> section should not be committed to the trunk because it is specific to a branch and is no longer necassary when the branch is merged.</p>
+<div class="highlight"><pre><span></span><code>PipelineBlueprint.builder()
+    .defineStages([
+        Stage.RES,
+        Stage.DEV,
+        Stage.INT,]
+    )
+    .workbench({
+        provide: (context) =&gt; {
+        // This is a duplicate of the stack below
+            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
+        });
+        },
+    })
+    .addStack({
+        provide: (context) =&gt; {
+            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
+        });
+        },
+    })
+    .synth(app);
 </code></pre></div>
-<h4 id="highlights">Highlights</h4>
-<ol>
-<li>Your stack's scope must be the one that comes from the <code>context</code> -&gt; <code>context.scope</code> or any other stack you defined in the same addStack block.</li>
-<li>It is recommended to use the prefixing with on the resources you are creating in your Stack otherwise your resource name can be conflicting. As best practice we use the stageName and the applicationQualifier both as that allows us to deploy multi stage CI/CD pipelines on a <a href="./single_account.md">single AWS account</a>.</li>
-<li>You can access GlobalResources through the context <code>context.get(GlobalResources.ENCRYPTION)!.kmsKey</code>, you can read about the <a href="global_resource.html">GlobalResources</a></li>
-<li>You can access the parameters of the blueprint <code>context.blueprintProps</code></li>
-</ol>
-<h3 id="add-stack-to-a-specific-stage">Add stack to a specific stage</h3>
-<div class="highlight"><pre><span></span><code><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">().</span><span class="nx">addStack</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">provide</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">example</span><span class="p">.</span><span class="nx">LambdaStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">context</span><span class="p">.</span><span class="nx">blueprintProps</span><span class="p">.</span><span class="nx">applicationName</span><span class="si">}</span><span class="sb">LambdaStack`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nx">applicationName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationName</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
-<span class="w">    </span><span class="p">});</span>
-<span class="p">}},</span><span class="w"> </span><span class="nx">Stage</span><span class="p">.</span><span class="nx">DEV</span><span class="p">).</span><span class="nx">addStack</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">provide</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="ow">new</span><span class="w"> </span><span class="nx">example</span><span class="p">.</span><span class="nx">S3BucketStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">context</span><span class="p">.</span><span class="nx">blueprintProps</span><span class="p">.</span><span class="nx">applicationName</span><span class="si">}</span><span class="sb">S3Stack`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nx">bucketName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;test-bucket&#39;</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">applicationQualifier</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationQualifier</span><span class="p">,</span>
-<span class="w">        </span><span class="nx">encryptionKey</span><span class="o">:</span><span class="w"> </span><span class="kt">context.get</span><span class="p">(</span><span class="nx">GlobalResources</span><span class="p">.</span><span class="nx">ENCRYPTION</span><span class="p">)</span><span class="o">!</span><span class="p">.</span><span class="nx">kmsKey</span><span class="p">,</span>
-<span class="w">    </span><span class="p">});</span>
-<span class="p">}},</span><span class="w"> </span><span class="nx">Stage</span><span class="p">.</span><span class="nx">INT</span><span class="p">,</span><span class="w"> </span><span class="nx">Stage</span><span class="p">.</span><span class="nx">PROD</span><span class="p">).</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+<p>Changes are deployed to the workbench account with the <code>npm run workbench deploy</code> command.  They can be removed with <code>npm run workbench destroy</code>.</p>
+<p><img alt="Workbench Development" src="../assets/diagrams/workbench-deployment.png" width="75%" /></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li>Workbench resources are a copy of the stack in the <code>.addStack()</code> section, not the exact same stack.</li>
+<li>The resources that are deployed will be prefixed with the username of the currently logged in user so that multiple users can deploy into the same development or sandbox account</li>
+<li>No pipeline is created for the workbench deployment and the developer must manually deploy all changes</li>
+<li>Compliance and encryption stacks are created for every workbench</li>
+<li>Resources must be manually cleaned up either with <code>workbench destroy</code> or by deleting the associated Cloudformation stacks</li>
+<li>If the workbench stack builds containers they will be compiled for the architecture of the developer's device (eg. ARM64), not the CodeBuild environment used by the pipeline</li>
+</ul>
+</div>
+<h2 id="feature-pipelines">Feature Pipelines</h2>
+<p>Feature pipelines can be created to automatically deploy from a code branch to a set of accounts.  This is a separate pipeline that exists for the lifetime of the feature and can deploy into multiple accounts.</p>
+<p>It is not possible to have both a <code>.workbench()</code> section and a second pipeline.</p>
+<div class="highlight"><pre><span></span><code>// Main branch pipline
+PipelineBlueprint.builder()
+    .defineStages([
+        Stage.RES,
+        Stage.DEV,
+        Stage.INT,]
+    )
+    .addStack({
+        provide: (context) =&gt; {
+            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
+        });
+        },
+    })
+    .synth(app);
+
+// Feature branch pipeline
+PipelineBlueprint.builder()
+    .repository(RepositorySource.github({
+        codeStarConnectionArn: &#39;arn:aws:codeconnections:us-east-1:111111111:connection/aaaaaaa&#39;,
+        repositoryName: &#39;repoowner/project&#39;,
+        branch: &#39;feature1&#39;
+    }))
+    .defineStages([
+        Stage.RES,
+        { stage: &#39;feature1stagedev&#39;, account: &#39;2222222222&#39;, region: &#39;us-east-1&#39;, manualApprovalRequired: false },
+        { stage: &#39;feature1stageint&#39;, account: &#39;3333333333&#39;, region: &#39;us-east-1&#39;, manualApprovalRequired: true },
+        ]
+    )
+    .addStack({
+        provide: (context) =&gt; {
+            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
+        });
+        },
+    })
+    .applicationName(&#39;feature1app&#39;)
+    .applicationQualifier(&#39;f1&#39;)
+    .synth(app);
 </code></pre></div>
-<p>With this configuration the <code>LambdaStack</code> will be deployed in the DEV stage only and not in the INT and PROD stages where as the <code>S3BucketStack</code> will be deployed in the INT and PROD stages.</p>
-<p><strong>Note</strong>
-The deployed stacks can be different for each Stage, although the recommendation is to have similar identical deployments. This is to ensure faulty operation of the setup can be intercepted as early as possible.</p>
-<h2 id="how-to-define-custom-stages">How to define custom Stages</h2>
-<p>You can define custom stages through the VanillaPipelineBuilder, so that you can adjust the CD process to your environment setup.</p>
-<div class="highlight"><pre><span></span><code><span class="nx">PipelineBlueprint</span><span class="p">.</span><span class="nx">builder</span><span class="p">()</span>
-<span class="w">    </span><span class="p">.</span><span class="nx">defineStages</span><span class="p">([</span>
-<span class="w">        </span><span class="nx">Stage</span><span class="p">.</span><span class="nx">RES</span><span class="p">,</span>
-<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;EXP&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;1234567891012&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;eu-west-1&#39;</span><span class="p">},</span>
-<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">Stage.DEV</span><span class="p">,</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;2345678910123&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;eu-west-1&#39;</span><span class="p">},</span>
-<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="kt">Stage.INT</span><span class="p">}</span>
-<span class="w">    </span><span class="p">])</span>
-<span class="w">    </span><span class="p">.</span><span class="nx">addStack</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">provide</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="ow">new</span><span class="w"> </span><span class="nx">example</span><span class="p">.</span><span class="nx">LambdaStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">context</span><span class="p">.</span><span class="nx">blueprintProps</span><span class="p">.</span><span class="nx">applicationName</span><span class="si">}</span><span class="sb">LambdaStack`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">            </span><span class="nx">applicationName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationName</span><span class="p">,</span>
-<span class="w">            </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
-<span class="w">        </span><span class="p">});</span>
-<span class="w">    </span><span class="p">},</span><span class="w"> </span><span class="s1">&#39;EXP&#39;</span><span class="p">).</span><span class="nx">addStack</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">provide</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">context</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="ow">new</span><span class="w"> </span><span class="nx">example</span><span class="p">.</span><span class="nx">S3BucketStack</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">context</span><span class="p">.</span><span class="nx">blueprintProps</span><span class="p">.</span><span class="nx">applicationName</span><span class="si">}</span><span class="sb">S3Stack`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">            </span><span class="nx">bucketName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;test-bucket&#39;</span><span class="p">,</span>
-<span class="w">            </span><span class="nx">stageName</span><span class="o">:</span><span class="w"> </span><span class="kt">context.stage</span><span class="p">,</span>
-<span class="w">            </span><span class="nx">applicationQualifier</span><span class="o">:</span><span class="w"> </span><span class="kt">context.blueprintProps.applicationQualifier</span><span class="p">,</span>
-<span class="w">            </span><span class="nx">encryptionKey</span><span class="o">:</span><span class="w"> </span><span class="kt">context.get</span><span class="p">(</span><span class="nx">GlobalResources</span><span class="p">.</span><span class="nx">ENCRYPTION</span><span class="p">)</span><span class="o">!</span><span class="p">.</span><span class="nx">kmsKey</span><span class="p">,</span>
-<span class="w">        </span><span class="p">});</span>
-<span class="w">    </span><span class="p">}},</span><span class="w"> </span><span class="nx">Stage</span><span class="p">.</span><span class="nx">INT</span><span class="p">,</span><span class="w"> </span><span class="nx">Stage</span><span class="p">.</span><span class="nx">PROD</span><span class="p">).</span><span class="nx">synth</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+<p><img alt="Workbench Development" src="../assets/diagrams/branch-development.png" width="75%" /></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li>Each pipeline will have a copy of the <code>.addStack()</code> section, not the exact same stack.</li>
+<li>A repository section must be added to the pipeline builder that identifies the branch to use</li>
+<li>Stages other than RES must have a full stage definition because names such as <code>Stage.Dev</code> cannot be re-used in a second pipeline</li>
+<li>Application name and qualifier must be supplied to prevent duplicate resources being created</li>
+<li>Resources in stacks should use naming conventions that prevent name clashes when multiple versions are deployed into the same account</li>
+<li>Resources must be manually cleaned up by deleting Cloudformation stacks in the accounts where they are created when the feature branch is merged into trunk</li>
+</ul>
+</div>
+<h2 id="developer-sandbox-pipelines">Developer Sandbox Pipelines</h2>
+<p>Pipelines for individual developers can be created to automatically deploy from a code branch to a personal sandbox account.  This differs from the feature branch approach above because the Code Pipeline is in the sandbox account, not the RES account.</p>
+<p>It is not possible to have both a <code>.workbench()</code> section and a second pipeline.</p>
+<div class="highlight"><pre><span></span><code>// Main branch pipline
+PipelineBlueprint.builder()
+    .defineStages([
+        Stage.RES,
+        Stage.DEV,
+        Stage.INT,]
+    )
+    .addStack({
+        provide: (context) =&gt; {
+            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
+        });
+        },
+    })
+    .synth(app);
+
+// Feature branch pipeline
+PipelineBlueprint.builder()
+    .repository(RepositorySource.github({
+        codeStarConnectionArn: &#39;arn:aws:codeconnections:us-east-1:111111111:connection/aaaaaaa&#39;,
+        repositoryName: &#39;repoowner/project&#39;,
+        branch: &#39;feature1&#39;
+    }))
+    .defineStages([ // Two stages are required even though RES and DEV are the same
+        { stage: &#39;RES&#39;, account: &#39;111111111&#39;, region: &#39;us-east-1&#39;, manualApprovalRequired: false },
+        { stage: &#39;feature1stagedev&#39;, account: &#39;111111111&#39;, region: &#39;us-east-1&#39;, manualApprovalRequired: true },
+        ]
+    )
+    .disable(GlobalResources.COMPLIANCE_BUCKET)
+    .addStack({
+        provide: (context) =&gt; {
+            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
+        });
+        },
+    })
+    .applicationName(&#39;feature1app&#39;)
+    .applicationQualifier(&#39;f1&#39;)
+    .synth(app);
 </code></pre></div>
-<p>With this example you can see the options of how the Stages can be defined.</p>
-<ol>
-<li>Define only the stage name to be a string or any of the COMMON<em>STAGES. This means you </em><em>must</em>* create an environment variable called <code>ACCOUNT*&lt;STAGE_NAME&gt;</code>which needs to provide the AWS account id. The targeted region is determined by the<code>AWS_REGION</code> environment variable.</li>
-<li>You can define an object with the <code>stage</code> property. This means you <strong>must</strong> create an environment variable called <code>ACCOUNT_&lt;STAGE_NAME&gt;</code> which needs to provide the AWS account id. The targeted region is determined by the <code>AWS_REGION</code> environment variable.</li>
-<li>You can directly input the <code>account</code> and <code>region</code> in case you want to be explicit.</li>
-</ol>
-<p>The order of the stage execution will follow the definition order except for the <code>RES</code> stage because that is <strong>always</strong> deployed first.</p>
-<p><strong>Note</strong>
-If the <code>ACCOUNT_&lt;STAGE_NAME&gt;</code> environment variable or the <code>account</code> value is only a <code>-</code>, then that stage is considered disabled.</p>
-<p><strong>Note</strong>
-The CDK CI/CD Wrapper - CLI Configuration command only asks for the the RES, DEV and INT stages' account information, this means if you add a new stage, it is your responsibility to either define your <code>ACCOUNT_&lt;STAGE_NAME&gt;</code> environment variable and add it to the <code>exports_vars.sh</code> or explicitly add the account numbers in the command.</p>
+<p><img alt="Workbench Development" src="../assets/diagrams/developer-branch-development.png" width="75%" /></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li>The pipeline will have a copy of the <code>.addStack()</code> section, not the exact same stack.</li>
+<li>A repository section must be added to the pipeline builder that identifies the branch to use</li>
+<li>It is not currently possible to have compliance bucket support when a pipeline and deployment are in the same account, so this must be disabled</li>
+<li>Both a RES and deployment environments must have full stage definitions even though they are the same account</li>
+<li>Application name and qualifier must be supplied to prevent duplicate resources being created</li>
+<li>Resources must be manually cleaned up by deleting Cloudformation stacks in the accounts where they are created</li>
+</ul>
+</div>
 
 
 
@@ -2519,7 +2388,7 @@ The CDK CI/CD Wrapper - CLI Configuration command only asks for the the RES, DEV
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2024-09-02
+    2025-02-25
   </span>
 
     
