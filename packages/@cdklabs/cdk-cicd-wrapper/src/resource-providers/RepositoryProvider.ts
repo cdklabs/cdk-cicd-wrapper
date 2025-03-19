@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as cdk from 'aws-cdk-lib';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import { IConstruct } from 'constructs';
 import { ICodeBuildFactory, mergeCodeBuildOptions } from './CodeBuildFactoryProvider';
@@ -222,7 +223,7 @@ export class S3RepositorySource extends RepositorySource {
       branch: this.options.branch || defaultRepositoryConfig.branch,
       bucketName:
         this.options.bucketName ||
-        `${context.blueprintProps.applicationName}-repo-${context.blueprintProps.deploymentDefinition.RES.env.account}-${context.blueprintProps.deploymentDefinition.RES.env.region}`,
+        `${context.blueprintProps.applicationName}-repo-${context.blueprintProps.deploymentDefinition.RES.env.account}-${context.blueprintProps.deploymentDefinition.RES.env.region}`.toLowerCase(),
       encryptionKey,
       env: context.blueprintProps.deploymentDefinition.RES.env,
       prefix: this.options.prefix,
@@ -317,4 +318,9 @@ export interface S3RepositorySourceOptions extends RepositorySourceOptions {
    * An optional list of IAM roles that are allowed to access the repository.
    */
   readonly roles?: string[];
+
+  /**
+   * The removal policy for the S3 bucket.
+   */
+  readonly removalPolicy?: cdk.RemovalPolicy;
 }

@@ -4,7 +4,6 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as kms from 'aws-cdk-lib/aws-kms';
-import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import * as nag from 'cdk-nag';
 import { Construct } from 'constructs';
@@ -20,6 +19,10 @@ export interface S3RepositoryStackProps extends cdk.StackProps {
   readonly branch: string;
   readonly roles?: string[];
   readonly encryptionKey: kms.IKey;
+  /**
+   * The removal policy for the S3 bucket.
+   */
+  readonly removalPolicy?: cdk.RemovalPolicy;
 }
 
 /**
@@ -40,7 +43,9 @@ export class S3RepositoryStack extends cdk.Stack implements IRepositoryStack {
       prefix: props.prefix,
       branch: props.branch,
       roles: props.roles,
-      encryptionKey: new s3.Bucket(this, 'Bucket').encryptionKey!,
+      encryptionKey: props.encryptionKey,
+      removalPolicy: props.removalPolicy,
+      autoDeleteObjects: props.removalPolicy === cdk.RemovalPolicy.DESTROY,
     });
 
     this.pipelineInput = s3Repository.pipelineInput;
