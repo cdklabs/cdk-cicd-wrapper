@@ -47,11 +47,7 @@ We suggest using the provided CLI tool to set up your local environment, as it s
 
 1. Run the `npx {{ npm_cli }}@latest configure` command and follow the instructions.
 
-2. After modifying the placeholders in the script,  source the variables:
-
-   ```bash
-   source .env
-   ```
+2. After modifying the placeholders in the script
 
    **Note**: The CLI Configure script supports the RES, DEV, INT, and PROD stages by default, but you can extend the list of stages as needed. If you plan to use a GitHub repository to host your project, you will need to know your [AWS CodeStar Connection ARN](../developer_guides/vcs_github.md).
 
@@ -95,7 +91,7 @@ If you are reusing an existing CDK bootstrapping setup, you can skip this step. 
    --trust ${ACCOUNT_RES} aws://${ACCOUNT_PROD}/${AWS_REGION}
    ```
 
-   **Note**: Update the variables in the command with your actual account IDs and AWS region. To activate `PROD`, you must explicitly include it in the `.defineStages([Stage.DEV, Stage.INT, Stage.PROD])` as outlined in step 2 below. Always specify all the stages you require; do not add only `Stage.PROD` and assume the other stages will be included automatically. For more info on how to add custom stages please refer to [here](../developer_guides/cd.md#how-to-define-custom-stages)
+   **Note**: Update the variables in the command with your actual account IDs and AWS region. To activate `PROD`, you must explicitly include it in the `.defineStages([Stage.RES, Stage.DEV, Stage.INT, Stage.PROD])` as outlined in step 2 below. Always specify all the stages you require; do not add only `Stage.PROD` and assume the other stages will be included automatically. For more info on how to add custom stages please refer to [here](../developer_guides/cd.md#how-to-define-custom-stages)
 
 ## Configure .gitignore
 
@@ -124,7 +120,7 @@ To set up the CI/CD pipeline in your AWS CDK project, follow these steps:
     * Attention: Any stage not included in the defineStages() function will be excluded from the pipeline.
     * This is done for safety reasons, to not export accidentally `PROD` env vars and have it deployed into the wrong account.
     */
-   PipelineBlueprint.builder().defineStages([Stage.DEV, Stage.INT, Stage.PROD]).synth(app);
+   PipelineBlueprint.builder().defineStages([Stage.RES, Stage.DEV, Stage.INT, Stage.PROD]).synth(app);
    ```
 
    This will deploy the CI/CD pipeline with its default configuration without deploying any stacks into the staging accounts.
@@ -137,7 +133,7 @@ To set up the CI/CD pipeline in your AWS CDK project, follow these steps:
 
    const app = new cdk.App();
 
-   PipelineBlueprint.builder().defineStages([Stage.DEV, Stage.INT, Stage.PROD]).addStack({
+   PipelineBlueprint.builder().defineStages([Stage.RES, Stage.DEV, Stage.INT, Stage.PROD]).addStack({
    provide: (context) => {
       // Create your stacks here
       new YourStack(context.scope, `${context.blueprintProps.applicationName}YourStack`, {
@@ -284,7 +280,7 @@ If you are using GitHub, add the remote repository and push your local repositor
 
 ```bash
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD);
-git remote add origin git@github:${GIT_REPOSITORY}.git;
+git remote add origin git@github.com:${GIT_REPOSITORY}.git;
 git commit -am "feat: init origin";
 git push -u origin ${CURRENT_BRANCH}:main
 ```

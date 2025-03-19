@@ -98,7 +98,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
     });
 
     const postCompile = this.tasks.tryFind('post-compile')!;
-    postCompile.exec("export DEP='@cloudcomponents';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;");
+    // postCompile.exec("export DEP='@cloudcomponents';cp -rf ./node_modules/$DEP ./node_modules/ 2>/dev/null;");
     postCompile.exec("export DEP='yaml';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;");
 
     // Disable packaging for other than TS
