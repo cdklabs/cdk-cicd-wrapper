@@ -2210,7 +2210,6 @@
 <div class="highlight"><pre><span></span><code><span class="c1">### 1. Remove cdk.context.json from .gitignore</span>
 vi<span class="w"> </span>.gitignore<span class="w"> </span><span class="c1">### remove cdk.context.json</span>
 <span class="c1">### 2. Generate the cdk.context.json</span>
-<span class="nb">source</span><span class="w"> </span>.env<span class="w"> </span><span class="c1">### source the env vars with the right account ids and profiles for RES/DEV/INT/PROD...</span>
 npx<span class="w"> </span>dotenv-cli<span class="w"> </span>--<span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>cdk<span class="w"> </span>synth<span class="w"> </span><span class="c1">### this command generates the cdk.context.json</span>
 <span class="c1">### 3. Add the cdk.context.json to git remote</span>
 git<span class="w"> </span>add<span class="w"> </span>cdk.context.json<span class="w"> </span><span class="c1">### re-add cdk.context.json</span>

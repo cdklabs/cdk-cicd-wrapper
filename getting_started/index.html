@@ -2361,11 +2361,9 @@ npx<span class="w"> </span>aws-cdk@latest<span class="w"> </span>init<span class
 <p>Run the <code>npx @cdklabs/cdk-cicd-wrapper-cli@latest configure</code> command and follow the instructions.</p>
 </li>
 <li>
-<p>After modifying the placeholders in the script,  source the variables:</p>
+<p>After modifying the placeholders in the script</p>
 </li>
 </ol>
-<div class="highlight"><pre><span></span><code><span class="nb">source</span><span class="w"> </span>.env
-</code></pre></div>
 <p><strong>Note</strong>: The CLI Configure script supports the RES, DEV, INT, and PROD stages by default, but you can extend the list of stages as needed. If you plan to use a GitHub repository to host your project, you will need to know your <a href="../developer_guides/vcs_github.html">AWS CodeStar Connection ARN</a>.</p>
 <h2 id="bootstrap-your-stages">Bootstrap your stages</h2>
 <p>The CDK CI/CD Wrapper uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. This bootstrapping process must be established for each stage, and each account must have a trust relationship with the RES account..</p>
