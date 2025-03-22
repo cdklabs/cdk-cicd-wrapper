@@ -42,7 +42,7 @@
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
     "all-contributors-cli": "^6.26.1",
-    "cdklabs-projen-project-types": "^0.2.4",
+    "cdklabs-projen-project-types": "^0.2.9",
     "constructs": "10.3.0",
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
