@@ -99,7 +99,7 @@
       "name": "gather-versions",
       "steps": [
         {
-          "exec": "node -e \"require(path.join(path.dirname(require.resolve('cdklabs-projen-project-types')), 'yarn', 'gather-versions.exec.js'))\" @cdklabs/cdk-cicd-wrapper MAJOR --deps ",
+          "exec": "node -e \"require(require.resolve('cdklabs-projen-project-types/lib/yarn/gather-versions.exec.js')).cliMain()\" ",
           "receiveArgs": true
         }
       ]
@@ -264,7 +264,10 @@
           "builtin": "release/reset-version"
         },
         {
-          "spawn": "gather-versions"
+          "spawn": "gather-versions",
+          "env": {
+            "RESET_VERSIONS": "true"
+          }
         }
       ]
     },
