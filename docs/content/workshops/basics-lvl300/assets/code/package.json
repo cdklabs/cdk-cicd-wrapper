@@ -34,7 +34,7 @@
   "dependencies": {
     "@cdklabs/cdk-cicd-wrapper": "^0.2.12",
     "@cdklabs/cdk-cicd-wrapper-cli": "^0.2.10",
-    "aws-cdk-lib": "2.158.0",
+    "aws-cdk-lib": "2.189.1",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"
   }
