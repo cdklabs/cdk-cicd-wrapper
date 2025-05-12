@@ -34,6 +34,7 @@ export class RootConfig extends yarn.Monorepo {
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
       projenrcTs: true,
       defaultReleaseBranch: 'main',
+      majorVersion: 1,
       devDeps: [
         'cdklabs-projen-project-types',
         `constructs@10.3.0`,
