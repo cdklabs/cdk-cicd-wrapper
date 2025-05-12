@@ -1,4 +1,6 @@
+// eslint-disable-next-line  import/no-extraneous-dependencies
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
+// eslint-disable-next-line  import/no-extraneous-dependencies
 import { synthSnapshot } from 'projen/lib/util/synth';
 import { CdkCICDWrapper } from '../src/projen/CdkCICDWrapper';
 

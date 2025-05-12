@@ -3,6 +3,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as pipelines from 'aws-cdk-lib/pipelines';
@@ -99,6 +100,14 @@ export interface PipelineOptions {
    * @default true
    */
   readonly useChangeSets?: boolean;
+
+  /**
+   * The pipeline type to use.
+   *
+   * @default - The default pipeline type is V1.
+   * @see https://docs.aws.amazon.com/cdk/api/latest/docs/aws-cdk-lib.pipelines-readme.html#pipeline-types
+   */
+  readonly pipelineType: codepipeline.PipelineType;
 }
 
 /**
@@ -177,6 +186,40 @@ class CodeBuildAspect implements cdk.IAspect {
   }
 }
 
+export interface AddStageOpts extends pipelines.AddStageOpts {
+  /**
+   * Whether to enable transition to this stage.
+   *
+   * @default true
+   */
+  readonly transitionToEnabled?: boolean;
+  /**
+   * The reason for disabling transition to this stage. Only applicable
+   * if `transitionToEnabled` is set to `false`.
+   *
+   * @default 'Transition disabled'
+   */
+  readonly transitionDisabledReason?: string;
+  /**
+   * The method to use when a stage allows entry.
+   *
+   * @default - No conditions are applied before stage entry
+   */
+  readonly beforeEntry?: codepipeline.Conditions;
+  /**
+   * The method to use when a stage has not completed successfully.
+   *
+   * @default - No failure conditions are applied
+   */
+  readonly onFailure?: codepipeline.FailureConditions;
+  /**
+   * The method to use when a stage has succeeded.
+   *
+   * @default - No success conditions are applied
+   */
+  readonly onSuccess?: codepipeline.Conditions;
+}
+
 /**
  * A construct for creating a CDK pipeline.
  */
@@ -190,6 +233,10 @@ export class CDKPipeline extends pipelines.CodePipeline {
   private readonly applicationQualifier: string;
   private readonly pipelineName: string;
 
+  private pipelineType: codepipeline.PipelineType;
+  private proxyPipeline?: codepipeline.Pipeline;
+  readonly stages: Record<string, pipelines.AddStageOpts> = {};
+
   /**
    * Creates a new instance of the CDKPipeline construct.
    * @param scope The parent construct.
@@ -202,6 +249,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
       crossAccountKeys: true,
       enableKeyRotation: true,
       dockerEnabledForSynth: props.isDockerEnabledForSynth,
+      pipelineType: codepipeline.PipelineType.V1,
       synth: new pipelines.CodeBuildStep('Synth', {
         input: props.repositoryInput,
         installCommands: props.installCommands,
@@ -222,10 +270,33 @@ export class CDKPipeline extends pipelines.CodePipeline {
     this.codeGuruScanThreshold = props.codeGuruScanThreshold;
     this.applicationQualifier = props.applicationQualifier;
     this.pipelineName = props.pipelineName;
+    this.pipelineType = props.options?.pipelineType ?? codepipeline.PipelineType.V1;
 
     if (!props.vpcProps) {
       cdk.Aspects.of(this).add(new CodeBuildAspect());
     }
+  }
+
+  get pipeline(): codepipeline.Pipeline {
+    if (!this.proxyPipeline && this.pipelineType === codepipeline.PipelineType.V2) {
+      this.proxyPipeline = new Proxy(super.pipeline, {
+        get: (target, prop, receiver) => {
+          if (prop === 'addStage') {
+            return (stageOptions: codepipeline.StageOptions) => {
+              return super.pipeline.addStage({
+                ...stageOptions,
+                ...(this.stages[stageOptions.stageName] ?? {}),
+              });
+            };
+          }
+          return Reflect.get(target, prop, receiver);
+        },
+      });
+    } else if (!this.proxyPipeline) {
+      this.proxyPipeline = super.pipeline;
+    }
+
+    return this.proxyPipeline!;
   }
 
   /**
@@ -270,7 +341,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
       cdk.Stack.of(this),
       [
         `${cdk.Stack.of(this).stackName}/CdkPipeline/Pipeline`,
-        `${cdk.Stack.of(this).stackName}/CdkPipeline/UpdatePipeline`,
+        ...(this.selfMutationEnabled ? [`${cdk.Stack.of(this).stackName}/CdkPipeline/UpdatePipeline`] : []),
       ],
       [
         {
@@ -295,6 +366,13 @@ export class CDKPipeline extends pipelines.CodePipeline {
         true,
       );
     }
+  }
+
+  addStageWithV2Options(stage: cdk.Stage, options: AddStageOpts): pipelines.StageDeployment {
+    if (options) {
+      this.stages[stage.stageName] = options;
+    }
+    return super.addStage(stage, options);
   }
 
   /**

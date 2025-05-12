@@ -81,14 +81,25 @@ export const TestStackProvider: IStackProvider = {
 export const TestContext: (
   props?: Partial<IPipelineBlueprintProps>,
   extraResourceProviders?: { [key in string]: IResourceProvider },
-) => ResourceContext = (props, extraResourceProviders) =>
-  new ResourceContext(new cdk.App(), new cdk.Stack(), {
-    ...TestAppConfig,
-    resourceProviders: {
-      [GlobalResources.ENCRYPTION]: new EncryptionProvider(),
-      [GlobalResources.HOOK]: new HookProvider(),
-      ...(extraResourceProviders ?? {}),
+) => ResourceContext = (props, extraResourceProviders) => {
+  const app = new cdk.App();
+  return new ResourceContext(
+    app,
+    new cdk.Stack(app, 'TestStack', {
+      env: {
+        account: TestAppConfig.deploymentDefinition.RES.env.account,
+        region: TestAppConfig.deploymentDefinition.RES.env.region,
+      },
+    }),
+    {
+      ...TestAppConfig,
+      resourceProviders: {
+        [GlobalResources.ENCRYPTION]: new EncryptionProvider(),
+        [GlobalResources.HOOK]: new HookProvider(),
+        ...(extraResourceProviders ?? {}),
+      },
+      plugins: {},
+      ...(props ?? {}),
     },
-    plugins: {},
-    ...(props ?? {}),
-  });
+  );
+};

@@ -10,7 +10,8 @@ export class RootConfig extends yarn.Monorepo {
     '@typescript-eslint/typescript-estree@^7',
   ];
   public readonly workflowRunsOn = ['ubuntu-latest'];
-  public readonly cdkVersion = '2.149.0';
+  public readonly cdkVersion = '2.195.0';
+  public readonly integVersion = '2.186.0';
   public readonly cdkNagVersion = '2.28.0';
   public readonly constructsVersion = '10.3.0';
   public readonly authorName = 'CDK CI/CD Wrapper Team';
@@ -33,6 +34,7 @@ export class RootConfig extends yarn.Monorepo {
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
       projenrcTs: true,
       defaultReleaseBranch: 'main',
+      majorVersion: 1,
       devDeps: [
         'cdklabs-projen-project-types',
         `constructs@10.3.0`,

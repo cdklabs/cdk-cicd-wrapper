@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
+import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Step } from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
@@ -44,6 +45,33 @@ export abstract class BaseStackProvider implements IStackProvider {
 
     this.preHooks().forEach((hook) => hookConfigProvider.addPreHook(hook));
     this.postHooks().forEach((hook) => hookConfigProvider.addPostHook(hook));
+
+    const beforeEntryCondition = this.beforeEntryCondition();
+
+    if (beforeEntryCondition) {
+      if (context.blueprintProps.pipelineOptions?.pipelineType === codepipeline.PipelineType.V1) {
+        throw new Error('Before entry condition is not supported in V1 pipeline');
+      }
+      context.get(GlobalResources.STAGE_PROVIDER).addBeforeEntryCondition(beforeEntryCondition);
+    }
+
+    const onFailureConditions = this.onFailureConditions();
+
+    if (onFailureConditions) {
+      if (context.blueprintProps.pipelineOptions?.pipelineType === codepipeline.PipelineType.V1) {
+        throw new Error('onFailure condition is not supported in V1 pipeline');
+      }
+
+      context.get(GlobalResources.STAGE_PROVIDER).onFailure(onFailureConditions);
+    }
+
+    const onSuccessConditions = this.onSuccessConditions();
+    if (onSuccessConditions) {
+      if (context.blueprintProps.pipelineOptions?.pipelineType === codepipeline.PipelineType.V1) {
+        throw new Error('OnSuccess condition is not supported in V1 pipeline');
+      }
+      context.get(GlobalResources.STAGE_PROVIDER).onSuccess(onSuccessConditions);
+    }
   }
 
   /**
@@ -60,6 +88,22 @@ export abstract class BaseStackProvider implements IStackProvider {
    */
   protected postHooks(): Step[] {
     return [];
+  }
+
+  /**
+   * Returns the conditions to be applied before the entry of this stack provider.
+   * @returns The conditions to be applied before entry.
+   */
+  protected beforeEntryCondition(): codepipeline.Conditions | undefined {
+    return undefined;
+  }
+
+  protected onFailureConditions(): codepipeline.FailureConditions | undefined {
+    return undefined;
+  }
+
+  protected onSuccessConditions(): codepipeline.Conditions | undefined {
+    return undefined;
   }
 
   /**
@@ -139,5 +183,9 @@ export abstract class BaseStackProvider implements IStackProvider {
    */
   public resolve(ssmParameterName: string): string {
     return ParameterResolver.resolveValue(this.scope, `resolve:ssm:${ssmParameterName}`);
+  }
+
+  disableTransition(reason: string): void {
+    this.context.get(GlobalResources.STAGE_PROVIDER).disableTransition(reason);
   }
 }

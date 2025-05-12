@@ -51,7 +51,7 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/jest,@types/node,copyfiles,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,jsii-diff,jsii-pacmak,prettier,projen,ts-jest,typescript,@cloudcomponents/cdk-pull-request-approval-rule,@cloudcomponents/cdk-pull-request-check,yaml,cdk-pipelines-github"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/jest,@types/node,cdk-pipelines-github,copyfiles,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,jsii-diff,jsii-pacmak,prettier,ts-jest,typescript,@cloudcomponents/cdk-pull-request-approval-rule,@cloudcomponents/cdk-pull-request-check,yaml"
         }
       ]
     },
@@ -99,7 +99,7 @@
       "name": "gather-versions",
       "steps": [
         {
-          "exec": "node -e \"require(path.join(path.dirname(require.resolve('cdklabs-projen-project-types')), 'yarn', 'gather-versions.exec.js'))\" @cdklabs/cdk-cicd-wrapper MAJOR --deps ",
+          "exec": "node -e \"require(require.resolve('cdklabs-projen-project-types/lib/yarn/gather-versions.exec.js')).cliMain()\" ",
           "receiveArgs": true
         }
       ]
@@ -264,7 +264,10 @@
           "builtin": "release/reset-version"
         },
         {
-          "spawn": "gather-versions"
+          "spawn": "gather-versions",
+          "env": {
+            "RESET_VERSIONS": "true"
+          }
         }
       ]
     },

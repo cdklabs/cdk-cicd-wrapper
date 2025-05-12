@@ -55,10 +55,6 @@
       "type": "build"
     },
     {
-      "name": "projen",
-      "type": "build"
-    },
-    {
       "name": "typescript",
       "type": "build"
     },

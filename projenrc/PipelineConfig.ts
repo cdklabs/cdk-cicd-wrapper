@@ -16,8 +16,9 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       releasableCommits: pj.ReleasableCommits.featuresAndFixes('.'),
       devDeps: [
         'eslint@^8',
-        `@aws-cdk/integ-runner@^${root.cdkVersion}-alpha.0`,
-        `@aws-cdk/integ-tests-alpha@^${root.cdkVersion}-alpha.0`,
+        `cdk-pipelines-github`,
+        `@aws-cdk/integ-runner@^${root.integVersion}-alpha.0`,
+        `@aws-cdk/integ-tests-alpha@^${root.integVersion}-alpha.0`,
         '@typescript-eslint/eslint-plugin@^7',
         '@typescript-eslint/parser@^7',
         '@typescript-eslint/typescript-estree@^7',
@@ -33,21 +34,16 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         '@cloudcomponents/cdk-pull-request-check',
         'yaml',
       ],
-      deps: [
-        `cdk-pipelines-github`,
-        '@cloudcomponents/cdk-pull-request-approval-rule',
-        '@cloudcomponents/cdk-pull-request-check',
-        'yaml',
-      ],
+      deps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check', 'yaml'],
       jest: true,
       disableTsconfig: true,
     });
 
-    Eslint.of(this)?.addRules({
+    Eslint.of(this)!.addRules({
       'import/no-extraneous-dependencies': [
         'error',
         {
-          devDependencies: ['**/test/**', '**/build-tools/**', '**/projen/**'],
+          devDependencies: ['**/test/**', '**/build-tools/**', '**/src/projen/**'],
           optionalDependencies: false,
           peerDependencies: true,
         },
