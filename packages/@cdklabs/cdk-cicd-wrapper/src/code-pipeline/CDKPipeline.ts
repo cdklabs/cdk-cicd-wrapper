@@ -235,6 +235,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
 
   private pipelineType: codepipeline.PipelineType;
   private proxyPipeline?: codepipeline.Pipeline;
+  private enableSelfMutation: boolean;
   readonly stages: Record<string, pipelines.AddStageOpts> = {};
 
   /**
@@ -271,6 +272,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
     this.applicationQualifier = props.applicationQualifier;
     this.pipelineName = props.pipelineName;
     this.pipelineType = props.options?.pipelineType ?? codepipeline.PipelineType.V1;
+    this.enableSelfMutation = props.options?.selfMutation ?? true;
 
     if (!props.vpcProps) {
       cdk.Aspects.of(this).add(new CodeBuildAspect());
@@ -341,7 +343,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
       cdk.Stack.of(this),
       [
         `${cdk.Stack.of(this).stackName}/CdkPipeline/Pipeline`,
-        `${cdk.Stack.of(this).stackName}/CdkPipeline/UpdatePipeline`,
+        ...(this.selfMutationEnabled ? [`${cdk.Stack.of(this).stackName}/CdkPipeline/UpdatePipeline`] : []),
       ],
       [
         {
