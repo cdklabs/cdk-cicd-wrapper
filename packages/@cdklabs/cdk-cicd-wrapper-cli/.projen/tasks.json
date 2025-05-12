@@ -51,7 +51,7 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/node,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,prettier,projen,typescript,@aws-sdk/client-s3,@aws-sdk/credential-providers,@types/fs-extra,@types/yargs,csv,fs-extra,tslog,yargs"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/node,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,prettier,typescript,@aws-sdk/client-s3,@aws-sdk/credential-providers,@types/fs-extra,@types/yargs,csv,fs-extra,tslog,yargs"
         }
       ]
     },
@@ -104,7 +104,7 @@
       "name": "gather-versions",
       "steps": [
         {
-          "exec": "node -e \"require(path.join(path.dirname(require.resolve('cdklabs-projen-project-types')), 'yarn', 'gather-versions.exec.js'))\" @cdklabs/cdk-cicd-wrapper-cli MAJOR --deps ",
+          "exec": "node -e \"require(require.resolve('cdklabs-projen-project-types/lib/yarn/gather-versions.exec.js')).cliMain()\" ",
           "receiveArgs": true
         }
       ]
@@ -174,7 +174,10 @@
           "builtin": "release/reset-version"
         },
         {
-          "spawn": "gather-versions"
+          "spawn": "gather-versions",
+          "env": {
+            "RESET_VERSIONS": "true"
+          }
         }
       ]
     },

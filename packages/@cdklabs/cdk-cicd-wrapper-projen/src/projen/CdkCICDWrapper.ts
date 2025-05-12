@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// eslint-disables-next-line
+// eslint-disable-next-line  import/no-extraneous-dependencies
 import * as projen from 'projen';
 import { CDKCommands } from './CDKCommands';
 import { CICommands, SecurityScanOptions } from './CICommands';

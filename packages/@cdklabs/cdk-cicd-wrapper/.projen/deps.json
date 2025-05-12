@@ -2,12 +2,12 @@
   "dependencies": [
     {
       "name": "@aws-cdk/integ-runner",
-      "version": "^2.149.0-alpha.0",
+      "version": "^2.186.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/integ-tests-alpha",
-      "version": "^2.149.0-alpha.0",
+      "version": "^2.186.0-alpha.0",
       "type": "build"
     },
     {
@@ -31,6 +31,10 @@
     {
       "name": "@typescript-eslint/typescript-estree",
       "version": "^7",
+      "type": "build"
+    },
+    {
+      "name": "cdk-pipelines-github",
       "type": "build"
     },
     {
@@ -100,10 +104,6 @@
       "type": "build"
     },
     {
-      "name": "projen",
-      "type": "build"
-    },
-    {
       "name": "ts-jest",
       "type": "build"
     },
@@ -125,7 +125,7 @@
     },
     {
       "name": "aws-cdk-lib",
-      "version": "^2.149.0",
+      "version": "^2.195.0",
       "type": "peer"
     },
     {
@@ -148,10 +148,6 @@
     },
     {
       "name": "@cloudcomponents/cdk-pull-request-check",
-      "type": "runtime"
-    },
-    {
-      "name": "cdk-pipelines-github",
       "type": "runtime"
     },
     {

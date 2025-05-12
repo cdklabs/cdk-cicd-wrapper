@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import path from 'path';
+// eslint-disable-next-line  import/no-extraneous-dependencies
 import { Project, SampleFile } from 'projen';
 
 /**

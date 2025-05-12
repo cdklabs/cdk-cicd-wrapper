@@ -6,7 +6,7 @@ import * as pipelines from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
 import { IPipelineBlueprintProps } from './PipelineBlueprint';
 import { PostDeployExecutorStack } from './PostDeployExecutorStack';
-import { PostDeployBuildStep, PreDeployBuildStep } from '../code-pipeline';
+import { AppStage, CDKPipeline, PostDeployBuildStep, PreDeployBuildStep } from '../code-pipeline';
 import {
   DeploymentDefinition,
   Environment,
@@ -56,7 +56,7 @@ export class PipelineBlueprintBase extends cdk.Stack {
    * @param stage The name of the stage to render.
    * @param deploymentDefinition The deployment definition containing information about the environment and stacks to deploy.
    */
-  protected renderStage(pipeline: pipelines.CodePipeline, stage: string, deploymentDefinition: DeploymentDefinition) {
+  protected renderStage(pipeline: CDKPipeline, stage: string, deploymentDefinition: DeploymentDefinition) {
     const deploymentEnvironment = deploymentDefinition.env;
 
     if (stage == Stage.RES) {
@@ -82,13 +82,20 @@ export class PipelineBlueprintBase extends cdk.Stack {
 
     this.resourceContext.initStage(stage);
 
-    const appStage = this.resourceContext.get(GlobalResources.STAGE_PROVIDER)!;
+    const appStage = this.resourceContext.get(GlobalResources.STAGE_PROVIDER)! as AppStage;
 
     const hooks = this.renderStacks(appStage, deploymentDefinition.stacksProviders);
 
-    pipeline.addStage(appStage, {
+    const stageConfig = appStage.config;
+
+    pipeline.addStageWithV2Options(appStage, {
       pre: this.preStageSteps(deploymentDefinition, stage, hooks),
       post: this.postStageSteps(deploymentDefinition, stage, hooks),
+      transitionToEnabled: !stageConfig.disableTransition,
+      transitionDisabledReason: stageConfig.disableTransition,
+      beforeEntry: stageConfig.beforeEntry,
+      onFailure: stageConfig.onFailure,
+      onSuccess: stageConfig.onSuccess,
     });
   }
 

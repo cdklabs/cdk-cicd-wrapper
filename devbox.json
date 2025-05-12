@@ -4,7 +4,7 @@
     "git@2.42.0",
     "git-remote-codecommit@1.15.1",
     "jq@1.7.1",
-    "go-task@3.35.1",
+    "go-task@3.39.2",
     "python@3.12.2",
     "pipenv@2023.2.4",
     "nodejs@18.19.1",
