@@ -61,19 +61,19 @@
     "jsii-pacmak": "^1.112.0",
     "jsii-rosetta": "~5.4.0",
     "prettier": "^3.5.3",
-    "ts-jest": "^29.3.2",
+    "ts-jest": "^29.3.4",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.195.0",
     "cdk-nag": "^2.28.0",
-    "cdk-pipelines-github": "^0.4.129",
+    "cdk-pipelines-github": "^0.4.130",
     "constructs": "^10.3.0"
   },
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
-    "yaml": "^2.7.1"
+    "yaml": "^2.8.0"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
