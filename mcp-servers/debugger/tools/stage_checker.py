@@ -51,41 +51,105 @@ async def check_stage_definitions(project_path: str, ctx: Context) -> Dict:
                 stage = var.replace("ACCOUNT_", "")
                 stage_env_vars[stage] = all_env_vars[var]
 
-        # Look for stage definitions in entry files (optional method)
+        # Define supported file extensions for CDK CICD Wrapper
+        supported_extensions = [
+            ".ts",  # TypeScript
+            ".js",  # JavaScript
+            ".py",  # Python
+            ".java",  # Java
+            ".cs",  # C#
+            ".go",  # Go
+        ]
+
+        # Look for entry files that might contain stage definitions
         entry_files = []
         potential_dirs = [
             os.path.join(project_path, "bin"),
             os.path.join(project_path, "src"),
             os.path.join(project_path, "lib"),
+            os.path.join(project_path, "app"),
+            os.path.join(project_path, "cdk"),
             project_path,  # root directory
         ]
 
+        # Add all supported files to the list (with recursive search)
+        def find_files_recursively(directory):
+            found_files = []
+            if os.path.exists(directory):
+                for root, _, files in os.walk(directory):
+                    for file in files:
+                        file_ext = os.path.splitext(file)[1].lower()
+                        if file_ext in supported_extensions and not file.startswith(
+                            "."
+                        ):
+                            found_files.append(os.path.join(root, file))
+            return found_files
+
+        # Search all potential directories
         for dir_path in potential_dirs:
-            if os.path.exists(dir_path):
-                for file in os.listdir(dir_path):
-                    if (
-                        file.endswith(".ts") or file.endswith(".js")
-                    ) and not file.startswith("."):
-                        entry_files.append(os.path.join(dir_path, file))
+            entry_files.extend(find_files_recursively(dir_path))
 
         defined_stages_in_code = []
 
-        # Analyze each potential entry file for .defineStages (optional)
+        # Define language-specific patterns for stage definitions
+        stage_definition_patterns = {
+            # TypeScript/JavaScript style
+            "ts_js": [
+                r"\.defineStages\(\s*\{([^}]+)\}",  # Object format
+                r"\.defineStages\(\s*\[(.*?)\]\)",  # Array format
+            ],
+            # Python style
+            "py": [
+                r"\.define_stages\(\s*\{([^}]+)\}",  # Dictionary format
+                r"\.define_stages\(\s*\[(.*?)\]\)",  # List format
+            ],
+            # Generic patterns that might catch other languages
+            "generic": [
+                r"define[_]?[sS]tages\s*\([^\)]+\)",
+                r"stages\s*=\s*\{([^}]+)\}",
+            ],
+        }
+
+        # Analyze each potential entry file for stage definitions
         for file_path in entry_files:
             try:
                 with open(file_path, "r") as f:
                     content = f.read()
 
-                # Check for defineStages method
-                define_stages_match = re.search(
-                    r"\.defineStages\(\[(.*?)\]\)", content, re.DOTALL
-                )
-                if define_stages_match:
-                    stages_content = define_stages_match.group(1)
-                    # Extract stage names
-                    stage_matches = re.findall(r'[\'"]([A-Z]+)[\'"]', stages_content)
-                    if stage_matches:
-                        defined_stages_in_code.extend(stage_matches)
+                file_ext = os.path.splitext(file_path)[1].lower()
+                patterns_to_check = []
+
+                # Select appropriate patterns based on file extension
+                if file_ext in [".ts", ".js"]:
+                    patterns_to_check.extend(stage_definition_patterns["ts_js"])
+                elif file_ext == ".py":
+                    patterns_to_check.extend(stage_definition_patterns["py"])
+
+                # Always include generic patterns as a fallback
+                patterns_to_check.extend(stage_definition_patterns["generic"])
+
+                # Check all applicable patterns
+                for pattern in patterns_to_check:
+                    define_stages_match = re.search(pattern, content, re.DOTALL)
+                    if define_stages_match:
+                        try:
+                            stages_content = define_stages_match.group(1)
+                            # Extract stage names, accounting for different formats
+                            # Handle both quoted strings and object keys in different languages
+                            stage_matches = re.findall(
+                                r'[\'"]([A-Za-z0-9_]+)[\'"]', stages_content
+                            )
+                            if stage_matches:
+                                defined_stages_in_code.extend(stage_matches)
+                                break
+                        except IndexError:
+                            # If we can't extract group(1), it might be using a different format
+                            # Just detect that defineStages is being used
+                            if "defineStages" in content or "define_stages" in content:
+                                results["recommendations"].append(
+                                    f"Found stage definitions in {os.path.relpath(file_path, project_path)} but couldn't parse specific stages"
+                                )
+                            break
 
             except Exception as e:
                 results["issues"].append(f"Error analyzing {file_path}: {str(e)}")

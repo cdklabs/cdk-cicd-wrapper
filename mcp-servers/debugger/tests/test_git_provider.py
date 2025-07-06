@@ -10,16 +10,12 @@ def mock_check_git_provider(project_path, ctx):
     """Mock implementation of check_git_provider for testing"""
     ctx.info(f"Checking Git provider in {project_path}")
 
-    # Simplified results structure
+    # Match the actual implementation structure
     results = {
         "valid": True,
         "issues": [],
         "recommendations": [],
-        "git_provider": {
-            "type": "unknown",
-            "config_source": "unknown",
-            "connectivity": {"tested": False, "success": False, "error": None},
-        },
+        "provider": {"type": None, "configuration": {}, "connectivity_test": {}},
     }
 
     # If the path doesn't exist, add an issue
@@ -32,26 +28,45 @@ def mock_check_git_provider(project_path, ctx):
     package_json = ctx.load_package_json(project_path)
     if "config" in package_json and "repositoryType" in package_json["config"]:
         repo_type = package_json["config"]["repositoryType"].lower()
-        results["git_provider"]["type"] = repo_type
-        results["git_provider"]["config_source"] = "package.json"
+        results["provider"]["type"] = repo_type
+        results["provider"]["configuration"]["package_json_config"] = True
 
-        # Simulate connectivity test
-        results["git_provider"]["connectivity"]["tested"] = True
-        results["git_provider"]["connectivity"]["success"] = True
+        # Add config sources like the real implementation
+        results["provider"]["config_sources"] = {
+            "github": {
+                "in_code": False,
+                "package_json": repo_type == "github",
+            },
+            "codecommit": {
+                "in_code": False,
+                "package_json": repo_type == "codecommit",
+            },
+        }
 
-    # Check env vars for CodeCommit config
-    env_vars = ctx.load_env_variables(project_path)
-    if "CODECOMMIT_REPOSITORY_NAME" in env_vars:
-        if results["git_provider"]["type"] != "unknown":
-            results["issues"].append(
-                "Git provider is defined in both package.json and environment variables"
-            )
-            results["recommendations"].append(
-                "Use package.json for defining repository type"
-            )
-        else:
-            results["git_provider"]["type"] = "codecommit"
-            results["git_provider"]["config_source"] = "environment"
+        # Simulate connectivity test for CodeCommit
+        if repo_type == "codecommit":
+            results["provider"]["connectivity_test"] = {
+                "accessible": True,
+                "repositories_found": 1,
+                "specific_repository_exists": True,
+            }
+
+        # For GitHub, check CODESTAR_CONNECTION_ARN
+        if repo_type == "github":
+            env_vars = ctx.load_env_variables(project_path)
+            if "CODESTAR_CONNECTION_ARN" in env_vars:
+                results["provider"]["configuration"]["CODESTAR_CONNECTION_ARN"] = (
+                    env_vars["CODESTAR_CONNECTION_ARN"]
+                )
+            else:
+                results["issues"].append(
+                    "GitHub repository type is configured but CODESTAR_CONNECTION_ARN is missing"
+                )
+                results["valid"] = False
+
+    else:
+        results["issues"].append("No repository type defined in package.json")
+        results["valid"] = False
 
     return results
 
@@ -60,52 +75,58 @@ def mock_check_git_provider(project_path, ctx):
 def test_check_git_provider_github(mock_context):
     """Test the Git provider checker with GitHub"""
     with tempfile.TemporaryDirectory() as temp_dir:
+        # Set up mock context to include CODESTAR_CONNECTION_ARN for GitHub
+        mock_context.load_env_variables = lambda path: (
+            {
+                "CODESTAR_CONNECTION_ARN": "arn:aws:codestar-connections:us-east-1:123456789012:connection/abc123"
+            }
+            if os.path.exists(path)
+            else {}
+        )
+
         result = mock_check_git_provider(temp_dir, mock_context)
 
         # Check basic structure
         assert isinstance(result, dict)
         assert "valid" in result
-        assert "git_provider" in result
-        assert result["git_provider"]["type"] == "github"
-        assert result["git_provider"]["config_source"] == "package.json"
-        assert result["git_provider"]["connectivity"]["tested"] is True
+        assert "provider" in result
+        assert result["provider"]["type"] == "github"
+        assert result["provider"]["configuration"]["package_json_config"] is True
+        assert "CODESTAR_CONNECTION_ARN" in result["provider"]["configuration"]
 
 
 # Test for the Git provider checker with CodeCommit
 def test_check_git_provider_codecommit(mock_context):
     """Test the Git provider checker with CodeCommit"""
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Override the load_env_variables and load_package_json methods for this test
-        mock_context.load_env_variables = lambda path: (
-            {"CODECOMMIT_REPOSITORY_NAME": "my-repo"} if os.path.exists(path) else {}
+        # Override the load_package_json method to return codecommit config
+        mock_context.load_package_json = lambda path: (
+            {"name": "test-project", "config": {"repositoryType": "codecommit"}}
+            if os.path.exists(path)
+            else {}
         )
-
-        mock_context.load_package_json = lambda path: {} if os.path.exists(path) else {}
 
         result = mock_check_git_provider(temp_dir, mock_context)
 
         # Check basic structure
         assert isinstance(result, dict)
         assert "valid" in result
-        assert "git_provider" in result
-        assert result["git_provider"]["type"] == "codecommit"
-        assert result["git_provider"]["config_source"] == "environment"
+        assert "provider" in result
+        assert result["provider"]["type"] == "codecommit"
+        assert result["provider"]["configuration"]["package_json_config"] is True
+        assert "connectivity_test" in result["provider"]
 
 
-# Test for the Git provider checker with conflicting configurations
-def test_check_git_provider_conflict(mock_context):
-    """Test the Git provider checker with conflicting configurations"""
+# Test for the Git provider checker with missing config
+def test_check_git_provider_missing_config(mock_context):
+    """Test the Git provider checker with missing repository configuration"""
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Set both package.json and env vars for conflicting config
-        mock_context.load_env_variables = lambda path: (
-            {"CODECOMMIT_REPOSITORY_NAME": "my-repo"} if os.path.exists(path) else {}
-        )
-
-        # Default mock context returns GitHub config
+        # Override to return empty package.json
+        mock_context.load_package_json = lambda path: {} if os.path.exists(path) else {}
 
         result = mock_check_git_provider(temp_dir, mock_context)
 
-        # Should detect the conflict and report issues
+        # Should detect missing config and report issues
+        assert result["valid"] is False
         assert len(result["issues"]) > 0
-        assert "both" in result["issues"][0].lower()
-        assert len(result["recommendations"]) > 0
+        assert "No repository type defined in package.json" in result["issues"][0]

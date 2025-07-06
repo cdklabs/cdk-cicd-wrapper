@@ -36,79 +36,112 @@ async def check_plugins(project_path: str, ctx: Context) -> Dict:
     }
 
     try:
+        # Define supported file extensions for CDK CICD Wrapper
+        supported_extensions = [
+            ".ts",  # TypeScript
+            ".js",  # JavaScript
+            ".py",  # Python
+            ".java",  # Java
+            ".cs",  # C#
+            ".go",  # Go
+        ]
+
         # Look for entry files that might contain plugin configurations
         entry_files = []
         potential_dirs = [
             os.path.join(project_path, "bin"),
             os.path.join(project_path, "src"),
             os.path.join(project_path, "lib"),
+            os.path.join(project_path, "app"),
+            os.path.join(project_path, "cdk"),
             project_path,  # root directory
         ]
 
-        # Also look for plugin-specific directories
-        plugin_dirs = []
-        for base_dir in [project_path, os.path.join(project_path, "src")]:
-            plugins_dir = os.path.join(base_dir, "plugins")
-            if os.path.exists(plugins_dir) and os.path.isdir(plugins_dir):
-                plugin_dirs.append(plugins_dir)
+        # Add all supported files to the list (with recursive search)
+        def find_files_recursively(directory):
+            found_files = []
+            if os.path.exists(directory):
+                for root, dirs, files in os.walk(directory):
+                    # Special handling for plugin directories
+                    if os.path.basename(root) == "plugins":
+                        # Give priority to files in plugin directories
+                        for file in files:
+                            file_ext = os.path.splitext(file)[1].lower()
+                            if (
+                                file_ext in supported_extensions
+                                and not file.startswith(".")
+                            ):
+                                found_files.append(os.path.join(root, file))
+                    else:
+                        # Regular files
+                        for file in files:
+                            file_ext = os.path.splitext(file)[1].lower()
+                            if (
+                                file_ext in supported_extensions
+                                and not file.startswith(".")
+                            ):
+                                found_files.append(os.path.join(root, file))
+            return found_files
 
-        # Collect entry files
+        # Search all potential directories
         for dir_path in potential_dirs:
-            if os.path.exists(dir_path):
-                for file in os.listdir(dir_path):
-                    if (
-                        file.endswith(".ts") or file.endswith(".js")
-                    ) and not file.startswith("."):
-                        entry_files.append(os.path.join(dir_path, file))
+            entry_files.extend(find_files_recursively(dir_path))
 
-        # Also collect plugin files
-        for plugin_dir in plugin_dirs:
-            for root, _, files in os.walk(plugin_dir):
-                for file in files:
-                    if file.endswith((".ts", ".js")) and not file.startswith("."):
-                        entry_files.append(os.path.join(root, file))
+        # Define language-specific and generic plugin detection patterns
+        plugin_patterns = {
+            # TypeScript/JavaScript specific patterns
+            "ts_js": [
+                r"class\s+([A-Za-z0-9_]+Plugin)\b",
+                r"const\s+([A-Za-z0-9_]+Plugin)\s*=",
+                r"\.addPlugin\(\s*(?:new\s+)?([A-Za-z0-9_]+)",
+            ],
+            # Python specific patterns
+            "py": [
+                r"class\s+([A-Za-z0-9_]+Plugin)\s*\(",
+                r"([A-Za-z0-9_]+Plugin)\s*=",
+                r"\.add_plugin\(\s*(?:[A-Za-z0-9_]+\.)?([A-Za-z0-9_]+)",
+            ],
+            # Generic patterns that might work across languages
+            "generic": [
+                r"(?:implements|extends)\s+(?:[A-Za-z0-9_.]+\.)?IPlugin",
+                r"registerPlugin\(\s*(?:new\s+)?([A-Za-z0-9_]+)",
+                r"createPlugin\(\s*(?:new\s+)?([A-Za-z0-9_]+)",
+                r"PipelinePlugin\s*\(",
+                r"CDKPlugin\s*\(",
+            ],
+        }
 
-        # Keywords that might indicate a plugin
-        plugin_keywords = [
-            "plugin",
-            "addPlugin",
-            "registerPlugin",
-            "createPlugin",
-            "PipelinePlugin",
-            "CDKPlugin",
-            "IPlugin",
-        ]
-
-        # Security-sensitive patterns to look for
+        # Security-sensitive patterns to look for - making them more language-agnostic
         security_patterns = {
             "public_access": [
-                r"publicRead(able)?",
-                r"publicAccess",
-                r"AllowPublic",
-                r"makePublic",
-                r"publiclyAccessible\s*[=:]\s*true",
-                r"publicDns",
-                r"enablePublic",
+                r"public[_]?[rR]ead(?:able)?",
+                r"public[_]?[aA]ccess",
+                r"[aA]llow[pP]ublic",
+                r"make[pP]ublic",
+                r"publicly[_]?[aA]ccessible\s*(?:[=:])\s*(?:true|True|TRUE)",
+                r"public[_]?[dD]ns",
+                r"enable[pP]ublic",
             ],
             "broad_iam_permissions": [
-                r"effect\s*:\s*['\"]Allow['\"].*actions\s*:\s*['\"]\\*['\"]",
-                r"effect\s*:\s*['\"]Allow['\"].*resource\s*:\s*['\"]\\*['\"]",
-                r"PolicyDocument.*Effect\s*:\s*['\"](?:Allow|allow)['\"].*Action\s*:\s*['\"][^'\"]*:[^'\"]*\\*",
-                r"new\s+ManagedPolicy.*\{\s*statements:\s*\[.*\\*.*\]",
+                # Match both TypeScript/JavaScript and Python style IAM patterns
+                r"effect\s*(?:[=:])\s*['\"](?:[aA]llow)['\"].*actions\s*(?:[=:])\s*['\"]\\*['\"]",
+                r"effect\s*(?:[=:])\s*['\"](?:[aA]llow)['\"].*resource\s*(?:[=:])\s*['\"]\\*['\"]",
+                r"[pP]olicy[dD]ocument.*[eE]ffect\s*(?:[=:])\s*['\"](?:Allow|allow)['\"].*[aA]ction\s*(?:[=:])\s*['\"][^'\"]*:[^'\"]*\\*",
+                r"[nN]ew\s+(?:[mM]anaged)?[pP]olicy.*\{\s*statements:\s*\[.*\\*.*\]",
             ],
             "sensitive_data_handling": [
-                r"noEncryption",
-                r"disableEncryption",
-                r"skipEncryption",
-                r"encryption\s*[=:]\s*(?:false|undefined|null)",
-                r"enableKeyRotation\s*[=:]\s*false",
+                r"no[_]?[eE]ncryption",
+                r"disable[_]?[eE]ncryption",
+                r"skip[_]?[eE]ncryption",
+                r"encryption\s*(?:[=:])\s*(?:false|False|FALSE|undefined|null|None)",
+                r"enable[_]?[kK]ey[_]?[rR]otation\s*(?:[=:])\s*(?:false|False|FALSE)",
             ],
             "insecure_defaults": [
-                r"requireSsl\s*[=:]\s*false",
-                r"insecure\s*[=:]\s*true",
-                r"skipValidation",
-                r"bypassApproval",
-                r"bypassSecurityCheck",
+                r"require[_]?[sS]sl\s*(?:[=:])\s*(?:false|False|FALSE)",
+                r"insecure\s*(?:[=:])\s*(?:true|True|TRUE)",
+                r"skip[_]?[vV]alidation",
+                r"bypass[_]?[aA]pproval",
+                r"bypass[_]?[sS]ecurity[_]?[cC]heck",
             ],
         }
 
@@ -122,59 +155,57 @@ async def check_plugins(project_path: str, ctx: Context) -> Dict:
                 with open(file_path, "r") as f:
                     content = f.read()
 
-                # Check if file contains plugin-related code
-                for keyword in plugin_keywords:
-                    if keyword in content:
-                        # Extract plugin information
-                        plugin_name = None
-                        plugin_classes = []
+                # Skip if not a plugin-related file based on content check
+                if "plugin" not in content.lower() and "Plugin" not in content:
+                    continue
 
-                        # Try to extract plugin name from class name or variable name
-                        class_matches = re.findall(
-                            r"class\s+([A-Za-z0-9_]+Plugin)\b", content
-                        )
-                        plugin_classes.extend(class_matches)
+                file_ext = os.path.splitext(file_path)[1].lower()
+                patterns_to_check = []
 
-                        var_matches = re.findall(
-                            r"const\s+([A-Za-z0-9_]+Plugin)\s*=", content
-                        )
-                        plugin_classes.extend(var_matches)
+                # Select appropriate patterns based on file extension
+                if file_ext in [".ts", ".js"]:
+                    patterns_to_check.extend(plugin_patterns["ts_js"])
+                elif file_ext == ".py":
+                    patterns_to_check.extend(plugin_patterns["py"])
 
-                        if plugin_classes:
-                            plugin_name = plugin_classes[0]
-                        else:
-                            # Try to extract from plugin usage
-                            usage_match = re.search(
-                                r"\.addPlugin\(\s*(?:new\s+)?([A-Za-z0-9_]+)", content
-                            )
-                            if usage_match:
-                                plugin_name = usage_match.group(1)
+                # Always include generic patterns as a fallback
+                patterns_to_check.extend(plugin_patterns["generic"])
 
-                        # Skip if this looks like a standard import or reference
-                        if plugin_name and not any(
-                            plugin["name"] == plugin_name for plugin in detected_plugins
-                        ):
-                            relative_path = os.path.relpath(file_path, project_path)
-                            plugin_info = {"name": plugin_name, "file": relative_path}
+                # Extract plugin information
+                plugin_name = None
+                plugin_classes = []
 
-                            # Check for security concerns
-                            for concern_type, patterns in security_patterns.items():
-                                for pattern in patterns:
-                                    if re.search(pattern, content, re.IGNORECASE):
-                                        security_concern = {
-                                            "plugin": plugin_name,
-                                            "file": relative_path,
-                                            "type": concern_type,
-                                            "pattern_matched": pattern,
-                                        }
-                                        security_concerns.append(security_concern)
-                                        break
+                # Check all patterns
+                for pattern in patterns_to_check:
+                    matches = re.findall(pattern, content)
+                    if matches:
+                        plugin_classes.extend(matches)
 
-                            detected_plugins.append(plugin_info)
+                if plugin_classes:
+                    # Use the first match as the plugin name
+                    plugin_name = plugin_classes[0]
 
-                        # Only need to continue checking this file if no plugin found yet
-                        if plugin_name:
-                            break
+                # If found a plugin, record it
+                if plugin_name and not any(
+                    plugin["name"] == plugin_name for plugin in detected_plugins
+                ):
+                    relative_path = os.path.relpath(file_path, project_path)
+                    plugin_info = {"name": plugin_name, "file": relative_path}
+
+                    # Check for security concerns
+                    for concern_type, patterns in security_patterns.items():
+                        for pattern in patterns:
+                            if re.search(pattern, content, re.IGNORECASE):
+                                security_concern = {
+                                    "plugin": plugin_name,
+                                    "file": relative_path,
+                                    "type": concern_type,
+                                    "pattern_matched": pattern,
+                                }
+                                security_concerns.append(security_concern)
+                                break
+
+                    detected_plugins.append(plugin_info)
 
             except Exception as e:
                 results["issues"].append(f"Error analyzing {file_path}: {str(e)}")

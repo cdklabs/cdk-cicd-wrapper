@@ -40,9 +40,9 @@ async def check_git_provider(project_path: str, ctx: Context) -> Dict:
         # Load environment variables
         all_env_vars = ctx.load_env_variables(project_path)
 
-        # For GitHub, only GITHUB_CONNECTION_ARN is mandatory as environment variable
+        # For GitHub, only CODESTAR_CONNECTION_ARN is mandatory as environment variable
         github_vars = {
-            "GITHUB_CONNECTION_ARN": all_env_vars.get("GITHUB_CONNECTION_ARN")
+            "CODESTAR_CONNECTION_ARN": all_env_vars.get("CODESTAR_CONNECTION_ARN")
         }
 
         # Load package.json content using shared helper
@@ -53,6 +53,13 @@ async def check_git_provider(project_path: str, ctx: Context) -> Dict:
         if "config" in package_data and "repositoryType" in package_data["config"]:
             package_json_repo_type = package_data["config"]["repositoryType"].upper()
             ctx.info(f"Found repository type in package.json: {package_json_repo_type}")
+        else:
+            results["valid"] = False
+            results["issues"].append("No repository type defined in package.json")
+            results["recommendations"].append(
+                "Add repositoryType (GITHUB or CODECOMMIT) to package.json config section"
+            )
+            return results
 
         # Look for entry files that might contain Git provider configuration
         entry_files = []
@@ -93,21 +100,13 @@ async def check_git_provider(project_path: str, ctx: Context) -> Dict:
             except Exception as e:
                 results["issues"].append(f"Error analyzing {file_path}: {str(e)}")
 
-        # Determine which provider is configured
-        github_configured = github_in_code or package_json_repo_type == "GITHUB"
-        codecommit_configured = (
-            codecommit_in_code or package_json_repo_type == "CODECOMMIT"
-        )
-
         # Store configuration sources for reporting
         config_sources = {
             "github": {
-                "environment_vars": False,
                 "in_code": github_in_code,
                 "package_json": package_json_repo_type == "GITHUB",
             },
             "codecommit": {
-                "environment_vars": False,
                 "in_code": codecommit_in_code,
                 "package_json": package_json_repo_type == "CODECOMMIT",
             },
@@ -116,53 +115,45 @@ async def check_git_provider(project_path: str, ctx: Context) -> Dict:
         # Add configuration sources to results
         results["provider"]["config_sources"] = config_sources
 
-        if github_configured and codecommit_configured:
-            results["issues"].append("Both GitHub and CodeCommit configurations found")
-            results["recommendations"].append(
-                "Use only one Git provider - either GitHub or CodeCommit"
-            )
-            results["provider"]["type"] = "both_configured"
-        elif github_configured:
+        # Determine provider based ONLY on package.json repositoryType
+        if package_json_repo_type == "GITHUB":
             results["provider"]["type"] = "github"
             results["provider"]["configuration"] = github_vars
+            results["provider"]["configuration"]["package_json_config"] = True
 
-            # Add package.json info if that's where the configuration was found
-            if package_json_repo_type == "GITHUB":
-                results["provider"]["configuration"]["package_json_config"] = True
-
-            # For GitHub, validate that GITHUB_CONNECTION_ARN is present
-            if package_json_repo_type == "GITHUB":
-                # Check for required GITHUB_CONNECTION_ARN
-                if not github_vars["GITHUB_CONNECTION_ARN"]:
+            # For GitHub, validate that CODESTAR_CONNECTION_ARN is present
+            if not github_vars["CODESTAR_CONNECTION_ARN"]:
+                results["issues"].append(
+                    "GitHub repository type is configured but CODESTAR_CONNECTION_ARN is missing"
+                )
+                results["recommendations"].append(
+                    "Set CODESTAR_CONNECTION_ARN environment variable for GitHub integration"
+                )
+                results["valid"] = False
+            else:
+                # Check GitHub connection ARN format
+                connection_arn = github_vars["CODESTAR_CONNECTION_ARN"]
+                if not connection_arn.startswith("arn:aws:codestar-connections:"):
                     results["issues"].append(
-                        "GitHub repository type is configured but GITHUB_CONNECTION_ARN is missing"
+                        "CODESTAR_CONNECTION_ARN does not appear to be a valid CodeStar connection ARN"
                     )
                     results["recommendations"].append(
-                        "Set GITHUB_CONNECTION_ARN environment variable for GitHub integration"
+                        "Verify CODESTAR_CONNECTION_ARN format - should start with arn:aws:codestar-connections:"
                     )
-                    results["valid"] = False
-                else:
-                    # Check GitHub connection ARN format
-                    connection_arn = github_vars["GITHUB_CONNECTION_ARN"]
-                    if not connection_arn.startswith("arn:aws:codestar-connections:"):
-                        results["issues"].append(
-                            "GITHUB_CONNECTION_ARN does not appear to be a valid CodeStar connection ARN"
-                        )
-                        results["recommendations"].append(
-                            "Verify GITHUB_CONNECTION_ARN format - should start with arn:aws:codestar-connections:"
-                        )
-            elif github_in_code:
+
+            # Check for code inconsistency
+            if codecommit_in_code:
+                results["issues"].append(
+                    "Inconsistent configuration: CodeCommit settings found in code but package.json specifies GITHUB"
+                )
                 results["recommendations"].append(
-                    "GitHub configuration found in code but repository type not set to GITHUB in package.json"
+                    "Align your package.json config.repositoryType with your code"
                 )
 
-        elif codecommit_configured:
+        elif package_json_repo_type == "CODECOMMIT":
             results["provider"]["type"] = "codecommit"
             results["provider"]["configuration"] = {}
-
-            # Add package.json info if that's where the configuration was found
-            if package_json_repo_type == "CODECOMMIT":
-                results["provider"]["configuration"]["package_json_config"] = True
+            results["provider"]["configuration"]["package_json_config"] = True
 
             # Verify if CodeCommit repository exists
             if all_env_vars.get("ACCOUNT_RES") and all_env_vars.get(
@@ -213,15 +204,12 @@ async def check_git_provider(project_path: str, ctx: Context) -> Dict:
                         results["issues"].append(
                             "No CodeCommit repositories found in the RES account"
                         )
-                        results["recommendations"].append(
-                            "CodeCommit is an end-of-life service with restrictions. Create at least one repository in the RES account for valid configuration"
-                        )
                         results["valid"] = False
 
                     # Only add a recommendation for a specific repo if the account has repositories
                     elif repo_name and not repo_exists:
                         results["recommendations"].append(
-                            f"CodeCommit repository '{repo_name}' does not exist in the RES account. You can create it or use one of the {repositories_count} existing repositories"
+                            f"CodeCommit repository '{repo_name}' does not exist in the RES account. You can create it as per usual process."
                         )
 
                 except Exception as e:
@@ -242,35 +230,24 @@ async def check_git_provider(project_path: str, ctx: Context) -> Dict:
                 results["recommendations"].append(
                     "Set ACCOUNT_RES and RES_ACCOUNT_AWS_PROFILE for CodeCommit access validation"
                 )
+
+            # Check for code inconsistency
+            if github_in_code:
+                results["issues"].append(
+                    "Inconsistent configuration: GitHub settings found in code but package.json specifies CODECOMMIT"
+                )
+                results["recommendations"].append(
+                    "Align your package.json config.repositoryType with your code"
+                )
         else:
-            results["provider"]["type"] = "none"
-            results["issues"].append("No Git provider configuration found")
-            results["recommendations"].append(
-                "Configure either GitHub or CodeCommit as your Git provider"
-            )
-
-        # Check for configuration inconsistency
-        if (
-            config_sources["github"]["environment_vars"]
-            or config_sources["github"]["in_code"]
-        ) and package_json_repo_type == "CODECOMMIT":
+            results["provider"]["type"] = "unknown"
             results["issues"].append(
-                "Inconsistent configuration: GitHub settings found in environment/code but package.json specifies CODECOMMIT"
+                f"Unsupported repository type in package.json: {package_json_repo_type}"
             )
             results["recommendations"].append(
-                "Align your package.json config.repositoryType with your environment variables and code"
+                "Use GITHUB or CODECOMMIT as the repositoryType in package.json"
             )
-
-        if (
-            config_sources["codecommit"]["in_code"]
-            and package_json_repo_type == "GITHUB"
-        ):
-            results["issues"].append(
-                "Inconsistent configuration: CodeCommit settings found in code but package.json specifies GITHUB"
-            )
-            results["recommendations"].append(
-                "Align your package.json config.repositoryType with your code"
-            )
+            results["valid"] = False
 
         # Mark as invalid if issues were found
         if results["issues"]:

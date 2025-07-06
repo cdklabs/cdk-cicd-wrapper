@@ -29,19 +29,69 @@ For AWS functionality, the following environment should be configured:
 - **AWS credentials**: Properly set up in `~/.aws/credentials` with necessary profiles
 - **AWS region**: Configured in your environment or AWS config
 
-## Installation & Running
+## Scripts
 
-Simply run the initialization script, which will:
-1. Create a virtual environment (if it doesn't exist)
-2. Install all required dependencies
-3. Launch the MCP server
+The debugger includes several utility scripts to streamline development and testing:
+
+### `scripts/init.sh`
+
+Initializes the development environment by:
+1. Creating a Python virtual environment (if it doesn't exist)
+2. Installing the `uv` package manager (if not already installed)
+3. Installing all dependencies from requirements.txt
 
 ```bash
 # Make the initialization script executable (if not already)
-chmod +x init.sh
+chmod +x scripts/init.sh
 
 # Run the initialization script
-./init.sh
+./scripts/init.sh
+```
+
+### `scripts/start.sh`
+
+Starts the MCP server:
+1. Checks if the virtual environment exists (prompts to run init.sh if not)
+2. Activates the virtual environment
+3. Launches the MCP server
+
+```bash
+# Make the script executable (if not already)
+chmod +x scripts/start.sh
+
+# Start the MCP server
+./scripts/start.sh
+```
+
+### `scripts/test.sh`
+
+Runs the test suite with coverage reporting:
+1. Creates a .coveragerc file with specific settings
+2. Runs pytest on the entire test suite
+3. Generates coverage reports for server.py and tools/
+4. Ensures a minimum coverage threshold (currently 50%)
+5. Displays which lines are missing coverage
+
+```bash
+# Make the script executable (if not already)
+chmod +x scripts/test.sh
+
+# Run the tests
+./scripts/test.sh
+```
+
+### `scripts/lint.sh`
+
+Formats the Python code using Black:
+1. Checks if the virtual environment exists
+2. Formats all Python code in tools/, tests/, and server.py
+
+```bash
+# Make the script executable (if not already)
+chmod +x scripts/lint.sh
+
+# Format the code
+./scripts/lint.sh
 ```
 
 You can also perform these steps manually:
@@ -253,6 +303,42 @@ Request a comprehensive analysis:
 ```
 "Please perform a complete validation of my CDK CI/CD Wrapper project, 
 including configuration, stages, Git provider, CI/CD setup, plugins, and VPC configuration."
+```
+
+## Test Coverage
+
+The debugger includes comprehensive test coverage for all components:
+
+### Testing Framework
+
+- Uses pytest for running tests
+- Implements coverage reporting with pytest-cov
+- Currently enforces a minimum coverage threshold of 50%
+- Configuration defined in .coveragerc
+
+### Test Suite Organization
+
+The test suite covers:
+
+1. **Server Components**
+   - Server initialization and registration (`test_server.py`, `test_server_registration.py`)
+   - Server helper functions (`test_server_helpers.py`)
+   - MCP integration (`test_mcp_integration.py`)
+
+2. **Debugging Tools**
+   - CI Checker (`test_ci_checker_comprehensive.py`, `test_ci_configuration.py`)
+   - Configuration Checker (`test_comprehensive_config.py`)
+   - Git Provider (`test_git_provider.py`)
+   - Plugin Analysis (`test_plugins.py`)
+   - Stage Definitions (`test_stage_definitions.py`)
+   - VPC Configuration (`test_vpc_configuration.py`, `test_vpc_language_support.py`)
+   - Tool Mocking (`test_tools_mock.py`)
+
+### Running the Tests
+
+```bash
+# Run the full test suite with coverage reporting
+./scripts/test.sh
 ```
 
 ## Common Debugging Workflows

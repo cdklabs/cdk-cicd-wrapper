@@ -4,14 +4,14 @@
 
 import os
 import logging
-from typing import Dict
-
-from mcp.server.fastmcp import Context
+from typing import Dict, Callable
 
 logger = logging.getLogger("cdk-cicd-wrapper-debugger")
 
 
-async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
+def check_comprehensive_config(
+    project_path: str, load_env_variables: Callable, load_package_json: Callable
+) -> Dict:
     """Comprehensive configuration file checker for CDK CI/CD Wrapper.
 
     Checks if the most important parameters are present in .env files or
@@ -20,16 +20,17 @@ async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
 
     Args:
         project_path: Path to the CDK project directory
-        ctx: MCP context
+        load_env_variables: Function to load environment variables
+        load_package_json: Function to load package.json
 
     Returns:
         Dict with comprehensive configuration analysis and recommendations
     """
-    ctx.info(f"Running comprehensive config check in {project_path}")
+    logger.info(f"Running comprehensive config check in {project_path}")
 
     results = {
-        "valid": True,
-        "issues": [],
+        "status": "success",
+        "findings": [],
         "recommendations": [],
         "config_categories": {
             "core": {"present": {}, "missing": []},
@@ -45,11 +46,11 @@ async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
 
     try:
         # Load all environment variables from .env files and system environment
-        all_env_vars = ctx.load_env_variables(project_path)
+        all_env_vars = load_env_variables(project_path)
 
         # Define critical configuration categories and their parameters
         config_categories = {
-            "core": {"required": ["AWS_REGION"], "recommended": ["CDK_QUALIFIER"]},
+            "core": {"required": ["AWS_REGION", "CDK_QUALIFIER"], "recommended": []},
             "stages": {
                 "required": ["ACCOUNT_RES"],
                 "recommended": ["ACCOUNT_DEV", "ACCOUNT_INT", "ACCOUNT_PROD"],
@@ -62,15 +63,15 @@ async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
                     "PROD_ACCOUNT_AWS_PROFILE",
                 ],
             },
-            "repository": {"required": [], "recommended": ["GITHUB_CONNECTION_ARN"]},
+            "repository": {"required": [], "recommended": ["CODESTAR_CONNECTION_ARN"]},
             "networking": {
                 "required": [],
                 "recommended": [
-                    "VPC_ID",
                     "HTTP_PROXY",
                     "HTTPS_PROXY",
                     "NO_PROXY",
                     "PROXY_SECRET_ARN",
+                    "VPC_ID",
                 ],
             },
             "ci_cd": {
@@ -78,26 +79,20 @@ async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
                 "recommended": [
                     "CODEBUILD_IMAGE",
                     "NODE_VERSION",
-                    "PYTHON_VERSION",
                     "NPM_REGISTRY",
+                    "PYTHON_VERSION",
                 ],
             },
             "security": {
                 "required": [],
-                "recommended": [
-                    "NPM_BASIC_AUTH_SECRET_ID",
-                    "SONAR_PROJECT_KEY",
-                    "SONAR_ORGANIZATION",
-                    "SONAR_TOKEN",
-                ],
+                "recommended": ["NPM_BASIC_AUTH_SECRET_ID", "NPM_REGISTRY"],
             },
             "optional": {
                 "required": [],
                 "recommended": [
                     "CDK_DEFAULT_ACCOUNT",
                     "CDK_DEFAULT_REGION",
-                    "APPLICATION_NAME",
-                    "APPLICATION_QUALIFIER",
+                    "CDK_QUALIFIER",
                 ],
             },
         }
@@ -112,7 +107,7 @@ async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
                     category_results["present"][param] = all_env_vars[param]
                 else:
                     category_results["missing"].append(param)
-                    results["issues"].append(
+                    results["findings"].append(
                         f"Missing required {category} parameter: {param}"
                     )
 
@@ -133,7 +128,7 @@ async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
                 stage = stage_var.replace("ACCOUNT_", "")
                 profile_var = f"{stage}_ACCOUNT_AWS_PROFILE"
                 if profile_var not in all_env_vars or not all_env_vars[profile_var]:
-                    results["issues"].append(
+                    results["findings"].append(
                         f"Stage {stage} is defined but {profile_var} is missing"
                     )
                     results["recommendations"].append(
@@ -145,7 +140,7 @@ async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
         codecommit_count = sum(1 for var in codecommit_vars if all_env_vars.get(var))
 
         # Check for package.json configuration using shared helper
-        package_data = ctx.load_package_json(project_path)
+        package_data = load_package_json(project_path)
         if "config" in package_data and "repositoryType" in package_data["config"]:
             results["config_categories"]["repository"]["present"]["package.json"] = (
                 package_data["config"]["repositoryType"]
@@ -191,24 +186,20 @@ async def check_comprehensive_config(project_path: str, ctx: Context) -> Dict:
         missing_minimum = [var for var in minimum_required if not all_env_vars.get(var)]
 
         if missing_minimum:
-            results["issues"].append(
+            results["findings"].append(
                 f"Missing minimum viable configuration: {', '.join(missing_minimum)}"
             )
             results["recommendations"].append(
                 "Set minimum required configuration to get started"
             )
 
-        # Mark as invalid if critical issues were found
-        if results["issues"]:
-            results["valid"] = False
-
         return results
 
     except Exception as e:
         logger.exception("Error in check_comprehensive_config")
         return {
-            "valid": False,
-            "issues": [f"Error checking comprehensive configuration: {str(e)}"],
+            "status": "error",
+            "findings": [f"Error checking comprehensive configuration: {str(e)}"],
             "recommendations": [
                 "Check that the project directory is valid and accessible"
             ],

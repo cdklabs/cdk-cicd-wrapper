@@ -31,7 +31,9 @@ def mock_check_ci_configuration(project_path, ctx):
 
     # Check for GitHub workflow files
     github_dir = os.path.join(project_path, ".github", "workflows")
-    if os.path.exists(github_dir):
+    github_detected = os.path.exists(github_dir)
+
+    if github_detected:
         results["ci_system"]["type"] = "github_actions"
         results["ci_system"]["version"] = "latest"
 
@@ -39,9 +41,10 @@ def mock_check_ci_configuration(project_path, ctx):
     env_vars = ctx.load_env_variables(project_path)
     package_json = ctx.load_package_json(project_path)
 
-    if "CODEBUILD_IMAGE" in env_vars:
+    # Check for CodePipeline based on other indicators since CODEBUILD_IMAGE is no longer used
+    # Only set CodePipeline if GitHub Actions wasn't detected
+    if not github_detected and ("ACCOUNT_RES" in env_vars or "AWS_REGION" in env_vars):
         results["ci_system"]["type"] = "codepipeline"
-        results["ci_system"]["docker_image"] = env_vars["CODEBUILD_IMAGE"]
 
     if "NODE_VERSION" in env_vars:
         results["ci_system"]["build_environment"]["node"] = env_vars["NODE_VERSION"]
@@ -87,7 +90,8 @@ def test_check_ci_codepipeline(mock_context):
         # Override the load_env_variables method for this test
         mock_context.load_env_variables = lambda path: (
             {
-                "CODEBUILD_IMAGE": "aws/codebuild/amazonlinux2-x86_64-standard:3.0",
+                "ACCOUNT_RES": "123456789012",
+                "AWS_REGION": "us-east-1",
                 "NODE_VERSION": "20.x",
                 "PYTHON_VERSION": "3.10",
             }
@@ -102,10 +106,6 @@ def test_check_ci_codepipeline(mock_context):
         assert "valid" in result
         assert "ci_system" in result
         assert result["ci_system"]["type"] == "codepipeline"
-        assert (
-            result["ci_system"]["docker_image"]
-            == "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
-        )
         assert result["ci_system"]["build_environment"]["node"] == "20.x"
         assert result["ci_system"]["build_environment"]["python"] == "3.10"
 

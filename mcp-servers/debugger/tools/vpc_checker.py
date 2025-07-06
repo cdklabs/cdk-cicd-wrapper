@@ -44,6 +44,16 @@ async def check_vpc_configuration(project_path: str, ctx: Context) -> Dict:
         # Load environment variables from .env files and system environment
         all_env_vars = ctx.load_env_variables(project_path)
 
+        # Define supported file extensions for CDK CICD Wrapper
+        supported_extensions = [
+            ".ts",  # TypeScript
+            ".js",  # JavaScript
+            ".py",  # Python
+            ".java",  # Java
+            ".cs",  # C#
+            ".go",  # Go
+        ]
+
         # Look for entry files that might contain VPC configurations
         entry_files = []
         potential_dirs = [
@@ -53,12 +63,23 @@ async def check_vpc_configuration(project_path: str, ctx: Context) -> Dict:
             project_path,  # root directory
         ]
 
+        # Add language-specific directories
         for dir_path in potential_dirs:
             if os.path.exists(dir_path):
                 for file in os.listdir(dir_path):
-                    if (
-                        file.endswith(".ts") or file.endswith(".js")
-                    ) and not file.startswith("."):
+                    file_ext = os.path.splitext(file)[1].lower()
+                    if file_ext in supported_extensions and not file.startswith("."):
+                        entry_files.append(os.path.join(dir_path, file))
+
+        # Check subdirectories for Python projects
+        python_dirs = [
+            os.path.join(project_path, "cdk"),
+            os.path.join(project_path, "app"),
+        ]
+        for dir_path in python_dirs:
+            if os.path.exists(dir_path):
+                for file in os.listdir(dir_path):
+                    if file.endswith(".py") and not file.startswith("."):
                         entry_files.append(os.path.join(dir_path, file))
 
         vpc_in_use = False
@@ -73,83 +94,129 @@ async def check_vpc_configuration(project_path: str, ctx: Context) -> Dict:
                 with open(file_path, "r") as f:
                     content = f.read()
 
-                # Check if VPC resource provider is configured
-                if re.search(r'\.resourceProvider\([\'"]VPC[\'"]', content):
+                file_ext = os.path.splitext(file_path)[1].lower()
+
+                # Check if VPC resource provider is configured - language agnostic patterns
+                if re.search(
+                    r'\.?resource_?[pP]rovider\([\'"]VPC[\'"]|\.resourceProvider\([\'"]VPC[\'"]',
+                    content,
+                ):
                     vpc_provider_configured = True
                     vpc_in_use = True
 
-                # Check for VPC configuration patterns
-                vpc_config_match = re.search(
-                    r"\.vpc\(\s*({.*?})\s*\)", content, re.DOTALL
-                )
-                if vpc_config_match:
-                    vpc_in_use = True
-                    vpc_config_content = vpc_config_match.group(1)
+                # Check for VPC configuration patterns based on file extension
+                vpc_config_patterns = [
+                    # TypeScript/JavaScript pattern
+                    r"\.vpc\(\s*({.*?})\s*\)",
+                    # Python pattern
+                    r"\.vpc\((\{.*?\})",
+                    # Python alternative
+                    r"vpc\s*=\s*(\{.*?\})",
+                    # Generic function call pattern
+                    r"[^\w]vpc\([^\)]*\)",
+                ]
 
-                    # Check if using existing VPC
-                    if (
-                        "fromExisting" in vpc_config_content
-                        or "lookup" in vpc_config_content.lower()
-                    ):
-                        vpc_from_existing = True
+                for pattern in vpc_config_patterns:
+                    vpc_config_match = re.search(pattern, content, re.DOTALL)
+                    if vpc_config_match:
+                        vpc_in_use = True
 
-                    # Extract VPC configuration properties
-                    vpc_id_match = re.search(
-                        r'vpcId:\s*[\'"]([^\'"]+)[\'"]', vpc_config_content
-                    )
-                    if vpc_id_match:
-                        vpc_config["vpcId"] = vpc_id_match.group(1)
+                        # Try to extract VPC configuration details
+                        try:
+                            vpc_config_content = vpc_config_match.group(1)
+                        except IndexError:
+                            vpc_config_content = vpc_config_match.group(0)
 
-                    # Check for proxy configuration
-                    proxy_match = re.search(
-                        r'proxy:\s*[\'"]([^\'"]+)[\'"]', vpc_config_content
-                    )
-                    if proxy_match:
-                        vpc_config["proxy"] = proxy_match.group(1)
-                        vpc_proxy_configured = True
+                        # Check if using existing VPC - language agnostic
+                        if (
+                            "fromExisting" in vpc_config_content
+                            or "from_existing" in vpc_config_content
+                            or "lookup" in vpc_config_content.lower()
+                        ):
+                            vpc_from_existing = True
 
-                    # Check for proxy secret ARN
-                    proxy_secret_match = re.search(
-                        r'proxySecretArn:\s*[\'"]([^\'"]+)[\'"]', vpc_config_content
-                    )
-                    if proxy_secret_match:
-                        vpc_config["proxySecretArn"] = proxy_secret_match.group(1)
-                        vpc_proxy_configured = True
+                        # Extract VPC ID - try different syntax patterns
+                        vpc_id_patterns = [
+                            r'vpcId:\s*[\'"]([^\'"]+)[\'"]',  # TypeScript style
+                            r'vpc_id\s*=\s*[\'"]([^\'"]+)[\'"]',  # Python style
+                            r'vpcId\s*=\s*[\'"]([^\'"]+)[\'"]',  # Alternative style
+                        ]
 
-                    # Check for other VPC properties
-                    subnets_match = re.search(
-                        r"subnets:\s*\[(.*?)\]", vpc_config_content, re.DOTALL
-                    )
-                    if subnets_match:
-                        vpc_config["subnets"] = subnets_match.group(1).strip()
+                        for pattern in vpc_id_patterns:
+                            vpc_id_match = re.search(pattern, vpc_config_content)
+                            if vpc_id_match:
+                                vpc_config["vpcId"] = vpc_id_match.group(1)
+                                break
 
-                    security_groups_match = re.search(
-                        r"securityGroups:\s*\[(.*?)\]", vpc_config_content, re.DOTALL
-                    )
-                    if security_groups_match:
-                        vpc_config["securityGroups"] = security_groups_match.group(
-                            1
-                        ).strip()
+                        # Check for proxy configuration - try different syntax patterns
+                        proxy_patterns = [
+                            r'proxy:\s*[\'"]([^\'"]+)[\'"]',  # TypeScript style
+                            r'proxy\s*=\s*[\'"]([^\'"]+)[\'"]',  # Python style
+                        ]
+
+                        for pattern in proxy_patterns:
+                            proxy_match = re.search(pattern, vpc_config_content)
+                            if proxy_match:
+                                vpc_config["proxy"] = proxy_match.group(1)
+                                vpc_proxy_configured = True
+                                break
+
+                        # Check for proxy secret ARN - try different syntax patterns
+                        proxy_secret_patterns = [
+                            r'proxySecretArn:\s*[\'"]([^\'"]+)[\'"]',  # TypeScript style
+                            r'proxy_secret_arn\s*=\s*[\'"]([^\'"]+)[\'"]',  # Python style
+                            r'proxySecretArn\s*=\s*[\'"]([^\'"]+)[\'"]',  # Alternative style
+                        ]
+
+                        for pattern in proxy_secret_patterns:
+                            proxy_secret_match = re.search(pattern, vpc_config_content)
+                            if proxy_secret_match:
+                                vpc_config["proxySecretArn"] = proxy_secret_match.group(
+                                    1
+                                )
+                                vpc_proxy_configured = True
+                                break
+
+                        # Check for other VPC properties using language-agnostic patterns
+                        subnets_patterns = [
+                            r"subnets:\s*\[(.*?)\]",  # TypeScript style
+                            r"subnets\s*=\s*\[(.*?)\]",  # Python style
+                        ]
+
+                        for pattern in subnets_patterns:
+                            subnets_match = re.search(
+                                pattern, vpc_config_content, re.DOTALL
+                            )
+                            if subnets_match:
+                                vpc_config["subnets"] = subnets_match.group(1).strip()
+                                break
+
+                        security_groups_patterns = [
+                            r"securityGroups:\s*\[(.*?)\]",  # TypeScript style
+                            r"security_groups\s*=\s*\[(.*?)\]",  # Python style
+                        ]
+
+                        for pattern in security_groups_patterns:
+                            security_groups_match = re.search(
+                                pattern, vpc_config_content, re.DOTALL
+                            )
+                            if security_groups_match:
+                                vpc_config["securityGroups"] = (
+                                    security_groups_match.group(1).strip()
+                                )
+                                break
 
             except Exception as e:
                 results["issues"].append(f"Error analyzing {file_path}: {str(e)}")
 
         # Check environment variables for VPC configuration
         vpc_env_vars = {
-            "VPC_ID": all_env_vars.get("VPC_ID"),
-            "PROXY_SECRET_ARN": all_env_vars.get("PROXY_SECRET_ARN"),
             "HTTP_PROXY": all_env_vars.get("HTTP_PROXY"),
             "HTTPS_PROXY": all_env_vars.get("HTTPS_PROXY"),
             "NO_PROXY": all_env_vars.get("NO_PROXY"),
+            "PROXY_SECRET_ARN": all_env_vars.get("PROXY_SECRET_ARN"),
+            "VPC_ID": all_env_vars.get("VPC_ID"),
         }
-
-        # Note: The following variables are not expected in the regular environment
-        # They are only generated inside CodeBuild BuildSpec when PROXY_SECRET_ARN is provided:
-        # - PROXY_USERNAME: ${proxySecretArn}:username
-        # - PROXY_PASSWORD: ${proxySecretArn}:password
-        # - HTTP_PROXY_PORT: ${proxySecretArn}:http_proxy_port
-        # - HTTPS_PROXY_PORT: ${proxySecretArn}:https_proxy_port
-        # - PROXY_DOMAIN: ${proxySecretArn}:proxy_domain
 
         # If VPC_ID is set in environment, VPC is in use and from existing
         if vpc_env_vars["VPC_ID"]:
@@ -245,11 +312,11 @@ async def check_vpc_configuration(project_path: str, ctx: Context) -> Dict:
                 # Add the CodeBuild BuildSpec check for secret format
                 results["vpc_config"]["codebuild_buildspec"] = {
                     "secrets_manager": {
-                        "PROXY_USERNAME": f"{proxy_secret_arn}:username",
-                        "PROXY_PASSWORD": f"{proxy_secret_arn}:password",
                         "HTTP_PROXY_PORT": f"{proxy_secret_arn}:http_proxy_port",
                         "HTTPS_PROXY_PORT": f"{proxy_secret_arn}:https_proxy_port",
                         "PROXY_DOMAIN": f"{proxy_secret_arn}:proxy_domain",
+                        "PROXY_PASSWORD": f"{proxy_secret_arn}:password",
+                        "PROXY_USERNAME": f"{proxy_secret_arn}:username",
                     },
                     "install_commands": [
                         f'export HTTP_PROXY="http://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTP_PROXY_PORT"',

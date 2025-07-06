@@ -2,14 +2,14 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. SPDX-License-Identifier: Apache-2.0
 
 # init.sh - Initialize and run the CDK CI/CD Wrapper Debugger MCP server
-# This script sets up a virtual environment, installs dependencies, and launches the server
+# This script sets up a virtual environment, installs dependencies
 
 set -e  # Exit immediately if a command exits with a non-zero status
 
-# Navigate to script directory
-cd "$(dirname "$0")"
-SCRIPT_DIR="$(pwd)"
-echo "Setting up CDK CI/CD Wrapper Debugger MCP server in $SCRIPT_DIR"
+# Navigate to root directory
+cd "$(dirname "$0")/.."
+ROOT_DIR="$(pwd)"
+echo "Installing CDK CI/CD Wrapper Debugger MCP server requirements in $ROOT_DIR"
 
 # Create virtual environment if it doesn't exist
 if [ ! -d ".venv" ]; then
@@ -35,10 +35,3 @@ fi
 # Install requirements using uv
 echo "Installing dependencies using uv..."
 uv pip install -r requirements.txt
-
-# Launch MCP server
-echo "Starting CDK CI/CD Wrapper Debugger MCP server..."
-python server.py
-
-# Note: The script will not reach this point unless the server is stopped
-echo "MCP server has stopped."
