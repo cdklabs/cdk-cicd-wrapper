@@ -201,9 +201,9 @@ The CDK CI/CD Wrapper includes a specialized **[MCP (Model Context Protocol)](ht
 
 The debugger server works with any [MCP-compatible client](https://modelcontextprotocol.io/clients), including:
 
-- **[Cline AI](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev)** - VS Code extension for AI-powered development assistance
-- **[Amazon Q CLI](https://aws.amazon.com/q/cli/)** - Amazon's AI-powered command-line assistant ([Installation Guide](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-getting-started-installing.html))
-- **Any other MCP-compatible client** - The server follows the standard [MCP protocol specification](https://spec.modelcontextprotocol.io/)
+- **[Amazon Q CLI](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line.html)** - Amazon's AI-powered command-line assistant ([Installation Guide](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-getting-started-installing.html))
+- **[Cline](https://cline.bot/)** - The Collaborative AI Coder. Experience an AI development partner that amplifies your engineering capabilities
+- **Any other [MCP-compatible client](https://modelcontextprotocol.io/clients)** - The server follows the standard [MCP protocol specification](https://spec.modelcontextprotocol.io/)
 
 ### Key Features
 
