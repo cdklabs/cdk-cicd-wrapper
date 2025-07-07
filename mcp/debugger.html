@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/index.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/mcp/debugger.html">
       
       
-        <link rel="prev" href="../contributing/index.html">
+        <link rel="prev" href="index.html">
       
       
-        <link rel="next" href="basics-lvl300/index.html">
+        <link rel="next" href="../faqs/index.html">
       
       
       <link rel="icon" href="../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>CDK CI/CD Wrapper Workshops - CDK CI/CD Wrapper</title>
+        <title>Debugger - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cdk-cicd-wrapper-workshops" class="md-skip">
+        <a href="#cdk-cicd-wrapper-debugger-mcp-server" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              CDK CI/CD Wrapper Workshops
+              Debugger
             
           </span>
         </div>
@@ -262,11 +262,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../mcp/index.html" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
           
   
     
@@ -322,13 +324,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="index.html" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../workshops/index.html" class="md-tabs__link">
           
   
     
@@ -1420,6 +1420,8 @@
       
   
   
+    
+  
   
   
     
@@ -1434,19 +1436,22 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../mcp/index.html" class="md-nav__link ">
+            <a href="index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1457,13 +1462,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             MCP Tools
@@ -1476,10 +1481,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../mcp/debugger.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Debugger
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="debugger.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1488,6 +1513,356 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation Details
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-environment-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Environment Requirements
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scripts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scripts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scriptsinitsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      scripts/init.sh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scriptsstartsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      scripts/start.sh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scriptstestsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      scripts/test.sh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scriptslintsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      scripts/lint.sh
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variable-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variable Support
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Tools
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Available Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-analysis-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Analysis Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#git-provider-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Git Provider Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cicd-configuration-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI/CD Configuration Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugin-analysis-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Analysis Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#networking-configuration-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Networking Configuration Tools
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuring-mcp-clients-for-the-cdk-cicd-wrapper-debugger" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring MCP Clients for the CDK CI/CD Wrapper Debugger
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuring MCP Clients for the CDK CI/CD Wrapper Debugger">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compatible-mcp-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compatible MCP Clients
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuring-cline-ai-vs-code-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring Cline AI (VS Code Extension)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuring-amazon-q-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring Amazon Q CLI
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-using-with-cline-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1: Using with Cline AI
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-troubleshooting-configuration-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2: Troubleshooting Configuration Issues
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-complete-project-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3: Complete Project Validation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test Coverage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Coverage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#testing-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing Framework
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-suite-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test Suite Organization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-the-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running the Tests
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-debugging-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Debugging Workflows
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Debugging Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#workflow-1-complete-project-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workflow 1: Complete Project Validation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflow-2-troubleshooting-configuration-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workflow 2: Troubleshooting Configuration Issues
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contributing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      License
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1616,8 +1991,6 @@
       
   
   
-    
-  
   
   
     
@@ -1634,22 +2007,19 @@
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="index.html" class="md-nav__link md-nav__link--active">
+            <a href="../workshops/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1660,13 +2030,13 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_8" id="__nav_8_label" tabindex="">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             Workshops
@@ -1725,7 +2095,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="basics-lvl300/index.html" class="md-nav__link ">
+            <a href="../workshops/basics-lvl300/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1758,7 +2128,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/00-prerequisites.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1779,7 +2149,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/01-create-cdk-project.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/01-create-cdk-project.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1800,7 +2170,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/02-define-quality-gates-ci.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/02-define-quality-gates-ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1821,7 +2191,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/03-create-pipeline.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/03-create-pipeline.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1842,7 +2212,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/04-develop-genai-solution.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/04-develop-genai-solution.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1863,7 +2233,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/05-deploy-stack.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/05-deploy-stack.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1884,7 +2254,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/06-develop-genai-solution-part-2.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/06-develop-genai-solution-part-2.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1905,7 +2275,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/07-deploy-solution.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/07-deploy-solution.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1926,7 +2296,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/08-summary.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/08-summary.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1947,7 +2317,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/09-clean-up.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/09-clean-up.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1968,7 +2338,7 @@
   
   
     <li class="md-nav__item">
-      <a href="basics-lvl300/faq.html" class="md-nav__link">
+      <a href="../workshops/basics-lvl300/faq.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2034,7 +2404,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="github-pipeline/index.html" class="md-nav__link ">
+            <a href="../workshops/github-pipeline/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -2067,7 +2437,7 @@
   
   
     <li class="md-nav__item">
-      <a href="github-pipeline/00-prerequisites.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2088,7 +2458,7 @@
   
   
     <li class="md-nav__item">
-      <a href="github-pipeline/01-create-cdk-project.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/01-create-cdk-project.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2109,7 +2479,7 @@
   
   
     <li class="md-nav__item">
-      <a href="github-pipeline/02-define-quality-gates-ci.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/02-define-quality-gates-ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2130,7 +2500,7 @@
   
   
     <li class="md-nav__item">
-      <a href="github-pipeline/03-create-pipeline.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/03-create-pipeline.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2151,7 +2521,7 @@
   
   
     <li class="md-nav__item">
-      <a href="github-pipeline/04-deploy-stack.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/04-deploy-stack.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2172,7 +2542,7 @@
   
   
     <li class="md-nav__item">
-      <a href="github-pipeline/05-summary.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/05-summary.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2193,7 +2563,7 @@
   
   
     <li class="md-nav__item">
-      <a href="github-pipeline/06-clean-up.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/06-clean-up.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2214,7 +2584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="github-pipeline/faq.html" class="md-nav__link">
+      <a href="../workshops/github-pipeline/faq.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2283,6 +2653,344 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation Details
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-environment-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Environment Requirements
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scripts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scripts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scriptsinitsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      scripts/init.sh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scriptsstartsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      scripts/start.sh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scriptstestsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      scripts/test.sh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scriptslintsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      scripts/lint.sh
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variable-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variable Support
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Tools
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Available Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-analysis-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Analysis Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#git-provider-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Git Provider Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cicd-configuration-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI/CD Configuration Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugin-analysis-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Analysis Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#networking-configuration-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Networking Configuration Tools
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuring-mcp-clients-for-the-cdk-cicd-wrapper-debugger" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring MCP Clients for the CDK CI/CD Wrapper Debugger
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuring MCP Clients for the CDK CI/CD Wrapper Debugger">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compatible-mcp-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compatible MCP Clients
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuring-cline-ai-vs-code-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring Cline AI (VS Code Extension)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuring-amazon-q-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring Amazon Q CLI
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-using-with-cline-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1: Using with Cline AI
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-troubleshooting-configuration-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2: Troubleshooting Configuration Issues
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-complete-project-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3: Complete Project Validation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test Coverage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Coverage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#testing-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing Framework
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-suite-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test Suite Organization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-the-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running the Tests
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-debugging-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Debugging Workflows
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Debugging Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#workflow-1-complete-project-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workflow 1: Complete Project Validation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflow-2-troubleshooting-configuration-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workflow 2: Troubleshooting Configuration Issues
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contributing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      License
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2299,8 +3007,299 @@
   
 
 
-<h1 id="cdk-cicd-wrapper-workshops">CDK CI/CD Wrapper Workshops</h1>
-<p>This repository contains a collection of workshops that demonstrate how to use the CDK CI/CD Wrapper to deploy a CI/CD pipeline for any projects on AWS.</p>
+<h1 id="cdk-cicd-wrapper-debugger-mcp-server">CDK CI/CD Wrapper Debugger MCP Server</h1>
+<p>An MCP (Model Context Protocol) server providing specialized debugging tools for CDK CI/CD Wrapper applications.</p>
+<p><strong><a href="https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/mcp-servers/debugger">📂 View Source Code →</a></strong></p>
+<h2 id="overview">Overview</h2>
+<p>This MCP server provides a suite of tools for diagnosing and resolving common issues in CDK CI/CD Wrapper applications. It helps identify configuration problems, deployment failures, and environment setup issues that can occur when working with the CDK CI/CD Wrapper.</p>
+<h3 id="implementation-details">Implementation Details</h3>
+<p>This server uses the standard MCP Server implementation from the Python MCP SDK:</p>
+<ul>
+<li>Uses <code>from mcp.server.fastmcp import FastMCP</code> for proper MCP server initialization</li>
+<li>Provides six specialized debugging tools</li>
+<li>Runs with stdio transport for direct communication with MCP clients</li>
+</ul>
+<h2 id="local-environment-requirements">Local Environment Requirements</h2>
+<p>Before installing and running the debugger MCP server, ensure your environment meets the following requirements:</p>
+<ul>
+<li><strong>Python 3.10+</strong>: The server requires Python 3.10 or newer</li>
+<li><strong>pip or uv package manager</strong>: For installing dependencies</li>
+<li><strong>AWS CLI</strong>: Configured with appropriate profiles if you want to test AWS resource access</li>
+<li><strong>Cline AI extension</strong>: Installed in VSCode</li>
+<li><strong>Git</strong>: For cloning the repository (if needed)</li>
+</ul>
+<p>For AWS functionality, the following environment should be configured:</p>
+<ul>
+<li><strong>AWS credentials</strong>: Properly set up in <code>~/.aws/credentials</code> with necessary profiles</li>
+<li><strong>AWS region</strong>: Configured in your environment or AWS config</li>
+</ul>
+<h2 id="scripts">Scripts</h2>
+<p>The debugger includes several utility scripts to streamline development and testing:</p>
+<h3 id="scriptsinitsh"><code>scripts/init.sh</code></h3>
+<p>Initializes the development environment by:
+1. Creating a Python virtual environment (if it doesn't exist)
+2. Installing the <code>uv</code> package manager (if not already installed)
+3. Installing all dependencies from requirements.txt</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Make the initialization script executable (if not already)</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>scripts/init.sh
+
+<span class="c1"># Run the initialization script</span>
+./scripts/init.sh
+</code></pre></div>
+<h3 id="scriptsstartsh"><code>scripts/start.sh</code></h3>
+<p>Starts the MCP server:
+1. Checks if the virtual environment exists (prompts to run init.sh if not)
+2. Activates the virtual environment
+3. Launches the MCP server</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Make the script executable (if not already)</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>scripts/start.sh
+
+<span class="c1"># Start the MCP server</span>
+./scripts/start.sh
+</code></pre></div>
+<h3 id="scriptstestsh"><code>scripts/test.sh</code></h3>
+<p>Runs the test suite with coverage reporting:
+1. Creates a .coveragerc file with specific settings
+2. Runs pytest on the entire test suite
+3. Generates coverage reports for server.py and tools/
+4. Ensures a minimum coverage threshold (currently 50%)
+5. Displays which lines are missing coverage</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Make the script executable (if not already)</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>scripts/test.sh
+
+<span class="c1"># Run the tests</span>
+./scripts/test.sh
+</code></pre></div>
+<h3 id="scriptslintsh"><code>scripts/lint.sh</code></h3>
+<p>Formats the Python code using Black:
+1. Checks if the virtual environment exists
+2. Formats all Python code in tools/, tests/, and server.py</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Make the script executable (if not already)</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>scripts/lint.sh
+
+<span class="c1"># Format the code</span>
+./scripts/lint.sh
+</code></pre></div>
+<p>You can also perform these steps manually:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create and activate virtual environment</span>
+python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+
+<span class="c1"># Install uv if not already installed</span>
+curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.cargo/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span>
+
+<span class="c1"># Install dependencies using uv</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+
+<span class="c1"># Run the server</span>
+python<span class="w"> </span>server.py
+</code></pre></div>
+<h2 id="environment-variable-support">Environment Variable Support</h2>
+<p>The debugger automatically loads environment variables from multiple sources:</p>
+<ol>
+<li><strong>System environment variables</strong> - Variables set in your current shell session</li>
+<li><strong>.env files</strong> - Loads from <code>.env</code>, <code>.env.local</code>, and <code>.env.development</code> files in the project directory</li>
+<li><strong>Priority</strong> - System environment variables take precedence over .env file variables</li>
+</ol>
+<p>This follows the common developer practice of using <code>npx dotenv-cli</code> or similar tools to manage environment variables.</p>
+<h2 id="available-tools">Available Tools</h2>
+<h3 id="configuration-analysis-tools">Configuration Analysis Tools</h3>
+<h4 id="check_comprehensive_config"><code>check_comprehensive_config</code></h4>
+<p>Performs a comprehensive configuration check for CDK CI/CD Wrapper projects, examining environment variables and configuration files to ensure all required parameters are properly set.</p>
+<div class="highlight"><pre><span></span><code><span class="n">check_comprehensive_config</span><span class="p">(</span><span class="n">project_path</span><span class="o">=</span><span class="s2">&quot;/path/to/cdk-project&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="check_stage_definitions"><code>check_stage_definitions</code></h4>
+<p>Verifies that stages are correctly defined through environment variables or code, ensuring account mappings are present and environment variables are set appropriately.</p>
+<div class="highlight"><pre><span></span><code><span class="n">check_stage_definitions</span><span class="p">(</span><span class="n">project_path</span><span class="o">=</span><span class="s2">&quot;/path/to/cdk-project&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="git-provider-tools">Git Provider Tools</h3>
+<h4 id="check_git_provider"><code>check_git_provider</code></h4>
+<p>Checks Git provider configuration (GitHub or CodeCommit) and validates connectivity. For CodeCommit, performs a connectivity test using the RES account credentials to ensure repositories can be accessed.</p>
+<div class="highlight"><pre><span></span><code><span class="n">check_git_provider</span><span class="p">(</span><span class="n">project_path</span><span class="o">=</span><span class="s2">&quot;/path/to/cdk-project&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="cicd-configuration-tools">CI/CD Configuration Tools</h3>
+<h4 id="check_ci_configuration"><code>check_ci_configuration</code></h4>
+<p>Determines which CI system is being used (CodePipeline or GitHub Actions) and validates its configuration. For CodePipeline, analyzes the version, Docker base image, and CodeBuild environment settings.</p>
+<div class="highlight"><pre><span></span><code><span class="n">check_ci_configuration</span><span class="p">(</span><span class="n">project_path</span><span class="o">=</span><span class="s2">&quot;/path/to/cdk-project&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="plugin-analysis-tools">Plugin Analysis Tools</h3>
+<h4 id="check_plugins"><code>check_plugins</code></h4>
+<p>Identifies and analyzes any custom plugins used in the project, including potential security implications. Specifically highlights plugins that enable public access or other security-sensitive configurations.</p>
+<div class="highlight"><pre><span></span><code><span class="n">check_plugins</span><span class="p">(</span><span class="n">project_path</span><span class="o">=</span><span class="s2">&quot;/path/to/cdk-project&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="networking-configuration-tools">Networking Configuration Tools</h3>
+<h4 id="check_vpc_configuration"><code>check_vpc_configuration</code></h4>
+<p>Validates VPC configuration in CDK CI/CD Wrapper projects and ensures all necessary proxy configurations are present when VPC proxy is enabled.</p>
+<div class="highlight"><pre><span></span><code><span class="n">check_vpc_configuration</span><span class="p">(</span><span class="n">project_path</span><span class="o">=</span><span class="s2">&quot;/path/to/cdk-project&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="configuring-mcp-clients-for-the-cdk-cicd-wrapper-debugger">Configuring MCP Clients for the CDK CI/CD Wrapper Debugger</h2>
+<p>This MCP server can be used with any MCP-compatible client. Below are configuration instructions for popular clients:</p>
+<h3 id="compatible-mcp-clients">Compatible MCP Clients</h3>
+<ul>
+<li><strong><a href="https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line.html">Amazon Q CLI</a></strong> - Amazon's AI-powered command-line assistant (<a href="https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-getting-started-installing.html">Installation Guide</a>)</li>
+<li><strong><a href="https://cline.bot/">Cline</a></strong> - The Collaborative AI Coder. Experience an AI development partner that amplifies your engineering capabilities</li>
+<li><strong>Any other <a href="https://modelcontextprotocol.io/clients">MCP-compatible client</a></strong> - The server follows the standard <a href="https://spec.modelcontextprotocol.io/">MCP protocol specification</a></li>
+</ul>
+<h3 id="configuring-cline-ai-vs-code-extension">Configuring Cline AI (VS Code Extension)</h3>
+<p>To use this MCP server with Cline AI in VS Code, you need to configure the MCP server in the Cline AI extension settings. Here's a step-by-step guide:</p>
+<h4 id="1-locate-your-mcp-server-configuration-file">1. Locate Your MCP Server Configuration File</h4>
+<p>The Cline AI MCP server configuration is typically located at <code>~/.config/cline/mcp-server-config.json</code>. If this file doesn't exist, you can create it with the appropriate directory structure.</p>
+<h4 id="2-configure-the-mcp-server">2. Configure the MCP Server</h4>
+<p>Add the CDK CI/CD Wrapper Debugger server configuration to your MCP server configuration file. There are several approaches depending on your environment:</p>
+<h5 id="option-1-using-the-repository-path">Option 1: Using the Repository Path</h5>
+<p>If you have the repository checked out:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;cdk-cicd-wrapper-debugger&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$SHELL&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;-c&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;cd $HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger &amp;&amp; source .venv/bin/activate &amp;&amp; python server.py&quot;</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Replace <code>$HOME/path/to/cdk-cicd-wrapper</code> with the actual path to your project.</p>
+<h5 id="option-2-using-uv-package-manager">Option 2: Using UV Package Manager</h5>
+<p>If you have UV installed:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;cdk-cicd-wrapper-debugger&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uv&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--directory&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;$CURRENT_DIR/mcp-servers/debugger&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;server.py&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h5 id="option-3-using-current-directory-with-relative-path">Option 3: Using Current Directory with Relative Path</h5>
+<p>If the debugger is in your current working directory:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;cdk-cicd-wrapper-debugger&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;$CURRENT_DIR/mcp-servers/debugger/server.py&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="3-using-the-debugger-with-cline-ai">3. Using the Debugger with Cline AI</h4>
+<p>Once configured, you can use the debugger tools through Cline AI by opening your CDK CI/CD Wrapper project in VS Code and asking Cline AI to analyze your project. Here are some example prompts:</p>
+<ul>
+<li>"Can you use the cdk-cicd-wrapper-debugger to check my project configuration?"</li>
+<li>"Analyze my CDK CI/CD Wrapper project using the debugger tools."</li>
+<li>"Check for VPC configuration issues in my CDK CI/CD Wrapper project."</li>
+</ul>
+<p>Cline AI will connect to the MCP server and use the appropriate tools to analyze your project.</p>
+<h3 id="configuring-amazon-q-cli">Configuring Amazon Q CLI</h3>
+<p>Amazon Q CLI can also connect to this MCP server. Here's how to configure it:</p>
+<h4 id="1-install-amazon-q-cli">1. Install Amazon Q CLI</h4>
+<p>If you haven't already, install Amazon Q CLI following the official AWS documentation.</p>
+<h4 id="2-configure-mcp-server-for-amazon-q">2. Configure MCP Server for Amazon Q</h4>
+<p>Create or update your Amazon Q CLI MCP configuration. The exact configuration method may vary depending on your Amazon Q CLI version, but typically involves:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Example configuration for Amazon Q CLI</span>
+<span class="c1"># (Please refer to the latest Amazon Q CLI documentation for exact syntax)</span>
+q<span class="w"> </span>configure<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span>cdk-cicd-wrapper-debugger<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--command<span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--args<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/path/to/cdk-cicd-wrapper/mcp-servers/debugger/server.py&quot;</span>
+</code></pre></div>
+<h4 id="3-using-with-amazon-q-cli">3. Using with Amazon Q CLI</h4>
+<p>Once configured, you can interact with the debugger through Amazon Q CLI:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Example usage (syntax may vary based on Amazon Q CLI version)</span>
+q<span class="w"> </span>chat<span class="w"> </span><span class="s2">&quot;Use the cdk-cicd-wrapper-debugger to analyze my CDK project at ./my-project&quot;</span>
+</code></pre></div>
+<h4 id="4-troubleshooting-mcp-server-connection">4. Troubleshooting MCP Server Connection</h4>
+<p>If your MCP client cannot connect to the server:</p>
+<ol>
+<li>Verify that the path in your MCP server configuration is correct</li>
+<li>Ensure the virtual environment is activated and all dependencies are installed</li>
+<li>Check that the server script has execute permissions</li>
+<li>Examine client console logs for any error messages</li>
+<li>Test the server manually by running <code>python server.py</code> in the debugger directory</li>
+</ol>
+<h2 id="usage-examples">Usage Examples</h2>
+<h3 id="example-1-using-with-cline-ai">Example 1: Using with Cline AI</h3>
+<p>When using this MCP server with Cline AI, you can request analysis like this:</p>
+<div class="highlight"><pre><span></span><code>&quot;Can you analyze my CDK CI/CD Wrapper project configuration using the debugger tools? 
+The project is located at ./my-cdk-project&quot;
+</code></pre></div>
+<p>Cline will then use the MCP tools to:
+1. Check comprehensive configuration settings
+2. Verify stage definitions
+3. Validate Git provider configuration
+4. Check CI/CD configuration
+5. Analyze any custom plugins
+6. Validate VPC and networking settings</p>
+<h3 id="example-2-troubleshooting-configuration-issues">Example 2: Troubleshooting Configuration Issues</h3>
+<p>Ask Cline to diagnose specific configuration problems:</p>
+<div class="highlight"><pre><span></span><code>&quot;My CDK CI/CD Wrapper project is having issues with VPC configuration. 
+Can you diagnose what might be wrong?&quot;
+</code></pre></div>
+<p>Cline will use the <code>check_vpc_configuration</code> tool to analyze the VPC setup and provide recommendations.</p>
+<h3 id="example-3-complete-project-validation">Example 3: Complete Project Validation</h3>
+<p>Request a comprehensive analysis:</p>
+<div class="highlight"><pre><span></span><code>&quot;Please perform a complete validation of my CDK CI/CD Wrapper project, 
+including configuration, stages, Git provider, CI/CD setup, plugins, and VPC configuration.&quot;
+</code></pre></div>
+<h2 id="test-coverage">Test Coverage</h2>
+<p>The debugger includes comprehensive test coverage for all components:</p>
+<h3 id="testing-framework">Testing Framework</h3>
+<ul>
+<li>Uses pytest for running tests</li>
+<li>Implements coverage reporting with pytest-cov</li>
+<li>Currently enforces a minimum coverage threshold of 50%</li>
+<li>Configuration defined in .coveragerc</li>
+</ul>
+<h3 id="test-suite-organization">Test Suite Organization</h3>
+<p>The test suite covers:</p>
+<ol>
+<li><strong>Server Components</strong></li>
+<li>Server initialization and registration (<code>test_server.py</code>, <code>test_server_registration.py</code>)</li>
+<li>Server helper functions (<code>test_server_helpers.py</code>)</li>
+<li>
+<p>MCP integration (<code>test_mcp_integration.py</code>)</p>
+</li>
+<li>
+<p><strong>Debugging Tools</strong></p>
+</li>
+<li>CI Checker (<code>test_ci_checker_comprehensive.py</code>, <code>test_ci_configuration.py</code>)</li>
+<li>Configuration Checker (<code>test_comprehensive_config.py</code>)</li>
+<li>Git Provider (<code>test_git_provider.py</code>)</li>
+<li>Plugin Analysis (<code>test_plugins.py</code>)</li>
+<li>Stage Definitions (<code>test_stage_definitions.py</code>)</li>
+<li>VPC Configuration (<code>test_vpc_configuration.py</code>, <code>test_vpc_language_support.py</code>)</li>
+<li>Tool Mocking (<code>test_tools_mock.py</code>)</li>
+</ol>
+<h3 id="running-the-tests">Running the Tests</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the full test suite with coverage reporting</span>
+./scripts/test.sh
+</code></pre></div>
+<h2 id="common-debugging-workflows">Common Debugging Workflows</h2>
+<h3 id="workflow-1-complete-project-validation">Workflow 1: Complete Project Validation</h3>
+<ol>
+<li>Check comprehensive configuration: <code>check_comprehensive_config(project_path="./project")</code></li>
+<li>Verify stage definitions: <code>check_stage_definitions(project_path="./project")</code></li>
+<li>Validate Git provider setup: <code>check_git_provider(project_path="./project")</code></li>
+<li>Check CI/CD configuration: <code>check_ci_configuration(project_path="./project")</code></li>
+<li>Analyze custom plugins: <code>check_plugins(project_path="./project")</code></li>
+<li>Validate VPC configuration: <code>check_vpc_configuration(project_path="./project")</code></li>
+</ol>
+<h3 id="workflow-2-troubleshooting-configuration-issues">Workflow 2: Troubleshooting Configuration Issues</h3>
+<ol>
+<li>Check comprehensive configuration: <code>check_comprehensive_config(project_path="./project")</code></li>
+<li>Identify specific problem areas from the comprehensive check</li>
+<li>Run specialized tools for problem areas (e.g., <code>check_vpc_configuration</code> for VPC issues)</li>
+<li>Follow recommendations provided by the tools</li>
+</ol>
+<h2 id="contributing">Contributing</h2>
+<p>Contributions to enhance the debugging capabilities of this MCP server are welcome. Please ensure that any new tools follow the existing pattern and include proper error handling and documentation.</p>
+<h2 id="license">License</h2>
+<p>Apache 2.0</p>
 
 
 
@@ -2321,7 +3320,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    2024-09-25
+    2025-07-08
   </span>
 
     
