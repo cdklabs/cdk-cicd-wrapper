@@ -150,6 +150,34 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
 Visit our [documentation](https://cdklabs.github.io/cdk-cicd-wrapper/) to learn more.
 
+## Project Structure
+
+This repository is organized as a monorepo containing multiple packages and tools:
+
+### Core Packages
+
+- **`packages/@cdklabs/cdk-cicd-wrapper`** - Main CDK constructs and pipeline blueprint library
+- **`packages/@cdklabs/cdk-cicd-wrapper-cli`** - Command-line interface for validation, security scanning, and project management
+- **`packages/@cdklabs/cdk-cicd-wrapper-projen`** - Projen integration for project scaffolding and management
+
+### Additional Components
+
+- **`mcp-servers/debugger/`** - MCP (Model Context Protocol) server for AI-powered debugging assistance
+- **`samples/`** - Example projects demonstrating CDK CI/CD Wrapper usage
+  - `cdk-ts-example/` - TypeScript CDK example
+  - `cdk-python-example/` - Python CDK example
+- **`docs/`** - Documentation source files and build scripts
+- **`projenrc/`** - Projen configuration files for managing project structure
+
+### Development Workflow
+
+The project uses:
+- **Projen** for project management and code generation
+- **Yarn workspaces** for monorepo dependency management
+- **Jest** for testing across all packages
+- **ESLint + Prettier** for code formatting and linting
+- **Commitlint** for conventional commit enforcement
+
 ## Use cases
 
 The CDK CI/CD Wrapper is the next step on road to standardize and simplify the multi-stage CI/CD process that the successful [aws-cdk-cicd-boot-sample](https://github.com/aws-samples/aws-cdk-cicd-boot-sample) started. Thus the use cases for the CDK CI/CD Wrapper are the same as for the [aws-cdk-cicd-boot-sample](https://github.com/aws-samples/aws-cdk-cicd-boot-sample).
@@ -164,6 +192,55 @@ On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged
 - Support for private NPM registry to safely store your libraries
 - Customizable CI/CD pipeline to attach to your CDK applications which comes with built-in dependency injection
 - Workbench deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline
+
+## MCP Debugger Server
+
+The CDK CI/CD Wrapper includes a specialized **[MCP (Model Context Protocol)](https://modelcontextprotocol.io/) Debugger Server** that provides AI-powered debugging assistance for your CDK CI/CD Wrapper applications. This debugger server integrates seamlessly with MCP-compatible AI tools to help diagnose and resolve common configuration and deployment issues.
+
+### Compatible MCP Clients
+
+The debugger server works with any [MCP-compatible client](https://modelcontextprotocol.io/clients), including:
+
+- **[Cline AI](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev)** - VS Code extension for AI-powered development assistance
+- **[Amazon Q CLI](https://aws.amazon.com/q/cli/)** - Amazon's AI-powered command-line assistant ([Installation Guide](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-getting-started-installing.html))
+- **Any other MCP-compatible client** - The server follows the standard [MCP protocol specification](https://spec.modelcontextprotocol.io/)
+
+### Key Features
+
+The MCP Debugger Server offers six specialized debugging tools:
+
+- **🔧 Comprehensive Configuration Analysis** - Validates all environment variables and configuration files to ensure proper setup
+- **📊 Stage Definition Verification** - Checks that deployment stages are correctly defined with proper account mappings
+- **🔗 Git Provider Configuration** - Validates GitHub/CodeCommit setup and tests connectivity
+- **⚙️ CI/CD Configuration Analysis** - Analyzes CodePipeline or GitHub Actions configuration for proper setup
+- **🔌 Plugin Security Analysis** - Identifies custom plugins and highlights potential security implications
+- **🌐 VPC Configuration Validation** - Ensures VPC and networking configurations are properly set up
+
+### Benefits
+
+- **AI-Powered Troubleshooting** - Work with AI assistants to quickly identify and resolve configuration issues
+- **Comprehensive Project Validation** - Run complete health checks on your CDK CI/CD Wrapper projects
+- **Proactive Issue Detection** - Catch configuration problems before they cause deployment failures
+- **Security Analysis** - Identify potentially unsafe plugin configurations and security risks
+- **Environment Validation** - Ensure all required environment variables and AWS credentials are properly configured
+
+### Getting Started with the Debugger
+
+The MCP Debugger Server is located under `mcp-servers/debugger/` and can be used with any MCP-compatible client including:
+
+- **[Cline AI](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev)** - VS Code extension
+- **Amazon Q CLI** - Command-line AI assistant  
+- **Any other MCP-compatible client**
+
+For detailed setup instructions, configuration examples, and usage guides, see the [MCP Debugger README](mcp-servers/debugger/README.md).
+
+To use the debugger with AI assistants, simply ask them to analyze your CDK CI/CD Wrapper project:
+
+```
+"Can you use the cdk-cicd-wrapper-debugger to check my project configuration?"
+```
+
+The AI client will automatically connect to the MCP server and provide comprehensive analysis and recommendations.
 
 ## Intended usage
 

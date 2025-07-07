@@ -182,7 +182,17 @@ Validates VPC configuration in CDK CI/CD Wrapper projects and ensures all necess
 check_vpc_configuration(project_path="/path/to/cdk-project")
 ```
 
-## Configuring Cline AI for the CDK CI/CD Wrapper Debugger
+## Configuring MCP Clients for the CDK CI/CD Wrapper Debugger
+
+This MCP server can be used with any MCP-compatible client. Below are configuration instructions for popular clients:
+
+### Compatible MCP Clients
+
+- **[Cline AI](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev)** - VS Code extension for AI-powered development assistance
+- **[Amazon Q CLI](https://aws.amazon.com/q/cli/)** - Amazon's AI-powered command-line assistant ([Installation Guide](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-getting-started-installing.html))
+- **Any other [MCP-compatible client](https://modelcontextprotocol.io/clients)** - The server follows the standard [MCP protocol specification](https://spec.modelcontextprotocol.io/)
+
+### Configuring Cline AI (VS Code Extension)
 
 To use this MCP server with Cline AI in VS Code, you need to configure the MCP server in the Cline AI extension settings. Here's a step-by-step guide:
 
@@ -257,14 +267,45 @@ Once configured, you can use the debugger tools through Cline AI by opening your
 
 Cline AI will connect to the MCP server and use the appropriate tools to analyze your project.
 
+### Configuring Amazon Q CLI
+
+Amazon Q CLI can also connect to this MCP server. Here's how to configure it:
+
+### 1. Install Amazon Q CLI
+
+If you haven't already, install Amazon Q CLI following the official AWS documentation.
+
+### 2. Configure MCP Server for Amazon Q
+
+Create or update your Amazon Q CLI MCP configuration. The exact configuration method may vary depending on your Amazon Q CLI version, but typically involves:
+
+```bash
+# Example configuration for Amazon Q CLI
+# (Please refer to the latest Amazon Q CLI documentation for exact syntax)
+q configure mcp add \
+  --name cdk-cicd-wrapper-debugger \
+  --command "python" \
+  --args "$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger/server.py"
+```
+
+### 3. Using with Amazon Q CLI
+
+Once configured, you can interact with the debugger through Amazon Q CLI:
+
+```bash
+# Example usage (syntax may vary based on Amazon Q CLI version)
+q chat "Use the cdk-cicd-wrapper-debugger to analyze my CDK project at ./my-project"
+```
+
 ### 4. Troubleshooting MCP Server Connection
 
-If Cline AI cannot connect to the MCP server:
+If your MCP client cannot connect to the server:
 
 1. Verify that the path in your MCP server configuration is correct
 2. Ensure the virtual environment is activated and all dependencies are installed
 3. Check that the server script has execute permissions
-4. Examine VS Code console logs for any error messages
+4. Examine client console logs for any error messages
+5. Test the server manually by running `python server.py` in the debugger directory
 
 ## Usage Examples
 
