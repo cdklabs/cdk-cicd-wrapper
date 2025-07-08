@@ -48,6 +48,7 @@ chmod +x scripts/init.sh
 ./scripts/init.sh
 ```
 
+
 ### `scripts/start.sh`
 
 Starts the MCP server:
@@ -94,23 +95,6 @@ chmod +x scripts/lint.sh
 ./scripts/lint.sh
 ```
 
-You can also perform these steps manually:
-
-```bash
-# Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install uv if not already installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# Install project and dependencies using uv
-uv pip install -e ".[dev]"
-
-# Run the server
-python -m debugger.server
-```
 
 ## Environment Variable Support
 
@@ -230,53 +214,7 @@ This approach installs and runs the MCP server directly from the GitHub reposito
 }
 ```
 
-#### Alternative: Using Python with Virtual Environment
-
-If `uvx` is not available, you can use Python with a virtual environment approach. This method creates a temporary virtual environment, installs the package, and runs the server:
-
-```json
-{
-  "mcpServers": {
-    "cdk-cicd-wrapper-debugger": {
-      "autoApprove": [],
-      "disabled": false,
-      "timeout": 5000,
-      "type": "stdio",
-      "command": "bash",
-      "args": [
-        "-c",
-        "python3 -m venv /tmp/mcp-debugger-venv && source /tmp/mcp-debugger-venv/bin/activate && pip install --quiet git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger-mcp && python -c 'from debugger.server import main; main()'"
-      ],
-      "env": {}
-    }
-  }
-}
-```
-
-This approach ensures proper dependency isolation by creating a virtual environment for the MCP server.
-
-#### Alternative: Local Development/Cloned Repository Setup
-
-If you have cloned the repository locally or are developing/contributing to the MCP server:
-
-```json
-{
-  "mcpServers": {
-    "cdk-cicd-wrapper-debugger": {
-      "autoApprove": [],
-      "disabled": false,
-      "timeout": 5000,
-      "type": "stdio",
-      "command": "python",
-      "args": ["-m", "debugger.server"],
-      "cwd": "/path/to/cdk-cicd-wrapper/mcp-servers/debugger-mcp",
-      "env": {}
-    }
-  }
-}
-```
-
-Replace `/path/to/cdk-cicd-wrapper` with the actual path to your cloned repository.
+This configuration uses separate bash arguments and handles all environment setup automatically.
 
 ### 3. Using the Debugger with Cline
 
@@ -290,27 +228,37 @@ Cline will connect to the MCP server and use the appropriate tools to analyze yo
 
 ### Configuring Amazon Q CLI
 
-Amazon Q CLI can also connect to this MCP server. Here's how to configure it:
+Amazon Q CLI can also connect to this MCP server using the same UVX approach as Cline:
 
-### 1. Install Amazon Q CLI
+#### 1. Install Amazon Q CLI
 
-If you haven't already, install **[Amazon Q CLI](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line.html)** following the official AWS documentation.
+If you haven't already, install Amazon Q CLI following the official AWS documentation.
 
-### 2. Configure MCP Server for Amazon Q
+#### 2. Configure MCP Server for Amazon Q
 
-Create or update your Amazon Q CLI MCP configuration. The exact configuration method may vary depending on your Amazon Q CLI version, but typically involves:
+Add the MCP server configuration to `~/.aws/amazonq/mcp.json`:
 
-```bash
-# Example configuration for Amazon Q CLI
-# (Please refer to the latest Amazon Q CLI documentation for exact syntax)
-q configure mcp add \
-  --name cdk-cicd-wrapper-debugger \
-  --command "python" \
-  --args "-m debugger.server" \
-  --cwd "$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger-mcp"
+```json
+{
+  "mcpServers": {
+    "cdk-cicd-wrapper-debugger": {
+      "autoApprove": [],
+      "disabled": false,
+      "timeout": 5000,
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger-mcp",
+        "debugger"
+      ],
+      "env": {}
+    }
+  }
+}
 ```
 
-### 3. Using with Amazon Q CLI
+#### 3. Using with Amazon Q CLI
 
 Once configured, you can interact with the debugger through Amazon Q CLI:
 
@@ -319,15 +267,15 @@ Once configured, you can interact with the debugger through Amazon Q CLI:
 q chat "Use the cdk-cicd-wrapper-debugger to analyze my CDK project at ./my-project"
 ```
 
-### 4. Troubleshooting MCP Server Connection
+#### 4. Troubleshooting MCP Server Connection
 
 If your MCP client cannot connect to the server:
 
-1. Verify that the path in your MCP server configuration is correct
-2. Ensure the virtual environment is activated and all dependencies are installed
-3. Check that the server script has execute permissions
+1. Verify that UVX is installed and available in your system PATH
+2. Ensure Python 3.10+ is available in your system PATH
+3. Check that the UVX command can access the GitHub repository
 4. Examine client console logs for any error messages
-5. Test the server manually by running `python -m debugger.server` in the debugger-mcp directory
+5. Test the server manually by running the UVX command from your configuration
 
 ## Usage Examples
 
