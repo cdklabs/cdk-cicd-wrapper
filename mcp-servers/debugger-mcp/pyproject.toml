@@ -80,5 +80,5 @@ exclude_lines = [
 ]
 
 [project.urls]
-Homepage = https://cdklabs.github.io/cdk-cicd-wrapper/mcp/index.html
-Repository = https://github.com/cdklabs/cdk-cicd-wrapper
+Homepage = "https://cdklabs.github.io/cdk-cicd-wrapper/mcp/index.html"
+Repository = "https://github.com/cdklabs/cdk-cicd-wrapper"
