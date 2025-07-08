@@ -230,9 +230,9 @@ This approach installs and runs the MCP server directly from the GitHub reposito
 }
 ```
 
-#### Alternative: Using Python with Git Installation
+#### Alternative: Using Python with Virtual Environment
 
-If `uvx` is not available, you can use Python directly with pip:
+If `uvx` is not available, you can use Python with a virtual environment approach. This method creates a temporary virtual environment, installs the package, and runs the server:
 
 ```json
 {
@@ -242,17 +242,10 @@ If `uvx` is not available, you can use Python directly with pip:
       "disabled": false,
       "timeout": 5000,
       "type": "stdio",
-      "command": "python",
+      "command": "bash",
       "args": [
-        "-m",
-        "pip",
-        "install",
-        "--quiet",
-        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger-mcp",
-        "&&",
-        "python",
         "-c",
-        "from debugger.server import main; main()"
+        "python3 -m venv /tmp/mcp-debugger-venv && source /tmp/mcp-debugger-venv/bin/activate && pip install --quiet git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger-mcp && python -c 'from debugger.server import main; main()'"
       ],
       "env": {}
     }
@@ -260,7 +253,7 @@ If `uvx` is not available, you can use Python directly with pip:
 }
 ```
 
-**Note**: The above pip approach is not recommended as it requires shell command chaining which may not work reliably across all systems.
+This approach ensures proper dependency isolation by creating a virtual environment for the MCP server.
 
 #### Alternative: Local Development/Cloned Repository Setup
 
