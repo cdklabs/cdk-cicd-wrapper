@@ -45,7 +45,7 @@ node_modules
 .env
 .env.*
 .venv
-mcp-servers/debugger/cline-mcp-server-config.json
+mcp-servers/debugger/mcp-server-config.json
 mcp-servers/debugger/.venv
 mcp-servers/debugger/__pycache__
 mcp-servers/debugger/tools/__pycache__
