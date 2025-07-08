@@ -138,7 +138,7 @@ def register_tools(mcp_server: FastMCP) -> None:
             JSON string with comprehensive configuration analysis and recommendations
         """
         import json
-        from tools.config_checker import check_comprehensive_config
+        from debugger.tools.config_checker import check_comprehensive_config
 
         result = check_comprehensive_config(
             project_path, load_env_variables, load_package_json
@@ -159,7 +159,7 @@ def register_tools(mcp_server: FastMCP) -> None:
             JSON string with analysis results including issues found and recommendations
         """
         import json
-        from tools.stage_checker import (
+        from debugger.tools.stage_checker import (
             check_stage_definitions as check_stage_definitions_async,
         )
 
@@ -195,7 +195,9 @@ def register_tools(mcp_server: FastMCP) -> None:
             JSON string with Git provider analysis and connectivity test results
         """
         import json
-        from tools.git_checker import check_git_provider as check_git_provider_async
+        from debugger.tools.git_checker import (
+            check_git_provider as check_git_provider_async,
+        )
 
         # Create a context-like object with helper methods
         class Context:
@@ -229,7 +231,7 @@ def register_tools(mcp_server: FastMCP) -> None:
             JSON string with CI system analysis and configuration details
         """
         import json
-        from tools.ci_checker import (
+        from debugger.tools.ci_checker import (
             check_ci_configuration as check_ci_configuration_async,
         )
 
@@ -265,7 +267,7 @@ def register_tools(mcp_server: FastMCP) -> None:
             JSON string with plugin analysis and security recommendations
         """
         import json
-        from tools.plugin_checker import check_plugins as check_plugins_async
+        from debugger.tools.plugin_checker import check_plugins as check_plugins_async
 
         # Create a context-like object with helper methods
         class Context:
@@ -298,7 +300,7 @@ def register_tools(mcp_server: FastMCP) -> None:
             JSON string with analysis results including VPC config and proxy settings
         """
         import json
-        from tools.vpc_checker import (
+        from debugger.tools.vpc_checker import (
             check_vpc_configuration as check_vpc_configuration_async,
         )
 

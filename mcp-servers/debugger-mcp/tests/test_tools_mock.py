@@ -4,17 +4,15 @@
 """Mock tests for tools modules to increase coverage"""
 
 import pytest
-from unittest.mock import patch, MagicMock
-import os
-import json
+from unittest.mock import MagicMock
 
 # Import all tools
-from tools.config_checker import check_comprehensive_config
-from tools.stage_checker import check_stage_definitions
-from tools.git_checker import check_git_provider
-from tools.ci_checker import check_ci_configuration
-from tools.plugin_checker import check_plugins
-from tools.vpc_checker import check_vpc_configuration
+from debugger.tools.config_checker import check_comprehensive_config
+from debugger.tools.stage_checker import check_stage_definitions
+from debugger.tools.git_checker import check_git_provider
+from debugger.tools.ci_checker import check_ci_configuration
+from debugger.tools.plugin_checker import check_plugins
+from debugger.tools.vpc_checker import check_vpc_configuration
 
 
 class TestToolsCoverage:

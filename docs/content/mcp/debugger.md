@@ -2,7 +2,7 @@
 
 An MCP (Model Context Protocol) server providing specialized debugging tools for CDK CI/CD Wrapper applications.
 
-**[📂 View Source Code →](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/mcp-servers/debugger)**
+**[📂 View Source Code →](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/mcp-servers/debugger-mcp)**
 
 ## Overview
 
@@ -111,7 +111,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 uv pip install -e ".[dev]"
 
 # Run the server
-python server.py
+python -m debugger.server
 ```
 
 ## Environment Variable Support
@@ -223,7 +223,7 @@ This approach installs and runs the MCP server directly from the GitHub reposito
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger",
+        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger-mcp",
         "debugger"
       ],
       "env": {}
@@ -250,7 +250,7 @@ If `uvx` is not available, you can use Python directly with pip:
         "pip",
         "install",
         "--quiet",
-        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger",
+        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger-mcp",
         "&&",
         "python",
         "-c",
@@ -277,7 +277,8 @@ If you have cloned the repository locally or are developing/contributing to the 
       "timeout": 60,
       "type": "stdio",
       "command": "python",
-      "args": ["/path/to/cdk-cicd-wrapper/mcp-servers/debugger/server.py"],
+      "args": ["-m", "debugger.server"],
+      "cwd": "/path/to/cdk-cicd-wrapper/mcp-servers/debugger-mcp",
       "env": {}
     }
   }
@@ -314,7 +315,8 @@ Create or update your Amazon Q CLI MCP configuration. The exact configuration me
 q configure mcp add \
   --name cdk-cicd-wrapper-debugger \
   --command "python" \
-  --args "$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger/server.py"
+  --args "-m debugger.server" \
+  --cwd "$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger-mcp"
 ```
 
 #### 3. Using with Amazon Q CLI
@@ -334,7 +336,7 @@ If your MCP client cannot connect to the server:
 2. Ensure the virtual environment is activated and all dependencies are installed
 3. Check that the server script has execute permissions
 4. Examine client console logs for any error messages
-5. Test the server manually by running `python server.py` in the debugger directory
+5. Test the server manually by running `python -m debugger.server` in the debugger-mcp directory
 
 ## Usage Examples
 

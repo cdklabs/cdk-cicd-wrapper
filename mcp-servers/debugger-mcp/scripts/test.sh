@@ -25,7 +25,7 @@ echo "Python version: $(python --version)"
 cd $ROOT_DIR
 #TODO: switch coverage from 50 to 80 once finished
 python -m pytest tests/ -v \
-  --cov=server \
-  --cov=tools \
+  --cov=debugger.server \
+  --cov=debugger.tools \
   --cov-fail-under=50 \
   --cov-report=term-missing

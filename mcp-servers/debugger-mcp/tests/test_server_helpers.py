@@ -7,7 +7,7 @@ import tempfile
 from unittest.mock import patch, mock_open
 
 # Import the helper functions from server
-from server import load_package_json, load_env_variables
+from debugger.server import load_package_json, load_env_variables
 
 
 class TestServerHelpers:
@@ -84,7 +84,7 @@ class TestServerHelpers:
 
             # Mock the dotenv.load_dotenv function to do nothing
             # The actual parsing is done manually in the function
-            with patch("server.load_dotenv"):
+            with patch("debugger.server.load_dotenv"):
                 with patch.dict(os.environ, {"OS_VAR": "os_value"}, clear=True):
                     result = load_env_variables(temp_dir)
 
@@ -112,7 +112,7 @@ class TestServerHelpers:
                 f.write("ENV_VAR3=value3\n")
 
             # Mock the dotenv.load_dotenv function
-            with patch("server.load_dotenv"):
+            with patch("debugger.server.load_dotenv"):
                 result = load_env_variables(temp_dir)
 
                 # Verify the env vars from all files are loaded
@@ -138,7 +138,7 @@ class TestServerHelpers:
             mock_file.side_effect = Exception("File error")
 
             with patch.dict(os.environ, mock_env, clear=True):
-                with patch("server.load_dotenv"):
+                with patch("debugger.server.load_dotenv"):
                     with patch("builtins.open", mock_file):
                         # The function should handle the exception and return just the OS env vars
                         result = load_env_variables(temp_dir)

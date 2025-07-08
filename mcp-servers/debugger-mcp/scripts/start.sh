@@ -18,7 +18,7 @@ source .venv/bin/activate
 
 # Launch MCP server
 echo "Starting CDK CI/CD Wrapper Debugger MCP server..."
-python server.py
+python -m debugger.server
 
 # Note: The script will not reach this point unless the server is stopped
 echo "MCP server has stopped."

@@ -40,11 +40,11 @@ dev = [
 ]
 
 [project.scripts]
-debugger = "server:main"
+debugger = "debugger.server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["tools", "server.py"]
+include = ["debugger*"]
 exclude = ["tests*", "scripts*"]
 
 [tool.setuptools.package-data]
