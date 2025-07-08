@@ -12,7 +12,7 @@ authors = [
 license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.10"
-keywords = ["mcp", "cdk", "cicd", "aws", "debugging"]
+keywords = ["mcp", "cdk", "cicd", "aws", "debugging", "vanilla"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -40,12 +40,15 @@ dev = [
 ]
 
 [project.scripts]
-debugger = "debugger.server:main"
+debugger = "server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["*"]
-exclude = ["tests*"]
+include = ["tools"]
+exclude = ["tests*", "scripts*"]
+
+[tool.setuptools.py-modules]
+py-modules = ["server"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json"]
