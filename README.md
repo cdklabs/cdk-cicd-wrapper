@@ -238,11 +238,21 @@ On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged
 - Customizable CI/CD pipeline to attach to your CDK applications which comes with built-in dependency injection
 - Workbench deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline
 
-## MCP Debugger Server
+## Intended usage
+
+You should not fork this repository and expect to reproduce the same in your AWS Accounts, this repository is only used for preparing, testing and shipping all the packages used by the CDK CI/CD Wrapper. Using the CDK CI/CD Wrapper gives you the following benefits:
+
+- :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
+- :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions
+- :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
+- :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
+- :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
+
+### MCP Debugger Server
 
 The CDK CI/CD Wrapper includes a specialized **[MCP (Model Context Protocol)](https://modelcontextprotocol.io/) Debugger Server** that provides AI-powered debugging assistance for your CDK CI/CD Wrapper applications. This debugger server integrates seamlessly with MCP-compatible AI tools to help diagnose and resolve common configuration and deployment issues.
 
-### Compatible MCP Clients
+#### Compatible MCP Clients
 
 The debugger server works with any [MCP-compatible client](https://modelcontextprotocol.io/clients), including:
 
@@ -271,31 +281,7 @@ The MCP Debugger Server offers six specialized debugging tools:
 
 ### Getting Started with the Debugger
 
-The MCP Debugger Server is located under `mcp-servers/debugger/` and can be used with any MCP-compatible client including:
-
-- **[Cline AI](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev)** - VS Code extension
-- **Amazon Q CLI** - Command-line AI assistant  
-- **Any other MCP-compatible client**
-
-For detailed setup instructions, configuration examples, and usage guides, see the [MCP Debugger README](mcp-servers/debugger/README.md).
-
-To use the debugger with AI assistants, simply ask them to analyze your CDK CI/CD Wrapper project:
-
-```
-"Can you use the cdk-cicd-wrapper-debugger to check my project configuration?"
-```
-
-The AI client will automatically connect to the MCP server and provide comprehensive analysis and recommendations.
-
-## Intended usage
-
-You should not fork this repository and expect to reproduce the same in your AWS Accounts, this repository is only used for preparing, testing and shipping all the packages used by the CDK CI/CD Wrapper. Using the CDK CI/CD Wrapper gives you the following benefits:
-
-- :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
-- :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions
-- :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
-- :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
-- :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
+The MCP Debugger Server is located under `mcp-servers/debugger/` and can be used with any MCP-compatible clients as mentioned above. For detailed setup instructions, configuration examples, and usage guides, see the [MCP Debugger README](mcp-servers/debugger/README.md).
 
 ## Security
 
@@ -306,6 +292,7 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 This project is licensed under the Apache-2.0 License.
 
 # Community
+
 The CDK CI/CD Wrapper community can be found within the #cdk-cicd-wrapper channel in the [cdk.dev](https://cdk.dev/) community Slack workspace.
 
 ## Contributors

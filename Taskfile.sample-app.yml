@@ -230,19 +230,23 @@ tasks:
       - |
         CURRENT_DIR=$(pwd)
         echo "Creating MCP server config with path: $CURRENT_DIR/mcp-servers/debugger"
-        cat > mcp-servers/debugger/cline-mcp-server-config.json << EOF
+        cat > mcp-servers/debugger/mcp-server-config.json << EOF
         {
           "mcpServers": {
             "cdk-cicd-wrapper-debugger": {
+              "autoApprove": [],
+              "disabled": false,
+              "timeout": 60,
+              "type": "stdio",
               "command": "uv",
               "args": ["--directory", "$CURRENT_DIR/mcp-servers/debugger", "run", "server.py"],
-              "disabled": false
+              "env": {}
             }
           }
         }
         EOF
-      - cat mcp-servers/debugger/cline-mcp-server-config.json
-      - echo "MCP server configuration generated at mcp-servers/debugger/cline-mcp-server-config.json"
+      - cat mcp-servers/debugger/mcp-server-config.json
+      - echo "MCP server configuration generated at mcp-servers/debugger/mcp-server-config.json"
 
   dev:loop:
     desc: Loop the development with {{.SAMPLE_APP}}
