@@ -78,3 +78,7 @@ exclude_lines = [
     "raise ImportError",
     "except ImportError",
 ]
+
+[project.urls]
+Homepage = https://cdklabs.github.io/cdk-cicd-wrapper/mcp/index.html
+Repository = https://github.com/cdklabs/cdk-cicd-wrapper

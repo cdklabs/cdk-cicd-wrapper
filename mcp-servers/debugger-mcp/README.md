@@ -347,7 +347,7 @@ When using this MCP server with Cline, you can request analysis like this:
 The project is located at ./my-cdk-project"
 ```
 
-Cline will then use the MCP tools to:
+Cline will then use the MCP servers to:
 
 1. Check comprehensive configuration settings
 2. Verify stage definitions
