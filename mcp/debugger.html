@@ -1702,9 +1702,36 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#configuring-cline-ai-vs-code-extension" class="md-nav__link">
+  <a href="#configuring-cline-vs-code-extension" class="md-nav__link">
     <span class="md-ellipsis">
-      Configuring Cline AI (VS Code Extension)
+      Configuring Cline (VS Code Extension)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1-locate-your-mcp-server-configuration-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Locate Your MCP Server Configuration File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-the-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Configure the MCP Server
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-using-the-debugger-with-cline" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Using the Debugger with Cline
     </span>
   </a>
   
@@ -1735,9 +1762,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#example-1-using-with-cline-ai" class="md-nav__link">
+  <a href="#example-1-using-with-cline" class="md-nav__link">
     <span class="md-ellipsis">
-      Example 1: Using with Cline AI
+      Example 1: Using with Cline
     </span>
   </a>
   
@@ -2832,9 +2859,36 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#configuring-cline-ai-vs-code-extension" class="md-nav__link">
+  <a href="#configuring-cline-vs-code-extension" class="md-nav__link">
     <span class="md-ellipsis">
-      Configuring Cline AI (VS Code Extension)
+      Configuring Cline (VS Code Extension)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1-locate-your-mcp-server-configuration-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Locate Your MCP Server Configuration File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-the-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Configure the MCP Server
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-using-the-debugger-with-cline" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Using the Debugger with Cline
     </span>
   </a>
   
@@ -2865,9 +2919,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#example-1-using-with-cline-ai" class="md-nav__link">
+  <a href="#example-1-using-with-cline" class="md-nav__link">
     <span class="md-ellipsis">
-      Example 1: Using with Cline AI
+      Example 1: Using with Cline
     </span>
   </a>
   
@@ -3025,7 +3079,7 @@
 <li><strong>Python 3.10+</strong>: The server requires Python 3.10 or newer</li>
 <li><strong>pip or uv package manager</strong>: For installing dependencies</li>
 <li><strong>AWS CLI</strong>: Configured with appropriate profiles if you want to test AWS resource access</li>
-<li><strong>Cline AI extension</strong>: Installed in VSCode</li>
+<li><strong>Cline extension</strong>: Installed in VSCode</li>
 <li><strong>Git</strong>: For cloning the repository (if needed)</li>
 </ul>
 <p>For AWS functionality, the following environment should be configured:</p>
@@ -3141,60 +3195,36 @@ python<span class="w"> </span>server.py
 <li><strong><a href="https://cline.bot/">Cline</a></strong> - The Collaborative AI Coder. Experience an AI development partner that amplifies your engineering capabilities</li>
 <li><strong>Any other <a href="https://modelcontextprotocol.io/clients">MCP-compatible client</a></strong> - The server follows the standard <a href="https://spec.modelcontextprotocol.io/">MCP protocol specification</a></li>
 </ul>
-<h3 id="configuring-cline-ai-vs-code-extension">Configuring Cline AI (VS Code Extension)</h3>
-<p>To use this MCP server with Cline AI in VS Code, you need to configure the MCP server in the Cline AI extension settings. Here's a step-by-step guide:</p>
-<h4 id="1-locate-your-mcp-server-configuration-file">1. Locate Your MCP Server Configuration File</h4>
-<p>The Cline AI MCP server configuration is typically located at <code>~/.config/cline/mcp-server-config.json</code>. If this file doesn't exist, you can create it with the appropriate directory structure.</p>
-<h4 id="2-configure-the-mcp-server">2. Configure the MCP Server</h4>
-<p>Add the CDK CI/CD Wrapper Debugger server configuration to your MCP server configuration file. There are several approaches depending on your environment:</p>
-<h5 id="option-1-using-the-repository-path">Option 1: Using the Repository Path</h5>
-<p>If you have the repository checked out:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;cdk-cicd-wrapper-debugger&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$SHELL&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;-c&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;cd $HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger &amp;&amp; source .venv/bin/activate &amp;&amp; python server.py&quot;</span>
-<span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-<p>Replace <code>$HOME/path/to/cdk-cicd-wrapper</code> with the actual path to your project.</p>
-<h5 id="option-2-using-uv-package-manager">Option 2: Using UV Package Manager</h5>
+<h3 id="configuring-cline-vs-code-extension">Configuring Cline (VS Code Extension)</h3>
+<p>To use this MCP server with Cline in VS Code, you need to configure the MCP server in the Cline extension settings. Here's a step-by-step guide:</p>
+<h3 id="1-locate-your-mcp-server-configuration-file">1. Locate Your MCP Server Configuration File</h3>
+<p>The MCP server configuration is typically located at <code>$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger/mcp-server-config.json</code>. If this file doesn't exist, you can create it running <code>task samples:dev:generate-mcp-config</code></p>
+<h3 id="2-configure-the-mcp-server">2. Configure the MCP Server</h3>
+<p>Add the CDK CI/CD Wrapper Debugger server configuration to your MCP server configuration file. We use the approach with UV as the most convenient:</p>
+<h4 id="using-uv-package-manager">Using UV Package Manager</h4>
 <p>If you have UV installed:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;cdk-cicd-wrapper-debugger&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;autoApprove&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uv&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--directory&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;$CURRENT_DIR/mcp-servers/debugger&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;server.py&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h5 id="option-3-using-current-directory-with-relative-path">Option 3: Using Current Directory with Relative Path</h5>
-<p>If the debugger is in your current working directory:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;cdk-cicd-wrapper-debugger&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;$CURRENT_DIR/mcp-servers/debugger/server.py&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="3-using-the-debugger-with-cline-ai">3. Using the Debugger with Cline AI</h4>
-<p>Once configured, you can use the debugger tools through Cline AI by opening your CDK CI/CD Wrapper project in VS Code and asking Cline AI to analyze your project. Here are some example prompts:</p>
+<h3 id="3-using-the-debugger-with-cline">3. Using the Debugger with Cline</h3>
+<p>Once configured, you can use the debugger tools through Cline by opening your CDK CI/CD Wrapper project in VS Code and asking Cline to analyze your project. Here are some example prompts:</p>
 <ul>
 <li>"Can you use the cdk-cicd-wrapper-debugger to check my project configuration?"</li>
 <li>"Analyze my CDK CI/CD Wrapper project using the debugger tools."</li>
 <li>"Check for VPC configuration issues in my CDK CI/CD Wrapper project."</li>
 </ul>
-<p>Cline AI will connect to the MCP server and use the appropriate tools to analyze your project.</p>
+<p>Cline will connect to the MCP server and use the appropriate tools to analyze your project.</p>
 <h3 id="configuring-amazon-q-cli">Configuring Amazon Q CLI</h3>
 <p>Amazon Q CLI can also connect to this MCP server. Here's how to configure it:</p>
 <h4 id="1-install-amazon-q-cli">1. Install Amazon Q CLI</h4>
@@ -3223,8 +3253,8 @@ q<span class="w"> </span>chat<span class="w"> </span><span class="s2">&quot;Use 
 <li>Test the server manually by running <code>python server.py</code> in the debugger directory</li>
 </ol>
 <h2 id="usage-examples">Usage Examples</h2>
-<h3 id="example-1-using-with-cline-ai">Example 1: Using with Cline AI</h3>
-<p>When using this MCP server with Cline AI, you can request analysis like this:</p>
+<h3 id="example-1-using-with-cline">Example 1: Using with Cline</h3>
+<p>When using this MCP server with Cline, you can request analysis like this:</p>
 <div class="highlight"><pre><span></span><code>&quot;Can you analyze my CDK CI/CD Wrapper project configuration using the debugger tools? 
 The project is located at ./my-cdk-project&quot;
 </code></pre></div>
