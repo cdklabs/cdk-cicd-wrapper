@@ -2,6 +2,8 @@
 
 An MCP (Model Context Protocol) server providing specialized debugging tools for CDK CI/CD Wrapper applications.
 
+**[📂 View Source Code →](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/mcp-servers/debugger)**
+
 ## Overview
 
 This MCP server provides a suite of tools for diagnosing and resolving common issues in CDK CI/CD Wrapper applications. It helps identify configuration problems, deployment failures, and environment setup issues that can occur when working with the CDK CI/CD Wrapper.
@@ -196,15 +198,15 @@ This MCP server can be used with any MCP-compatible client. Below are configurat
 
 To use this MCP server with Cline AI in VS Code, you need to configure the MCP server in the Cline AI extension settings. Here's a step-by-step guide:
 
-### 1. Locate Your MCP Server Configuration File
+#### 1. Locate Your MCP Server Configuration File
 
 The Cline AI MCP server configuration is typically located at `~/.config/cline/mcp-server-config.json`. If this file doesn't exist, you can create it with the appropriate directory structure.
 
-### 2. Configure the MCP Server
+#### 2. Configure the MCP Server
 
 Add the CDK CI/CD Wrapper Debugger server configuration to your MCP server configuration file. There are several approaches depending on your environment:
 
-#### Option 1: Using the Repository Path
+##### Option 1: Using the Repository Path
 
 If you have the repository checked out:
 
@@ -225,7 +227,7 @@ If you have the repository checked out:
 
 Replace `$HOME/path/to/cdk-cicd-wrapper` with the actual path to your project.
 
-#### Option 2: Using UV Package Manager
+##### Option 2: Using UV Package Manager
 
 If you have UV installed:
 
@@ -241,7 +243,7 @@ If you have UV installed:
 }
 ```
 
-#### Option 3: Using Current Directory with Relative Path
+##### Option 3: Using Current Directory with Relative Path
 
 If the debugger is in your current working directory:
 
@@ -257,7 +259,7 @@ If the debugger is in your current working directory:
 }
 ```
 
-### 3. Using the Debugger with Cline AI
+#### 3. Using the Debugger with Cline AI
 
 Once configured, you can use the debugger tools through Cline AI by opening your CDK CI/CD Wrapper project in VS Code and asking Cline AI to analyze your project. Here are some example prompts:
 
@@ -271,11 +273,11 @@ Cline AI will connect to the MCP server and use the appropriate tools to analyze
 
 Amazon Q CLI can also connect to this MCP server. Here's how to configure it:
 
-### 1. Install Amazon Q CLI
+#### 1. Install Amazon Q CLI
 
 If you haven't already, install Amazon Q CLI following the official AWS documentation.
 
-### 2. Configure MCP Server for Amazon Q
+#### 2. Configure MCP Server for Amazon Q
 
 Create or update your Amazon Q CLI MCP configuration. The exact configuration method may vary depending on your Amazon Q CLI version, but typically involves:
 
@@ -288,7 +290,7 @@ q configure mcp add \
   --args "$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger/server.py"
 ```
 
-### 3. Using with Amazon Q CLI
+#### 3. Using with Amazon Q CLI
 
 Once configured, you can interact with the debugger through Amazon Q CLI:
 
@@ -297,7 +299,7 @@ Once configured, you can interact with the debugger through Amazon Q CLI:
 q chat "Use the cdk-cicd-wrapper-debugger to analyze my CDK project at ./my-project"
 ```
 
-### 4. Troubleshooting MCP Server Connection
+#### 4. Troubleshooting MCP Server Connection
 
 If your MCP client cannot connect to the server:
 
