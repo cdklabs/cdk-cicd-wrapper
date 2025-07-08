@@ -78,9 +78,11 @@ class TestServerInitialization:
         import server
 
         # Test that the main execution path works by mocking the functions
-        with patch.object(server, "create_server") as mock_create, patch.object(
-            server, "register_tools"
-        ) as mock_register, patch.object(server, "start_server") as mock_start:
+        with (
+            patch.object(server, "create_server") as mock_create,
+            patch.object(server, "register_tools") as mock_register,
+            patch.object(server, "start_server") as mock_start,
+        ):
 
             # Setup mock for create_server
             mock_server = MagicMock()

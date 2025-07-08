@@ -46,6 +46,7 @@ node_modules
 .env.*
 .venv
 mcp-servers/debugger/mcp-server-config.json
+mcp-servers/debugger/cdk_cicd_wrapper_debugger_mcp.egg-info
 mcp-servers/debugger/.venv
 mcp-servers/debugger/__pycache__
 mcp-servers/debugger/tools/__pycache__

@@ -38,7 +38,7 @@ The debugger includes several utility scripts to streamline development and test
 Initializes the development environment by:
 1. Creating a Python virtual environment (if it doesn't exist)
 2. Installing the `uv` package manager (if not already installed)
-3. Installing all dependencies from requirements.txt
+3. Installing all dependencies from pyproject.toml in development mode
 
 ```bash
 # Make the initialization script executable (if not already)
@@ -105,8 +105,8 @@ source .venv/bin/activate
 curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Install dependencies using uv
-uv pip install -r requirements.txt
+# Install project and dependencies using uv
+uv pip install -e ".[dev]"
 
 # Run the server
 python server.py
@@ -198,15 +198,17 @@ To use this MCP server with Cline in VS Code, you need to configure the MCP serv
 
 ### 1. Locate Your MCP Server Configuration File
 
-The MCP server configuration is typically located at `$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger/mcp-server-config.json`. If this file doesn't exist, you can create it running `task samples:dev:generate-mcp-config`
+For Cline, you need to configure the MCP server in your Cline settings. The configuration should be added to your MCP configuration file (typically located in your Cline extension settings).
+
+**Note**: The `mcp-server-config.json` file in this repository is only used for local development and testing purposes.
 
 ### 2. Configure the MCP Server
 
-Add the CDK CI/CD Wrapper Debugger server configuration to your MCP server configuration file. We use the approach with UV as the most convenient:
+Add the CDK CI/CD Wrapper Debugger server configuration to your MCP server configuration file. The recommended approach is to use the server directly from the git repository:
 
-#### Using UV Package Manager
+#### Using UVX Package Manager (Recommended)
 
-If you have UV installed:
+This approach installs and runs the MCP server directly from the GitHub repository without requiring local cloning:
 
 ```json
 {
@@ -216,13 +218,71 @@ If you have UV installed:
       "disabled": false,
       "timeout": 60,
       "type": "stdio",
-      "command": "uv",
-      "args": ["--directory", "$CURRENT_DIR/mcp-servers/debugger", "run", "server.py"],
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger",
+        "debugger"
+      ],
       "env": {}
     }
   }
 }
 ```
+
+#### Alternative: Using Python with Git Installation
+
+If `uvx` is not available, you can use Python directly with pip:
+
+```json
+{
+  "mcpServers": {
+    "cdk-cicd-wrapper-debugger": {
+      "autoApprove": [],
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "pip",
+        "install",
+        "--quiet",
+        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger",
+        "&&",
+        "python",
+        "-c",
+        "from debugger.server import main; main()"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+**Note**: The above pip approach is not recommended as it requires shell command chaining which may not work reliably across all systems.
+
+#### Alternative: Local Development/Cloned Repository Setup
+
+If you have cloned the repository locally or are developing/contributing to the MCP server:
+
+```json
+{
+  "mcpServers": {
+    "cdk-cicd-wrapper-debugger": {
+      "autoApprove": [],
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "python",
+      "args": ["/path/to/cdk-cicd-wrapper/mcp-servers/debugger/server.py"],
+      "env": {}
+    }
+  }
+}
+```
+
+Replace `/path/to/cdk-cicd-wrapper` with the actual path to your cloned repository.
 
 ### 3. Using the Debugger with Cline
 
@@ -286,6 +346,7 @@ The project is located at ./my-cdk-project"
 ```
 
 Cline will then use the MCP tools to:
+
 1. Check comprehensive configuration settings
 2. Verify stage definitions
 3. Validate Git provider configuration
@@ -322,7 +383,7 @@ The debugger includes comprehensive test coverage for all components:
 - Uses pytest for running tests
 - Implements coverage reporting with pytest-cov
 - Currently enforces a minimum coverage threshold of 50%
-- Configuration defined in .coveragerc
+- Configuration defined in pyproject.toml
 
 ### Test Suite Organization
 

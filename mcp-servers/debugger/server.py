@@ -333,6 +333,12 @@ def start_server(mcp_server: FastMCP, transport: str = "stdio") -> None:
 # Register the tools
 register_tools(mcp)
 
+
+def main():
+    """Main entry point for the debugger MCP server"""
+    start_server(mcp)
+
+
 # Start the server
 if __name__ == "__main__":
-    start_server(mcp)
+    main()
