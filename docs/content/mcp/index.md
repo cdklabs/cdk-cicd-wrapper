@@ -1,12 +1,12 @@
-# MCP Tools
+# MCP Servers
 
-The CDK CI/CD Wrapper provides specialized **[MCP (Model Context Protocol)](https://modelcontextprotocol.io/) Tools** that integrate seamlessly with AI-powered development assistants to help diagnose, troubleshoot, and optimize your CDK CI/CD Wrapper applications.
+The CDK CI/CD Wrapper provides specialized **[MCP (Model Context Protocol)](https://modelcontextprotocol.io/) Servers** that integrate seamlessly with AI-powered development assistants to help diagnose, troubleshoot, and optimize your CDK CI/CD Wrapper applications.
 
 ## What is MCP?
 
 The Model Context Protocol (MCP) is an open standard that enables AI assistants to securely access external tools and data sources. MCP servers provide specialized capabilities that can be accessed by any MCP-compatible client, including popular AI coding assistants.
 
-## Available MCP Tools
+## Available MCP Servers
 
 ### Debugger Server
 
@@ -24,7 +24,7 @@ The **CDK CI/CD Wrapper Debugger** is a specialized MCP server that provides com
 
 ## Compatible MCP Clients
 
-The MCP tools work with any [MCP-compatible client](https://modelcontextprotocol.io/clients), including:
+The MCP servers work with any [MCP-compatible client](https://modelcontextprotocol.io/clients), including:
 
 - **[Amazon Q CLI](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line.html)** - Amazon's AI-powered command-line assistant
 - **[Cline](https://cline.bot/)** - The Collaborative AI Coder for VS Code
@@ -32,7 +32,7 @@ The MCP tools work with any [MCP-compatible client](https://modelcontextprotocol
 
 ## Getting Started
 
-To get started with MCP tools:
+To get started with MCP servers:
 
 1. **Choose an MCP Client** - Install one of the compatible clients (we recommend Cline for VS Code)
 2. **Configure the MCP Server** - Set up the connection to the CDK CI/CD Wrapper MCP server

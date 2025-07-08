@@ -16,39 +16,16 @@ fi
 
 source .venv/bin/activate
 
-# Create a .coveragerc file with specific settings
-cat > .coveragerc << EOF
-[run]
-source = .
-omit = 
-    */tests/*
-    */.venv/*
-
-[report]
-exclude_lines =
-    pragma: no cover
-    def __repr__
-    raise NotImplementedError
-    if __name__ == .__main__.:
-    pass
-    raise ImportError
-    except ImportError
-EOF
-
 # Print debugging info
 echo "Running tests from: $(pwd)"
 echo "PYTHONPATH: $PYTHONPATH"
 echo "Python version: $(python --version)"
 
-# First, clean any old coverage data
-rm -f .coverage
-
-# Run pytest with full coverage parameters measuring server.py and tools/
+# Run pytest with configuration from pyproject.toml
 cd $ROOT_DIR
-#TODO: switch coverade from 50 to 80 once finished
+#TODO: switch coverage from 50 to 80 once finished
 python -m pytest tests/ -v \
-  --cov=server \
-  --cov=tools \
-  --cov-config=.coveragerc \
+  --cov=debugger.server \
+  --cov=debugger.tools \
   --cov-fail-under=50 \
   --cov-report=term-missing

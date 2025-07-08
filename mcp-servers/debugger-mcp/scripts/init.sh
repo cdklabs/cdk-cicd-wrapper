@@ -32,6 +32,6 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
-# Install requirements using uv
-echo "Installing dependencies using uv..."
-uv pip install -r requirements.txt
+# Install project in development mode using uv
+echo "Installing project and dependencies using uv..."
+uv pip install -e ".[dev]"

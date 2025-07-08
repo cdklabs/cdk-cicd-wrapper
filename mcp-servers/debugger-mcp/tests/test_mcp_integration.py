@@ -25,7 +25,7 @@ class TestMCPIntegration:
     @pytest.fixture
     def mcp_server(self):
         """Fixture that provides a properly configured MCP server instance"""
-        import server
+        import debugger.server as server
 
         # Create a fresh server instance
         mcp_instance = server.create_server()

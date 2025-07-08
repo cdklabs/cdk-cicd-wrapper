@@ -39,7 +39,7 @@ This repository is organized as a monorepo containing multiple packages and tool
 
 ### Additional Components
 
-- **`mcp-servers/debugger/`** - MCP (Model Context Protocol) server for AI-powered debugging assistance
+- **`mcp-servers/debugger-mcp/`** - MCP (Model Context Protocol) server for AI-powered debugging assistance
 - **`samples/`** - Example projects demonstrating CDK CI/CD Wrapper usage
   - `cdk-ts-example/` - TypeScript CDK example
   - `cdk-python-example/` - Python CDK example
@@ -281,7 +281,7 @@ The MCP Debugger Server offers six specialized debugging tools:
 
 ### Getting Started with the Debugger
 
-The MCP Debugger Server is located under `mcp-servers/debugger/` and can be used with any MCP-compatible clients as mentioned above. For detailed setup instructions, configuration examples, and usage guides, see the [MCP Debugger README](mcp-servers/debugger/README.md).
+The MCP Debugger Server is located under `mcp-servers/debugger-mcp/` and can be used with any MCP-compatible clients as mentioned above. For detailed setup instructions, configuration examples, and usage guides, see the [MCP Debugger README](mcp-servers/debugger-mcp/README.md).
 
 ## Security
 

@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cdk-cicd-wrapper-debugger-mcp"
+version = "0.1.0"
+description = "MCP server for CDK CI/CD Wrapper debugging and analysis"
+authors = [
+    {name = "CDK CI/CD Wrapper Team"}
+]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["mcp", "cdk", "cicd", "aws", "debugging", "vanilla"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "boto3>=1.39.3",
+    "python-dotenv>=1.1.1",
+    "fastmcp>=2.10.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=6.1.2",
+    "black>=25.1.0",
+]
+
+[project.scripts]
+debugger = "debugger.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["debugger*"]
+exclude = ["tests*", "scripts*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json"]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=. --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+    "except ImportError",
+]
+
+[project.urls]
+Homepage = "https://cdklabs.github.io/cdk-cicd-wrapper/mcp/index.html"
+Repository = "https://github.com/cdklabs/cdk-cicd-wrapper"

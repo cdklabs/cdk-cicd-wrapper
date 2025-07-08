@@ -2,7 +2,7 @@
 
 An MCP (Model Context Protocol) server providing specialized debugging tools for CDK CI/CD Wrapper applications.
 
-**[📂 View Source Code →](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/mcp-servers/debugger)**
+**[📂 View Source Code →](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/mcp-servers/debugger-mcp)**
 
 ## Overview
 
@@ -40,7 +40,7 @@ The debugger includes several utility scripts to streamline development and test
 Initializes the development environment by:
 1. Creating a Python virtual environment (if it doesn't exist)
 2. Installing the `uv` package manager (if not already installed)
-3. Installing all dependencies from requirements.txt
+3. Installing all dependencies from pyproject.toml in development mode
 
 ```bash
 # Make the initialization script executable (if not already)
@@ -49,6 +49,7 @@ chmod +x scripts/init.sh
 # Run the initialization script
 ./scripts/init.sh
 ```
+
 
 ### `scripts/start.sh`
 
@@ -96,23 +97,6 @@ chmod +x scripts/lint.sh
 ./scripts/lint.sh
 ```
 
-You can also perform these steps manually:
-
-```bash
-# Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install uv if not already installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# Install dependencies using uv
-uv pip install -r requirements.txt
-
-# Run the server
-python server.py
-```
 
 ## Environment Variable Support
 
@@ -200,15 +184,17 @@ To use this MCP server with Cline in VS Code, you need to configure the MCP serv
 
 ### 1. Locate Your MCP Server Configuration File
 
-The MCP server configuration is typically located at `$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger/mcp-server-config.json`. If this file doesn't exist, you can create it running `task samples:dev:generate-mcp-config`
+For Cline, you need to configure the MCP server in your Cline settings. The configuration should be added to your MCP configuration file (typically located in your Cline extension settings).
+
+**Note**: The `mcp-server-config.json` file in this repository is only used for local development and testing purposes.
 
 ### 2. Configure the MCP Server
 
-Add the CDK CI/CD Wrapper Debugger server configuration to your MCP server configuration file. We use the approach with UV as the most convenient:
+Add the CDK CI/CD Wrapper Debugger server configuration to your MCP server configuration file. The recommended approach is to use the server directly from the git repository:
 
-#### Using UV Package Manager
+#### Using UVX Package Manager (Recommended)
 
-If you have UV installed:
+This approach installs and runs the MCP server directly from the GitHub repository without requiring local cloning:
 
 ```json
 {
@@ -216,10 +202,14 @@ If you have UV installed:
     "cdk-cicd-wrapper-debugger": {
       "autoApprove": [],
       "disabled": false,
-      "timeout": 60,
+      "timeout": 5000,
       "type": "stdio",
-      "command": "uv",
-      "args": ["--directory", "$CURRENT_DIR/mcp-servers/debugger", "run", "server.py"],
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger-mcp",
+        "debugger"
+      ],
       "env": {}
     }
   }
@@ -238,7 +228,7 @@ Cline will connect to the MCP server and use the appropriate tools to analyze yo
 
 ### Configuring Amazon Q CLI
 
-Amazon Q CLI can also connect to this MCP server. Here's how to configure it:
+Amazon Q CLI can also connect to this MCP server using the same UVX approach as Cline:
 
 #### 1. Install Amazon Q CLI
 
@@ -246,15 +236,26 @@ If you haven't already, install Amazon Q CLI following the official AWS document
 
 #### 2. Configure MCP Server for Amazon Q
 
-Create or update your Amazon Q CLI MCP configuration. The exact configuration method may vary depending on your Amazon Q CLI version, but typically involves:
+Add the MCP server configuration to `~/.aws/amazonq/mcp.json`:
 
-```bash
-# Example configuration for Amazon Q CLI
-# (Please refer to the latest Amazon Q CLI documentation for exact syntax)
-q configure mcp add \
-  --name cdk-cicd-wrapper-debugger \
-  --command "python" \
-  --args "$HOME/path/to/cdk-cicd-wrapper/mcp-servers/debugger/server.py"
+```json
+{
+  "mcpServers": {
+    "cdk-cicd-wrapper-debugger": {
+      "autoApprove": [],
+      "disabled": false,
+      "timeout": 5000,
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/cdklabs/cdk-cicd-wrapper.git#subdirectory=mcp-servers/debugger-mcp",
+        "debugger"
+      ],
+      "env": {}
+    }
+  }
+}
 ```
 
 #### 3. Using with Amazon Q CLI
@@ -270,11 +271,11 @@ q chat "Use the cdk-cicd-wrapper-debugger to analyze my CDK project at ./my-proj
 
 If your MCP client cannot connect to the server:
 
-1. Verify that the path in your MCP server configuration is correct
-2. Ensure the virtual environment is activated and all dependencies are installed
-3. Check that the server script has execute permissions
+1. Verify that UVX is installed and available in your system PATH
+2. Ensure Python 3.10+ is available in your system PATH
+3. Check that the UVX command can access the GitHub repository
 4. Examine client console logs for any error messages
-5. Test the server manually by running `python server.py` in the debugger directory
+5. Test the server manually by running the UVX command from your configuration
 
 ## Usage Examples
 
@@ -287,7 +288,7 @@ When using this MCP server with Cline, you can request analysis like this:
 The project is located at ./my-cdk-project"
 ```
 
-Cline will then use the MCP tools to:
+Cline will then use the MCP servers to:
 1. Check comprehensive configuration settings
 2. Verify stage definitions
 3. Validate Git provider configuration
@@ -324,7 +325,7 @@ The debugger includes comprehensive test coverage for all components:
 - Uses pytest for running tests
 - Implements coverage reporting with pytest-cov
 - Currently enforces a minimum coverage threshold of 50%
-- Configuration defined in .coveragerc
+- Configuration defined in pyproject.toml
 
 ### Test Suite Organization
 
