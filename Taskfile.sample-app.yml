@@ -236,7 +236,7 @@ tasks:
             "cdk-cicd-wrapper-debugger": {
               "autoApprove": [],
               "disabled": false,
-              "timeout": 60,
+              "timeout": 5000,
               "type": "stdio",
               "command": "uv",
               "args": ["--directory", "$CURRENT_DIR/mcp-servers/debugger-mcp/debugger", "run", "server.py"],

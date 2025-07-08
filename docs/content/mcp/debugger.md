@@ -218,7 +218,7 @@ This approach installs and runs the MCP server directly from the GitHub reposito
     "cdk-cicd-wrapper-debugger": {
       "autoApprove": [],
       "disabled": false,
-      "timeout": 60,
+      "timeout": 5000,
       "type": "stdio",
       "command": "uvx",
       "args": [
@@ -242,7 +242,7 @@ If `uvx` is not available, you can use Python directly with pip:
     "cdk-cicd-wrapper-debugger": {
       "autoApprove": [],
       "disabled": false,
-      "timeout": 60,
+      "timeout": 5000,
       "type": "stdio",
       "command": "python",
       "args": [
@@ -274,7 +274,7 @@ If you have cloned the repository locally or are developing/contributing to the 
     "cdk-cicd-wrapper-debugger": {
       "autoApprove": [],
       "disabled": false,
-      "timeout": 60,
+      "timeout": 5000,
       "type": "stdio",
       "command": "python",
       "args": ["-m", "debugger.server"],
