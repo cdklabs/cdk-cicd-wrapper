@@ -44,11 +44,8 @@ debugger = "server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["tools"]
+include = ["tools", "server.py"]
 exclude = ["tests*", "scripts*"]
-
-[tool.setuptools.py-modules]
-py-modules = ["server"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json"]
