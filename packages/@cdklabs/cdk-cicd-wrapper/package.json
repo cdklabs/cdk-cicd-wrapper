@@ -52,28 +52,28 @@
     "eslint": "^8",
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^3.10.1",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-prettier": "^5.4.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.1",
     "jest": "^29.7.0",
     "jest-junit": "^16",
     "jsii": "~5.4.0",
     "jsii-diff": "^1.112.0",
     "jsii-pacmak": "^1.112.0",
     "jsii-rosetta": "~5.4.0",
-    "prettier": "^3.5.3",
-    "ts-jest": "^29.3.2",
+    "prettier": "^3.6.2",
+    "ts-jest": "^29.4.0",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.195.0",
     "cdk-nag": "^2.28.0",
-    "cdk-pipelines-github": "^0.4.129",
+    "cdk-pipelines-github": "^0.4.130",
     "constructs": "^10.3.0"
   },
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
-    "yaml": "^2.7.1"
+    "yaml": "^2.8.0"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
