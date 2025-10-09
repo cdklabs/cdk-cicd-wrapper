@@ -157,7 +157,7 @@ export class NodeLicenseCollector implements LicenseCollector {
     const licenseSummary: Record<string, number> = {};
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    csvValues.forEach((rows: { [x: string]: any }) => {
+    (csvValues as Array<{ [x: string]: any }>).forEach((rows) => {
       const license = rows.license;
       if (license) {
         const count = licenseSummary[license] || 0;

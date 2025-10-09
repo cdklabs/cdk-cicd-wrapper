@@ -1,0 +1,273 @@
+<p align="center">
+  <a href="https://cdklabs.github.io/cdk-cicd-wrapper/">
+    <img src="docs/content/assets/images/logo.png" width="100em">
+    <h3 align="center">CDK CI/CD Wrapper</h3>
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://cdklabs.github.io/cdk-cicd-wrapper/"><strong>Documentation</strong></a> ·
+  <a href="https://github.com/cdklabs/cdk-cicd-wrapper/releases"><strong>Changelog</strong></a> ·
+  <a href="#community"><strong>Join the community</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-yellowgreen.svg" alt="Apache 2.0 License"></a>
+  <a href="https://github.com/cdklabs/cdk-cicd-wrapper/actions/workflows/release.yml"><img src="https://github.com/cdklabs/cdk-cicd-wrapper/actions/workflows/release.yml/badge.svg" alt="Release badge"></a>
+  <a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits/main"><img src="https://img.shields.io/github/commit-activity/w/cdklabs/cdk-cicd-wrapper" alt="Commit activity"></a>
+</p>
+
+# Welcome to the CDK CI/CD Wrapper
+
+## Table of Contents
+- [Quick Overview](#quick-overview)
+- [Key Features](#key-features)
+- [Getting Started](#getting-started)
+- [Examples](#examples)
+- [Project Structure](#project-structure)
+- [Development Environment Setup](#development-environment-setup)
+- [Troubleshooting](#troubleshooting)
+- [Version Compatibility](#version-compatibility)
+- [Use Cases](#use-cases)
+- [Intended Usage](#intended-usage)
+- [Contributing](#contributing)
+- [Community](#community)
+- [License](#license)
+
+## Quick Overview
+CDK CI/CD Wrapper is a comprehensive toolkit that simplifies the delivery of AWS CDK applications through professional CI/CD pipelines. It provides tools to build, deliver, and test CDK applications across multiple stages and AWS accounts, ensuring high quality and confidence in deployments.
+
+## Key Features
+- **Multi-stage Deployment Pipeline**: Deploy across development, integration, and production environments
+- **Flexible VPC Configuration**: Support for no VPC, managed VPC, or existing VPC integration
+- **Built-in Security Tools**: Dependency checking and security scanning
+- **License Compliance**: Automated license management for npm and Python dependencies
+- **Developer Workbench**: Isolated test environment for experimenting with CDK stacks
+- **Multi-language Support**: Works with TypeScript, Python, Java, C#, and Go
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18 or later
+- AWS CLI configured with appropriate credentials
+- AWS CDK v2
+
+### Installation
+```bash
+npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
+```
+
+### Basic Setup
+1. Open your entry file, typically located at `bin/<your-main-file>.ts` (where `your-main-file` is the name of your root project directory).
+
+2. Include the `PipelineBlueprint.builder().synth(app)` statement in your entry file:
+
+   ```typescript
+   import * as cdk from 'aws-cdk-lib';
+   import { PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+
+   const app = new cdk.App();
+
+   PipelineBlueprint.builder().synth(app);
+   ```
+
+   This will deploy the CI/CD pipeline with its default configuration without deploying any stacks into the staging accounts.
+
+### Adding Required Scripts
+The CDK CI/CD Wrapper expects to have the `validate`, `lint`, `test`, and `audit` scripts defined. Add the following to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "validate": "cdk-cicd validate",
+    "validate:fix": "cdk-cicd validate --fix",
+    "audit": "npx concurrently 'npm:audit:*(!fix)'",
+    "audit:deps:nodejs": "cdk-cicd check-dependencies --npm",
+    "audit:deps:python": "cdk-cicd check-dependencies --python",
+    "audit:scan:security": "cdk-cicd security-scan --bandit --semgrep --shellcheck --ci",
+    "audit:license": "npm run license",
+    "audit:fix:license": "npm run license:fix",
+    "license": "cdk-cicd license",
+    "license:fix": "cdk-cicd license --fix",
+    "lint": "eslint . --ext .ts --max-warnings 0",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "test": "jest"
+  }
+}
+```
+
+### Preparing for Deployment
+Before deploying, run the following commands to ensure your project is ready:
+
+```bash
+npm run validate:fix
+npm run audit:fix:license
+```
+
+### Deploying the Pipeline
+Deploy all the stacks by running:
+
+```bash
+npx dotenv-cli -- npm run cdk deploy -- --all --region ${AWS_REGION} --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER}
+```
+
+## Examples
+
+### Basic Pipeline
+```typescript
+import * as cdk from 'aws-cdk-lib';
+import { PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+
+const app = new cdk.App();
+PipelineBlueprint.builder().synth(app);
+```
+
+### Custom Stacks
+```typescript
+import * as cdk from 'aws-cdk-lib';
+import { PipelineBlueprint, GlobalResources } from '@cdklabs/cdk-cicd-wrapper';
+
+const app = new cdk.App();
+
+PipelineBlueprint.builder()
+  .addStack({
+    provide: (context) => {
+      // Create your stacks here
+      new YourStack(context.scope, `${context.blueprintProps.applicationName}YourStack`, {
+        applicationName: context.blueprintProps.applicationName,
+        stageName: context.stage,
+      });
+    }
+  })
+  .synth(app);
+```
+
+### Custom VPC Configuration
+```typescript
+const app = new App();
+
+PipelineBlueprint.builder()
+  .defineStages([
+    'RES',
+    { stage: 'DEV', vpc: { vpcFromLookUp: 'vpc-088aaa9cdf4563515' } },
+    { stage: 'INT', vpc: { managedVPC: {  
+      cidrBlock: '172.31.0.0/20',
+      subnetCidrMask: 24,
+      maxAzs: 2, 
+    } } },
+  ])
+  .synth(app);
+```
+
+See the [samples directory](samples/) for complete working examples.
+
+## Project Structure
+- `packages/@cdklabs/cdk-cicd-wrapper`: Core library for CI/CD pipeline functionality
+- `packages/@cdklabs/cdk-cicd-wrapper-cli`: CLI tools for validation and security scanning
+- `packages/@cdklabs/cdk-cicd-wrapper-projen`: Integration with projen for project configuration
+- `samples/`: Example applications demonstrating usage
+
+## Development Environment Setup
+This project uses [Devbox](https://www.jetpack.io/devbox/) to manage the development environment.
+
+### Setup with Devbox
+1. Install Devbox following the [official instructions](https://www.jetpack.io/devbox/docs/installing_devbox/)
+2. Run `devbox shell` to start the development environment
+3. Run `task init` to initialize the project
+
+### Alternative Setup
+You can also use Docker, GitHub Codespaces, or local development tools:
+
+- **Docker/Docker Compose**: Create a container with all required dependencies
+- **GitHub Codespaces**: Use the included devcontainer configuration
+- **Task runners**: Leverage the existing Taskfile.yml for environment setup
+- **Node.js tools**: Use nvm and npm/yarn workspaces
+- **Python tools**: Use virtualenv or pyenv
+
+## Troubleshooting
+### Common Issues
+- **Missing package-verification.json**: Run `npm run validate:fix` to generate this file
+- **License compliance failures**: Run `npm run audit:fix:license` to generate a valid Notice file
+- **VPC configuration errors**: Check your VPC settings in the pipeline configuration
+
+For more troubleshooting help, visit our [documentation](https://cdklabs.github.io/cdk-cicd-wrapper/).
+
+## Version Compatibility
+
+| CDK CI/CD Wrapper | AWS CDK | Node.js |
+|-------------------|---------|---------|
+| 0.2.x             | ≥ 2.0.0 | ≥ 18.x  |
+| 0.1.x             | ≥ 2.0.0 | ≥ 16.x  |
+| 0.0.x             | ≥ 2.0.0 | ≥ 14.x  |
+
+## Use Cases
+
+The CDK CI/CD Wrapper is the next step on road to standardize and simplify the multi-stage CI/CD process that the successful [aws-cdk-cicd-boot-sample](https://github.com/aws-samples/aws-cdk-cicd-boot-sample) started. Thus the use cases for the CDK CI/CD Wrapper are the same as for the [aws-cdk-cicd-boot-sample](https://github.com/aws-samples/aws-cdk-cicd-boot-sample).
+
+- Multi staged CI/CD pipeline for IaC projects
+
+On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged in any projects involving TypeScript, and/or Python.
+
+- CI/CD execution by AWS CodePipeline in VPC, Private VPC with NAT Gateway, or even through an HTTP Proxy
+- Security scanning on dependencies and on your project codebase as well
+- License management over NPM and Python dependencies
+- Support for private NPM registry to safely store your libraries
+- Customizable CI/CD pipeline to attach to your CDK applications which comes with built-in dependency injection
+- Workbench deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline
+
+## Intended Usage
+
+You should not fork this repository and expect to reproduce the same in your AWS Accounts, this repository is only used for preparing, testing and shipping all the packages used by the CDK CI/CD Wrapper. Using the CDK CI/CD Wrapper gives you the following benefits:
+
+- :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
+- :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions
+- :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
+- :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
+- :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
+
+## Contributing
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and suggest improvements.
+
+### Development Workflow
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests with `npm test`
+5. Submit a pull request
+
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
+## License
+
+This project is licensed under the Apache-2.0 License.
+
+## Community
+The CDK CI/CD Wrapper community can be found within the #cdk-cicd-wrapper channel in the [cdk.dev](https://cdk.dev/) community Slack workspace.
+
+## Contributors
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/gmuslia"><img src="https://avatars.githubusercontent.com/u/102723839?v=4?s=100" width="100px;" alt="Gezim Musliaj"/><br /><sub><b>Gezim Musliaj</b></sub></a><br /><a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits?author=gmuslia" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/gyalai-aws"><img src="https://avatars.githubusercontent.com/u/142315836?v=4?s=100" width="100px;" alt="Milan Gyalai @ AWS"/><br /><sub><b>Milan Gyalai @ AWS</b></sub></a><br /><a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits?author=gyalai-aws" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/dainovsv"><img src="https://avatars.githubusercontent.com/u/95890653?v=4?s=100" width="100px;" alt="Vladimir Dainovski"/><br /><sub><b>Vladimir Dainovski</b></sub></a><br /><a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits?author=dainovsv" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/thoulen"><img src="https://avatars.githubusercontent.com/u/1113986?v=4&size=100" width="100px;" alt="Fabrizio Manfredi F."/><br /><sub><b>Fabrizio Manfredi F.</b></sub></a><br /><a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits?author=thoulen" title="Code">💻</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
