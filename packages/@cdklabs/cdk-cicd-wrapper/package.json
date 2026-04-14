@@ -7,29 +7,29 @@
     "directory": "packages/@cdklabs/cdk-cicd-wrapper"
   },
   "scripts": {
-    "build": "npx projen build",
-    "bump": "npx projen bump",
-    "check-for-updates": "npx projen check-for-updates",
-    "compat": "npx projen compat",
-    "compile": "npx projen compile",
-    "default": "npx projen default",
-    "eslint": "npx projen eslint",
-    "gather-versions": "npx projen gather-versions",
-    "integ": "npx projen integ",
-    "integ:update": "npx projen integ:update",
-    "package": "npx projen package",
-    "package-all": "npx projen package-all",
-    "package:dotnet": "npx projen package:dotnet",
-    "package:java": "npx projen package:java",
-    "package:js": "npx projen package:js",
-    "package:python": "npx projen package:python",
-    "post-compile": "npx projen post-compile",
-    "pre-compile": "npx projen pre-compile",
-    "test": "npx projen test",
-    "test:watch": "npx projen test:watch",
-    "unbump": "npx projen unbump",
-    "watch": "npx projen watch",
-    "projen": "npx projen"
+    "build": "projen build",
+    "bump": "projen bump",
+    "check-for-updates": "projen check-for-updates",
+    "compat": "projen compat",
+    "compile": "projen compile",
+    "default": "projen default",
+    "eslint": "projen eslint",
+    "gather-versions": "projen gather-versions",
+    "integ": "projen integ",
+    "integ:update": "projen integ:update",
+    "package": "projen package",
+    "package-all": "projen package-all",
+    "package:dotnet": "projen package:dotnet",
+    "package:java": "projen package:java",
+    "package:js": "projen package:js",
+    "package:python": "projen package:python",
+    "post-compile": "projen post-compile",
+    "pre-compile": "projen pre-compile",
+    "test": "projen test",
+    "test:watch": "projen test:watch",
+    "unbump": "projen unbump",
+    "watch": "projen watch",
+    "projen": "projen"
   },
   "author": {
     "name": "CDK CI/CD Wrapper Team",
@@ -53,27 +53,27 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^3.10.1",
     "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-prettier": "^5.5.5",
     "jest": "^30.3.0",
     "jest-junit": "^16",
     "jsii": "~5.9.0",
-    "jsii-diff": "^1.115.0",
-    "jsii-pacmak": "^1.115.0",
+    "jsii-diff": "^1.128.0",
+    "jsii-pacmak": "^1.128.0",
     "jsii-rosetta": "~5.9.0",
-    "prettier": "^3.6.2",
-    "ts-jest": "^29.4.4",
+    "prettier": "^3.8.2",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.195.0",
     "cdk-nag": "^2.28.0",
-    "cdk-pipelines-github": "^0.4.132",
+    "cdk-pipelines-github": "^0.4.134",
     "constructs": "^10.3.0"
   },
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.3"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
@@ -89,6 +89,13 @@
     "cli",
     "vanilla-pipeline"
   ],
+  "devEngines": {
+    "packageManager": {
+      "name": "yarn",
+      "version": "1.22.22",
+      "onFail": "ignore"
+    }
+  },
   "main": "lib/index.js",
   "license": "Apache-2.0",
   "publishConfig": {

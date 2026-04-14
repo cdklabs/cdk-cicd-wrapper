@@ -7,21 +7,21 @@
     "directory": "packages/@cdklabs/cdk-cicd-wrapper-projen"
   },
   "scripts": {
-    "build": "npx projen build",
-    "bump": "npx projen bump",
-    "check-for-updates": "npx projen check-for-updates",
-    "compile": "npx projen compile",
-    "default": "npx projen default",
-    "eslint": "npx projen eslint",
-    "gather-versions": "npx projen gather-versions",
-    "package": "npx projen package",
-    "post-compile": "npx projen post-compile",
-    "pre-compile": "npx projen pre-compile",
-    "test": "npx projen test",
-    "test:watch": "npx projen test:watch",
-    "unbump": "npx projen unbump",
-    "watch": "npx projen watch",
-    "projen": "npx projen"
+    "build": "projen build",
+    "bump": "projen bump",
+    "check-for-updates": "projen check-for-updates",
+    "compile": "projen compile",
+    "default": "projen default",
+    "eslint": "projen eslint",
+    "gather-versions": "projen gather-versions",
+    "package": "projen package",
+    "post-compile": "projen post-compile",
+    "pre-compile": "projen pre-compile",
+    "test": "projen test",
+    "test:watch": "projen test:watch",
+    "unbump": "projen unbump",
+    "watch": "projen watch",
+    "projen": "projen"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
@@ -35,12 +35,19 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^3.10.1",
     "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-prettier": "^5.5.5",
     "jest": "^30.3.0",
     "jest-junit": "^16",
-    "prettier": "^3.6.2",
-    "ts-jest": "^29.4.4",
+    "prettier": "^3.8.2",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.9.3"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "yarn",
+      "version": "1.22.22",
+      "onFail": "ignore"
+    }
   },
   "main": "lib/index.js",
   "license": "Apache-2.0",
