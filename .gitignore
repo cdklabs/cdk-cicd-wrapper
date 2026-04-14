@@ -69,3 +69,4 @@ mcp-servers/debugger-mcp/.coverage
 packages/@cdklabs/cdk-cicd-wrapper/tsconfig.json
 !/.projenrc.ts
 !/.github/workflows/release.yml
+.worktrees
