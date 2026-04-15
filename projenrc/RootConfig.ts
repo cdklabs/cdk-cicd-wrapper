@@ -102,6 +102,7 @@ export class RootConfig extends yarn.Monorepo {
         'mcp-servers/debugger-mcp/tests/__pycache__',
         'mcp-servers/debugger-mcp/.pytest_cache',
         'mcp-servers/debugger-mcp/.coverage',
+        '.worktrees',
       ],
     });
 
