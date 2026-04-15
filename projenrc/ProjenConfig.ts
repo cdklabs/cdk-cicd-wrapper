@@ -8,6 +8,8 @@ export class ProjenConfig extends yarn.TypeScriptWorkspace {
       name: '@cdklabs/cdk-cicd-wrapper-projen',
       description: 'This repository contains the projen support for the project',
       projenrcTs: true,
+      npmTrustedPublishing: true,
+      releaseEnvironment: 'release',
       // deps: ['projen'],
       jest: true,
     });
