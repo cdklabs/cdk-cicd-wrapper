@@ -136,7 +136,7 @@ jobs:
           NPM_DIST_TAG: latest
           NPM_REGISTRY: registry.npmjs.org
           NPM_CONFIG_PROVENANCE: "true"
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TRUSTED_PUBLISHER: "true"
         run: npx -p publib@latest publib-npm
   cdklabs-cdk-cicd-wrapper_release_maven:
     name: "@cdklabs/cdk-cicd-wrapper: Publish to Maven Central"
@@ -273,7 +273,7 @@ jobs:
           NPM_DIST_TAG: latest
           NPM_REGISTRY: registry.npmjs.org
           NPM_CONFIG_PROVENANCE: "true"
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TRUSTED_PUBLISHER: "true"
         run: npx -p publib@latest publib-npm
   cdklabs-cdk-cicd-wrapper-projen_release_github:
     name: "@cdklabs/cdk-cicd-wrapper-projen: Publish to GitHub Releases"
@@ -325,5 +325,5 @@ jobs:
           NPM_DIST_TAG: latest
           NPM_REGISTRY: registry.npmjs.org
           NPM_CONFIG_PROVENANCE: "true"
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TRUSTED_PUBLISHER: "true"
         run: npx -p publib@latest publib-npm

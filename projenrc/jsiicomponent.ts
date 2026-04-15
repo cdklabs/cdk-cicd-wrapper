@@ -81,8 +81,8 @@ export class JSIIComponent extends pj.Component {
     this.publisher?.publishToNpm({
       ...this.pacmakForLanguage('js', task),
       registry: this.project.package.npmRegistry,
-      npmTokenSecret: this.project.package.npmTokenSecret,
       npmProvenance: this.project.package.npmProvenance,
+      trustedPublishing: true,
     });
     this.addPackagingTarget('js', task, extraJobOptions);
 

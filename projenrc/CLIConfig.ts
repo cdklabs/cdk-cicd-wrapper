@@ -10,6 +10,7 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
       projenrcTs: true,
+      npmTrustedPublishing: true,
       bin: {
         'cdk-cicd': './bin/cdk-cicd',
       },
