@@ -3165,14 +3165,14 @@ cdk-nag@2.28.0:
   resolved "https://registry.yarnpkg.com/cdk-nag/-/cdk-nag-2.28.0.tgz#cbba7c9e7ba2def228ae6460c748517e705a8620"
   integrity sha512-LhobvJwo9QZ1k9i4iQW/XWANGwFTvLj6JCpbPqU709cBKu6B9c4lbFQUPl2qegEsWz8P76DcawwWxvJ9bDRaQw==
 
-cdk-pipelines-github@0.4.132:
-  version "0.4.132"
-  resolved "https://registry.yarnpkg.com/cdk-pipelines-github/-/cdk-pipelines-github-0.4.132.tgz#c9b2119755abd9a2d27e84cb67f9f86d6f44d2b4"
-  integrity sha512-LkIzMkAF21GxQLdctvEC64GTFFaiwjs464ptPNeygHbb6CYj/LE5U/GL+UUsL8HxQVgEBAD7K8zVjS+7z/jrzA==
+cdk-pipelines-github@0.4.134:
+  version "0.4.134"
+  resolved "https://registry.yarnpkg.com/cdk-pipelines-github/-/cdk-pipelines-github-0.4.134.tgz#babc8264f73372f8d8776996dbe1fed08ba6b19a"
+  integrity sha512-2a2Czqx1VwhCWqgEUZTcx4G9C+ECvaYMmXVk/LtINMwW5O8+OmujiLkQA3orn3kZN8CqDlm+yVFkRHslSgyxpg==
   dependencies:
     decamelize "^5.0.1"
     fast-json-patch "^3.1.1"
-    yaml "^2.8.1"
+    yaml "^2.8.3"
 
 cdklabs-projen-project-types@^0.3.5:
   version "0.3.5"
@@ -3626,30 +3626,30 @@ cssstyle@^4.1.0:
     "@asamuzakjp/css-color" "^3.2.0"
     rrweb-cssom "^0.8.0"
 
-csv-generate@^4.5.0:
-  version "4.5.0"
-  resolved "https://registry.yarnpkg.com/csv-generate/-/csv-generate-4.5.0.tgz#5fbbb89bd9f8ce705871c9baf02e1d4bb4000fb3"
-  integrity sha512-aQr/vmOKyBSBHNwYhAoXw1+kUsPnMSwmYgpNoo36rIXoG1ecWILnvPGZeQ6oUjzrWknZAD3+jfpqYOBAl4x15A==
+csv-generate@^4.5.1:
+  version "4.5.1"
+  resolved "https://registry.yarnpkg.com/csv-generate/-/csv-generate-4.5.1.tgz#c0dc4fd32bfa46905cf6bc3747e4510f7a26d8d8"
+  integrity sha512-nWVtFBfyK+YX1fHtKkMqzULc6sH5ise6baD64SmYTq3GEDSErVZ5xzyMa0hNP/a9PGJTTTyQTU69xpjcuCx2IA==
 
-csv-parse@^6.1.0:
-  version "6.1.0"
-  resolved "https://registry.yarnpkg.com/csv-parse/-/csv-parse-6.1.0.tgz#c642ec5b7fc57c1f477a07d179beb5ff0dfd5ed0"
-  integrity sha512-CEE+jwpgLn+MmtCpVcPtiCZpVtB6Z2OKPTr34pycYYoL7sxdOkXDdQ4lRiw6ioC0q6BLqhc6cKweCVvral8yhw==
+csv-parse@^6.2.1:
+  version "6.2.1"
+  resolved "https://registry.yarnpkg.com/csv-parse/-/csv-parse-6.2.1.tgz#325c5adb126b1ad07fa68077c3dc739ccfc12cf5"
+  integrity sha512-LRLMV+UCyfMokp8Wb411duBf1gaBKJfOfBWU9eHMJ+b+cJYZsNu3AFmjJf3+yPGd59Exz1TsMjaSFyxnYB9+IQ==
 
-csv-stringify@^6.6.0:
-  version "6.6.0"
-  resolved "https://registry.yarnpkg.com/csv-stringify/-/csv-stringify-6.6.0.tgz#d384859cfb71d0a4a73c5bcc36a4daf5440cb033"
-  integrity sha512-YW32lKOmIBgbxtu3g5SaiqWNwa/9ISQt2EcgOq0+RAIFufFp9is6tqNnKahqE5kuKvrnYAzs28r+s6pXJR8Vcw==
+csv-stringify@^6.7.0:
+  version "6.7.0"
+  resolved "https://registry.yarnpkg.com/csv-stringify/-/csv-stringify-6.7.0.tgz#74c657f278e7ac6ebc8f6812d098dfe0ea0b7e14"
+  integrity sha512-UdtziYp5HuTz7e5j8Nvq+a/3HQo+2/aJZ9xntNTpmRRIg/3YYqDVgiS9fvAhtNbnyfbv2ZBe0bqCHqzhE7FqWQ==
 
-csv@^6.4.1:
-  version "6.4.1"
-  resolved "https://registry.yarnpkg.com/csv/-/csv-6.4.1.tgz#c9a62130c025f8adb2a85a75d4c2608612995822"
-  integrity sha512-ajGosmTGnTwYyGl8STqZDu7R6LkDf3xL39XiOmliV/GufQeVUxHzTKIm4NOBCwmEuujK7B6isxs4Uqt9GcRCvA==
+csv@^6.5.1:
+  version "6.5.1"
+  resolved "https://registry.yarnpkg.com/csv/-/csv-6.5.1.tgz#aa8cd3f165c0e418f397984066eb15da0c5e11b7"
+  integrity sha512-oZwQSayvtn3nGrLUl8epnbfSCsvhOmCKeMHEOVmZ/3YCTG+x26nhgrP1vB3Kjs4lUJF6jcsjjIEn2gYbbq5+Gw==
   dependencies:
-    csv-generate "^4.5.0"
-    csv-parse "^6.1.0"
-    csv-stringify "^6.6.0"
-    stream-transform "^3.4.0"
+    csv-generate "^4.5.1"
+    csv-parse "^6.2.1"
+    csv-stringify "^6.7.0"
+    stream-transform "^3.4.1"
 
 dargs@^7.0.0:
   version "7.0.0"
@@ -4028,10 +4028,10 @@ escape-string-regexp@^4.0.0:
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-4.0.0.tgz#14ba83a5d373e3d311e5afca29cf5bfad965bf34"
   integrity sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==
 
-eslint-config-prettier@^9.1.2:
-  version "9.1.2"
-  resolved "https://registry.yarnpkg.com/eslint-config-prettier/-/eslint-config-prettier-9.1.2.tgz#90deb4fa0259592df774b600dbd1d2249a78ce91"
-  integrity sha512-iI1f+D2ViGn+uvv5HuHVUamg8ll4tN+JRHGc6IJi4TP9Kl976C57fzPXgseXNs8v0iA8aSJpHsTWjDb9QJamGQ==
+eslint-config-prettier@^10.1.8:
+  version "10.1.8"
+  resolved "https://registry.yarnpkg.com/eslint-config-prettier/-/eslint-config-prettier-10.1.8.tgz#15734ce4af8c2778cc32f0b01b37b0b5cd1ecb97"
+  integrity sha512-82GZUjRS0p/jganf6q1rEO25VSoHH0hKPCTrgillPjdI/3bgBhAE1QzHrHTizjpRvy6pGAvKjDJtk2pF9NDq8w==
 
 eslint-import-resolver-node@^0.3.9:
   version "0.3.9"
@@ -7160,10 +7160,10 @@ stream-json@^1.9.1:
   dependencies:
     stream-chain "^2.2.5"
 
-stream-transform@^3.4.0:
-  version "3.4.0"
-  resolved "https://registry.yarnpkg.com/stream-transform/-/stream-transform-3.4.0.tgz#38d562fbdad38c3b6cda959ad36751014bb26e18"
-  integrity sha512-QO3OGhKyeIV8p6eRQdG+W6WounFw519zk690hHCNfhgfP9bylVS+NTXsuBc7n+RsGn31UgFPGrWYIgoAbArKEw==
+stream-transform@^3.4.1:
+  version "3.4.1"
+  resolved "https://registry.yarnpkg.com/stream-transform/-/stream-transform-3.4.1.tgz#dbf12af98638aa9a0d1bded7be71212345cc4818"
+  integrity sha512-4P7GsGr95QaRsN09ws40kVdaR6VAeeJtprKVQPOnRp9rOuuW8kzONeYbhikCrbg2RSsHqfIJOnAf+RMNZcKOFQ==
 
 streamroller@^3.1.5:
   version "3.1.5"
@@ -8002,10 +8002,10 @@ yaml@1.10.2:
   resolved "https://registry.yarnpkg.com/yaml/-/yaml-1.10.2.tgz#2301c5ffbf12b467de8da2333a459e29e7920e4b"
   integrity sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==
 
-yaml@^2.2.2, yaml@^2.6.0, yaml@^2.8.1:
-  version "2.8.1"
-  resolved "https://registry.yarnpkg.com/yaml/-/yaml-2.8.1.tgz#1870aa02b631f7e8328b93f8bc574fac5d6c4d79"
-  integrity sha512-lcYcMxX2PO9XMGvAJkJ3OsNMw+/7FKes7/hgerGUYWIoWu5j/+YQqcZr5JnPZWzOsEBgMbSbiSTn/dv/69Mkpw==
+yaml@^2.2.2, yaml@^2.6.0, yaml@^2.8.1, yaml@^2.8.3:
+  version "2.8.3"
+  resolved "https://registry.yarnpkg.com/yaml/-/yaml-2.8.3.tgz#a0d6bd2efb3dd03c59370223701834e60409bd7d"
+  integrity sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==
 
 yargs-parser@^18.1.2:
   version "18.1.3"
