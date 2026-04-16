@@ -11,6 +11,7 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
       projenrcTs: true,
       npmTrustedPublishing: true,
+      releaseEnvironment: 'release',
       bin: {
         'cdk-cicd': './bin/cdk-cicd',
       },

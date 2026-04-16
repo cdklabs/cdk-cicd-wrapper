@@ -13,6 +13,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       description:
         'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
+      releaseEnvironment: 'release',
       releasableCommits: pj.ReleasableCommits.ofType(['feat', 'fix', 'chore'], '.'),
       devDeps: [
         'eslint@^8',
