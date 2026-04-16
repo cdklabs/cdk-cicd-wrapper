@@ -10,21 +10,21 @@
     "cdk-cicd": "bin/cdk-cicd"
   },
   "scripts": {
-    "build": "npx projen build",
-    "bump": "npx projen bump",
-    "check-for-updates": "npx projen check-for-updates",
-    "cli-exec": "npx projen cli-exec",
-    "compile": "npx projen compile",
-    "default": "npx projen default",
-    "eslint": "npx projen eslint",
-    "gather-versions": "npx projen gather-versions",
-    "package": "npx projen package",
-    "post-compile": "npx projen post-compile",
-    "pre-compile": "npx projen pre-compile",
-    "test": "npx projen test",
-    "unbump": "npx projen unbump",
-    "watch": "npx projen watch",
-    "projen": "npx projen"
+    "build": "projen build",
+    "bump": "projen bump",
+    "check-for-updates": "projen check-for-updates",
+    "cli-exec": "projen cli-exec",
+    "compile": "projen compile",
+    "default": "projen default",
+    "eslint": "projen eslint",
+    "gather-versions": "projen gather-versions",
+    "package": "projen package",
+    "post-compile": "projen post-compile",
+    "pre-compile": "projen pre-compile",
+    "test": "projen test",
+    "unbump": "projen unbump",
+    "watch": "projen watch",
+    "projen": "projen"
   },
   "devDependencies": {
     "@types/node": "^18",
@@ -37,17 +37,17 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^3.10.1",
     "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-prettier": "^5.5.4",
-    "prettier": "^3.6.2",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",
-    "@aws-sdk/credential-providers": "^3.906.0",
+    "@aws-sdk/credential-providers": "^3.1030.0",
     "@types/fs-extra": "^11.0.4",
-    "@types/yargs": "^17.0.33",
+    "@types/yargs": "^17.0.35",
     "csv": "^6.5.1",
-    "fs-extra": "^11.3.2",
+    "fs-extra": "^11.3.4",
     "globby": "11.1.0",
     "tslog": "^4.10.2",
     "yargs": "^17.7.2"
@@ -61,6 +61,13 @@
     "cli",
     "vanilla-pipeline"
   ],
+  "devEngines": {
+    "packageManager": {
+      "name": "yarn",
+      "version": "1.22.22",
+      "onFail": "ignore"
+    }
+  },
   "main": "lib/index.js",
   "license": "Apache-2.0",
   "publishConfig": {

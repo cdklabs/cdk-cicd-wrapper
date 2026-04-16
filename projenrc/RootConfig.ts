@@ -122,6 +122,11 @@ export class RootConfig extends yarn.Monorepo {
   }
 
   private configureLinting() {
+    const eslintFile = this.tryFindObjectFile('.eslintrc.json');
+    if (eslintFile) {
+      eslintFile.patch(pj.JsonPatch.add('/root', true));
+    }
+
     const lint = this.addTask('lint', {
       description: 'Lint all code',
     });

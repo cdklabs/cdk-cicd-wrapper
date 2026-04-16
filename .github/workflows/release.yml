@@ -20,17 +20,13 @@ jobs:
       CI: "true"
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Set git identity
         run: |-
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Install dependencies
         run: yarn install --check-files --frozen-lockfile
       - name: release
@@ -54,7 +50,7 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper
       - name: "@cdklabs/cdk-cicd-wrapper: Upload artifact"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7
         with:
           name: cdklabs-cdk-cicd-wrapper_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper/dist
@@ -66,7 +62,7 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper-cli
       - name: "@cdklabs/cdk-cicd-wrapper-cli: Upload artifact"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7
         with:
           name: cdklabs-cdk-cicd-wrapper-cli_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper-cli/dist
@@ -78,7 +74,7 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper-projen
       - name: "@cdklabs/cdk-cicd-wrapper-projen: Upload artifact"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7
         with:
           name: cdklabs-cdk-cicd-wrapper-projen_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper-projen/dist
@@ -97,11 +93,12 @@ jobs:
     environment: release
     if: ${{ needs.release.outputs.latest_commit == github.sha && needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper == 'true' }}
     steps:
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper_build-artifact
           path: dist
@@ -122,11 +119,12 @@ jobs:
     environment: release
     if: ${{ needs.release.outputs.latest_commit == github.sha && needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper == 'true' }}
     steps:
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper_build-artifact
           path: dist
@@ -153,11 +151,12 @@ jobs:
         with:
           distribution: corretto
           java-version: "11"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper_build-artifact
           path: dist
@@ -166,7 +165,7 @@ jobs:
         continue-on-error: true
       - name: Release
         env:
-          MAVEN_ENDPOINT: https://s01.oss.sonatype.org
+          MAVEN_SERVER_ID: central-ossrh
           MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           MAVEN_GPG_PRIVATE_KEY_PASSPHRASE: ${{ secrets.MAVEN_GPG_PRIVATE_KEY_PASSPHRASE }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
@@ -182,14 +181,15 @@ jobs:
     environment: release
     if: ${{ needs.release.outputs.latest_commit == github.sha && needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper == 'true' }}
     steps:
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - uses: actions/setup-python@v6
         with:
           python-version: 3.x
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper_build-artifact
           path: dist
@@ -210,14 +210,15 @@ jobs:
     environment: release
     if: ${{ needs.release.outputs.latest_commit == github.sha && needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper == 'true' }}
     steps:
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 6.x
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper_build-artifact
           path: dist
@@ -239,11 +240,12 @@ jobs:
     environment: release
     if: ${{ needs.release.outputs.latest_commit == github.sha && needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper-cli == 'true' }}
     steps:
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper-cli_build-artifact
           path: dist
@@ -264,11 +266,12 @@ jobs:
     environment: release
     if: ${{ needs.release.outputs.latest_commit == github.sha && needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper-cli == 'true' }}
     steps:
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper-cli_build-artifact
           path: dist
@@ -293,11 +296,12 @@ jobs:
     environment: release
     if: ${{ needs.release.outputs.latest_commit == github.sha && needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper-projen == 'true' }}
     steps:
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper-projen_build-artifact
           path: dist
@@ -318,11 +322,12 @@ jobs:
     environment: release
     if: ${{ needs.release.outputs.latest_commit == github.sha && needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper-projen == 'true' }}
     steps:
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          package-manager-cache: "false"
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cdklabs-cdk-cicd-wrapper-projen_build-artifact
           path: dist

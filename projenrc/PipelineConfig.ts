@@ -61,7 +61,6 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         javaPackage: `io.github.cdklabs.${changeDelimiter(packageBasename, '.')}`,
         mavenGroupId: `io.github.cdklabs`,
         mavenArtifactId: packageBasename,
-        mavenEndpoint: 'https://s01.oss.sonatype.org',
       },
       publishToNuget: {
         dotNetNamespace: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,

@@ -15,5 +15,6 @@
   ],
   "extends": [
     "plugin:prettier/recommended"
-  ]
+  ],
+  "root": true
 }

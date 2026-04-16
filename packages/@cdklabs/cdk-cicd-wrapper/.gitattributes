@@ -2,7 +2,7 @@
 
 * text=auto eol=lf
 /.eslintrc.js linguist-generated
-/.eslintrc.json linguist-generated
+/.eslintrc.json linguist-generated linguist-language=JSON-with-Comments
 /.gitattributes linguist-generated
 /.gitignore linguist-generated
 /.npmignore linguist-generated
@@ -14,5 +14,5 @@
 /.projen/tasks.json linguist-generated
 /LICENSE linguist-generated
 /package.json linguist-generated
-/tsconfig.dev.json linguist-generated
+/tsconfig.dev.json linguist-generated linguist-language=JSON-with-Comments
 /yarn.lock linguist-generated

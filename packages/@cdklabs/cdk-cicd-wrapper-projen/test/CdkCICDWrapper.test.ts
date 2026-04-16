@@ -1,8 +1,15 @@
-// eslint-disable-next-line  import/no-extraneous-dependencies
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
-// eslint-disable-next-line  import/no-extraneous-dependencies
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { synthSnapshot } from 'projen/lib/util/synth';
 import { CdkCICDWrapper } from '../src/projen/CdkCICDWrapper';
+
+function tmpOutdir(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'projen-test-'));
+}
 
 describe('CdkCICDWrapper', () => {
   test('cdk.json has custom context and qualifier', () => {
@@ -11,6 +18,7 @@ describe('CdkCICDWrapper', () => {
       cdkVersion: '2.1.0',
       defaultReleaseBranch: 'main',
       name: 'test-app',
+      outdir: tmpOutdir(),
       context: {
         property: 'value',
       },
@@ -38,6 +46,7 @@ describe('CdkCICDWrapper', () => {
       cdkVersion: '2.1.0',
       defaultReleaseBranch: 'main',
       name: 'test-app',
+      outdir: tmpOutdir(),
     });
 
     // WHEN
