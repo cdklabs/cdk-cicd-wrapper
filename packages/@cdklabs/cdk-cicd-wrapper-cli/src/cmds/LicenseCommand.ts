@@ -16,7 +16,7 @@ import { logger } from '../utils/Logging';
 
 // 5 min timeout
 const GLOBAL_TIMEOUT = { timeout: 5 * 60 * 1000 };
-const DEFAULT_EXCLUDED_FOLDERS = ['**/node_modules/**', '**/cdk.out/**', '.git/**', '**/dist/**', 'docs/**', '**/bin/**', '**/tmp/**'];
+const DEFAULT_EXCLUDED_FOLDERS = ['**/node_modules/**', '**/cdk.out/**', '**/.git', '**/.git/**', '**/dist/**', 'docs/**', '**/bin/**', '**/tmp/**'];
 
 const VERIFICATION_FILE = './package-verification.json';
 
