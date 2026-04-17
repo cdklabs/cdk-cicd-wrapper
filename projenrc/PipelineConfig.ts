@@ -13,7 +13,8 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       description:
         'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
-      releasableCommits: pj.ReleasableCommits.featuresAndFixes('.'),
+      releaseEnvironment: 'release',
+      releasableCommits: pj.ReleasableCommits.ofType(['feat', 'fix', 'chore'], '.'),
       devDeps: [
         'eslint@^8',
         `cdk-pipelines-github`,
@@ -60,7 +61,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         javaPackage: `io.github.cdklabs.${changeDelimiter(packageBasename, '.')}`,
         mavenGroupId: `io.github.cdklabs`,
         mavenArtifactId: packageBasename,
-        mavenEndpoint: 'https://s01.oss.sonatype.org',
+        mavenServerId: 'central-ossrh',
       },
       publishToNuget: {
         dotNetNamespace: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,

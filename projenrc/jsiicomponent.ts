@@ -81,8 +81,8 @@ export class JSIIComponent extends pj.Component {
     this.publisher?.publishToNpm({
       ...this.pacmakForLanguage('js', task),
       registry: this.project.package.npmRegistry,
-      npmTokenSecret: this.project.package.npmTokenSecret,
       npmProvenance: this.project.package.npmProvenance,
+      trustedPublishing: true,
     });
     this.addPackagingTarget('js', task, extraJobOptions);
 
@@ -116,6 +116,7 @@ export class JSIIComponent extends pj.Component {
       this.publisher?.publishToPyPi({
         ...this.pacmakForLanguage('python', task),
         ...pypi,
+        trustedPublishing: true,
       });
 
       this.addPackagingTarget('python', task, extraJobOptions);
@@ -133,6 +134,7 @@ export class JSIIComponent extends pj.Component {
       this.publisher?.publishToNuget({
         ...this.pacmakForLanguage('dotnet', task),
         ...nuget,
+        trustedPublishing: true,
       });
 
       this.addPackagingTarget('dotnet', task, extraJobOptions);
