@@ -39,7 +39,7 @@
     "jest": "^30.3.0",
     "jest-junit": "^16",
     "prettier": "^3.6.2",
-    "ts-jest": "^29.4.4",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.9.3"
   },
   "main": "lib/index.js",
