@@ -1781,7 +1781,7 @@
     chalk "^4.1.2"
     semver "^7.7.2"
 
-"@jsii/check-node@1.128.0":
+"@jsii/check-node@1.128.0", "@jsii/check-node@^1.128.0":
   version "1.128.0"
   resolved "https://registry.yarnpkg.com/@jsii/check-node/-/check-node-1.128.0.tgz#b62184a0a7946051ba5c90baf406dbd3df717777"
   integrity sha512-1XirN1v+gbSHFIGSMmB/jPzTdsKEY8P8JOJOS2Vz5j9+T6ZaPJ2ZcJ4foYsIBblKcDWPzVNVJmGC2+ViEzUIsA==
@@ -1796,7 +1796,7 @@
   dependencies:
     ajv "^8.17.1"
 
-"@jsii/spec@1.128.0", "@jsii/spec@^1.114.1":
+"@jsii/spec@1.128.0", "@jsii/spec@^1.128.0":
   version "1.128.0"
   resolved "https://registry.yarnpkg.com/@jsii/spec/-/spec-1.128.0.tgz#c7a536a070d455c8e2639517169c9d0ea6d51b25"
   integrity sha512-sv4JP3Ap7Vagh+yoCZ7mkfoKNY3ivV43QQPLzOYaNLgrTW86S+rqfiwTG/ouLn9qSaIC300vDpnT5V9uBGserA==
@@ -2981,7 +2981,7 @@
   resolved "https://registry.yarnpkg.com/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz#538b1e103bf8d9864e7b85cc96fa8d6fb6c40777"
   integrity sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==
 
-"@xmldom/xmldom@^0.9.8":
+"@xmldom/xmldom@^0.9.10":
   version "0.9.10"
   resolved "https://registry.yarnpkg.com/@xmldom/xmldom/-/xmldom-0.9.10.tgz#a0ad5a26fe8aa996310870726e1704977f769dee"
   integrity sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==
@@ -5895,19 +5895,19 @@ jsii-reflect@^1.128.0:
     oo-ascii-tree "^1.128.0"
     yargs "^17.7.2"
 
-jsii-rosetta@~5.9.0:
-  version "5.9.8"
-  resolved "https://registry.yarnpkg.com/jsii-rosetta/-/jsii-rosetta-5.9.8.tgz#dbe2bb9ea89b4793e3ff8f5c3fea7fcbb93a1bba"
-  integrity sha512-QpCE+5CmYPidfgtDztlFeYcfr2LuTYh3o9H58qhtFHHtTxY3PaRDxZGB4LwcuO6lRnz1a9INlgE2O6AafffReg==
+jsii-rosetta@~5.9.43:
+  version "5.9.43"
+  resolved "https://registry.yarnpkg.com/jsii-rosetta/-/jsii-rosetta-5.9.43.tgz#e8da1a02321dc0bc3693cb09b33157248ab524a1"
+  integrity sha512-9r8lvh7ily8tLVMcSKMMX3qx89WKRrjci2Z6e0ayuK+Uyzy9/x6vFrUzasYhGxRt9svkRVP7gpUqGK7qQbLREA==
   dependencies:
-    "@jsii/check-node" "1.114.1"
-    "@jsii/spec" "^1.114.1"
-    "@xmldom/xmldom" "^0.9.8"
+    "@jsii/check-node" "^1.128.0"
+    "@jsii/spec" "^1.128.0"
+    "@xmldom/xmldom" "^0.9.10"
     chalk "^4"
     commonmark "^0.31.2"
     fast-glob "^3.3.3"
     jsii "~5.9.1"
-    semver "^7.7.2"
+    semver "^7.7.4"
     semver-intersect "^1.5.0"
     stream-json "^1.9.1"
     typescript "~5.9"
