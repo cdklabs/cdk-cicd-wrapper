@@ -3482,10 +3482,10 @@ case@1.6.3, case@^1.6.3:
   resolved "https://registry.yarnpkg.com/case/-/case-1.6.3.tgz#0a4386e3e9825351ca2e6216c60467ff5f1ea1c9"
   integrity sha512-mzDSXIPaFwVDvZAHqZ9VlbyF4yyXRuX6IvB06WvPYkqJVO24kX1PPhv9bfpKNFZyxYFmmgo03HUiD8iklmJYRQ==
 
-cdk-nag@2.28.0:
-  version "2.28.0"
-  resolved "https://registry.yarnpkg.com/cdk-nag/-/cdk-nag-2.28.0.tgz#cbba7c9e7ba2def228ae6460c748517e705a8620"
-  integrity sha512-LhobvJwo9QZ1k9i4iQW/XWANGwFTvLj6JCpbPqU709cBKu6B9c4lbFQUPl2qegEsWz8P76DcawwWxvJ9bDRaQw==
+cdk-nag@2.38.1:
+  version "2.38.1"
+  resolved "https://registry.yarnpkg.com/cdk-nag/-/cdk-nag-2.38.1.tgz#50cf4311721a6bc43eb433d723ca8d03f7e8be20"
+  integrity sha512-pvGnSFyml4t6uw8RTp3pIz0iOQkgt6ewxoGdArZugNxqmn2XK9erXNvSrPhJC4BpkOXXkYYzgMSc7b6mbDHUOg==
 
 cdk-pipelines-github@0.4.134:
   version "0.4.134"
