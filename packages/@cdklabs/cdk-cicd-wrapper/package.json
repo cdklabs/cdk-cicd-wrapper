@@ -62,7 +62,7 @@
     "jsii-rosetta": "~5.9.0",
     "prettier": "^3.8.3",
     "ts-jest": "^29.4.9",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.195.0",
