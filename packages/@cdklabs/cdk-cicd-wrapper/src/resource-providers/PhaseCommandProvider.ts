@@ -119,12 +119,12 @@ export class InlineShellPhaseCommand implements IPhaseCommand {
    */
   get command() {
     const bashScript = fs.readFileSync(path.resolve(__dirname, '../../scripts/', this.script), {
-        encoding: 'utf-8',
+      encoding: 'utf-8',
     });
     const scriptFile = `./.cdk.wrapper.${this.script}.sh`;
     const writeScript = `cat > ${scriptFile} << 'CDKEOF'\n${bashScript}\nCDKEOF`;
     if (this.exportEnvironment) {
-        return `${writeScript}; chmod +x ${scriptFile}; . ${scriptFile}; exit_code=$?; rm -rf ${scriptFile}; [ $exit_code -eq 0 ];`;
+      return `${writeScript}; chmod +x ${scriptFile}; . ${scriptFile}; exit_code=$?; rm -rf ${scriptFile}; [ $exit_code -eq 0 ];`;
     }
     return `${writeScript}; chmod +x ${scriptFile}; ${scriptFile}; exit_code=$?; rm -rf ${scriptFile}; [ $exit_code -eq 0 ];`;
   }
