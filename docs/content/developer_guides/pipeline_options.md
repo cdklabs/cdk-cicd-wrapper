@@ -52,9 +52,12 @@ Necessary for projects that involve building, synthesizing, updating, or publish
 ```typescript
 import { PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
 import { DockerCredential } from 'aws-cdk-lib/pipelines';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
+
+const privateRepo = ecr.Repository.fromRepositoryName(scope, 'PrivateRepo', 'my-private-repo');
 
 const dockerCreds: DockerCredential[] = [
-    DockerCredential.ecr('arn:aws:iam::123456789012:role/MyECRRole'),
+    DockerCredential.ecr([privateRepo]),
 ];
 
 const pipeline = PipelineBlueprint.builder()
