@@ -70,7 +70,10 @@ export class RootConfig extends yarn.Monorepo {
       workflowRunsOn: ['ubuntu-latest'],
       pullRequestTemplate: true,
       autoApproveOptions: {
-        allowedUsernames: ['aws-cdk-automation', 'dependabot[bot]'],
+        // GitHub only forbids approving your *own* PR, so `github-actions[bot]` approving a
+        // maintainer's PR is allowed. Requires the `auto-approve` label per PR, and mergify still
+        // holds the merge until every condition in `strengthenMergeGate` passes.
+        allowedUsernames: ['aws-cdk-automation', 'dependabot[bot]', 'gyalai-aws'],
       },
       autoApproveUpgrades: true,
       release: true,
@@ -81,6 +84,12 @@ export class RootConfig extends yarn.Monorepo {
         }),
       },
       githubOptions: {
+        dependencyReview: true,
+        dependencyReviewOptions: {
+          // Fork PRs get a read-only token, so the comment step cannot post. The findings still
+          // appear in the job summary and, being a merge condition, still block.
+          commentSummaryInPr: 'never',
+        },
         pullRequestLintOptions: {
           semanticTitleOptions: {
             types: ['feat', 'fix', 'chore', 'refactor'],
@@ -120,6 +129,8 @@ export class RootConfig extends yarn.Monorepo {
     // yarn would otherwise install as separate copies.
     this.package.addPackageResolutions(`constructs@${CONSTRUCTS_VERSION}`);
 
+    this.strengthenMergeGate();
+
     this.configureLinting();
     this.validateTask = this.configureValidate();
     this.licenseTask = this.configureLicense();
@@ -133,6 +144,21 @@ export class RootConfig extends yarn.Monorepo {
 
     this.configureHusky();
     this.configureContributors();
+  }
+
+  /**
+   * projen's default gate is `#approved-reviews-by>=1` + `status-success=build`, which an approval
+   * alone satisfies even when a reviewer has since requested changes or left unresolved threads.
+   *
+   * Only add conditions for checks that run on *every* PR — mergify reports a skipped job as
+   * neutral rather than success, so a conditionally-skipped check stalls the queue indefinitely.
+   */
+  private strengthenMergeGate() {
+    this.autoMerge?.addConditions(
+      '#changes-requested-reviews-by=0',
+      '#review-threads-unresolved=0',
+      'status-success=dependency-review',
+    );
   }
 
   private configureLinting() {
