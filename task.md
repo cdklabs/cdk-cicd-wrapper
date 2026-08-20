@@ -435,11 +435,21 @@ Not tasks — resolved/open design decisions that tasks reference.
     target survives exec — required for multi-region. Regression gate B green: m1-verify 3/3 (plain
     file-fallback path) and m2-verify PASSED on real AWS (level0 inert / level1 injected), zero orphans.
     25/25 CLI tests.
-- **`m3-drift-check`** — drift check  ·  todo · wave 3 · cli · feature
+- **`m3-drift-check`** — drift check  ·  done · wave 3 · cli · feature
   - **desc:** Read each stack's `aws://acct/region` from assembly `manifest.json`. Agnostic = OK;
     region mismatch = **warn**; account mismatch = **error + abort that stage**.
   - **spec:** D-deploy; D3-Q9          - **depends-on:** m3-synth
   - **acceptance:** fires correctly on `hardcoded-env-app`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DriftCheck.ts`
+    (`analyzeManifest` pure + `checkAssembly` io); `test/v3/DriftCheck.test.ts`.
+  - **notes:** ✅ Lives in the CLI as a post-synth manifest reader (the resolved `aws://acct/region`
+    only exists in the synthesized assembly), NOT a preload or Aspect. Rules: env-agnostic
+    (`unknown-account`/`unknown-region`) = OK; region mismatch = warn+continue; account mismatch =
+    error+abort. 33/33 CLI tests over the four cases via hand-written manifests, plus `checkAssembly`
+    file-read. **Acceptance proven on the real fixture**: synth `hardcoded-env-app` (bin bakes
+    `000000000000`/`eu-west-1`) → `checkAssembly` against a test-account target → `account-mismatch`,
+    not deployable — exactly why that fixture can never reach AWS. Wiring into the deploy flow (abort
+    before deploy) is `m3-deploy`.
 - **`m3-forced-roles`** — forced deploy/CFN roles  ·  todo · wave 3 · cli · feature
   - **desc:** Thread configured roles through synth + deploy (`--role-arn`, cdk-assets overrides).
   - **depends-on:** m3-synth

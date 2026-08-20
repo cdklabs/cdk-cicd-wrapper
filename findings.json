@@ -220,6 +220,28 @@
       "title": "cdk-cicd synth pins CDK_DEFAULT_ACCOUNT per target but the CDK CLI re-derives account from STS, so (unlike region via AWS_REGION) the account pin is cosmetic",
       "detail": "synthTargets sets AWS_REGION/AWS_DEFAULT_REGION to steer the CLI's per-region synth, which works because the CLI derives the app's CDK_DEFAULT_REGION from AWS_REGION. It also sets CDK_DEFAULT_ACCOUNT/CDK_DEPLOY_ACCOUNT from the stage, but there is no AWS_* account analogue: the CDK CLI re-derives CDK_DEFAULT_ACCOUNT from the resolved STS identity and overrides the pin, so a stage account that differs from the ambient creds does NOT change the synthesized account -- the account pin is cosmetic during synth. Harmless for the single-account sandbox, and catching an account that disagrees with the deploy target is exactly m3-drift-check's job (it reads the synthesized manifest's aws://account/region). Recorded as the region/account asymmetry so a future multi-account synth path knows the account cannot be steered the same way region is (it needs assumed creds for the target account, not just an env var).",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/SynthCommand.ts", "line": 46 }
+    },
+    {
+      "id": "code-review-driftcheck-undefined-account-bypasses-guard",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "DriftCheck skips the account guard when DriftTarget.account is undefined, so m3-deploy MUST pass the STS-resolved deploy account or the abort is bypassable",
+      "detail": "analyzeManifest, by documented design, skips the account-mismatch check when target.account is undefined (account omitted = 'whatever the creds resolve'). That is fine for the m3-drift-check unit in isolation, but it is a live seam risk for m3-deploy: if deploy calls checkAssembly with a DriftTarget whose account comes from the cicd.config stage (which may be undefined, and per finding code-review-synth-account-pin-cosmetic the synth cannot force it anyway), then a manifest carrying a concrete FOREIGN account -- exactly the hardcoded-env-app shape the drift rule exists to stop -- passes as ok and would deploy. Fix belongs in m3-deploy: populate DriftTarget.account from the STS-resolved deploy-time identity (aws sts get-caller-identity / the harness account), never from the possibly-undefined stage config, so the account the deploy will actually use is the one the manifest is checked against. Recorded so m3-deploy does not reintroduce the gap.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DriftCheck.ts", "line": 75 }
+    },
+    {
+      "id": "code-review-driftcheck-partial-agnostic-loses-warning",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "A partially-agnostic environment (e.g. aws://unknown-account/us-east-1) is treated as fully agnostic, dropping a region-mismatch warning",
+      "detail": "analyzeManifest treats a stack as agnostic when EITHER the account or the region is unknown-*. So an env like aws://unknown-account/us-east-1 (concrete but wrong region) short-circuits to 'agnostic' and never emits the region-mismatch warning it otherwise would. Impact is only a lost WARNING (never a blocked deploy -- account is unknown so the account guard correctly does not fire either), and this mixed shape is unusual in real CDK output (an env-agnostic stack is normally unknown-account AND unknown-region). Left as-is for simplicity. Revisit only if a real assembly is observed producing the mixed shape and the missing region warning matters; the fix is to evaluate account-agnostic and region-agnostic independently.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DriftCheck.ts", "line": 72 }
     }
   ]
 }
