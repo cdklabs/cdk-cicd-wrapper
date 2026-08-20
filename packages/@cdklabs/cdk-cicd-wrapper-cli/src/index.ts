@@ -9,6 +9,7 @@ import complianceBucket from './cmds/ComplianceBucketCommand';
 import configure from './cmds/ConfigureCommand';
 import license from './cmds/LicenseCommand';
 import security from './cmds/SecurityCommand';
+import check from './cmds/v3/CheckCommand';
 import deploy from './cmds/v3/DeployCommand';
 import exec from './cmds/v3/ExecCommand';
 import synth from './cmds/v3/SynthCommand';
@@ -29,6 +30,7 @@ async function main() {
   ya.command(complianceBucket);
   ya.command(security);
   ya.command(checkDependencies);
+  ya.command(check);
   ya.command(exec);
   ya.command(synth);
   ya.command(deploy);

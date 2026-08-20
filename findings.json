@@ -407,6 +407,149 @@
       "title": "The husky pre-commit hook runs eslint --fix across the whole tree, so every commit tends to drag in prettier churn from files the change never touched",
       "detail": "The pre-commit hook runs `npm run lint`, which is eslint --fix over all of src/test/build-tools in each package rather than over the staged files. The tree is not currently prettier-clean at HEAD, so the hook rewraps unrelated files (observed on test/v3/config/define.test.ts and test/v3/runtime/synthesizer.test.ts, both pure line-wraps) and leaves them dirty in the working tree. It does not corrupt a commit that stages explicit paths, but it does mean an agent or developer using `git commit -a` silently ships reformatting noise, which directly works against ground rule 5 -- the maintainer reviews the EVOLUTION of the branch, and unrelated churn is exactly what makes that harder. Worked around here by staging explicit paths and reverting the churn. Fix direction (projen-managed, so change projenrc rather than the hook by hand): either make the hook lint only staged files (lint-staged) or run prettier once over the tree in a dedicated style commit so the hook has nothing left to rewrite.",
       "location": { "path": ".husky/pre-commit", "line": 5 }
+    },
+    {
+      "id": "qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "The wrapper package resolves a nested second copy of aws-cdk-lib and constructs, which silently disables cdk-nag entirely",
+      "detail": "Inside packages/@cdklabs/cdk-cicd-wrapper, `require('aws-cdk-lib')` and `require('constructs')` resolve to nested copies under that package's own node_modules, while `cdk-nag` resolves to the hoisted copies at the repo root. Same versions on both sides (aws-cdk-lib 2.195.0, constructs 10.3.0), but they are different module instances -- verified directly: `localCopy === rootCopy` is false for both. Every cdk-nag rule tests resource identity with instanceof against ITS copy of the Cfn* classes, so no rule ever matches and cdk-nag emits NOTHING. Measured, not inferred: a deliberately non-compliant bare s3.Bucket produces zero annotations when synthesized with the package's resolution, and produces AwsSolutions-S1 as expected when both resolve to the same copy. Root cause chain: PipelineConfig.ts declares @cloudcomponents/cdk-pull-request-approval-rule, @cloudcomponents/cdk-pull-request-check and yaml as bundledDeps (required so the jsii package can ship non-jsii runtime deps); projen turns bundled deps into yarn-1 workspaces.nohoist entries of the form `<pkg>/<dep>/**`; the `/**` pulls the whole subtree down, and because those @cloudcomponents packages declare aws-cdk-lib and constructs as PEER dependencies, yarn satisfies the peers with nested installs. Consequences: the package's compliance posture is unverified, and every cdk-nag assertion in its test suite is vacuous (see qa-cdk-nag-compliance-tests-are-vacuous). Note the blast radius is limited to this repo's own test/build resolution -- a user installing the published package has a single aws-cdk-lib, so `applyWrapper`'s AwsSolutionsChecks does fire in their app, which is why this has never shown up as a runtime bug. Confirmed structural rather than a stale-install artifact: the duplication is still present after a full `npx projen` regen + yarn install. Fix direction: narrow or eliminate the nohoist so aws-cdk-lib/constructs stay single-instance (dropping the `/**` suffix, or excluding the peers), then re-measure with the control case above; expect previously-green compliance tests to go red once cdk-nag actually runs.",
+      "location": { "path": "projenrc/PipelineConfig.ts", "line": 33 }
+    },
+    {
+      "id": "qa-cdk-nag-compliance-tests-are-vacuous",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "The 'No unsuppressed Warnings/Errors' cdk-nag tests pass unconditionally and assert nothing",
+      "detail": "The wrapper package's compliance tests assert `expect(findError('*', stringLikeRegexp('AwsSolutions-.*'))).toHaveLength(0)` and similar for warnings. They are green because cdk-nag emits no annotations at all in this package's module resolution (see qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert), not because the stacks are compliant -- so they would stay green no matter how non-compliant the templates became. A second, independent defect makes some of them doubly vacuous: they register the Aspect AFTER `Template.fromStack(stack)` has already synthesized, and the synthesized assembly is cached, so the Aspect would not run on that stack even with correct module resolution. Any assertion shaped 'expect no findings' needs a companion control assertion that the checker is live -- e.g. a throwaway non-compliant resource that MUST produce at least one AwsSolutions finding in the same run -- otherwise a silent false green is indistinguishable from real compliance. Applies to test/stacks/PipelineBlueprintStack.test.ts (the v2 pipeline compliance tests) and should be the pattern for any v3 nag test added later. Fix together with the resolution defect, since fixing resolution alone will turn these red and the failures will be real.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/test/stacks/PipelineBlueprintStack.test.ts", "line": 106 }
+    },
+    {
+      "id": "qa-check-deps-python-deletes-requirements-txt",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "The python dependency audit regenerates requirements.txt from a Pipfile and then deletes it, destroying a hand-maintained file",
+      "detail": "The python branch of the dependency check regenerates a requirements file from a Pipfile so a scanner can read it, then removes it again as cleanup. A project that legitimately keeps BOTH a Pipfile and a hand-maintained requirements file in the same directory therefore loses the hand-maintained one -- an unrecoverable local edit, not just a rebuild. Pre-existing v2 behaviour, but until now it was effectively unreachable: v2's generated task passed no ecosystem flags, so the python path was never enabled by default. `cdk-cicd check` turns `audit` on automatically for any project with a Pipfile, which makes the hazard reachable on a default run. Read from the script rather than executed, so the exact deletion condition should be confirmed before fixing. Fix direction: write the generated file to a temp directory (or a uniquely-named file) and never remove a path the project already had; at minimum refuse to overwrite an existing requirements file.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/scripts/check-deps-python.sh", "line": 1 }
+    },
+    {
+      "id": "qa-cli-requires-python-at-import",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "Every cdk-cicd invocation fails at load on a host without python 3, because the security command resolves python at module top level",
+      "detail": "The security command resolves the python executable in module-scope code, and the CLI entry point imports every command module unconditionally to register it with yargs. So the python probe runs on EVERY `cdk-cicd` invocation, and on a host without python 3 the process dies during module load with 'Python is not installed' -- including for `cdk-cicd --help`, `--version`, `synth` and `deploy`, none of which need python. That makes a python toolchain a hard requirement of the whole CLI rather than of one command, which matters for the v3 story: a plain TypeScript CDK user has no reason to have it, and the deploy CodeBuild image is not guaranteed to. Pre-existing v2 defect, found while wiring `cdk-cicd check`. Fix direction: resolve python lazily inside the handler (or the scanner wrapper), so the failure lands on the command that actually needs it, with a message naming that command.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/SecurityCommand.ts", "line": 1 }
+    },
+    {
+      "id": "qa-check-security-no-toolchain-precondition",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "The security check has no skip path, so a runner without python or registry access fails the build instead of degrading",
+      "detail": "`cdk-cicd check` skips a check whose baseline or manifest is absent, which is a file probe. The `security` check has no such precondition and always runs, but it needs python 3, a writable venv and network access to PyPI plus the semgrep rule registry. On an air-gapped or restricted CI runner it therefore fails the whole `check` run for an environmental reason rather than a code finding, and the failure looks like a security violation. A file probe cannot establish any of those preconditions. Fix direction: probe the toolchain (python present, venv creatable) and skip with a logged reason when it is absent, or expose an explicit opt-out so a restricted runner can declare it; either way keep the distinction between 'scanner could not run' and 'scanner found something' visible in the summary. Consider together with qa-cli-requires-python-at-import, which is the same missing-python condition surfacing far earlier.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts", "line": 120 }
+    },
+    {
+      "id": "qa-check-umbrella-handler-untested",
+      "component": "cli",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "The check command's yargs handler and child-process spawn are covered only by manual runs, and the entry-point resolution differs between compiled and ts-jest execution",
+      "detail": "`planChecks` and `runPlans` are unit tested with an injected runner, which is the right seam, but the yargs `handler` and the `spawnCheck` helper around it are exercised only by manual CLI runs against the compiled output. The fragile part is how `spawnCheck` locates the CLI entry to re-invoke: a relative `require.resolve` of the entry module. That is correct for the compiled layout, but it silently depends on the relative depth of the command file, so moving or re-nesting the file breaks the child spawn with no test failure. Worse for testability, under ts-jest the same call resolves to the TypeScript entry, which `node` cannot execute -- so a naive unit test of `spawnCheck` would fail for a reason unrelated to the code being wrong. Fix direction: resolve the entry from the package root (or inject the entry path) so it is assertable, and add a test that pins the resolved target against the compiled layout rather than the test-time one.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts", "line": 190 }
+    },
+    {
+      "id": "qa-check-loses-junit-reports",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "cdk-cicd check never passes the CI flag to the security scan, so a job switching to it loses the junit report artifacts",
+      "detail": "v2's CI wiring passed a `--ci` flag to the security scan when a CI environment variable was set, which makes the scanners emit junit-format XML into a reports directory for the build system to collect. `cdk-cicd check` always invokes the scan without that flag, so a project migrating its CI job from the v2 npm scripts to `cdk-cicd check` silently stops producing those report artifacts. No consumer of the reports exists in the wrapper source today, which is why this is low rather than medium -- it matters to whichever task wires the v3 CI step and decides whether the CodeBuild project declares a report group. Fix direction: detect CI the same way v2 did and forward the flag, and if the v3 engine is meant to surface test reports, have the CI project declare the matching report group so the artifacts are actually collected rather than merely written.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts", "line": 121 }
+    },
+    {
+      "id": "code-review-ci-steps-replace-drops-checks",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Configuring any ci.steps REPLACES the default CI commands, so an override silently drops both the check gate and the synth step",
+      "detail": "The engine builds the CI project's commands as `steps.length > 0 ? ['npm ci', ...steps] : DEFAULT_CI_COMMANDS`. So a project that configures a single extra CI step (say a unit-test command) does not get that step ADDED to the default run -- it gets the whole default run replaced, losing `cdk-cicd check` (validate/audit/license/security) and `cdk-cicd synth --all`. That works directly against what makes those checks default-on: the gate is present only for projects that configured nothing. Nothing fails loudly either, because the deploy actions synth for themselves, so the only symptom is a pipeline that quietly stopped running its own checks. Fix direction: decide and document whether `ci.steps` is additive or a replacement. Additive (append the configured steps after the defaults, with the defaults still first) preserves the gate and is the behaviour the naming implies; if replacement is genuinely wanted, it should be a distinct, explicit opt-out rather than a side-effect of adding one step, and the config type should say so.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 158 }
+    },
+    {
+      "id": "code-review-check-audit-skips-yarn-projects",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "A yarn-only project gets no dependency audit at all from cdk-cicd check, because the v2 audit command can only drive npm audit",
+      "detail": "`check`'s audit planner only selects `--npm` for a `package-lock.json`/`npm-shrinkwrap.json` and `--python` for a `Pipfile`, so a project whose lock file is a `yarn.lock` (or whose python deps are a `requirements.txt`) is planned as a skip. The skip is correct given the underlying tool -- v2's audit shells out to `npm audit`, which refuses a yarn-only tree, and the python script only ever resolves Pipfiles -- and skipping is much better than the alternative green run that audited nothing. But the net effect is that a whole class of real projects has NO dependency audit in CI while `cdk-cicd check` reports success, and `validate` still happily checksums the same `yarn.lock` it cannot audit, which makes the gap easy to miss. Fix direction: teach the audit path `yarn npm audit` (yarn 2+) / `yarn audit` (yarn 1) and `pip-audit -r requirements.txt`, so ecosystem coverage follows the project rather than the tool. Until then the skip reason is the only warning a user gets.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts", "line": 84 }
+    },
+    {
+      "id": "code-review-security-scan-cold-budget-in-ci",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The security scan builds and then deletes a throwaway python venv per run, so every CI build pays a full cold install of the scanners",
+      "detail": "v2's scan creates a fresh temp directory, builds a python venv in it, pip-installs its scanners into that venv, and removes the whole directory in a `finally`. Nothing is cached between runs by construction. Interactively that is a sensible hygiene choice; as a default-on CI gate reached through `cdk-cicd check` it means each pipeline build spends minutes on a cold `pip install` of the scanners plus their transitive deps, and takes a hard dependency on registry reachability from inside the build -- a registry blip becomes a red pipeline with a `Security scan failed` message that says nothing about the real cause. Fix direction belongs with whoever sizes the v3 CI project: either point the venv at a cacheable location and declare it in the CodeBuild cache, or bake the scanners into the CI image, so the gate's cost is paid at image-build time instead of on every commit.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/SecurityCommand.ts", "line": 369 }
+    },
+    {
+      "id": "code-review-security-scan-null-status-reads-as-pass",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Each v2 scanner returns `status || 0`, so a scanner killed by a signal reports success",
+      "detail": "All three scanners end with `return commandResults.status || 0`. `spawnSync` sets `status` to null when the child is terminated by a signal rather than exiting, so an OOM-killed or timed-out scanner -- exactly what a large repo hits on a small CodeBuild container -- yields null, `null || 0` is 0, and the scan reports a clean pass. The same idiom also folds a spawn failure into 0. This is a false green in a security gate, which is what makes it worth fixing even though the trigger is uncommon: the failure mode is silent, and it gets more likely the bigger the scanned tree. Fix direction: `status ?? 1` (with the signal named in the log line), which is the idiom v3's `check` umbrella already uses when it collects a child's exit code. Note that fixing it will surface previously-hidden failures, so it wants to land with the CI sizing work rather than on its own.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/SecurityCommand.ts", "line": 239 }
+    },
+    {
+      "id": "code-review-license-check-writes-licensecheck-json",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The license check writes a licensecheck.json into the project root when none exists, so a read-only CI gate mutates the checked-out source tree",
+      "detail": "v2's license checker loads its config by creating it first: if the configured file is absent it writes a default `licensecheck.json` into the project root, then reads it back. Reached through `cdk-cicd check`, that makes a gate whose job is only to report drift leave a new untracked file in the CI workspace -- harmless in a throwaway checkout, but it means `check` is not side-effect free, it will show up as a dirty tree to any later step that inspects git status, and on a `--fix`-less run the user gets a file they never asked for. Fix direction: treat an absent config as 'use the built-in defaults in memory' and only persist it under `--fix`, matching how the verification file itself is treated. Low because the file is deterministic and the checks still behave correctly with it present.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/LicenseCommand.ts", "line": 85 }
+    },
+    {
+      "id": "code-review-engine-buildspec-assertions-substring-only",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The engine tests assert buildspec contents by regex substring, so they cannot catch a command landing in the wrong phase or the wrong order",
+      "detail": "The CodePipeline engine tests check what a CodeBuild project runs with `Match.stringLikeRegexp('cdk-cicd check')` against the rendered `Source.BuildSpec`, which is a single JSON string in the template. That confirms the substring appears SOMEWHERE in the buildspec and nothing more: the same assertion passes if the command moves from `build` to `post_build`, if it runs before `npm ci`, or if it ends up in a comment. It also can't express the absence of a command without risking a match on an unrelated one. Fix direction: parse the buildspec string out of the template and assert on the resulting object (`phases.build.commands` as an array), which makes phase and order part of the contract and reads better than a regex. Low because the current assertions are not wrong, just weak -- worth doing when the next change touches these tests.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/engine/codepipeline/CodePipelineEngine.test.ts", "line": 1 }
     }
   ]
 }

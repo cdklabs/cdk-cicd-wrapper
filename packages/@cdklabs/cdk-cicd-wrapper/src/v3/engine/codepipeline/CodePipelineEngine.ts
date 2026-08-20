@@ -23,8 +23,12 @@ import { SupportResources } from '../../support/SupportResources';
 import { EngineRenderProps, IEngine } from '../types';
 import { buildSourceAction } from './source';
 
-/** Default CI commands when the config sets none. The engine, not the config layer, owns these. */
-const DEFAULT_CI_COMMANDS = ['npm ci', 'npx cdk-cicd synth --all'];
+/**
+ * Default CI commands when the config sets none. The engine, not the config layer, owns these.
+ * `check` runs the validate/audit/license/security set before synth, which is what makes those checks
+ * default-on in CI: a project that configures no `ci.steps` still gets them.
+ */
+const DEFAULT_CI_COMMANDS = ['npm ci', 'npx cdk-cicd check', 'npx cdk-cicd synth --all'];
 
 /**
  * The CDK bootstrap roles `cdk deploy` assumes: the deploy role drives CloudFormation, the two

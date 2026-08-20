@@ -553,11 +553,47 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **`m4-approval-selfupdate`** — approvals + deploy-ci  ·  todo · wave 4 · cli · feature
   - **desc:** Manual approval gates; `cdk-cicd deploy-ci` provisions + self-updates the pipeline.
   - **depends-on:** m4-codepipeline
-- **`m4-ci-checks`** — default-on CI checks via CLI  ·  todo · wave 4 · cli · feature
+- **`m4-ci-checks`** — default-on CI checks via CLI  ·  done · wave 4 · cli · feature
   - **desc:** validate/audit/license/security run by the CLI in CI — fresh project passes with no
     npm-script surgery.
+  - **produces:** `cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts` (`cdk-cicd check [checks..]`, exporting
+    `CHECK_NAMES`/`CheckPlan`/`planChecks`/`runPlans`); `test/v3/CheckCommand.test.ts` (13 tests);
+    `DEFAULT_CI_COMMANDS` in `CodePipelineEngine` now runs `npx cdk-cicd check`, which is what makes the
+    checks default-on; `ts-node` declared in `projenrc/CLIConfig.ts`.
+  - **notes:** Each check **delegates** to the v2 command that already implements it, spawned as a child
+    `cdk-cicd <cmd>` — deliberate, because most v2 handlers signal failure with `process.exit`/`yargs.exit`,
+    which in-process would kill the umbrella mid-run; as children the exit codes are just data, so one pass
+    reports every failure. A check with no baseline (or no dependency manifest) is **skipped, not failed**,
+    so a fresh `cdk init` project passes; every skip is logged and the summary names what ran vs what was
+    skipped, so a skip can never read as a pass. The skip discriminator is the mere *existence* of
+    `package-verification.json`, not its contents: the review caught that keying on individual JSON keys
+    made each gate disable-able by deleting the very key it guards, and turned an unparseable file into a
+    skip — both converting a v2 `exit 1` into a green `check`. Fixed before commit, with regression tests;
+    the fix deleted code. Verified: 13/13 unit tests, `projen compile` green, `.jsii` types 151 → 151
+    (CLI-only, no public surface change), and the real built CLI re-run on the two former false-greens
+    (corrupt file → exit 1, key deleted → exit 1) plus fresh project → exit 0 and unknown check → exit 1.
+    6 follow-ups appended to `findings.json`; the one to read before `m4-verify` is
+    `code-review-ci-steps-replace-drops-checks` — configuring any `ci.steps` *replaces* the defaults, so an
+    override silently drops this very gate.
+  - **acceptance:** `cdk-cicd check` on a fresh project exits 0 having skipped what it cannot check; a
+    configured project whose baseline drifted exits 1 naming every failing check. ✅
+- **`m4-nag-compliance`** — make cdk-nag actually run, then suppress  ·  todo · wave 4 · infra · chore
+  - **desc:** cdk-nag is currently **inert** inside `cdk-cicd-wrapper`: bundled deps force a yarn-1
+    `nohoist`, which nests a second `aws-cdk-lib`/`constructs`, so every rule's `instanceof` check fails
+    and nothing is ever reported. Fix the resolution, then add the measured suppression list for the
+    pipeline's own resources. Split out of `m4-approval-selfupdate` — suppressions cannot be verified
+    while the checker is inert.
+  - **depends-on:** m4-approval-selfupdate
+  - **spec:** findings `qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert`, `qa-cdk-nag-compliance-tests-are-vacuous`,
+    `code-review-codepipeline-no-cdknag-suppressions`
+  - **acceptance:** a **control** assertion proves cdk-nag is live (a deliberately non-compliant
+    resource MUST produce ≥1 `AwsSolutions-*` finding in the same run — no "expect zero" test without
+    it, or a false green is indistinguishable from compliance); the rendered pipeline stack then has
+    zero unsuppressed findings under `AwsSolutionsChecks`, with each suppression justified from the
+    rendered template rather than copied from v2's CDK-Pipelines-shaped paths; v2's existing compliance
+    tests are re-pointed at real assertions and whatever they now surface is triaged.
 - **`m4-verify`** — M4 gate  ·  todo · wave 4 · shared · test
-  - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks
+  - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks, m4-nag-compliance
   - **acceptance:** `deploy-ci` provisions a working pipeline in the test account; a commit flows
     dev→prod with approval; **CodeBuild project count recorded and compared to v2**; full teardown.
     **Recorded demo #2.**

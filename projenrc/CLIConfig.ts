@@ -31,6 +31,13 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         // v3 `cdk-cicd exec` resolves the register preload and reuses the config loader from the
         // constructs package. Kept a workspace dependency, NOT folded into the jsii package (D5).
         '@cdklabs/cdk-cicd-wrapper',
+        // A TypeScript `cicd.config.ts` is the primary authoring path, and both `CicdConfig.load`
+        // (in-process `require('ts-node/register')`) and `exec`/`deploy-ci` (spawned `-r
+        // ts-node/register`) depend on it. Previously it resolved only because the workspace root
+        // hoisted it, which a global `npm i -g` install does not reproduce. Pinned to the v10 line
+        // rather than floated, for the reason yargs is pinned above.
+        // Resolves finding code-review-cli-ts-node-not-declared.
+        'ts-node@^10.9.2',
       ],
       // Enabled for v3: `cdk-cicd exec`'s pure logic (stage->env resolution, the non-clobbering
       // CDK_CONTEXT_JSON merge) is unit-tested here; the spawn itself is proven by the harness.

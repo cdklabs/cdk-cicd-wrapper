@@ -110,6 +110,11 @@
       "type": "runtime"
     },
     {
+      "name": "ts-node",
+      "version": "^10.9.2",
+      "type": "runtime"
+    },
+    {
       "name": "tslog",
       "type": "runtime"
     },

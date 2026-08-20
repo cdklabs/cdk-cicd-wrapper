@@ -104,6 +104,14 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     });
   });
 
+  test('the default CI run includes the checks, so validate/audit/license/security are default-on', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+    // Without this the checks exist as a CLI command nobody in CI ever calls.
+    render(config).hasResourceProperties('AWS::CodeBuild::Project', {
+      Source: { BuildSpec: Match.stringLikeRegexp('cdk-cicd check') },
+    });
+  });
+
   test('the artifact store is the wrapper support bucket, encrypted with the support key', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
     const t = render(config);
