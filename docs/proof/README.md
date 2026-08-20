@@ -49,6 +49,7 @@ documented D3 fallback.
 | Proof | Milestone | Shows |
 |---|---|---|
 | `recorder-selftest` | — (harness) | The recording pipeline itself: provenance of the commit being recorded, the toolchain versions, and what narration looks like. Exists so a milestone gate never discovers a broken exporter at the last minute. |
+| `where-we-are` | — (catch-up) | A tour of the state after Wave 0 + M1: the curated jsii-safe public surface (verified against the assembly), the `AppConfig` config layer through the API a consumer calls (JSON/YAML parity, safe-by-default merge, typed fail-closed errors), and the 15-case teardown-guard test. Not a gate — makes no AWS calls; the first real-deploy proof comes with M2. |
 
 Nothing in a proof may contain an AWS account id — see CLAUDE.md. Demos read the test account from
 the gitignored `.env` and must mask it before printing.
