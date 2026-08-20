@@ -45,3 +45,8 @@ export {
   SynthesizerType,
 } from './config/types';
 export { defineCICD } from './config/define';
+
+// The engine abstraction (m4-iengine). `IEngine`/`EngineRenderProps` are the seam CodePipeline (M4)
+// and later GitHub Actions / container engines implement; concrete engines will be exported here as
+// they land.
+export { EngineRenderProps, IEngine } from './engine/types';
