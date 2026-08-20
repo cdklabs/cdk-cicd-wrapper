@@ -226,6 +226,85 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     expect(resources).not.toContain('');
   });
 
+  test('a gated stage gets a manual approval action ordered ahead of its deploy', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev', 'prod'],
+    });
+
+    // Run order is what actually holds the deploy back, so assert it rather than mere co-presence:
+    // an approval at the same run order as the deploy would run alongside it and gate nothing.
+    render(config).hasResourceProperties('AWS::CodePipeline::Pipeline', {
+      Stages: Match.arrayWith([
+        Match.objectLike({
+          Name: 'prod',
+          Actions: Match.arrayWith([
+            Match.objectLike({
+              Name: 'Approve-prod',
+              ActionTypeId: Match.objectLike({ Category: 'Approval', Provider: 'Manual' }),
+              RunOrder: 1,
+            }),
+            Match.objectLike({ Name: 'Deploy-prod', RunOrder: 2 }),
+          ]),
+        }),
+      ]),
+    });
+  });
+
+  test('an ungated stage has no approval action at all, and its deploy still runs first', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev', 'prod'],
+    });
+    const pipeline = Object.values(render(config).findResources('AWS::CodePipeline::Pipeline'))[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dev = (pipeline.Properties.Stages as any[]).find((s) => s.Name === 'dev');
+
+    // `dev` auto-approves, so a gate here would stall the inner loop the default is meant to keep fast.
+    expect(dev.Actions.map((a: { Name: string }) => a.Name)).toEqual(['Deploy-dev']);
+    expect(dev.Actions[0].RunOrder).toBe(1);
+  });
+
+  test('gating a stage adds no pipeline stage and no CodeBuild project', () => {
+    const stages = (manualApproval: boolean) =>
+      defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: [{ name: 'prod', env: { account: '222222222222', region: 'us-west-2' }, manualApproval }],
+      });
+
+    // The approval rides in the deploy stage; putting it in a stage of its own would inflate the
+    // pipeline shape that the flat-footprint claim is measured against.
+    for (const gated of [true, false]) {
+      const t = render(stages(gated));
+      const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((pipeline.Properties.Stages as any[]).map((s) => s.Name)).toEqual(['Source', 'Build', 'prod']);
+      t.resourceCountIs('AWS::CodeBuild::Project', 2);
+      // ManualApprovalAction creates a topic as soon as it is given notifyEmails, so pin the absence:
+      // a notification default sneaking in would put an unmanaged SNS topic in every user's pipeline.
+      t.resourceCountIs('AWS::SNS::Topic', 0);
+    }
+  });
+
+  test('manualApproval: false overrides the approval-by-default a non-dev stage name would get', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: [{ name: 'prod', env: { account: '222222222222', region: 'us-west-2' }, manualApproval: false }],
+    });
+    const actionTypes = Object.values(render(config).findResources('AWS::CodePipeline::Pipeline')).flatMap((p) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (p.Properties.Stages as any[]).flatMap((s) => s.Actions.map((a: any) => a.ActionTypeId.Category)),
+    );
+    // Asserted positively rather than as `not.toContain('Approval')`: a bare negative over a derived
+    // list passes when the list is EMPTY, so a future change that moves the pipeline into a nested
+    // stack would make this test green while checking nothing.
+    expect(actionTypes).toEqual(['Source', 'Build', 'Build']);
+  });
+
   test('a stage with no regions falls back to the pipeline stack region', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
     render(config).hasResourceProperties('AWS::IAM::Policy', {

@@ -524,7 +524,9 @@ Not tasks — resolved/open design decisions that tasks reference.
     the deploy CodeBuild role has no deploy IAM (`code-review-codepipeline-deploy-role-lacks-iam`); no
     cdk-nag suppressions on the pipeline's own resources (`code-review-codepipeline-no-cdknag-suppressions`);
     and `stage.manualApproval` is not yet read (`code-review-codepipeline-manualapproval-ignored`, owned
-    by m4-approval-selfupdate).
+    by m4-approval-selfupdate). Two of those three are since **resolved** (deploy IAM in
+    m4-support-resources, approval gates in m4-approval-selfupdate); the cdk-nag one moved to
+    `m4-nag-compliance`.
 - **`m4-support-resources`** — lazy support resources  ·  done · wave 4 · wrapper · feature
   - **desc:** Encryption key, compliance/log bucket, SSM provisioned only when referenced via DI;
     de-singletoned `ResourceContext`.
@@ -550,9 +552,21 @@ Not tasks — resolved/open design decisions that tasks reference.
     `findings.json`, two of them medium and worth reading before `m4-verify`: the bootstrap qualifier has
     three unreconciled sources (`code-review-bootstrap-qualifier-not-single-source-of-truth`) and the CI
     project has no lookup-role grant (`code-review-ci-project-lacks-lookup-role`).
-- **`m4-approval-selfupdate`** — approvals + deploy-ci  ·  todo · wave 4 · cli · feature
+- **`m4-approval-selfupdate`** — approvals + deploy-ci  ·  in-progress · wave 4 · cli · feature
   - **desc:** Manual approval gates; `cdk-cicd deploy-ci` provisions + self-updates the pipeline.
   - **depends-on:** m4-codepipeline
+  - **notes:** Shipped in two commits. **1/2 done — approval gates.** The engine reads
+    `stage.manualApproval` and emits a `ManualApprovalAction` at `runOrder: 1` with that stage's deploy at
+    `runOrder: 2` in the **same** pipeline stage, so a gate costs no extra stage, no CodeBuild project and
+    no SNS topic — the flat-footprint claim `m4-verify` measures is unchanged, and an ungated stage renders
+    bit-identically to before. Resolves `code-review-codepipeline-manualapproval-ignored`. 128/128 v3 tests,
+    `.jsii` 151 → 151. **2/2 remaining:** a `PipelineApp` entry the CLI hosts, `cdk-cicd deploy-ci`, and the
+    pipeline self-update stage. Two things to carry into it: (a) the CLI and wrapper packages resolve
+    **different `aws-cdk-lib` copies**, so a CLI-hosted `PipelineApp` renders across copies — measured safe
+    (identity checks use the global symbol registry) but it makes `AwsSolutionsChecks` **inert in this
+    workspace**, so assert only that the aspect is registered and leave liveness to `m4-nag-compliance`;
+    (b) `code-review-m4-verify-must-approve-gated-stage` — the gate must now drive
+    `codepipeline put-approval-result`, or a real run waits 7 days on the gate it just created.
 - **`m4-ci-checks`** — default-on CI checks via CLI  ·  done · wave 4 · cli · feature
   - **desc:** validate/audit/license/security run by the CLI in CI — fresh project passes with no
     npm-script surgery.

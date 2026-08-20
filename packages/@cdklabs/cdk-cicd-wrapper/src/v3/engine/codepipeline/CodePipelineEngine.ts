@@ -94,13 +94,20 @@ export class CodePipelineEngine implements IEngine {
       ]);
       this.grantDeployPermissions(scope, project, stage);
 
+      // A gated stage puts its approval in the SAME pipeline stage as the deploy, ordered ahead of it,
+      // rather than in a stage of its own: run order already sequences them, and one stage per
+      // deployment stage keeps the pipeline's shape readable and matches the flat-footprint story.
       pipeline.addStage({
         stageName: stage.name,
         actions: [
+          ...(stage.manualApproval
+            ? [new actions.ManualApprovalAction({ actionName: `Approve-${stage.name}`, runOrder: 1 })]
+            : []),
           new actions.CodeBuildAction({
             actionName: `Deploy-${stage.name}`,
             project,
             input: sourceOutput,
+            runOrder: stage.manualApproval ? 2 : 1,
           }),
         ],
       });
