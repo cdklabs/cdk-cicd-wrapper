@@ -296,9 +296,20 @@ Not tasks — resolved/open design decisions that tasks reference.
     hook the app gets a plain `App`, no context, no Aspects, no tags. Because the seam depends on
     `aws-cdk-lib`'s internal file layout, add an explicit version/layout check with a clear error —
     do not silently try/catch.
-- **`m2-attach`** — CdkCicd.attach(app)  ·  todo · wave 2 · wrapper · feature
+- **`m2-attach`** — CdkCicd.attach(app)  ·  done · wave 2 · wrapper · feature
   - **desc:** Explicit, reliable path (same code path as the preload) for bundled/ESM apps.
   - **depends-on:** m2-register
+  - **produces:** `src/v3/runtime/attach.ts` (`CdkCicd.attach`), exported from `src/v3/index.ts`;
+    `test/v3/runtime/attach.test.ts`.
+  - **notes:** ✅ `CdkCicd.attach(app: App): void` — the ONE runtime symbol in the jsii assembly
+    (register/inject stay internal; verified against `.jsii`). Runs the SAME post-construction core as
+    the preload (`applyWrapper`: cdk-nag + tags), reading `cicd:config` from the app's merged context.
+    Deliberately does NOT set the synthesizer — `App.defaultStackSynthesizer` is constructor-only, so a
+    bundled app needing a forced synthesizer passes it via `new App({...})` itself (wave-3 forced roles).
+    Calls `markAppConstructed()` so an app that opts into `attach` counts as wrapped and the bundled-app
+    diagnostic (m2-bundled-diagnostic) stays silent — attach is exactly the remedy that diagnostic
+    points to. Tested against a STOCK unwrapped App (the bundled/ESM situation it exists for), not under
+    the preload. 75/75.
 - **`m2-exec`** — cdk-cicd exec launcher  ·  todo · wave 2 · cli · feature
   - **desc:** Resolve config; export `CDK_STAGE` + the stage's account/region into **both**
     `CDK_DEFAULT_ACCOUNT`/`_REGION` **and** `CDK_DEPLOY_ACCOUNT`/`_REGION` (stock `cdk init` env line

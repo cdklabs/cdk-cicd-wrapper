@@ -20,3 +20,9 @@ export { AppConfig, AppConfigOptions } from './appconfig/accessor';
 export { ConfigErrorKind } from './appconfig/error';
 export { AwsEnvironment, BaseConfig, RemovalPolicies, RemovalPolicyValue } from './appconfig/schema';
 export { ConditionalFieldGroup, ConfigSchema, FieldKind, RequiredField } from './appconfig/validation';
+
+// Runtime injection. The preload (register.ts) is loaded for its side effect only and is NOT
+// exported; `CdkCicd.attach` is the jsii-safe explicit entry point for bundled/ESM apps where the
+// preload cannot patch App. The rest of `./runtime` (the shared helpers, the counter, the loader)
+// stays internal for the same reasons the config machinery does.
+export { CdkCicd } from './runtime/attach';

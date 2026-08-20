@@ -132,6 +132,17 @@
       "title": "The multi-copy App patch does not check that the distinct aws-cdk-lib copies agree on version, so a dev/monorepo minor-version skew could silently misapply Aspects/tags",
       "detail": "register.ts patches every distinct aws-cdk-lib copy reachable from the app entry / cwd / the hook, to survive workspaces that carry more than one copy. The cross-copy mechanism is sound for SAME-version copies: Aspects.of stores under Symbol.for('cdk-aspects') (a hardcoded global-registry key) and synthesis reads it back the same way, so the nested-copy applyWrapper and the root-copy synth share the same node metadata slot regardless of which copy's class created the App. All copies in this workspace are 2.195.0. The latent fragility: if two copies disagree on aws-cdk-lib minor version, data written by one copy's classes is read by another's synth logic, and interface drift (e.g. aspect-priority handling) could silently misbehave. Published installs are single-copy because aws-cdk-lib is a peerDependency, so this never affects users -- only dev/monorepo setups. Optional hardening: have distinctCdkCopies emit a warning (not throw) when the resolved copies' versions differ, so a skew is visible rather than silent. Not a correctness bug at the pinned version.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/register.ts", "line": 76 }
+    },
+    {
+      "id": "code-review-attach-reuses-construction-counter",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CdkCicd.attach reuses markAppConstructed(), conflating an explicit attach with a wrapped-constructor App -- fine for today's diagnostic, revisit when m2-bundled-diagnostic is built",
+      "detail": "The construction counter (inject.ts markAppConstructed/appsConstructed) is named for Apps that pass through the wrapped constructor, but CdkCicd.attach also increments it so that an app which opts into attach counts as wrapped and the future bundled-app diagnostic stays silent. The counter's real semantic (appsConstructed = 'Apps the wrapper has wrapped') is satisfied and this is correct for the diagnostic's only current requirement (non-zero when the wrapper was applied). The coupling is baked in before m2-bundled-diagnostic exists: if that diagnostic later needs to distinguish an attach from constructor-wrapping (e.g. to warn that a non-bundled app called attach unnecessarily), this shared counter is too coarse and attach would need its own signal. Resolve when building m2-bundled-diagnostic: either keep the shared counter (if 'was the wrapper applied at all' stays the only question) or split into distinct construct-vs-attach counters. No change needed now.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/attach.ts", "line": 32 }
     }
   ]
 }

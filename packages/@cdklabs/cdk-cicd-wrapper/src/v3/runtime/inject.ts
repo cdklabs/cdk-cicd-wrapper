@@ -90,7 +90,8 @@ export function readInjectedConfig(props?: { context?: { [key: string]: unknown 
   return {};
 }
 
-function isConfigObject(value: unknown): value is Record<string, unknown> {
+/** A parsed value usable as a config object: a non-null, non-array object. */
+export function isConfigObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
