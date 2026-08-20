@@ -404,8 +404,20 @@ Not tasks — resolved/open design decisions that tasks reference.
     Scope trimmed to what the deploy path consumes (stages/env/roles/repo/application/qualifier/
     synthesizer type); engine/ci/plugins/compliance deferred to M4. 96/96, and the fixture's previously
     dormant `cicd.config.ts` now loads and normalizes (dev@us-west-2, prod@us-west-1 [approval]).
-- **`m3-config-discovery`** — cicd.config.ts/.yaml discovery  ·  todo · wave 3 · cli · feature
+- **`m3-config-discovery`** — cicd.config.ts/.yaml discovery  ·  done · wave 3 · cli · feature
   - **depends-on:** m3-definecicd
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CicdConfig.ts` (`discover`/`load`/
+    `stageByName`); `test/v3/CicdConfig.test.ts`; the fixture `cicd.config.ts` header refreshed (F2).
+  - **notes:** ✅ `discover(cwd)` probes `cicd.config.ts` → `.js` next to `cdk.json`; missing = Level 0
+    (returns undefined, no error). `load(cwd)` loads the `.ts` in-process via ts-node (the same
+    transpiler the app entry uses — one config file, no build step) and returns its `default` export
+    (the `defineCICD(...)` result). 18/18 CLI tests (discovery order, .js loader mechanics, stageByName);
+    the REAL `level1-app/cicd.config.ts` loads through the compiled loader → dev@us-west-2, prod@us-west-1
+    [approval]. **Scoped to `.ts`/`.js`**: YAML pipeline config is deferred (it needs a Repository
+    reconstruction step + a `yaml` dep in the CLI; app-config YAML is a separate, working thing). The
+    exec/synth env WIRING (using a discovered stage's account/region) is deliberately left to `m3-synth`,
+    which enumerates stages and is tested with it — keeping this unit off the `exec` path so the m2-verify
+    differential needs no re-deploy. Resolves finding `code-review-level1-cicd-config-stale-header`.
 - **`m3-synth`** — per-(stage×region) deploy-time synth  ·  todo · wave 3 · cli · feature
   - **desc:** Synth into `cdk.out/<stage>/<region>` at deploy time against the target config;
     `cdk-cicd synth --all` for CI validation only.

@@ -183,10 +183,21 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "level1-app/cicd.config.ts still carries a 'NOT ACTIVE YET -- defineCICD/Repository do not exist until wave 3' header, which is now false",
       "detail": "As of m3-definecicd, defineCICD and Repository exist and the fixture's cicd.config.ts loads and normalizes via ts-node. Its header comment (lines ~4-8) still says the symbols do not exist until wave 3 and that the file is dormant, and the file is still listed in the fixture's tsconfig.json exclude. Left unchanged by the m3-definecicd unit on purpose (surgical scope): the file belongs to m3-config-discovery, which is the task that actually wires discovery/loading and should update the header (and decide whether to drop the tsconfig exclude) as part of activating it. Resolve when implementing m3-config-discovery: refresh the header to describe how the CLI discovers and loads the file, and remove the now-misleading 'not active' language.",
       "location": { "path": "test/fixtures/level1-app/cicd.config.ts", "line": 4 }
+    },
+    {
+      "id": "code-review-cli-ts-node-not-declared",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "ts-node is required to load a .ts cicd.config (and by exec's -r ts-node/register) but is not a declared CLI dependency, so a global install can fail to resolve it",
+      "detail": "CicdConfig.load does an in-process require('ts-node/register') for a .ts config, and ExecCommand spawns node with -r ts-node/register for a .ts entry. ts-node resolves today only because it is hoisted into the workspace-root node_modules; it is NOT in the CLI package's dependencies. For a locally-installed CLI, in-process resolution walks up into the user's project and usually finds their ts-node; but a GLOBALLY-installed CLI (npm i -g) does not, so a user with a TypeScript cicd.config.ts (or a .ts app entry under exec) hits a module-resolution failure. Mitigated now: CicdConfig.load wraps the require in a clear, actionable error ('needs ts-node ... install it or compile to cicd.config.js') instead of a raw crash; the .ts path is unit-covered. The real fix is a distribution decision to make deliberately before external publish: declare ts-node as a CLI dependency in projenrc/CLIConfig.ts (pin the version to avoid a yargs-18-style float on regen), and apply the same clear-error treatment to the exec spawn path. Out of scope for m3-config-discovery's minimal change; track for the publish/harness-publish-loop work.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CicdConfig.ts", "line": 48 }
     }
   ]
 }

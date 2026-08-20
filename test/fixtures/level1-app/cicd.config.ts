@@ -1,11 +1,11 @@
 /**
  * Level 1 config: the minimum a user writes to get a pipeline.
  *
- * !! NOT ACTIVE YET !!  `defineCICD` / `Repository` do not exist in
- * `@cdklabs/cdk-cicd-wrapper` until wave 3 (`m3-definecicd`, `m3-config-discovery`).
- * This file is therefore excluded from `tsconfig.json` and is not imported by
- * `bin/app.ts`, so nothing compiles it today. It is checked in now so the wave-3
- * discovery code has a real target to find. See ./README.md.
+ * Active as of wave 3. `defineCICD` / `Repository` ship from `@cdklabs/cdk-cicd-wrapper`
+ * (`m3-definecicd`), and the CLI's `m3-config-discovery` loads this file in-process via ts-node.
+ * It is intentionally NOT imported by `bin/app.ts` and stays listed in `tsconfig.json#exclude`:
+ * the fixture's own build never compiles it, the CLI does at discovery time -- which is exactly
+ * how a real user's `cicd.config.ts` is consumed. See ./README.md.
  */
 import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
