@@ -368,10 +368,23 @@ Not tasks — resolved/open design decisions that tasks reference.
     `@types/yargs@^17.0.33` (finding `code-review-cli-yargs18-incompatible`; migrating the CLI to
     yargs 18 is the real follow-up). The published round-trip (install from CodeArtifact) is
     `harness-publish-loop`, still deferred.
-- **`m2-verify`** — M2 gate  ·  todo · wave 2 · shared · test
+- **`m2-verify`** — M2 gate  ·  done · wave 2 · shared · test
   - **depends-on:** m2-exec, m2-attach, m2-bundled-diagnostic, harness-aws-lifecycle, harness-recorder
   - **acceptance:** real deploy of `level0-app` to us-west-2 (wrapper inert) **and** an injected app
     (synthesizer/tags/Aspects applied), asserted + destroyed. **Recorded demo #1.**
+  - **produces:** `test/proof/m2-verify.sh`; `level1-app/cdk.json` flipped to `npx cdk-cicd exec bin/app.ts`
+    (the canonical injected form); `docs/proof/m2-deploy.mp4` (demo #1).
+  - **notes:** ✅ `bash test/proof/m2-verify.sh` → exit 0 against the real test account (us-west-2):
+    `level0-app` deploys INERT (no wrapper tag in its template) and `level1-app` deploys INJECTED (the
+    config-driven `Stage` tag is in its deployed template), both asserted and destroyed through the
+    teardown guard; a follow-up `sweep` shows zero fixture orphans (only the CDKToolkit bootstrap stacks,
+    which the guard refuses). One real-AWS learning baked into the gate: `cdk deploy --tags` (which the
+    harness passes) OVERRIDES stack-level tags, so the wrapper's `Stage` tag is not a stack tag on the
+    deployed stack — but CloudFormation never overrides a resource's own `Properties.Tags`, so the gate
+    reads the deployed **template** (get-template) for the differential instead of `describe-stacks`
+    tags. `level1-app/cdk.json` now runs `cdk-cicd exec` (design: the wrapper owns that line); `m1-verify`
+    keeps testing the plain file-fallback path via an explicit `--app` override so its coverage is
+    unchanged (re-verified 3/3).
 
 ## Wave 3 — defineCICD + deploy-time synth (M3)
 

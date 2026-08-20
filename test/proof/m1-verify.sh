@@ -26,6 +26,13 @@ fail=0
 ok()   { printf '  ok    %s\n' "$*"; pass=$((pass + 1)); }
 bad()  { printf 'FAIL    %s\n' "$*"; fail=$((fail + 1)); }
 
+# The stage config feeds the app through the wrapper's file-fallback path -- AppConfig.of
+# with no injected context, loading config/<stage>.json directly. level1-app's cdk.json now
+# runs `cdk-cicd exec` (the m2 injection path), so this gate forces the plain path with an
+# explicit --app override; that is exactly the code path a plain `cdk deploy` (no exec) hits,
+# which is what m1 must keep guarding independently of m2.
+PLAIN_APP='npx ts-node -P tsconfig.json --prefer-ts-exts bin/app.ts'
+
 # A `cdk synth` with the ambient environment scrubbed to exactly what the caller
 # passes. Isolating the credential sources (container endpoint, shared files,
 # IMDS) is what makes the negative case deterministic -- otherwise the CDK CLI
@@ -42,7 +49,7 @@ synth() {
            AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null \
            CDK_CICD_TEST_RUN_ID=m1verify \
            "$@" \
-           npx cdk synth --output "$out" >"$out.log" 2>&1 )
+           npx cdk synth --app "$PLAIN_APP" --output "$out" >"$out.log" 2>&1 )
 }
 
 echo '== m1-verify: config drives synth, and fails closed'
