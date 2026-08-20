@@ -525,10 +525,31 @@ Not tasks — resolved/open design decisions that tasks reference.
     cdk-nag suppressions on the pipeline's own resources (`code-review-codepipeline-no-cdknag-suppressions`);
     and `stage.manualApproval` is not yet read (`code-review-codepipeline-manualapproval-ignored`, owned
     by m4-approval-selfupdate).
-- **`m4-support-resources`** — lazy support resources  ·  todo · wave 4 · wrapper · feature
+- **`m4-support-resources`** — lazy support resources  ·  done · wave 4 · wrapper · feature
   - **desc:** Encryption key, compliance/log bucket, SSM provisioned only when referenced via DI;
     de-singletoned `ResourceContext`.
   - **depends-on:** m4-iengine
+  - **produces:** `src/v3/support/SupportResources.ts` (curated `SupportResources`/`SupportResourcesProps`);
+    `test/v3/support/SupportResources.test.ts`; deploy IAM in `CodePipelineEngine.grantDeployPermissions`.
+  - **notes:** ✅ **Deviation, deliberate**: v2's `ResourceContext`/`ScopedStorage` service locator was
+    *not* ported. It is ~200 lines of string-keyed `any` coupled to `IPipelineBlueprintProps` and the v2
+    `Stage`, for two resources. v3 keeps the *on-demand* concept and drops both the singleton and the
+    untyped registry: typed lazy getters on a `Construct` — the design doc's own wording ("keep the
+    concept; drop the singleton; type the lookups", `v3-devops-experience.md`). Shipped `encryptionKey`
+    (rotating CMK, **no alias** — an alias is unique per account/region and would collide with a second
+    pipeline) and `artifactBucket` (KMS-CMK encrypted, SSL-enforced, public access blocked). Compliance/log
+    bucket, SSM, VPC and proxy slot in later as further lazy properties. `removalPolicy` defaults to
+    `RETAIN` (safe for published users); `DESTROY` gates `autoDeleteObjects`, which is the seam
+    `m4-verify`'s teardown needs — `PipelineApp` (m4-approval-selfupdate) still has to set it.
+    Engine now uses the support bucket as the pipeline `artifactBucket` instead of CodePipeline's
+    generated one. **Unblocks m4-verify** by resolving `code-review-codepipeline-deploy-role-lacks-iam`:
+    each stage's deploy project may `sts:AssumeRole` the four CDK bootstrap roles per (account, region)
+    of that stage plus any forced `deployRole`, and read the bootstrap version SSM parameter — zero
+    wildcards, tighter than aws-cdk-lib's own `pipelines` module. Verified: 123/123 v3 tests (13 suites),
+    `projen compile` + `eslint` green, `.jsii` carries both new types. 7 follow-ups appended to
+    `findings.json`, two of them medium and worth reading before `m4-verify`: the bootstrap qualifier has
+    three unreconciled sources (`code-review-bootstrap-qualifier-not-single-source-of-truth`) and the CI
+    project has no lookup-role grant (`code-review-ci-project-lacks-lookup-role`).
 - **`m4-approval-selfupdate`** — approvals + deploy-ci  ·  todo · wave 4 · cli · feature
   - **desc:** Manual approval gates; `cdk-cicd deploy-ci` provisions + self-updates the pipeline.
   - **depends-on:** m4-codepipeline

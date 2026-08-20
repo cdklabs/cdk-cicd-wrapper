@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { App, Stack } from 'aws-cdk-lib';
+import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { defineCICD } from '../../../../src/v3/config/define';
 import { Repository } from '../../../../src/v3/config/repository';
@@ -11,6 +11,14 @@ function render(config: ReturnType<typeof defineCICD>): Template {
   const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
   new CodePipelineEngine().render(stack, { config, pipelineName: 'shop-pipeline' });
   return Template.fromStack(stack);
+}
+
+/**
+ * Matches an ARN built on the stack's partition token, which renders as
+ * `{ 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, '<suffix>']] }` rather than a plain string.
+ */
+function arnEndingIn(suffix: string) {
+  return Match.objectLike({ 'Fn::Join': Match.arrayWith([Match.arrayWith([suffix])]) });
 }
 
 describe('m4-codepipeline: CodePipelineEngine', () => {
@@ -45,7 +53,11 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
   });
 
   test('the S3 repository yields an S3 source action with the bucket and key split correctly', () => {
-    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/nested/app.zip'), stages: ['dev'] });
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/nested/app.zip'),
+      stages: ['dev'],
+    });
     render(config).hasResourceProperties('AWS::CodePipeline::Pipeline', {
       Stages: Match.arrayWith([
         Match.objectLike({
@@ -89,6 +101,137 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
     render(config).hasResourceProperties('AWS::CodeBuild::Project', {
       Source: { BuildSpec: Match.stringLikeRegexp('cdk-cicd synth --all') },
+    });
+  });
+
+  test('the artifact store is the wrapper support bucket, encrypted with the support key', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+    const t = render(config);
+
+    // Exactly one bucket: the pipeline uses ours instead of generating its own.
+    t.resourceCountIs('AWS::S3::Bucket', 1);
+    t.resourceCountIs('AWS::KMS::Key', 1);
+    t.hasResourceProperties('AWS::CodePipeline::Pipeline', {
+      ArtifactStore: Match.objectLike({
+        Type: 'S3',
+        Location: { Ref: Match.stringLikeRegexp('SupportArtifactBucket') },
+        // The CMK link, not just the bucket -- without this the test would pass on an
+        // unencrypted (or S3-managed) artifact store.
+        EncryptionKey: Match.objectLike({
+          Type: 'KMS',
+          Id: { 'Fn::GetAtt': [Match.stringLikeRegexp('SupportEncryptionKey'), 'Arn'] },
+        }),
+      }),
+    });
+  });
+
+  test('the engine removal policy reaches the pipeline artifact bucket', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    new CodePipelineEngine({ removalPolicy: RemovalPolicy.DESTROY }).render(stack, {
+      config: defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] }),
+      pipelineName: 'shop-pipeline',
+    });
+
+    // This is the path m4-verify's teardown depends on: a disposable pipeline must leave no bucket.
+    const t = Template.fromStack(stack);
+    t.hasResource('AWS::S3::Bucket', { DeletionPolicy: 'Delete' });
+    t.hasResource('AWS::KMS::Key', { DeletionPolicy: 'Delete' });
+    t.resourceCountIs('Custom::S3AutoDeleteObjects', 1);
+  });
+
+  test('a stage deploy project may assume the bootstrap roles in every region of its stage', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: [{ name: 'dev', env: { account: '222222222222', regions: ['us-west-2', 'us-west-1'] } }],
+    });
+
+    // Without this the deploy project runs and fails AccessDenied -- cdk deploy does everything
+    // through the bootstrap roles.
+    render(config).hasResourceProperties('AWS::IAM::Policy', {
+      // Pin the principal too, so the statements landing on some other role would not pass.
+      Roles: [{ Ref: Match.stringLikeRegexp('DeploydevRole') }],
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sts:AssumeRole',
+            Resource: Match.arrayWith([
+              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-deploy-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-file-publishing-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-image-publishing-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-lookup-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-deploy-role-222222222222-us-west-1'),
+            ]),
+          }),
+          Match.objectLike({
+            Action: 'ssm:GetParameter',
+            Resource: Match.arrayWith([
+              arnEndingIn(':ssm:us-west-2:222222222222:parameter/cdk-bootstrap/hnb659fds/version'),
+              arnEndingIn(':ssm:us-west-1:222222222222:parameter/cdk-bootstrap/hnb659fds/version'),
+            ]),
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test("a stage's forced deploy role is assumable too", () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: [
+        {
+          name: 'dev',
+          env: { account: '222222222222', region: 'us-west-2' },
+          deployment: { deployRole: 'arn:aws:iam::222222222222:role/forced-deployer' },
+        },
+      ],
+    });
+
+    render(config).hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sts:AssumeRole',
+            Resource: Match.arrayWith(['arn:aws:iam::222222222222:role/forced-deployer']),
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('a blank configured deploy role is no forced role, not an empty ARN', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: [{ name: 'dev', env: { account: '222222222222', region: 'us-west-2' }, deployment: { deployRole: '' } }],
+    });
+
+    // An empty string in Resource makes the policy document malformed and fails the stack deploy.
+    const statements = render(config).findResources('AWS::IAM::Policy');
+    const resources = Object.values(statements).flatMap((p) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (p.Properties.PolicyDocument.Statement as any[]).flatMap((s) =>
+        Array.isArray(s.Resource) ? s.Resource : [s.Resource],
+      ),
+    );
+    expect(resources).not.toContain('');
+  });
+
+  test('a stage with no regions falls back to the pipeline stack region', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+    render(config).hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sts:AssumeRole',
+            // account and region both come from the pipeline stack when the stage omits them.
+            Resource: Match.arrayWith([
+              arnEndingIn(':iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-west-2'),
+            ]),
+          }),
+        ]),
+      }),
     });
   });
 });

@@ -304,9 +304,9 @@
       "layer": "dynamic",
       "producer": "code-review",
       "severity": "medium",
-      "status": "open",
+      "status": "resolved",
       "title": "The CodePipeline deploy CodeBuild project has no deploy IAM, so a real pipeline run will fail AccessDenied -- blocks m4-verify",
-      "detail": "CodePipelineEngine's per-stage deploy PipelineProject runs `npx cdk-cicd deploy --stage <name>`, which runs `cdk deploy` and needs sts:AssumeRole on the CDK bootstrap roles (cdk-<qualifier>-{deploy,file-publishing,image-publishing,lookup}-role-*) plus SSM read of the bootstrap version param. The engine grants the project's default CodeBuild service role none of this, so a real deploy fails with AccessDenied. Synth-level tests cannot catch it (the engine skeleton is correct at synth). No existing M4 task explicitly owns this IAM. It must be added before m4-verify's 'a commit flows dev->prod' gate can go green: grant the deploy project role assume-role on the bootstrap role ARNs, scoped to the target account/region (wherever the deploy-time role wiring lands -- likely m4-support-resources or a small addition in the engine). Recorded so m4-verify is not surprised.",
+      "detail": "CodePipelineEngine's per-stage deploy PipelineProject runs `npx cdk-cicd deploy --stage <name>`, which runs `cdk deploy` and needs sts:AssumeRole on the CDK bootstrap roles (cdk-<qualifier>-{deploy,file-publishing,image-publishing,lookup}-role-*) plus SSM read of the bootstrap version param. The engine grants the project's default CodeBuild service role none of this, so a real deploy fails with AccessDenied. Synth-level tests cannot catch it (the engine skeleton is correct at synth). No existing M4 task explicitly owns this IAM. It must be added before m4-verify's 'a commit flows dev->prod' gate can go green: grant the deploy project role assume-role on the bootstrap role ARNs, scoped to the target account/region (wherever the deploy-time role wiring lands -- likely m4-support-resources or a small addition in the engine). Recorded so m4-verify is not surprised. RESOLVED by m4-support-resources: grantDeployPermissions gives each stage's deploy project sts:AssumeRole on the four bootstrap roles for every (account, region) the stage targets, plus the stage's forced deployer role when one is configured, plus ssm:GetParameter on the bootstrap version parameter. Verified against the installed aws-cdk-lib/aws-cdk sources rather than from memory: the role-name pattern and default qualifier match DefaultStackSynthesizer, sts:AssumeRole alone is sufficient (sts:TagSession is only needed when assumeRoleAdditionalOptions sets session tags, which the wrapper never does), and a missing grant would fail loudly rather than silently. The grant carries zero wildcards -- narrower than aws-cdk-lib's own pipelines module, which uses cdk-<qualifier>-*. Two residual gaps were split into their own findings rather than left under this one: code-review-bootstrap-qualifier-not-single-source-of-truth and code-review-ci-project-lacks-lookup-role. Still to be proven end-to-end on real AWS by m4-verify.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 70 }
     },
     {
@@ -317,7 +317,7 @@
       "severity": "medium",
       "status": "open",
       "title": "CodePipelineEngine adds no cdk-nag suppressions for the pipeline's own auto-generated roles/bucket -- will block pipeline-stack synth if AwsSolutionsChecks runs on it",
-      "detail": "v3 applies AwsSolutionsChecks on the workload app (inject.ts applyWrapper). The CodePipeline engine's auto-generated pipeline role, CodeBuild roles and artifact bucket carry wildcard IAM (IAM5) and other findings that v2 suppressed (CDKPipeline.ts:312-368). When m4-approval-selfupdate's `cdk-cicd deploy-ci` provisions the pipeline stack, if that path applies AwsSolutionsChecks, synth of the pipeline stack will error and block provisioning. Adding suppressions now is premature -- the provisioning app (PipelineApp) does not exist yet, so where they attach is unknown -- hence logged, not fixed here. m4-approval-selfupdate / m4-verify must port v2's pipeline suppression list (or decide the pipeline stack is not nag-checked). Flagged prominently so the M4 gate is not blocked by an un-suppressed nag error.",
+      "detail": "v3 applies AwsSolutionsChecks on the workload app (inject.ts applyWrapper). The CodePipeline engine's auto-generated pipeline role, CodeBuild roles and artifact bucket carry wildcard IAM (IAM5) and other findings that v2 suppressed (CDKPipeline.ts:312-368). When m4-approval-selfupdate's `cdk-cicd deploy-ci` provisions the pipeline stack, if that path applies AwsSolutionsChecks, synth of the pipeline stack will error and block provisioning. Adding suppressions now is premature -- the provisioning app (PipelineApp) does not exist yet, so where they attach is unknown -- hence logged, not fixed here. m4-approval-selfupdate / m4-verify must port v2's pipeline suppression list (or decide the pipeline stack is not nag-checked). Flagged prominently so the M4 gate is not blocked by an un-suppressed nag error. Update after m4-support-resources: the surface grew slightly. The support artifact bucket has no server access logging (S1), and under removalPolicy DESTROY the stack also contains a Custom::S3AutoDeleteObjects custom resource whose provider Lambda carries a managed policy and a broad inline policy (IAM4/IAM5) and a pinned runtime (L1). That is a few more entries in the suppression list this task already has to write -- no restructuring needed, and the count is reasoned from the rendered template rather than measured with cdk-nag.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 1 }
     },
     {
@@ -330,6 +330,83 @@
       "title": "CodePipelineEngine does not yet read stage.manualApproval (no ManualApprovalAction) -- owned by m4-approval-selfupdate",
       "detail": "ResolvedStage.manualApproval is populated but the engine's render() ignores it: no codepipeline_actions.ManualApprovalAction is inserted before a gated stage's deploy action, and render returns void (no handle to the created Pipeline). This is expected for the m4-codepipeline skeleton -- real approval gates are m4-approval-selfupdate. Cleanest resolution: have the engine itself read stage.manualApproval and insert the approval action before the deploy action (no pipeline getter needed, keeping render void). Recorded as the seam m4-approval-selfupdate builds on.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 55 }
+    },
+    {
+      "id": "code-review-bootstrap-qualifier-not-single-source-of-truth",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The bootstrap qualifier has three independent sources (config, cdk.json context, the hardcoded default) and nothing reconciles them, so a custom qualifier breaks the pipeline's deploy stage",
+      "detail": "Three places decide which CDK bootstrap roles matter and they can disagree. (1) ResolvedCicdConfig.qualifier is documented as 'drives the bootstrap qualifier and asset naming' but is read by nothing: resolveSynthesizer (v3/runtime/inject.ts) builds a plain DefaultStackSynthesizer and never threads it. (2) A user's own cdk.json may set the @aws-cdk/core:bootstrapQualifier context, which DefaultStackSynthesizer.bind DOES honour (BOOTSTRAP_QUALIFIER_CONTEXT), so their app's manifest names cdk-<theirQualifier>-*-role-* roles. (3) The engine's grantDeployPermissions hardcodes DefaultStackSynthesizer.DEFAULT_QUALIFIER when building the assume-role grant, because keying it off config.qualifier would point at roles that do not exist while (1) holds. Live consequence today: a user with a custom-qualifier bootstrap sets the context, their app asks to assume cdk-<theirQualifier>-deploy-role-*, the deploy CodeBuild role may only assume the default-qualifier roles, and the deploy stage dies with 'Could not assume role in target account'. Latent consequence: whoever fixes (1) by threading config.qualifier into the synthesizer silently breaks the IAM in (3), and no test catches it because the engine test asserts the default qualifier literally. Fix direction: make ONE resolved qualifier the single source of truth -- resolve it once (config.qualifier, else the app's bootstrapQualifier context, else the default), thread it to both the synthesizer and the engine's IAM, and add a test that a non-default qualifier moves both together.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 122 }
+    },
+    {
+      "id": "code-review-ci-project-lacks-lookup-role",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The CI/Build CodeBuild project runs cdk synth but gets no bootstrap lookup-role grant, so a workload using context lookups fails at the Build stage",
+      "detail": "m4-support-resources grants bootstrap assume-role only to the per-stage Deploy projects; the Build project (which runs `cdk-cicd synth --all`) gets nothing. cdk synth resolves context providers -- Vpc.fromLookup, HostedZone.fromLookup, AMI lookups and friends -- by assuming the bootstrap lookup role, so a workload that uses any of them fails at the Build stage before a deploy stage ever runs. Not a blocker for the M4 gate, whose fixture is a trivial app with no lookups, so it is invisible to m4-verify; it is a v2-parity functional gap on a user-visible path. Note the same gap does not apply to deploy-time synth: the Deploy projects do get the lookup role. Fix direction: grant the Build project sts:AssumeRole on the lookup role for every (account, region) any stage targets -- ideally sharing one resolved account/region set with grantDeployPermissions rather than duplicating the ARN construction.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 79 }
+    },
+    {
+      "id": "code-review-deploy-project-not-privileged-for-docker",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The deploy project is granted the image-publishing bootstrap role but runs unprivileged with no Docker daemon, so a workload with a container asset still cannot deploy",
+      "detail": "grantDeployPermissions includes the image-publishing bootstrap role in the assume-role grant, which implies the pipeline can publish container assets. It cannot: PipelineProject defaults to privileged: false and the engine sets no override, so there is no Docker daemon in the build container and a workload with a DockerImageAsset (or a bundled Lambda that shells out to Docker) fails during cdk deploy regardless of IAM. v2 handled this by running its synth project privileged (see the AwsSolutions-CB3 suppression in CDKPipeline.ts, reasoned as 'privileged mode is required to build Lambda functions written in JS/TS'). So the grant is currently aspirational. Resolve one of two ways: expose privileged on CodePipelineEngineProps (or turn it on for the deploy projects, accepting the CB3 nag suppression) and keep the grant, or drop the image-publishing role until container assets are actually supported so the IAM does not overstate what works. Worth deciding alongside the Wave 6 container work (m6-container).",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 33 }
+    },
+    {
+      "id": "code-review-stage-shorthand-has-no-regions",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The bare-name stage shorthand resolves to an empty region list, so `stages: ['dev']` synthesizes a stage that can never deploy",
+      "detail": "normalizeStage in v3/config/define.ts gives a stage written as a bare name (or one whose env omits region/regions) an empty regions array. synthTargets then produces zero targets, so `cdk-cicd deploy --stage dev` logs 'nothing to deploy' and exits 0 -- a silent no-op rather than an error or a sensible default. The engine's grantDeployPermissions has to invent a fallback (the pipeline stack's own region) for that case, and its unit test therefore asserts IAM for a configuration that cannot actually deploy, i.e. the fallback branch is unreachable on any real path. The shorthand is prominently documented (`stages: [{...}, 'prod']` in defineCICD's docstring), so this is a real authoring trap, not a corner. Fix direction, in the config layer rather than the engine: either default an omitted region to the deploy-time ambient region (making the shorthand mean 'wherever the creds point', which is what the fallback assumes) or make an empty region list a config error at defineCICD time. Once decided, the engine's fallback and its test either become live or should be deleted.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/config/define.ts", "line": 84 }
+    },
+    {
+      "id": "code-review-forced-deploy-role-needs-self-passrole",
+      "component": "shared",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "A stage that sets deployRole without cfnExecutionRole has that one role both assumed and passed to CloudFormation, which needs it to be able to pass itself",
+      "detail": "The forced-role wiring sends a stage's deployRole down two different paths at once. ExecCommand exports it as CDK_CICD_DEPLOY_ROLE_ARN, which resolveSynthesizer turns into DefaultStackSynthesizer.deployRoleArn -- a role the CDK CLI ASSUMES. DeployCommand also passes the same ARN as `cdk deploy --role-arn`, which is CloudFormation's SERVICE role -- a role that is PASSED, not assumed. When a stage configures deployRole and leaves cfnExecutionRole unset, the same role plays both parts, so it must be able to iam:PassRole itself, and nothing in the wrapper arranges or documents that. This is an M3 design wart rather than a defect in the M4 IAM: the engine's sts:AssumeRole grant on the configured deployRole is correct and necessary for the assume path, so it should not be 'fixed' in the other direction. Fix direction: decide whether --role-arn should be driven by cfnExecutionRole only (leaving deployRole purely as the assumed role, which matches the names and the design doc's 'forced deployer / CloudFormation-execution roles' split), and document the trust/PassRole requirement either way. Cheap to get wrong, and only reproducible with a real forced-role stage, which no gate currently exercises.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts", "line": 19 }
+    },
+    {
+      "id": "code-review-support-lazy-getters-side-effecting",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "SupportResources provisions on property READ, which is idiomatic in TypeScript but surprising in the other jsii languages",
+      "detail": "SupportResources implements 'provisioned only when referenced' as getters that create the construct on first access, so reading support.artifactBucket mutates the construct tree. It is jsii-legal (the assembly models both as immutable properties), aws-cdk-lib has precedent for lazily-created children, and the docstrings say 'Created on first read' -- which survives into the generated docs for every language. Still, Python/Java/.NET consumers reasonably assume property access is cheap and idempotent, and a debugger or a REPL inspecting the object would provision resources as a side effect of being looked at. Recorded, not changed, because the alternative (a method like getArtifactBucket()) trades a pleasant call site for honesty and the decision should be made once for the whole support surface rather than per resource -- ideally before the compliance bucket, SSM and VPC members land, and certainly before the v3 major freezes the API. Related, minor: SupportResourcesProps.removalPolicy accepts all five RemovalPolicy values while only DESTROY and RETAIN are meaningful (SNAPSHOT emits a DeletionPolicy CloudFormation rejects for AWS::S3::Bucket) -- consistent with how aws-cdk-lib itself behaves, so probably leave it.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/support/SupportResources.ts", "line": 43 }
+    },
+    {
+      "id": "code-review-precommit-lint-reformats-unrelated-files",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The husky pre-commit hook runs eslint --fix across the whole tree, so every commit tends to drag in prettier churn from files the change never touched",
+      "detail": "The pre-commit hook runs `npm run lint`, which is eslint --fix over all of src/test/build-tools in each package rather than over the staged files. The tree is not currently prettier-clean at HEAD, so the hook rewraps unrelated files (observed on test/v3/config/define.test.ts and test/v3/runtime/synthesizer.test.ts, both pure line-wraps) and leaves them dirty in the working tree. It does not corrupt a commit that stages explicit paths, but it does mean an agent or developer using `git commit -a` silently ships reformatting noise, which directly works against ground rule 5 -- the maintainer reviews the EVOLUTION of the branch, and unrelated churn is exactly what makes that harder. Worked around here by staging explicit paths and reverting the churn. Fix direction (projen-managed, so change projenrc rather than the hook by hand): either make the hook lint only staged files (lint-staged) or run prettier once over the tree in a dedicated style commit so the hook has nothing left to rewrite.",
+      "location": { "path": ".husky/pre-commit", "line": 5 }
     }
   ]
 }

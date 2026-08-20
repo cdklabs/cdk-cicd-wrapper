@@ -51,3 +51,8 @@ export { defineCICD } from './config/define';
 // they land.
 export { EngineRenderProps, IEngine } from './engine/types';
 export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeline/CodePipelineEngine';
+
+// The wrapper's own support resources (m4-support-resources) -- lazily provisioned, so a pipeline
+// only pays for what it references. This is v2's resource-provider concept with the singleton and the
+// untyped registry removed.
+export { SupportResources, SupportResourcesProps } from './support/SupportResources';
