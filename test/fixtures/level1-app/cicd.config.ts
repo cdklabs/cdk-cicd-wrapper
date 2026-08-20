@@ -13,9 +13,11 @@ export default defineCICD({
   application: 'cdkcicdtest-level1',
   repository: Repository.github('cdklabs/cdk-cicd-wrapper-fixture'),
   stages: [
-    // Account ids must never be committed to this repo, so both stages read the
+    // Account ids must never be committed to this repo, so every stage reads the
     // test account from the environment (the gitignored .env supplies it).
-    { name: 'dev', env: { account: process.env.CDK_CICD_TEST_ACCOUNT!, region: 'us-west-2' } },
+    // `dev` is multi-region on purpose: it is what m3-verify deploys to prove two
+    // regions come from a single build.
+    { name: 'dev', env: { account: process.env.CDK_CICD_TEST_ACCOUNT!, regions: ['us-west-2', 'us-west-1'] } },
     {
       name: 'prod',
       env: { account: process.env.CDK_CICD_TEST_ACCOUNT!, region: 'us-west-1' },

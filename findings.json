@@ -275,6 +275,28 @@
       "title": "cdk-cicd deploy fails OPEN on the account drift guard when STS/the aws CLI cannot resolve the deploy account (drift degrades to region-only and deploy proceeds on a warning)",
       "detail": "DeployCommand resolves the deploy account by spawning `aws sts get-caller-identity`. When that returns undefined -- the aws CLI is not on PATH (realistic in CI that sets AWS_* env creds and installs only node/cdk), or STS errors -- it warns and passes account:undefined to checkAssembly, which then skips the account-mismatch check entirely and deploys on region-only drift. So the very guard meant to stop a foreign/hardcoded account is silently downgraded on the STS-unavailable path (a sibling of the honored finding code-review-driftcheck-undefined-account-bypasses-guard, via a different route). Rated medium not high because the degradation is bounded: a genuinely foreign hardcoded account would still make `cdk deploy`'s own assume-role fail -- a late, ugly failure rather than a silent wrong-account deploy. Two related notes: (F3) this introduces an `aws` CLI PATH dependency that `cdk-cicd synth`/`exec` do not have. Fix direction (maintainer decision, before external publish): either FAIL CLOSED (block deploy when the account cannot be resolved), or resolve the account via @aws-sdk/client-sts (add the dep) / a documented CDK_DEPLOY_ACCOUNT env fallback, so the guard never silently downgrades and the aws-CLI dependency is removed.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts", "line": 67 }
+    },
+    {
+      "id": "code-review-m2-injection-demo-shows-untagged-narration",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "m2-injection demo would now print a cdk-cicd-wrapper-test tag its narration does not explain (only on a future re-record)",
+      "detail": "m3-verify added a static cdk-cicd-wrapper-test tag to level1-app/config/dev.json (so the teardown guard can destroy stacks that `cdk-cicd deploy` created without the harness's own --tags). The m2-injection demo's `marker level1 tags` step now prints {cdk-cicd-wrapper-test, Stage}, but the narration ('the Stage tag was applied tree-wide') mentions only Stage. No account-id leak (static string) and the committed mp4 is unchanged, so this bites only if/when the m2-injection demo is re-recorded. Out of scope for the m3-verify unit (touches the m2 demo script). Fix when re-recording m2-injection: either add a one-line say() explaining the harness tag, or point the demo's config read at a stage/config without the test tag.",
+      "location": { "path": "test/proof/demos/m2-injection.sh", "line": 64 }
+    },
+    {
+      "id": "code-review-m3verify-assert-region-get-template-message",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "m3-verify assert_region_deployed reports 'not wrapped' even when the underlying get-template call itself failed",
+      "detail": "assert_region_deployed does `aws_masked cloudformation get-template ... | grep -q '\"Stage\"' || die '...lacks the injected Stage tag -- not wrapped'`. Under pipefail a get-template API failure (throttling, transient error) also trips the `|| die` and is reported as 'not wrapped' rather than the real cause. It is fail-CLOSED (correct direction for a positive assertion -- the gate errors rather than passing), so this is a message/consistency nit versus m2-verify's deliberately-split has_wrapper_tag, not a correctness bug. Fix if revisited: split the get-template call from the grep (capture, die on the AWS call failing with a distinct message, then grep the captured body) -- mirroring the m2-verify has_wrapper_tag hardening.",
+      "location": { "path": "test/proof/m3-verify.sh", "line": 40 }
     }
   ]
 }

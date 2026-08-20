@@ -481,10 +481,23 @@ Not tasks — resolved/open design decisions that tasks reference.
     refuses without `--yes` (the enforced gate is the M4 pipeline). Sequential regions only; parallel,
     `--version` rollback, and interactive approval are deferred (M4/iter-2). deployArgs unit-tested
     (40/40 CLI); the full synth→drift→deploy orchestration is proven by `m3-verify` on real AWS.
-- **`m3-verify`** — M3 gate  ·  todo · wave 3 · shared · test
+- **`m3-verify`** — M3 gate  ·  done · wave 3 · shared · test
   - **depends-on:** m3-deploy, m3-drift-check, harness-aws-lifecycle
   - **acceptance:** one stage → 2 regions deploys to us-west-2 + us-west-1 from the same build,
     asserted + destroyed; drift rule fires on the hardcoded fixture.
+  - **produces:** `test/proof/m3-verify.sh`; `level1-app/cicd.config.ts` dev stage made multi-region;
+    `level1-app/config/dev.json` gains the `cdk-cicd-wrapper-test` tag (so the guard can tear down
+    `cdk-cicd deploy`'d stacks); `hardcoded-env-app/cicd.config.ts` (a `drift` stage for the refusal leg).
+  - **notes:** ✅ `bash test/proof/m3-verify.sh` → exit 0 on real AWS. Leg 1: `cdk-cicd deploy --stage
+    dev` produced BOTH region assemblies from ONE build (cdk.out/dev/{us-west-2,us-west-1}) and deployed
+    to both — each CREATE_COMPLETE, injected (Stage tag in the deployed template), SSM marker set — then
+    destroyed both through the teardown guard. Leg 2: `cdk-cicd deploy --stage drift` was REFUSED by the
+    drift rule (hardcoded-env bakes 000000000000; account-mismatch vs the STS test account), nothing
+    deployed. Sweep shows zero fixture orphans. The gate also proved fail-safe: a first run on expired
+    creds refused to deploy (`could not resolve caller identity`) rather than proceeding — refreshed via
+    `ada` and re-ran green. The wrapper applies the `cdk-cicd-wrapper-test` tag from config/dev.json so
+    the guard (which requires that tag) can tear down stacks `cdk-cicd deploy` created without the
+    harness's own `--tags`. **Wave 3 (M3) complete.**
 
 ## Wave 4 — CodePipeline engine (M4)  *(v2 parity bar; demo #2)*
 

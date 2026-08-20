@@ -8,6 +8,7 @@
     "dynamoDBTable": "destroy"
   },
   "tags": {
-    "Stage": "dev"
+    "Stage": "dev",
+    "cdk-cicd-wrapper-test": "m3verify"
   }
 }
