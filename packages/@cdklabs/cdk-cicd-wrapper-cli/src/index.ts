@@ -9,6 +9,7 @@ import complianceBucket from './cmds/ComplianceBucketCommand';
 import configure from './cmds/ConfigureCommand';
 import license from './cmds/LicenseCommand';
 import security from './cmds/SecurityCommand';
+import deploy from './cmds/v3/DeployCommand';
 import exec from './cmds/v3/ExecCommand';
 import synth from './cmds/v3/SynthCommand';
 import validate from './cmds/ValidateCommand';
@@ -30,6 +31,7 @@ async function main() {
   ya.command(checkDependencies);
   ya.command(exec);
   ya.command(synth);
+  ya.command(deploy);
 
   // Enable command recommendations and strict command handling
   ya.recommendCommands();

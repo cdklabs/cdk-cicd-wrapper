@@ -467,10 +467,20 @@ Not tasks — resolved/open design decisions that tasks reference.
     deferred (alpha). The `--role-arn` pass at `cdk deploy` time is m3-deploy. jsii assembly unchanged
     (inject stays internal). CLI 37/37, wrapper 101/101. The role-flag literals join EXEC_FLAG under the
     cross-package contract test (finding `code-review-exec-flag-cross-package-literal`).
-- **`m3-deploy`** — cdk-cicd deploy --stage  ·  todo · wave 3 · cli · feature
+- **`m3-deploy`** — cdk-cicd deploy --stage  ·  done · wave 3 · cli · feature
   - **desc:** Synth the stage against its config at deploy time, then deploy (assets via cdk-assets).
     Promoted unit is code+deps (sha), not a prebuilt assembly.
   - **depends-on:** m3-synth
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts` (registered);
+    `test/v3/DeployCommand.test.ts`.
+  - **notes:** ✅ `cdk-cicd deploy --stage <name> [--yes]`. Per region of the stage: synth the assembly,
+    run the drift check against the account we will ACTUALLY deploy into (STS get-caller-identity, per
+    finding `code-review-driftcheck-undefined-account-bypasses-guard` — never the possibly-undefined
+    stage account, so a hardcoded/foreign account is caught), and only if drift is clean, `cdk deploy
+    --app <assembly> --all --require-approval never [--role-arn <deployRole>]`. A `manualApproval` stage
+    refuses without `--yes` (the enforced gate is the M4 pipeline). Sequential regions only; parallel,
+    `--version` rollback, and interactive approval are deferred (M4/iter-2). deployArgs unit-tested
+    (40/40 CLI); the full synth→drift→deploy orchestration is proven by `m3-verify` on real AWS.
 - **`m3-verify`** — M3 gate  ·  todo · wave 3 · shared · test
   - **depends-on:** m3-deploy, m3-drift-check, harness-aws-lifecycle
   - **acceptance:** one stage → 2 regions deploys to us-west-2 + us-west-1 from the same build,

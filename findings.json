@@ -264,6 +264,17 @@
       "title": "For a stage with no deployment config, an ambient CDK_CICD_DEPLOY_ROLE_ARN/CFN_EXEC_ROLE_ARN in the caller's env is still honored by the preload",
       "detail": "exec folds forcedRoleEnv(cicdStage) into childEnv after ...process.env, so a stage that configures roles overrides the ambient value (correct, stage-wins). But when the stage has NO deployment, forcedRoleEnv returns {} and any ambient CDK_CICD_DEPLOY_ROLE_ARN/CDK_CICD_CFN_EXEC_ROLE_ARN in the caller's environment passes straight through ...process.env and is read by resolveSynthesizer. These are undocumented wrapper-private contract vars, so real-world impact is nil, but the 'no deployment => no forced roles' guarantee only holds with a clean ambient environment. Optional hardening if it ever matters: have exec explicitly clear the two role vars when the resolved stage has no deployment, so the stage config is the sole source of truth regardless of ambient env.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts", "line": 224 }
+    },
+    {
+      "id": "code-review-deploy-fail-open-on-unresolved-account",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "cdk-cicd deploy fails OPEN on the account drift guard when STS/the aws CLI cannot resolve the deploy account (drift degrades to region-only and deploy proceeds on a warning)",
+      "detail": "DeployCommand resolves the deploy account by spawning `aws sts get-caller-identity`. When that returns undefined -- the aws CLI is not on PATH (realistic in CI that sets AWS_* env creds and installs only node/cdk), or STS errors -- it warns and passes account:undefined to checkAssembly, which then skips the account-mismatch check entirely and deploys on region-only drift. So the very guard meant to stop a foreign/hardcoded account is silently downgraded on the STS-unavailable path (a sibling of the honored finding code-review-driftcheck-undefined-account-bypasses-guard, via a different route). Rated medium not high because the degradation is bounded: a genuinely foreign hardcoded account would still make `cdk deploy`'s own assume-role fail -- a late, ugly failure rather than a silent wrong-account deploy. Two related notes: (F3) this introduces an `aws` CLI PATH dependency that `cdk-cicd synth`/`exec` do not have. Fix direction (maintainer decision, before external publish): either FAIL CLOSED (block deploy when the account cannot be resolved), or resolve the account via @aws-sdk/client-sts (add the dep) / a documented CDK_DEPLOY_ACCOUNT env fallback, so the guard never silently downgrades and the aws-CLI dependency is removed.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts", "line": 67 }
     }
   ]
 }
