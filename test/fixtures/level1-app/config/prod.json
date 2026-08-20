@@ -1,0 +1,13 @@
+{
+  "application": "cdkcicdtest-level1",
+  "aws": {
+    "region": "us-west-1"
+  },
+  "removalPolicies": {
+    "s3Bucket": "retain",
+    "dynamoDBTable": "retain"
+  },
+  "tags": {
+    "Stage": "prod"
+  }
+}
