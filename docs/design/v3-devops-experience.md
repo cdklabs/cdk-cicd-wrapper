@@ -28,7 +28,7 @@ Status: brainstorming draft — core decisions below are agreed with the maintai
 | Docker/artifact model | Alternative engine; CodePipeline stays the default engine |
 | No-config behavior | Plain direct deploy — wrapper inert until a config file exists |
 | Versioning | Breaking v3 major + migration guide |
-| Deploy model | **Per-stage synth of the unchanged app *at deploy time*** (see below): the promoted immutable unit is **code + pinned deps** (git sha / image digest), NOT a baked cloud-assembly. Config is injected per target at deploy/run time and synth runs *then* — same for the CodePipeline engine and Docker mode. First-class multi-region, forced deployer/synthesizer roles. CI may synth stages for **validation only**. |
+| Deploy model | **Two CodePipeline implementations** (see below), *efficiency first*. **Default: assembly promotion (the v2 way)** — the synth/Build phase synths every stage **once**, keeps `cdk.out`, and promotes it as the pipeline artifact; deploy stages consume it and never re-synth. **Second option: per-stage synth at deploy time** — the promoted immutable unit is **code + pinned deps** (git sha / image digest) and config is injected per target at deploy time; there, CI synths **one env by default** and anything already synthed is reused. Docker mode always synths at run time (config-agnostic image). First-class multi-region, forced deployer/synthesizer roles. |
 | Pipeline lifecycle | Self-updating pipeline (CodePipeline-self-mutation-like); **initialized via CLI** (`cdk-cicd deploy-ci`); cdk.json integration via feature flag/context only — **no wrapper code required in the CDK app codebase** |
 | CI checks | **Default-on like v2** (validate, audit, license, security scans) — but implemented as wrapper-CLI commands run in CI, so a fresh project passes without adding npm scripts or jq surgery |
 | Synthesizer | **Default: `DefaultStackSynthesizer`** with optional forced roles; `AppStagingSynthesizer` is **opt-in** (`synthesizer: 'app-staging'`) until it's stable. Either is installed by the wrapper's `cdk.json` app command / register hook — no bin change. Forced roles via `DeploymentIdentities.specifyRoles` (app-staging) or `deployRoleArn`/`cloudFormationExecutionRole` (default) |
@@ -152,7 +152,25 @@ export default defineDeployment({
 - The CD side is engine-neutral by construction: the same image + `deploy.config.ts` runs under
   GitLab, Jenkins, GitHub Actions, or a plain `docker run`.
 
-## Deploy model (decided): per-stage synth at deploy time
+## Deploy model: two implementations, promotion by default
+
+> **Amended 2026-08-20 (maintainer).** This section originally declared per-stage deploy-time synth the
+> single decided model. It is now the **second** of two CodePipeline implementations; the **default** is
+> assembly promotion. Guiding principle: **efficiency first**. See `task.md` D-deploy for the decision
+> record and `m4-assembly-promotion` / `m4-synth-efficiency` for the work.
+>
+> **1. Default — assembly promotion (the v2 CodePipeline way).** The synth/Build phase synths every
+> stage **once** and **keeps `cdk.out`**; that assembly is promoted as the pipeline's output artifact and
+> each deploy stage **consumes** it, performing no synth of its own. One synth per pipeline run.
+>
+> **2. Second option — per-stage synth at deploy time** (described in the rest of this section, and what
+> M4 shipped and proved in `m4-verify`). Two efficiency rules apply to it: the Build phase synths **one
+> env by default** rather than `--all` (the others synth when their own stage runs), and any assembly
+> Build already produced is **reused rather than re-synthed** — `cdk-cicd deploy --from-assembly`
+> deploys a promoted `cdk.out/<stage>/<region>` instead of synthesizing again.
+>
+> Orthogonal to both (D-deploy-wait): a deploy action must not bill CodeBuild compute while it merely
+> waits on CloudFormation — a **stateful Lambda** observes deployment state and completes the action.
 
 The bin file stays exactly as `cdk init` generated it. The **promoted immutable unit is the code +
 pinned deps** (a git sha, or a Docker image digest) — *not* a baked cloud-assembly. At **deploy
@@ -178,6 +196,12 @@ same `(code, deps, config)` always yields the same template. Rollback = redeploy
 image tag with its config.
 
 ### CI synth scope (validation only)
+
+> **Amended:** true only for implementation 2. In the **default** (promotion) implementation CI's synth
+> *is* the deployed artifact — it is kept and promoted, not discarded. Also note `ci.synthStages` is
+> currently **declared but read by nothing** (finding `qa-ci-synthstages-declared-but-inert`), so the
+> narrowing described below does not yet work; `m4-synth-efficiency` wires it and flips the default to
+> one env.
 
 Synth at CI time is a **validation check** — it proves every stage's config synthesizes cleanly and
 fails the build fast if one doesn't. It does **not** produce the deployed artifact (that is synthed

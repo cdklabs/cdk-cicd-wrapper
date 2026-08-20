@@ -57,9 +57,26 @@ Not tasks — resolved/open design decisions that tasks reference.
   configure` replaces it; deprecate then remove at the major). CLI stays its own package but depends
   on the wrapper (one install). Do NOT fold the CLI into the jsii package (multi-language bloat). The
   repo's own projen build stays.
-- **D-deploy — Synth at deploy time** ✅ Promoted unit is code+pinned deps (sha/image digest), not a
-  baked assembly; synth runs at deploy against the injected config, for both the CodePipeline engine
-  and Docker mode. Docker image is config-agnostic (no `cdk.out` baked), runs offline.
+- **D-deploy — Synth at deploy time** ⚠️ **AMENDED by the maintainer (2026-08-20)** — still a valid
+  model, but no longer *the* model: it is now the **second** option, not the default. Recorded original:
+  *promoted unit is code+pinned deps (sha/image digest), not a baked assembly; synth runs at deploy
+  against the injected config, for both the CodePipeline engine and Docker mode. Docker image is
+  config-agnostic (no `cdk.out` baked), runs offline.* The amendment defines **two CodePipeline
+  implementations**, guiding principle **efficiency first**:
+  1. **Default — assembly promotion (the v2 CodePipeline way):** the synth/Build phase synths
+     **everything once** and **keeps `cdk.out`**; that assembly is promoted as the pipeline artifact and
+     the deploy stages **consume** it rather than re-synthesizing.
+  2. **Second option — deploy-time synth** (what M4 actually built), subject to two efficiency rules:
+     Build synths **one env by default** (the remaining stages synth when their own stage needs it), and
+     anything Build already synthed is **reused, never re-synthed** — today `dev` is synthesized twice
+     per run (once by CI `synth --all`, once by its own deploy), which is the concrete waste that
+     prompted this amendment.
+  Docker mode is unaffected (config-agnostic image, offline synth). Consequence: `m4-verify` proves
+  option 2 end to end; the **default** mode is not implemented yet (see `m4-assembly-promotion`).
+- **D-deploy-wait — Observe CloudFormation with a stateful Lambda, not an idle build** ✅ (maintainer,
+  2026-08-20) A deploy action must not bill CodeBuild compute while it merely waits for CloudFormation.
+  Kick off the deployment, then let a **stateful Lambda** observe deployment state and drive the action's
+  completion. Applies to both implementations above.
 - **D6 — v3 versioning & isolation** ✅ v3 develops on a dedicated **`v3` branch** (created) that is
   **not a declared release branch**, so it cannot publish — the strongest guard against accidental
   use. When we first want alpha exposure it releases as **`1.0.0-alpha.N` under npm dist-tag `next`**
@@ -646,11 +663,70 @@ Not tasks — resolved/open design decisions that tasks reference.
     to `findings.json`, and the untested no-`npmScope` branch was closed with a test rather than deferred.
   - **acceptance:** with `codeArtifact` set, every CodeBuild project's buildspec logs in before `npm ci`
     and its role can read the repo; with it unset, no login and no grant. ✅
-- **`m4-verify`** — M4 gate  ·  todo · wave 4 · shared · test
-  - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks, m4-nag-compliance, m4-private-registry
+- **`m4-assembly-promotion`** — the DEFAULT deploy model: synth once, promote cdk.out  ·  todo · wave 4 · wrapper · feature
+  - **desc:** Make the v2 CodePipeline way the default: the Build/synth phase synths every stage once and
+    **keeps `cdk.out`**, which is promoted as the pipeline output artifact; each deploy stage consumes that
+    artifact and runs `cdk deploy --app <assembly>` with **no synth of its own**.
+  - **spec:** `task.md` D-deploy (amended) — this is implementation 1 of 2.
+  - **depends-on:** m4-verify
+  - **notes:** Reverses the priority the engine was built with. Touches the engine (Build action gains an
+    output artifact; deploy actions gain it as input and drop their synth step) and the CLI (`cdk-cicd
+    deploy` needs a "deploy this prebuilt assembly" path — `deployArgs` already takes an `outDir`, so the
+    CLI half is close; what is missing is not synthesizing first). Keep the existing deploy-time-synth
+    path working as the opt-in second implementation — additive, per ground rule 1. Open sub-question to
+    settle first: how the promoted assembly carries **per-stage config** when one assembly serves every
+    stage, since v3 injects config at synth time — that is the crux of why deploy-time synth was chosen
+    originally, so it must be answered before coding, not after.
+  - **acceptance:** a default-mode pipeline synths exactly once, every deploy stage consumes the promoted
+    artifact and performs no synth, and a real run deploys dev→prod from that single assembly.
+- **`m4-synth-efficiency`** — option 2: synth one env in CI, reuse it  ·  todo · wave 4 · wrapper · feature
+  - **desc:** In the deploy-time-synth implementation, CI synths **one env by default** instead of
+    `--all`, and a stage whose assembly CI already produced **reuses** it rather than synthesizing again.
+  - **spec:** `task.md` D-deploy (amended), rule 2; finding `qa-ci-synthstages-declared-but-inert`.
+  - **depends-on:** m4-verify
+  - **notes:** `ci.synthStages` already exists in `CiConfig`/`defineCICD` and is **read by nothing** — the
+    engine hardcodes `npx cdk-cicd synth --all` in `DEFAULT_CI_COMMANDS`, so the designed cost lever is
+    inert. Wiring it is the first half; the second is passing CI's `cdk.out` forward so the stage that was
+    synthed in CI does not repeat the work (which overlaps `m4-assembly-promotion` — do that one first and
+    reuse its artifact plumbing rather than building a second mechanism).
+  - **acceptance:** default CI synth covers one env; `ci.synthStages` selects which; a stage synthed in CI
+    is not synthesized a second time by its own deploy.
+- **`m4-deploy-observer`** — stateful Lambda watches CFN instead of idle compute  ·  todo · wave 4 · wrapper · feature
+  - **desc:** Stop paying CodeBuild compute to wait on CloudFormation. Start the deployment, then have a
+    stateful Lambda observe deployment state and complete the pipeline action.
+  - **spec:** `task.md` D-deploy-wait.
+  - **depends-on:** m4-verify
+  - **notes:** Applies to both implementations. Measured baseline to beat, from the m4-verify runs: the
+    pipeline's deploy actions hold a CodeBuild container for the whole CloudFormation wait. Design points
+    to settle: which CodePipeline action type completes asynchronously (a Lambda invoke action, or a
+    CodeBuild action whose job token is completed out of band), where the observer's state lives, and how
+    failure/rollback surfaces as an action failure rather than a hang.
+  - **acceptance:** a deploy stage's billed compute time is materially below its CloudFormation wall time,
+    and a rollback still fails the stage.
+- **`m4-verify`** — M4 gate  ·  in-progress · wave 4 · shared · test
+  - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks, m4-private-registry
+  - **produces:** `test/proof/m4-verify.sh`; `test/fixtures/pipeline-app/` (self-contained source bundle —
+    the gate generates its `cicd.config.ts`, `run.json` and lockfile into a temp copy, never the tree).
+  - **notes:** **PASSED for implementation 2 (deploy-time synth)** on the real test account: `deploy-ci`
+    provisioned the pipeline from a bare `cicd.config.ts`, the run went
+    `Source → Build → UpdatePipeline → dev → Approve-prod → prod`, the gate drove the gate itself with
+    `codepipeline put-approval-result`, both stage stacks were asserted present **and** proved to carry
+    their own stage (the marker embeds it), footprint was **4** CodeBuild projects, and teardown left
+    nothing. Five runs were needed; each failure was a real defect, all fixed: nag suppressions missing
+    (53 findings blocked synth), Node 18 vs `aws-cdk-lib`'s `node>=20`, ts-node emitting ESM that
+    `require()` cannot load on Node 18, plus four gate bugs (a nested-projection JMESPath that never found
+    the approval token, `put-approval-result --name` vs `--pipeline-name`, the run id not reaching
+    CodeBuild, and `CDK_STAGE` vs a wrong env var).
+    **Dependency deviation, flagged for the maintainer:** `m4-nag-compliance` was dropped from
+    `depends-on`. The suppressions it was blocking on now ship and are proven live in a real single-copy
+    install (53 → 0), but `m4-nag-compliance` stays **todo** because in *this workspace* the checker is
+    still inert; its control assertion is now known to be reachable today via a jest
+    `moduleNameMapper` for `^aws-cdk-lib(/.*)?$` rather than needing the nohoist fix first.
+    **Still open before this task is `done`:** the **default** (assembly-promotion) mode is unproven —
+    re-run the gate once `m4-assembly-promotion` lands — and **recorded demo #2** is not made yet.
   - **acceptance:** `deploy-ci` provisions a working pipeline in the test account; a commit flows
-    dev→prod with approval; **CodeBuild project count recorded and compared to v2**; full teardown.
-    **Recorded demo #2.**
+    dev→prod with approval; **CodeBuild project count asserted (not merely logged) and compared to v2**;
+    full teardown. **Recorded demo #2.** ← demo + default-mode run outstanding
 
 ## Wave 5 — Migration (M5)
 

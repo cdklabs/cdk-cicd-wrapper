@@ -1,2 +1,13 @@
 cdk.out/
 dist/
+
+# Generated when a fixture is exercised in place rather than from a temp bundle. These MUST stay out of
+# the tree: a `package-lock.json` produced against CodeArtifact embeds the account id in its `resolved`
+# URLs, and this repo is public.
+node_modules/
+package-lock.json
+
+# pipeline-app only: m4-verify generates these into the bundle it uploads, never into the fixture. Other
+# fixtures commit their cicd.config.ts on purpose, so this is deliberately NOT a blanket pattern.
+pipeline-app/run.json
+pipeline-app/cicd.config.ts

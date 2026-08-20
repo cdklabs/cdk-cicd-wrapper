@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import { AppConfig, ConfigErrorKind } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
-import { load as loadCicdConfig, stageByName } from './CicdConfig';
+import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, stageByName } from './CicdConfig';
 import { logger } from '../../utils/Logging';
 
 /**
@@ -223,6 +223,10 @@ class Command implements yargs.CommandModule {
       ...stageEnv(stage, target),
       ...forcedRoleEnv(cicdStage),
       CDK_CONTEXT_JSON: buildContextJson(config, process.env, cwd),
+      // The `-r ts-node/register` preload takes no options, so the module kind has to come from the
+      // environment. Same requirement as the config loader: the entry is `require`d, so it must
+      // transpile to CommonJS or Node throws on the first `import` (see TS_NODE_COMPILER_OPTIONS).
+      TS_NODE_COMPILER_OPTIONS: JSON.stringify(TS_NODE_COMPILER_OPTIONS),
       [EXEC_FLAG]: '1',
     };
 

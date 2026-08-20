@@ -217,6 +217,42 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     expect(grantsCodeArtifact).toBe(false);
   });
 
+  test('every build project pins a Node runtime new enough for aws-cdk-lib', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev', 'prod'],
+    });
+    const projects = Object.values(render(config).findResources('AWS::CodeBuild::Project'));
+
+    // Measured in a real pipeline run: with no runtime-versions the image default is Node 18, while
+    // aws-cdk-lib declares node >= 20, so npm ci warns EBADENGINE and the app runs on unsupported Node.
+    // Asserted on EVERY project (build, self-update, both deploys) -- one unpinned project is one broken
+    // stage -- and on the version being >= 20 rather than a literal, so a bump stays honest.
+    expect(projects).toHaveLength(4);
+    for (const p of projects) {
+      const spec = JSON.parse(p.Properties.Source.BuildSpec);
+      expect(spec.phases.install['runtime-versions'].nodejs).toBeGreaterThanOrEqual(20);
+    }
+  });
+
+  test('a user-supplied buildImage gets NO runtime-versions pin', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    new CodePipelineEngine({ buildImage: 'public.ecr.aws/example/node:18' }).render(stack, {
+      config: defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] }),
+      pipelineName: 'shop-pipeline',
+    });
+
+    // `runtime-versions` is only honoured by the CodeBuild-managed standard images, and each offers a
+    // fixed set of Node versions. Emitting the pin for a custom image (or standard:5.0/6.0, where nodejs
+    // 22 does not exist) turns a working pipeline into a hard YAML_FILE_ERROR in the install phase, so a
+    // user who brings their own image owns its Node version.
+    for (const p of Object.values(Template.fromStack(stack).findResources('AWS::CodeBuild::Project'))) {
+      const spec = JSON.parse(p.Properties.Source.BuildSpec);
+      expect(spec.phases.install).toBeUndefined();
+    }
+  });
+
   test('the artifact store is the wrapper support bucket, encrypted with the support key', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
     const t = render(config);
@@ -439,6 +475,17 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     // all Build category except Source, and crucially no Approval.
     expect(actionTypes).toEqual(['Source', 'Build', 'Build', 'Build']);
   });
+
+  // NOTE: the nag suppressions the engine registers (AwsSolutions-IAM5 on the pipeline/project roles,
+  // S1 on the artifact bucket) are not asserted here, because `NagSuppressions.addResourceSuppressions`
+  // gates on `instanceof CfnResource` against cdk-nag's own aws-cdk-lib copy, which the wrapper's nested
+  // copy fails -- the same duplicate-copy issue that makes the checker itself inert in this workspace.
+  // Their liveness is proven end-to-end by `m4-verify` (a real single-copy install, where deploy-ci's
+  // synth passes only because the suppressions register).
+  //
+  // It is NOT unassertable in principle: forcing a single copy (a jest `moduleNameMapper` for
+  // `^aws-cdk-lib(/.*)?$`, or a `Module._resolveFilename` shim) makes nag live here and reproduces
+  // 53 findings -> 0, control assertion included. Wiring that into this suite is `m4-nag-compliance`.
 
   test('a stage with no regions falls back to the pipeline stack region', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });

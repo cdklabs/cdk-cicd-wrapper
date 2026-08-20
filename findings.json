@@ -682,6 +682,61 @@
       "title": "CodeArtifact helpers are module-level functions while the sibling deploy-grant is a private method",
       "detail": "`codeArtifactLogin`/`grantCodeArtifactRead` are module-level free functions, whereas the sibling `grantDeployPermissions` (same file, same statelessness w.r.t. instance fields) is a private method; additionally `codeArtifactLogin` receives `stack` as a parameter while `grantCodeArtifactRead` recomputes `Stack.of(project)` itself. Purely stylistic -- both work and both are covered -- recorded so a later consistency pass can align them rather than re-notice. Not worth churn on its own.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 209 }
+    },
+    {
+      "id": "qa-ci-synthstages-declared-but-inert",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "ci.synthStages is declared, normalized and then read by nothing -- the designed CI synth cost lever does nothing",
+      "detail": "`CiConfig.synthStages` ('Stages CI synthesizes for validation. Empty means all stages.') is part of the resolved config and `defineCICD` normalizes the permissive `'all'` form into it, but no consumer reads it: the engine hardcodes `npx cdk-cicd synth --all` in `DEFAULT_CI_COMMANDS`, and the CLI's synth command takes `--stage`/`--all` from argv. So a user who sets `synthStages` to narrow CI synth gets no effect and no warning, and every pipeline pays a full all-stages CI synth on top of each stage's own deploy-time synth -- e.g. `dev` is synthesized twice per run. Found while answering a maintainer question about why the dev stage synthesizes again; it is the concrete waste behind the D-deploy amendment. Fix is task `m4-synth-efficiency` (wire the lever, default to one env); the deeper duplication is addressed by `m4-assembly-promotion`. A config field that silently does nothing is worse than an absent one, so if wiring it slips, reject it in `defineCICD` instead.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 31 }
+    },
+    {
+      "id": "code-review-nag-suppression-applytochildren-too-broad",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The pipeline IAM5 suppression uses applyToChildren and lands on ~6x more resources than have findings",
+      "detail": "Measured during review (with a single-aws-cdk-lib shim making cdk-nag live in-workspace): with suppressions off the pipeline stack yields 53 errors (AwsSolutions-S1 x1, IAM5 x52) across exactly 6 resources; with them on, 0. But the suppression metadata lands on 54 resources, 12 of them in the pipeline subtree, of which only 2 actually have findings (Pipeline/Role/DefaultPolicy and Source/Source/CodePipelineActionRole/DefaultPolicy). So the four CodePipeline action roles (Build, SelfMutate, Deploy-dev, Deploy-prod) each carry a blanket IAM5 pass they do not need. Harmless today -- the whole subtree is wrapper plumbing -- but a later change that adds a genuinely over-broad statement to one of those action roles (a cross-account support role, or a user-supplied action once the engine has one) would be silently excused. Fix direction: add `appliesTo` so only the named wildcards are excused, or, once nag is live in this workspace, assert suppressed-resource count == finding count so over-breadth is visible. Related: the suppression is applied at the END of render() because the source action's role only exists after addStage -- a stage added after that call would miss it (tested: a post-suppression CodeBuild stage adds 0 findings, so the fragility is real but low-risk).",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 164 }
+    },
+    {
+      "id": "code-review-m4-verify-runid-reuse-false-pass",
+      "component": "shared",
+      "layer": "production",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "m4-verify can pass on leftovers if a run id is reused after a failed teardown",
+      "detail": "`drive_pipeline` finishes on evidence (both app stacks deployed) guarded by `approvals > 0`, which closes the obvious false pass -- leftover stacks with no pending approval return 1 with 'prod was not gated'. The residual window: `CDK_CICD_TEST_RUN_ID` is documented as reusable, so a re-run after a failed teardown can find both app stacks already present AND a live approval token from the leftover pipeline on the first poll, and report PASSED without this run having deployed anything. Worth noting the evidence chain is otherwise stronger than it looks: a live Approve-prod token implies Source/Build/UpdatePipeline/dev all succeeded in that execution, so 'PASSED while a stage did not run' is not reachable -- only 'a stage is not in the pipeline at all', which the footprint assertion now covers. Fix direction: pre-flight refusal if either app stack already exists for this run id.",
+      "location": { "path": "test/proof/m4-verify.sh", "line": 174 }
+    },
+    {
+      "id": "qa-esm-project-cannot-load-ts-cicd-config",
+      "component": "cli",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "A project with \"type\": \"module\" cannot load a TypeScript cicd.config.ts at all",
+      "detail": "The CLI loads `cicd.config.ts` with `require()` under ts-node, so a package.json declaring `\"type\": \"module\"` fails with 'Must use import to load ES Module'. Measured before and after the `module: commonjs` override across five project shapes (CommonJS, NodeNext, moduleResolution bundler, no tsconfig, type module): the first four load in both cases -- so forcing commonjs is NOT a regression for modern tsconfigs -- and the ESM case fails identically before and after. So this is a pre-existing gap, not something the override introduced, and overriding the user's `module` is defensible precisely because the file is `require`d. Fix direction if ESM support is ever wanted: ts-node's `moduleTypes: { '**/cicd.config.ts': 'cjs' }`, or load the config with a dynamic `import()` instead of `require`. Until then the documented workaround is a `cicd.config.js` (CommonJS) or dropping `\"type\": \"module\"`.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CicdConfig.ts", "line": 36 }
+    },
+    {
+      "id": "code-review-exec-overrides-user-ts-node-options",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "cdk-cicd exec overwrites a user's own TS_NODE_COMPILER_OPTIONS, and the injection has no test",
+      "detail": "`ExecCommand` spreads `process.env` first and then sets `TS_NODE_COMPILER_OPTIONS`, so a user who exported their own (e.g. `{\"target\":\"ES2022\"}`) loses it silently rather than having `module: commonjs` merged into it. Overriding is deliberately the safer default -- a merge would let a user reintroduce `module: esnext` and break the child with the exact error this fixes -- so the recommendation is to keep the override and document it, not to merge. Second half: the childEnv injection lives inside the yargs `handler` and is asserted nowhere; `ExecCommand.test.ts` only covers the exported `preloadArgs`/`buildContextJson` helpers, and the config-side register path is covered in `CicdConfig.test.ts`. Fix direction: extract the childEnv construction into an exported pure function and assert the key is present, which also makes the precedence explicit.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts", "line": 226 }
     }
   ]
 }

@@ -34,6 +34,20 @@ export function discover(cwd: string): string | undefined {
 let tsNodeRegistered = false;
 
 /**
+ * ts-node compiler options for every `.ts` file the CLI loads -- the config here, and the app entry in
+ * `cdk-cicd exec`. `module: commonjs` is NOT a preference, it is required: both are loaded with
+ * `require()`, so ESM output throws "Cannot use import statement outside a module". Without this the
+ * transpiled module kind comes from the project's tsconfig (or, with no tsconfig, from TypeScript's
+ * target-derived default, which is ESM) and the config only loads on Node >= 22, where `require()` can
+ * detect module syntax. CodeBuild's standard image runs Node 18, so an M4 pipeline failed here.
+ *
+ * Measured: this override does NOT break `NodeNext` or `moduleResolution: bundler` tsconfigs. A project
+ * with `"type": "module"` cannot load a `.ts` config either way -- see finding
+ * `qa-esm-project-cannot-load-ts-cicd-config`.
+ */
+export const TS_NODE_COMPILER_OPTIONS = { module: 'commonjs' };
+
+/**
  * Load and return the resolved pipeline config, or undefined when there is no config file. A `.ts`
  * file is loaded in-process via ts-node (the same transpiler the app entry uses), so the user writes
  * exactly one config file with no build step. The file's `default` export is the `defineCICD(...)`
@@ -48,7 +62,7 @@ export function load(cwd: string): ResolvedCicdConfig | undefined {
   if (file.endsWith('.ts') && !tsNodeRegistered) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('ts-node/register');
+      require('ts-node').register({ compilerOptions: TS_NODE_COMPILER_OPTIONS });
     } catch (error) {
       // ts-node is resolved from the CLI's location; a global CLI install without ts-node in the
       // user's project would otherwise surface a bare "Cannot find module" here.

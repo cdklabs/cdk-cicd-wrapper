@@ -17,6 +17,7 @@ import {
   aws_codepipeline_actions as actions,
   aws_iam as iam,
 } from 'aws-cdk-lib';
+import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { CodeArtifactConfig, ResolvedCicdConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
@@ -35,6 +36,12 @@ const DEFAULT_CI_COMMANDS = ['npm ci', 'npx cdk-cicd check', 'npx cdk-cicd synth
  * publishing roles push assets, and the lookup role serves context queries during synth.
  */
 const BOOTSTRAP_ROLE_KINDS = ['deploy', 'file-publishing', 'image-publishing', 'lookup'];
+
+/**
+ * Node runtime for every build project. Pinned rather than left to the image default because
+ * `aws-cdk-lib` requires Node >= 20 and the standard CodeBuild image still defaults to Node 18.
+ */
+const NODE_RUNTIME_VERSION = 22;
 
 /** Options for the CodePipeline engine. */
 export interface CodePipelineEngineProps {
@@ -69,6 +76,21 @@ export class CodePipelineEngine implements IEngine {
       // encrypted with the wrapper's key and follows the configured removal policy.
       artifactBucket: support.artifactBucket,
     });
+
+    // The pipeline stack contains ONLY the wrapper's own plumbing -- no user resources deploy here
+    // (those land in the per-stage app stacks the deploy actions create). AwsSolutionsChecks is live
+    // in a real single-copy install and flags the internal artifact bucket; suppress it here, with
+    // evidence. The IAM5 wildcard grants are suppressed at the END of render(), once every role exists.
+    // See findings `code-review-codepipeline-no-cdknag-suppressions` / task `m4-nag-compliance`.
+    NagSuppressions.addResourceSuppressions(support.artifactBucket, [
+      {
+        id: 'AwsSolutions-S1',
+        reason:
+          "The pipeline's internal artifact store for transient build outputs, not a data bucket " +
+          'serving external requests. Access logging would provision a second bucket to record the ' +
+          "pipeline's own reads; the bucket is already KMS-encrypted, SSL-enforced and blocks public access.",
+      },
+    ]);
 
     pipeline.addStage({
       stageName: 'Source',
@@ -135,6 +157,26 @@ export class CodePipelineEngine implements IEngine {
         ],
       });
     }
+
+    // Suppress the IAM5 wildcards on the pipeline's own roles LAST, so applyToChildren snapshots every
+    // role -- including the S3 source action's role, which CodePipeline creates during addStage() and
+    // so does not exist until every stage above has been added.
+    NagSuppressions.addResourceSuppressions(
+      pipeline,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            "CDK-generated grants for the pipeline and its source action to read/write the pipeline's " +
+            'own KMS-encrypted artifact bucket: object-level wildcards under that bucket ARN ' +
+            '(s3:GetObject*/GetBucket*/List*/DeleteObject*/Abort*) and the key actions the encrypted ' +
+            'store needs (kms:ReEncrypt*/GenerateDataKey*). Scoped to the artifact store the wrapper ' +
+            'creates; they grant no access to user data. The S3 source object itself is granted by key, ' +
+            'not by wildcard.',
+        },
+      ],
+      true,
+    );
   }
 
   /**
@@ -197,11 +239,21 @@ export class CodePipelineEngine implements IEngine {
     codeArtifact?: CodeArtifactConfig,
   ): codebuild.PipelineProject {
     const stack = Stack.of(scope);
+    // Pin the Node runtime, but ONLY on the default (CodeBuild-managed) image. Without
+    // `runtime-versions` the managed image's default applies, which on standard:7.0 is Node 18 -- and
+    // `aws-cdk-lib` declares `node >= 20`, so every `npm ci` warned EBADENGINE and the app then ran on an
+    // unsupported Node (measured in a real pipeline run). It must stay conditional: `runtime-versions` is
+    // only honoured by the managed standard images, and each offers a fixed set, so emitting it for a
+    // user-supplied `buildImage` (a custom registry image, or standard:5.0/6.0 where nodejs 22 does not
+    // exist) turns a working pipeline into a hard YAML_FILE_ERROR in the install phase. A user who brings
+    // their own image owns its Node version.
+    const install =
+      this.buildImage === undefined ? { install: { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } } : {};
     // Every project runs `npm ci`; a private-registry login has to come first, or the install resolves
     // against public npm and fails on the private packages (the wrapper's own, before it is published).
     const phases = codeArtifact
-      ? { pre_build: { commands: [codeArtifactLogin(stack, codeArtifact)] }, build: { commands } }
-      : { build: { commands } };
+      ? { ...install, pre_build: { commands: [codeArtifactLogin(stack, codeArtifact)] }, build: { commands } }
+      : { ...install, build: { commands } };
 
     const project = new codebuild.PipelineProject(scope, id, {
       environment:
@@ -213,6 +265,27 @@ export class CodePipelineEngine implements IEngine {
     if (codeArtifact) {
       grantCodeArtifactRead(project, codeArtifact);
     }
+    // CDK gives every CodeBuild project wildcard grants to its own CloudWatch log group/stream and
+    // CodeBuild report group, plus read/write on the pipeline's KMS-encrypted artifact bucket. All are
+    // scoped to the project's own logs and the pipeline's own artifact store -- no user data -- so the
+    // AwsSolutions-IAM5 wildcards are suppressed with that evidence (see the note in render()).
+    NagSuppressions.addResourceSuppressions(
+      project,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            "CDK-generated grants, each scoped to the project's own resources: wildcards on its own " +
+            "CloudWatch log group/stream and CodeBuild report group, and on the pipeline's KMS-encrypted " +
+            'artifact bucket (s3:GetObject*/GetBucket*/List*, kms:ReEncrypt*/GenerateDataKey*). ' +
+            'When codeArtifact is configured this also covers the one genuinely unscoped grant, ' +
+            'sts:GetServiceBearerToken on Resource "*", which CodeArtifact requires and which IAM ' +
+            'cannot express at resource level; it is constrained instead by a condition on ' +
+            "sts:AWSServiceName = codeartifact.amazonaws.com, which cdk-nag's IAM5 rule does not read.",
+        },
+      ],
+      true,
+    );
     return project;
   }
 }
