@@ -1,37 +1,45 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { InlineShellPhaseCommand } from '../../src/resource-providers/PhaseCommandProvider';
 
 describe('PhaseCommandProvider', () => {
-  test('InlineShellPhaseCommand', () => {
+  test('InlineShellPhaseCommand generates cat heredoc without intermediate variable', () => {
     const npmLogin = new InlineShellPhaseCommand('npm-login.sh');
 
-    const expected = `bash_command=$(cat << CDKEOF
- #!/bin/bash
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. SPDX-License-Identifier: Apache-2.0
-# Get the NPM BASIC AUTH Token and output it to ~/.npmrc
-set -e
+    const bashScript = fs.readFileSync(
+      path.resolve(__dirname, '../../scripts/npm-login.sh'),
+      { encoding: 'utf-8' },
+    );
 
-if [[ -z "\\\${NPM_BASIC_AUTH_SECRET_ID}" || -z "\\\${NPM_REGISTRY}" ]]; then
-    echo "--- No NPM Basic Auth detected ---";
-else
-    NODE_AUTH_TOKEN=\\\`aws secretsmanager get-secret-value --region \\\${AWS_REGION} --secret-id \\\${NPM_BASIC_AUTH_SECRET_ID} --output text --query SecretString\\\`;
+    const expectedCommand = `cat > ./.cdk.wrapper.npm-login.sh.sh << 'CDKEOF'\n${bashScript}\nCDKEOF; chmod +x ./.cdk.wrapper.npm-login.sh.sh; ./.cdk.wrapper.npm-login.sh.sh; exit_code=$?; rm -rf ./.cdk.wrapper.npm-login.sh.sh; [ $exit_code -eq 0 ];`;
 
-    SCOPE="";
-    if [[ ! -z "\\\${NPM_SCOPE}" ]]; then
-        if [[ "\\\${NPM_SCOPE}" != "@"* ]]; then
-            SCOPE="@\\\${NPM_SCOPE}:";
-        else
-            SCOPE="\\\${NPM_SCOPE}:";
-        fi
-    fi
-    echo "\\\${SCOPE#*://}registry=\\\${NPM_REGISTRY}" > ./.npmrc;
-    echo "//\\\${NPM_REGISTRY#*://}:_authToken=\\\${NODE_AUTH_TOKEN}" >> ./.npmrc;
-fi
-CDKEOF
- ); echo -n "$bash_command" > ./.cdk.wrapper.npm-login.sh.sh; chmod +x ./.cdk.wrapper.npm-login.sh.sh; ./.cdk.wrapper.npm-login.sh.sh; exit_code=$?; rm -rf ./.cdk.wrapper.npm-login.sh.sh; [ $exit_code -eq 0 ];`;
+    expect(npmLogin.command).toEqual(expectedCommand);
+  });
 
-    expect(npmLogin.command).toEqual(expected);
+  test('InlineShellPhaseCommand with exportEnvironment sources the script', () => {
+    const warming = new InlineShellPhaseCommand('warming.sh', true);
+
+    const bashScript = fs.readFileSync(
+      path.resolve(__dirname, '../../scripts/warming.sh'),
+      { encoding: 'utf-8' },
+    );
+
+    const expectedCommand = `cat > ./.cdk.wrapper.warming.sh.sh << 'CDKEOF'\n${bashScript}\nCDKEOF; chmod +x ./.cdk.wrapper.warming.sh.sh; . ./.cdk.wrapper.warming.sh.sh; exit_code=$?; rm -rf ./.cdk.wrapper.warming.sh.sh; [ $exit_code -eq 0 ];`;
+
+    expect(warming.command).toEqual(expectedCommand);
+  });
+
+  test('InlineShellPhaseCommand does not escape $ or backticks', () => {
+    const npmLogin = new InlineShellPhaseCommand('npm-login.sh');
+    const command = npmLogin.command;
+
+    // The quoted heredoc ('CDKEOF') means no escaping is needed
+    expect(command).not.toContain('\\$');
+    expect(command).not.toContain('\\`');
+    // Should not use bash_command variable pattern
+    expect(command).not.toContain('bash_command=');
   });
 });
