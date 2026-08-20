@@ -16,8 +16,11 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         'cdk-cicd': './bin/cdk-cicd',
       },
       deps: [
-        'yargs',
-        '@types/yargs',
+        // Pinned to the v17 line: the CLI's yargs usage (namespace `ya.command(...)`) is not
+        // compatible with the v18 major, which floated in on a regen and broke the whole CLI.
+        // See finding code-review-cli-yargs18-incompatible.
+        'yargs@^17.7.3',
+        '@types/yargs@^17.0.33',
         'globby@11.1.0', // globby version 12+ only support ESM
         'fs-extra',
         '@types/fs-extra',
@@ -25,8 +28,13 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         '@aws-sdk/client-s3',
         '@aws-sdk/credential-providers',
         'tslog',
+        // v3 `cdk-cicd exec` resolves the register preload and reuses the config loader from the
+        // constructs package. Kept a workspace dependency, NOT folded into the jsii package (D5).
+        '@cdklabs/cdk-cicd-wrapper',
       ],
-      jest: false,
+      // Enabled for v3: `cdk-cicd exec`'s pure logic (stage->env resolution, the non-clobbering
+      // CDK_CONTEXT_JSON merge) is unit-tested here; the spawn itself is proven by the harness.
+      jest: true,
     });
 
     this.addPackageIgnore('*.ts');

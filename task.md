@@ -310,7 +310,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     diagnostic (m2-bundled-diagnostic) stays silent — attach is exactly the remedy that diagnostic
     points to. Tested against a STOCK unwrapped App (the bundled/ESM situation it exists for), not under
     the preload. 75/75.
-- **`m2-exec`** — cdk-cicd exec launcher  ·  todo · wave 2 · cli · feature
+- **`m2-exec`** — cdk-cicd exec launcher  ·  done · wave 2 · cli · feature
   - **desc:** Resolve config; export `CDK_STAGE` + the stage's account/region into **both**
     `CDK_DEFAULT_ACCOUNT`/`_REGION` **and** `CDK_DEPLOY_ACCOUNT`/`_REGION` (stock `cdk init` env line
     hits the right stage, no `cfg` ref); build `CDK_CONTEXT_JSON`.
@@ -318,6 +318,19 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **acceptance:** stock-env app resolves the stage account/region; env-agnostic app stays
     region-agnostic; `CDK_CONTEXT_JSON` replicates the CLI's `cdk.json`+`cdk.context.json` merge
     (does not clobber user context).
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts`, registered in the
+    CLI's `src/index.ts`; `test/v3/ExecCommand.test.ts`.
+  - **notes:** ✅ `cdk-cicd exec <app>` loads the stage config (tolerating a stage with no file → runs
+    uninjected), exports the stage account/region into both env pairs (absent values left alone, so an
+    env-agnostic app stays agnostic), merges `cicd:config` into `CDK_CONTEXT_JSON` WITHOUT clobbering a
+    user-set key (starting from the CLI-provided `CDK_CONTEXT_JSON`, else `cdk.json`+`cdk.context.json`
+    itself), sets `CDK_CICD_EXEC=1` to arm the diagnostic, and spawns `node [-r ts-node/register] -r
+    <register> <entry>` propagating the child's exit code. Pure logic unit-tested (12/12). Proven end to
+    end: `cdk synth --app "cdk-cicd exec bin/app.ts"` against `level1-app` → the config-driven
+    `application` reached the template FROM injected context and the config `tags` were applied by the
+    preload, diagnostic silent. jsii: none (CLI is plain TS). The `CDK_CICD_EXEC` literal is duplicated
+    across packages (finding `code-review-exec-flag-cross-package-literal`); a test asserts both copies
+    agree.
 - **`m2-bundled-diagnostic`** — bundled/ESM diagnostic  ·  todo · wave 2 · wrapper · feature
   - **desc:** Detect when preload patching won't take effect and emit a clear "use `CdkCicd.attach`".
     **Raised from nice-to-have to required:** a real esbuild bundle was verified to inline
@@ -341,11 +354,20 @@ Not tasks — resolved/open design decisions that tasks reference.
     level0+level1 proof under a real `cdk-cicd exec` invocation is the `m2-verify` gate (needs exec).
     `bundled-app` is now active — `bundle.sh` fetches a pinned `esbuild@0.24.2` on demand (no yarn.lock
     churn), which this task owns.
-- **`m2-cli-depends-wrapper`** — CLI depends on wrapper (D5b)  ·  todo · wave 2 · shared · chore
+- **`m2-cli-depends-wrapper`** — CLI depends on wrapper (D5b)  ·  done · wave 2 · shared · chore
   - **desc:** CLI gains a dependency on the wrapper so `npm i @cdklabs/cdk-cicd-wrapper-cli` installs
     the `cdk-cicd` bin + `register` hook + constructs in one shot. `exec`'s `node -r .../register`
     resolves from that dep. Do NOT fold the CLI into the jsii package.
   - **spec:** D5          - **depends-on:** m2-register, m2-exec
+  - **notes:** ✅ Added `@cdklabs/cdk-cicd-wrapper` to the CLI `deps` in `projenrc/CLIConfig.ts` (a
+    workspace dependency, NOT folded into the jsii package) and enabled `jest` for the CLI workspace, then
+    regenerated. `require.resolve('@cdklabs/cdk-cicd-wrapper/lib/v3/runtime/register.js')` and
+    `import { AppConfig } from '@cdklabs/cdk-cicd-wrapper'` both resolve from the CLI. **Regression caught
+    and fixed:** the regen floated the previously-unpinned `yargs` from 17.7.3 to the breaking 18.0.0,
+    whose export change broke the CLI's `ya.command(...)` bootstrap entirely — pinned `yargs@^17.7.3` +
+    `@types/yargs@^17.0.33` (finding `code-review-cli-yargs18-incompatible`; migrating the CLI to
+    yargs 18 is the real follow-up). The published round-trip (install from CodeArtifact) is
+    `harness-publish-loop`, still deferred.
 - **`m2-verify`** — M2 gate  ·  todo · wave 2 · shared · test
   - **depends-on:** m2-exec, m2-attach, m2-bundled-diagnostic, harness-aws-lifecycle, harness-recorder
   - **acceptance:** real deploy of `level0-app` to us-west-2 (wrapper inert) **and** an injected app

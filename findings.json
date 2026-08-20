@@ -165,6 +165,17 @@
       "title": "The bundled-diagnostic subprocess test depends on a compiled lib/ that the test task does not build, so it only passes after a separate compile step",
       "detail": "bundled-diagnostic.test.ts runs the COMPILED preload (lib/v3/runtime/register.js) under node -r in a subprocess -- the only faithful way to exercise a process.on('exit') handler. But the projen 'test' task is jest + eslint with no compile step, and lib/ is gitignored, so a bare `npx jest` after a clean checkout would hit the test's beforeAll guard ('run npx projen compile first') and fail deterministically. It passes under the canonical `npm run build` (compile then test) and in this session because compile was run first. Not flaky, just order-dependent. Fix direction: have the wrapper's projen 'test' task spawn 'compile' first, or move the subprocess wiring test behind an integration-test task that depends on compile, so the standalone `npx jest` invocation is self-sufficient.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/runtime/bundled-diagnostic.test.ts", "line": 34 }
+    },
+    {
+      "id": "code-review-cli-yargs18-incompatible",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The CLI's yargs usage breaks on yargs 18, which floated in on a projen regen and broke the entire CLI until yargs was pinned to ^17",
+      "detail": "src/index.ts does `import * as yargs from 'yargs'; const ya = yargs; ya.command(...)`. That namespace-as-instance pattern is a yargs v17 idiom; yargs 18 (released recently) changed its exports and `ya.command` is no longer a function, so `node lib/index.js` throws 'ya.command is not a function' and every CLI subcommand fails. This surfaced when enabling the wrapper dependency for m2-exec required a `npx projen` regen, which re-resolved the previously-unpinned `yargs` dep from 17.7.3 up to 18.0.0. Worked around by pinning `yargs@^17.7.3` + `@types/yargs@^17.0.33` in projenrc/CLIConfig.ts, which restores the working CLI and is the surgical fix. The real follow-up is to migrate the CLI's yargs bootstrap to the v18 API (call the factory / default import instead of the namespace) and then unpin, so the CLI can take yargs security updates. Out of scope for m2-exec, which only needed the CLI to run.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/index.ts", "line": 20 }
     }
   ]
 }
