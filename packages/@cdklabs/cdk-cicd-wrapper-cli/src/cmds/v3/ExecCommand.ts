@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import { AppConfig, ConfigErrorKind } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
+import { load as loadCicdConfig, stageByName } from './CicdConfig';
 import { logger } from '../../utils/Logging';
 
 /**
@@ -34,22 +35,53 @@ export function resolveStage(env: NodeJS.ProcessEnv): string {
   return (env.CDK_STAGE ?? '').trim() || 'local';
 }
 
-/**
- * The environment overrides exec exports for a resolved config. Account/region go into both the
- * `CDK_DEFAULT_*` pair (what the stock `cdk init` env line reads) and the `CDK_DEPLOY_*` pair. Absent
- * values are simply not exported, so an app whose config omits an account keeps whatever the CLI
- * already derived, and an env-agnostic app (no `env` in bin/) stays region-agnostic.
- */
-export function stageEnv(stage: string, config: { [key: string]: any }): { [key: string]: string } {
-  const out: { [key: string]: string } = { CDK_STAGE: stage };
-  const aws = config?.aws ?? {};
-  if (typeof aws.accountId === 'string' && aws.accountId.length > 0) {
-    out.CDK_DEFAULT_ACCOUNT = aws.accountId;
-    out.CDK_DEPLOY_ACCOUNT = aws.accountId;
+function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  for (const v of values) {
+    if (typeof v === 'string' && v.length > 0) {
+      return v;
+    }
   }
-  if (typeof aws.region === 'string' && aws.region.length > 0) {
-    out.CDK_DEFAULT_REGION = aws.region;
-    out.CDK_DEPLOY_REGION = aws.region;
+  return undefined;
+}
+
+/** A stage's target environment, from whichever cicd.config stage matched (region list flattened). */
+export interface CicdStageEnv {
+  readonly env?: { readonly account?: string; readonly regions?: string[] };
+}
+
+/**
+ * Resolve the deploy target's account/region by precedence: an already-set `CDK_DEFAULT_*` wins,
+ * then the matching cicd.config stage, then the app-config `aws.*`. The already-set case is what lets
+ * `cdk-cicd synth`/`deploy` FIX a per-region target and have it survive exec -- exec fills a missing
+ * target but never overrides one the caller pinned (required for multi-region). An absent value stays
+ * absent, so an env-agnostic app stays agnostic.
+ */
+export function resolveEnvTarget(
+  envIn: NodeJS.ProcessEnv,
+  appConfig: { [key: string]: any },
+  cicdStage?: CicdStageEnv,
+): { account?: string; region?: string } {
+  const aws = appConfig?.aws ?? {};
+  return {
+    account: firstNonEmpty(envIn.CDK_DEFAULT_ACCOUNT, cicdStage?.env?.account, aws.accountId),
+    region: firstNonEmpty(envIn.CDK_DEFAULT_REGION, cicdStage?.env?.regions?.[0], aws.region),
+  };
+}
+
+/**
+ * The environment exec exports. `CDK_STAGE` always; the resolved account/region go into both the
+ * `CDK_DEFAULT_*` pair (what the stock `cdk init` env line reads) and the `CDK_DEPLOY_*` pair. Absent
+ * values are not exported.
+ */
+export function stageEnv(stage: string, target: { account?: string; region?: string }): { [key: string]: string } {
+  const out: { [key: string]: string } = { CDK_STAGE: stage };
+  if (target.account !== undefined) {
+    out.CDK_DEFAULT_ACCOUNT = target.account;
+    out.CDK_DEPLOY_ACCOUNT = target.account;
+  }
+  if (target.region !== undefined) {
+    out.CDK_DEFAULT_REGION = target.region;
+    out.CDK_DEPLOY_REGION = target.region;
   }
   return out;
 }
@@ -145,14 +177,30 @@ class Command implements yargs.CommandModule {
     const cwd = process.cwd();
     const stage = resolveStage(process.env);
 
+    // Two layers: app-config drives the injected cicd:config context (the app tree); the cicd.config
+    // stage supplies the deploy target account/region when the caller has not already pinned one.
     const config = loadConfig(stage);
+    // A broken cicd.config must not take down the zero-touch path: exec runs on every `cdk deploy`,
+    // and a single-region app may not depend on the pipeline config at all. Warn and fall through to
+    // app-config resolution rather than aborting the app command.
+    let cicd;
+    try {
+      cicd = loadCicdConfig(cwd);
+    } catch (error) {
+      logger.warn(
+        `cdk-cicd exec: ignoring an unloadable cicd.config (${(error as Error).message}); ` +
+          'resolving the deploy target from app-config only',
+      );
+    }
+    const cicdStage = cicd ? stageByName(cicd, stage) : undefined;
+    const target = resolveEnvTarget(process.env, config, cicdStage);
 
     const registerPath = require.resolve('@cdklabs/cdk-cicd-wrapper/lib/v3/runtime/register.js');
     const nodeArgs = [...preloadArgs(entry, registerPath), entry];
 
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
-      ...stageEnv(stage, config),
+      ...stageEnv(stage, target),
       CDK_CONTEXT_JSON: buildContextJson(config, process.env, cwd),
       [EXEC_FLAG]: '1',
     };

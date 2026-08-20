@@ -198,6 +198,28 @@
       "title": "ts-node is required to load a .ts cicd.config (and by exec's -r ts-node/register) but is not a declared CLI dependency, so a global install can fail to resolve it",
       "detail": "CicdConfig.load does an in-process require('ts-node/register') for a .ts config, and ExecCommand spawns node with -r ts-node/register for a .ts entry. ts-node resolves today only because it is hoisted into the workspace-root node_modules; it is NOT in the CLI package's dependencies. For a locally-installed CLI, in-process resolution walks up into the user's project and usually finds their ts-node; but a GLOBALLY-installed CLI (npm i -g) does not, so a user with a TypeScript cicd.config.ts (or a .ts app entry under exec) hits a module-resolution failure. Mitigated now: CicdConfig.load wraps the require in a clear, actionable error ('needs ts-node ... install it or compile to cicd.config.js') instead of a raw crash; the .ts path is unit-covered. The real fix is a distribution decision to make deliberately before external publish: declare ts-node as a CLI dependency in projenrc/CLIConfig.ts (pin the version to avoid a yargs-18-style float on regen), and apply the same clear-error treatment to the exec spawn path. Out of scope for m3-config-discovery's minimal change; track for the publish/harness-publish-loop work.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CicdConfig.ts", "line": 48 }
+    },
+    {
+      "id": "code-review-exec-cicd-stage-tier-dead-on-live-deploy",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "resolveEnvTarget's cicd-config stage tier never fires on a live `cdk deploy` because the CDK CLI always pre-sets CDK_DEFAULT_ACCOUNT/REGION, which win by precedence",
+      "detail": "resolveEnvTarget precedence is (already-set CDK_DEFAULT_* > matching cicd.config stage > app-config aws.*). On a live `cdk deploy`/`cdk synth` the CDK CLI pre-sets CDK_DEFAULT_REGION (from AWS_REGION/profile) and CDK_DEFAULT_ACCOUNT (from resolved STS creds) before running the app command, so the env tier always wins and the cicd-config stage tier is effectively dead on the direct-CLI path -- a `CDK_STAGE=dev cdk deploy` uses the ambient region/account, not the cicd.config dev stage's. This is intended: the real deploy path is `cdk-cicd synth` -> per-region assembly (which sets AWS_REGION to steer the CLI) -> `cdk-cicd deploy`, with account/region correctness enforced by m3-drift-check, not by exec. The cicd-stage tier still matters for a bare `node -r register app.js` (no CDK CLI) or a future path where CDK_DEFAULT_* is genuinely unset. Recorded so the precedence is not mistaken for driving the live target. No change needed; revisit if the direct-CLI path should honor cicd.config stage env (it would need AWS_REGION steering like synth does).",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts", "line": 66 }
+    },
+    {
+      "id": "code-review-synth-account-pin-cosmetic",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "cdk-cicd synth pins CDK_DEFAULT_ACCOUNT per target but the CDK CLI re-derives account from STS, so (unlike region via AWS_REGION) the account pin is cosmetic",
+      "detail": "synthTargets sets AWS_REGION/AWS_DEFAULT_REGION to steer the CLI's per-region synth, which works because the CLI derives the app's CDK_DEFAULT_REGION from AWS_REGION. It also sets CDK_DEFAULT_ACCOUNT/CDK_DEPLOY_ACCOUNT from the stage, but there is no AWS_* account analogue: the CDK CLI re-derives CDK_DEFAULT_ACCOUNT from the resolved STS identity and overrides the pin, so a stage account that differs from the ambient creds does NOT change the synthesized account -- the account pin is cosmetic during synth. Harmless for the single-account sandbox, and catching an account that disagrees with the deploy target is exactly m3-drift-check's job (it reads the synthesized manifest's aws://account/region). Recorded as the region/account asymmetry so a future multi-account synth path knows the account cannot be steered the same way region is (it needs assumed creds for the target account, not just an env var).",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/SynthCommand.ts", "line": 46 }
     }
   ]
 }

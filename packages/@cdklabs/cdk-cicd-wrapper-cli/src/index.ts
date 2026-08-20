@@ -10,6 +10,7 @@ import configure from './cmds/ConfigureCommand';
 import license from './cmds/LicenseCommand';
 import security from './cmds/SecurityCommand';
 import exec from './cmds/v3/ExecCommand';
+import synth from './cmds/v3/SynthCommand';
 import validate from './cmds/ValidateCommand';
 import { logger } from './utils/Logging';
 
@@ -28,6 +29,7 @@ async function main() {
   ya.command(security);
   ya.command(checkDependencies);
   ya.command(exec);
+  ya.command(synth);
 
   // Enable command recommendations and strict command handling
   ya.recommendCommands();

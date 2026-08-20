@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { buildContextJson, preloadArgs, resolveStage, stageEnv } from '../../src/cmds/v3/ExecCommand';
+import { buildContextJson, preloadArgs, resolveEnvTarget, resolveStage, stageEnv } from '../../src/cmds/v3/ExecCommand';
 
 describe('exec: resolveStage', () => {
   test('uses CDK_STAGE when set', () => {
@@ -22,7 +22,7 @@ describe('exec: resolveStage', () => {
 
 describe('exec: stageEnv', () => {
   test('exports account and region into both the DEFAULT and DEPLOY pairs', () => {
-    expect(stageEnv('dev', { aws: { accountId: '111111111111', region: 'us-west-2' } })).toEqual({
+    expect(stageEnv('dev', { account: '111111111111', region: 'us-west-2' })).toEqual({
       CDK_STAGE: 'dev',
       CDK_DEFAULT_ACCOUNT: '111111111111',
       CDK_DEPLOY_ACCOUNT: '111111111111',
@@ -31,16 +31,36 @@ describe('exec: stageEnv', () => {
     });
   });
 
-  test('omits an absent account (kept from the ambient env) but still exports region', () => {
-    expect(stageEnv('dev', { aws: { region: 'eu-west-1' } })).toEqual({
+  test('omits an absent account but still exports region', () => {
+    expect(stageEnv('dev', { region: 'eu-west-1' })).toEqual({
       CDK_STAGE: 'dev',
       CDK_DEFAULT_REGION: 'eu-west-1',
       CDK_DEPLOY_REGION: 'eu-west-1',
     });
   });
 
-  test('an env-agnostic config exports only the stage (stays account/region-agnostic)', () => {
+  test('an empty target exports only the stage (stays account/region-agnostic)', () => {
     expect(stageEnv('local', {})).toEqual({ CDK_STAGE: 'local' });
+  });
+});
+
+describe('exec: resolveEnvTarget precedence', () => {
+  const appConfig = { aws: { accountId: 'app-acct', region: 'app-region' } };
+  const cicdStage = { env: { account: 'cicd-acct', regions: ['cicd-region', 'other'] } };
+
+  test('an already-set CDK_DEFAULT_* wins (so synth/deploy pin the per-region target)', () => {
+    expect(resolveEnvTarget({ CDK_DEFAULT_ACCOUNT: 'env-acct', CDK_DEFAULT_REGION: 'env-region' }, appConfig, cicdStage)).toEqual(
+      { account: 'env-acct', region: 'env-region' },
+    );
+  });
+
+  test('the cicd.config stage is next, then the app-config aws.*', () => {
+    expect(resolveEnvTarget({}, appConfig, cicdStage)).toEqual({ account: 'cicd-acct', region: 'cicd-region' });
+    expect(resolveEnvTarget({}, appConfig, undefined)).toEqual({ account: 'app-acct', region: 'app-region' });
+  });
+
+  test('nothing anywhere leaves the target agnostic', () => {
+    expect(resolveEnvTarget({}, {}, undefined)).toEqual({ account: undefined, region: undefined });
   });
 });
 

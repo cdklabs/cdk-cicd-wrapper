@@ -418,10 +418,23 @@ Not tasks — resolved/open design decisions that tasks reference.
     exec/synth env WIRING (using a discovered stage's account/region) is deliberately left to `m3-synth`,
     which enumerates stages and is tested with it — keeping this unit off the `exec` path so the m2-verify
     differential needs no re-deploy. Resolves finding `code-review-level1-cicd-config-stale-header`.
-- **`m3-synth`** — per-(stage×region) deploy-time synth  ·  todo · wave 3 · cli · feature
+- **`m3-synth`** — per-(stage×region) deploy-time synth  ·  done · wave 3 · cli · feature
   - **desc:** Synth into `cdk.out/<stage>/<region>` at deploy time against the target config;
     `cdk-cicd synth --all` for CI validation only.
-  - **depends-on:** m2-exec
+  - **depends-on:** m2-exec, m3-config-discovery
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/SynthCommand.ts` (registered in the
+    CLI); the `exec` env-resolution refactor (`resolveEnvTarget` fill-not-override); `test/v3/SynthCommand.test.ts`.
+  - **notes:** ✅ `cdk-cicd synth [--stage s | --all]` enumerates (stage × region) from the discovered
+    cicd.config and synths each into `cdk.out/<stage>/<region>`. Proven: `synth --all` on level1 →
+    `cdk.out/dev/us-west-2` AND `cdk.out/prod/us-west-1` from ONE invocation, each manifest's stack
+    environment pinned to the right region. Two real-AWS mechanics learned: (1) the CDK CLI re-derives
+    the app's `CDK_DEFAULT_REGION` from `AWS_REGION`/profile, ignoring an inherited `CDK_DEFAULT_REGION`,
+    so a per-region synth must set `AWS_REGION`/`AWS_DEFAULT_REGION`, not just the CDK_* pair. (2) exec's
+    env resolution was refactored to FILL-not-override (`resolveEnvTarget`, precedence: an already-set
+    `CDK_DEFAULT_*` > the matching cicd.config stage > app-config `aws.*`), so synth's pinned per-region
+    target survives exec — required for multi-region. Regression gate B green: m1-verify 3/3 (plain
+    file-fallback path) and m2-verify PASSED on real AWS (level0 inert / level1 injected), zero orphans.
+    25/25 CLI tests.
 - **`m3-drift-check`** — drift check  ·  todo · wave 3 · cli · feature
   - **desc:** Read each stack's `aws://acct/region` from assembly `manifest.json`. Agnostic = OK;
     region mismatch = **warn**; account mismatch = **error + abort that stage**.
