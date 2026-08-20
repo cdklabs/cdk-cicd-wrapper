@@ -594,6 +594,50 @@
       "title": "The approval footprint test loops over both gated cases inside one test, so a failure does not say which case broke",
       "detail": "The test asserting that gating adds no pipeline stage and no CodeBuild project iterates `for (const gated of [true, false])` inside a single test, so a regression in one case reports the one test name with no indication of which iteration failed; `test.each` would name it. The gated iteration also only asserts what is ABSENT (stage list, project count, topic count) and never that the approval is present, so read alone it would pass an implementation ignoring `manualApproval` entirely -- not a hole in the suite, since a separate test pins the approval and its run order, but it does mean this test is weaker than it looks. Separately, no test renders TWO gated stages at once; distinct action names per gated stage were verified by hand during review rather than pinned. Fix direction: split with `test.each`, add the positive approval assertion to the gated case, and add a two-gated-stage case.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/engine/codepipeline/CodePipelineEngine.test.ts", "line": 270 }
+    },
+    {
+      "id": "code-review-application-name-unvalidated-in-stackname",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "PipelineApp uses config.application verbatim as the CloudFormation stackName with no legality check",
+      "detail": "`PipelineApp` builds `name = `${config.application ?? 'cdk-cicd'}-pipeline`` and uses it as both the construct id and the stack's `stackName`. `defineCICD`/`resolveCicdConfig` sanitize only the qualifier (`deriveQualifier`), never `application`, so an application with dots, spaces, underscores, or long enough to push the stack name past CloudFormation's 128-character limit synthesizes cleanly and then fails late at deploy with a generic CloudFormation validation error rather than a synth-time message naming the field the user set. Sibling to `code-review-stage-name-unvalidated-in-definecicd` (same class of gap, different identifier). Reasoned during review, not executed. Out of scope for m4-approval-selfupdate; validation belongs in `defineCICD` where the application name is first accepted. Fix direction: validate `application` against a CloudFormation-safe pattern in `resolveCicdConfig`, with headroom for the `-pipeline` suffix, reporting the value the user actually wrote.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/app/PipelineApp.ts", "line": 63 }
+    },
+    {
+      "id": "code-review-deploy-ci-config-throw-shows-stack-trace",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "deploy-ci's fail-fast config load only handles undefined, so a THROWN config error surfaces as a raw stack trace",
+      "detail": "`DeployCiCommand` calls `loadCicdConfig(cwd)` purely to fail fast with a friendly 'no cicd.config.ts' message, but it only branches on the `undefined` return. If `load` instead THROWS -- ts-node not resolvable, or the user's `cicd.config.ts` itself throws at require time -- the error propagates to `index.ts` `main().catch`, which logs `e.stack` and exits 1: a stack trace, not the intended friendly message. This is consistent with the existing `SynthCommand`/`DeployCommand`, which do not catch either, so it is a pre-existing pattern rather than a regression introduced here. Reasoned, not executed. Fix direction (fleet-wide, not just this command): wrap the config load in the v3 commands in one shared helper that turns a throw into a single-line diagnostic.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCiCommand.ts", "line": 46 }
+    },
+    {
+      "id": "code-review-pipeline-app-and-deploy-ci-handlers-untested",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The pipeline-app and deploy-ci command handlers have no unit tests; only the pure argv builders do",
+      "detail": "Unit tests cover the pure `deployCiArgs`/`pipelineAppCommand` builders and the wrapper-side `PipelineApp`, but neither CLI command's `handler` is exercised: deploy-ci's fail-fast branch, its `spawnSync` call and exit-code propagation, and the whole of `PipelineAppCommand.ts` (no test file at all) rely solely on the m4-verify real-AWS gate. The end-to-end run against the built CLI covered the happy path and the missing-config path by hand during this unit, but nothing pins them in CI. Acknowledged in the test-file comment; acceptable because these handlers are thin spawn shims whose logic lives in the tested builders, but recorded so the gap is a decision. Fix direction: a handler test that injects a fake spawn and asserts argv + exit code, mirroring how the deploy handler could be tested.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/PipelineAppCommand.ts", "line": 25 }
+    },
+    {
+      "id": "code-review-pipeline-app-config-not-constructible-off-ts",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "PipelineApp is exported to all jsii languages but its required config can only be built by the TS-only defineCICD",
+      "detail": "`PipelineApp`/`PipelineAppProps` are exported from the v3 barrel and cross the jsii boundary (subclassing `aws-cdk-lib.App` is jsii-sound and `PipelineAppProps` is a proper readonly struct). But `PipelineAppProps.config: ResolvedCicdConfig` can in practice only be produced by `defineCICD`, a free function with a union-typed input that jsii omits (see the barrel comment and design open-question O1). So the advertised 'explicit opt-in: instantiate PipelineApp in your own bin/' story holds only for TypeScript consumers; a Python/Java consumer can import `PipelineApp` but has no ergonomic way to construct a `ResolvedCicdConfig` to pass it. Not a defect in this unit -- it is the same non-TS authoring gap O1 already tracks, now reachable through a second door -- but worth recording against PipelineApp specifically. Fix direction is whatever O1 lands (a jsii-modeled config builder); until then the non-TS opt-in path is provisioning via `cdk-cicd deploy-ci`, not `new PipelineApp`.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/app/PipelineApp.ts", "line": 44 }
     }
   ]
 }

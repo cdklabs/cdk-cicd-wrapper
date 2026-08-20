@@ -542,7 +542,8 @@ Not tasks — resolved/open design decisions that tasks reference.
     pipeline) and `artifactBucket` (KMS-CMK encrypted, SSL-enforced, public access blocked). Compliance/log
     bucket, SSM, VPC and proxy slot in later as further lazy properties. `removalPolicy` defaults to
     `RETAIN` (safe for published users); `DESTROY` gates `autoDeleteObjects`, which is the seam
-    `m4-verify`'s teardown needs — `PipelineApp` (m4-approval-selfupdate) still has to set it.
+    `m4-verify`'s teardown needs — `PipelineApp` wires it through the `--disposable` flag
+    (m4-approval-selfupdate, done).
     Engine now uses the support bucket as the pipeline `artifactBucket` instead of CodePipeline's
     generated one. **Unblocks m4-verify** by resolving `code-review-codepipeline-deploy-role-lacks-iam`:
     each stage's deploy project may `sts:AssumeRole` the four CDK bootstrap roles per (account, region)
@@ -555,18 +556,29 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **`m4-approval-selfupdate`** — approvals + deploy-ci  ·  in-progress · wave 4 · cli · feature
   - **desc:** Manual approval gates; `cdk-cicd deploy-ci` provisions + self-updates the pipeline.
   - **depends-on:** m4-codepipeline
-  - **notes:** Shipped in two commits. **1/2 done — approval gates.** The engine reads
+  - **notes:** Shipped in three commits. **1/3 done — approval gates.** The engine reads
     `stage.manualApproval` and emits a `ManualApprovalAction` at `runOrder: 1` with that stage's deploy at
     `runOrder: 2` in the **same** pipeline stage, so a gate costs no extra stage, no CodeBuild project and
     no SNS topic — the flat-footprint claim `m4-verify` measures is unchanged, and an ungated stage renders
     bit-identically to before. Resolves `code-review-codepipeline-manualapproval-ignored`. 128/128 v3 tests,
-    `.jsii` 151 → 151. **2/2 remaining:** a `PipelineApp` entry the CLI hosts, `cdk-cicd deploy-ci`, and the
-    pipeline self-update stage. Two things to carry into it: (a) the CLI and wrapper packages resolve
-    **different `aws-cdk-lib` copies**, so a CLI-hosted `PipelineApp` renders across copies — measured safe
-    (identity checks use the global symbol registry) but it makes `AwsSolutionsChecks` **inert in this
-    workspace**, so assert only that the aspect is registered and leave liveness to `m4-nag-compliance`;
-    (b) `code-review-m4-verify-must-approve-gated-stage` — the gate must now drive
-    `codepipeline put-approval-result`, or a real run waits 7 days on the gate it just created.
+    `.jsii` 151 → 151. **2/3 done — provisioning.** `PipelineApp` (a one-stack `aws-cdk-lib.App` subclass
+    that renders the config through the engine and applies `AwsSolutionsChecks`) lives in the **wrapper**
+    package, not the CLI — reversing the earlier CLI-hosted assumption, because the CLI declares neither
+    `aws-cdk-lib` nor `cdk-nag`, so hosting it there would ship a **second** `aws-cdk-lib` copy into user
+    projects (the very duplication that makes nag inert). The CLI's `cdk-cicd pipeline-app` is a thin shim
+    that loads `cicd.config.ts` and delegates; `cdk-cicd deploy-ci` runs
+    `cdk deploy --app "npx cdk-cicd pipeline-app" --all --require-approval never`, so provisioning needs
+    **zero wrapper files in the user's repo**. Stack env comes from ambient `CDK_DEFAULT_*` (no config
+    field for it). `--disposable` threads `RemovalPolicy.DESTROY` to the artifact bucket/key for teardown;
+    default RETAIN. 134/134 wrapper v3 + 56/56 CLI tests, `.jsii` 151 → 153 (exactly `PipelineApp`/
+    `PipelineAppProps`); end-to-end synth from a bare `cicd.config.ts` produced one stack, the right
+    stage/action shape and 3 CodeBuild projects, and `--disposable` flipped the bucket to `Delete`. The nag
+    test asserts only that the aspect is **registered**, because this workspace's duplicate `aws-cdk-lib`
+    still makes the rules inert (liveness is `m4-nag-compliance`). 4 review follow-ups appended to
+    `findings.json`. **3/3 remaining:** the pipeline self-update stage (re-synth its own definition each run
+    via `deploy-ci`, needs a small `grantDeployPermissions` signature change to grant the pipeline's own
+    account/region). Carry into `m4-verify`: `code-review-m4-verify-must-approve-gated-stage` — the gate must
+    drive `codepipeline put-approval-result`, or a real run waits 7 days on the gate it just created.
 - **`m4-ci-checks`** — default-on CI checks via CLI  ·  done · wave 4 · cli · feature
   - **desc:** validate/audit/license/security run by the CLI in CI — fresh project passes with no
     npm-script surgery.

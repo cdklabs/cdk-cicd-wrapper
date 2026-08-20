@@ -10,8 +10,10 @@ import configure from './cmds/ConfigureCommand';
 import license from './cmds/LicenseCommand';
 import security from './cmds/SecurityCommand';
 import check from './cmds/v3/CheckCommand';
+import deployCi from './cmds/v3/DeployCiCommand';
 import deploy from './cmds/v3/DeployCommand';
 import exec from './cmds/v3/ExecCommand';
+import pipelineApp from './cmds/v3/PipelineAppCommand';
 import synth from './cmds/v3/SynthCommand';
 import validate from './cmds/ValidateCommand';
 import { logger } from './utils/Logging';
@@ -34,6 +36,8 @@ async function main() {
   ya.command(exec);
   ya.command(synth);
   ya.command(deploy);
+  ya.command(pipelineApp);
+  ya.command(deployCi);
 
   // Enable command recommendations and strict command handling
   ya.recommendCommands();

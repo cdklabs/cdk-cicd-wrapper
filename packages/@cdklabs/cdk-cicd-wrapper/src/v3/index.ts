@@ -52,6 +52,11 @@ export { defineCICD } from './config/define';
 export { EngineRenderProps, IEngine } from './engine/types';
 export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeline/CodePipelineEngine';
 
+// The app that holds the pipeline. `cdk-cicd deploy-ci` uses it through `--app` so no user file is
+// needed; it is exported because the same class is the explicit opt-in path for a user who would
+// rather instantiate the pipeline in their own `bin/`.
+export { PipelineApp, PipelineAppProps } from './app/PipelineApp';
+
 // The wrapper's own support resources (m4-support-resources) -- lazily provisioned, so a pipeline
 // only pays for what it references. This is v2's resource-provider concept with the singleton and the
 // untyped registry removed.
