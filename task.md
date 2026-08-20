@@ -388,8 +388,22 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 3 — defineCICD + deploy-time synth (M3)
 
-- **`m3-definecicd`** — defineCICD types + resolved-config defaults  ·  todo · wave 3 · wrapper · feature
+- **`m3-definecicd`** — defineCICD types + resolved-config defaults  ·  done · wave 3 · wrapper · feature
   - **spec:** `docs/design/v3-devops-experience.md` #3. The opinionated resolved config
+  - **produces:** `src/v3/config/{repository,types,define}.ts`, curated into `src/v3/index.ts`;
+    `test/v3/config/{repository,define}.test.ts`.
+  - **notes:** ✅ `defineCICD(props)` normalizes the flexible authoring shape into the union-free
+    `ResolvedCicdConfig`. Two layers kept strictly separate: this is the PIPELINE config (stages,
+    repo, roles), consumed only by the CLI — NOT the app-config that AppConfig injects into the tree.
+    jsii: `Repository` (class + static factories), the four enums and the resolved structs are in the
+    assembly (verified against `.jsii`); `defineCICD` is a TS-only free function (jsii silently drops
+    it — intended, the authoring path is ts-node in-process) and its input interfaces stay internal
+    because they use unions jsii can't express. **Name collision fixed:** the enum is
+    `RepositorySourceType`, not `RepositoryType` — the latter is a distinct TS-only union alias already
+    on the published v2 surface, and `export * from './v3'` made the duplicate ambiguous (JSII3000).
+    Scope trimmed to what the deploy path consumes (stages/env/roles/repo/application/qualifier/
+    synthesizer type); engine/ci/plugins/compliance deferred to M4. 96/96, and the fixture's previously
+    dormant `cicd.config.ts` now loads and normalizes (dev@us-west-2, prod@us-west-1 [approval]).
 - **`m3-config-discovery`** — cicd.config.ts/.yaml discovery  ·  todo · wave 3 · cli · feature
   - **depends-on:** m3-definecicd
 - **`m3-synth`** — per-(stage×region) deploy-time synth  ·  todo · wave 3 · cli · feature

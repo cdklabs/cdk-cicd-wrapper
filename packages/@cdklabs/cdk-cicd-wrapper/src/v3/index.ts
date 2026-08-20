@@ -26,3 +26,20 @@ export { ConditionalFieldGroup, ConfigSchema, FieldKind, RequiredField } from '.
 // preload cannot patch App. The rest of `./runtime` (the shared helpers, the counter, the loader)
 // stays internal for the same reasons the config machinery does.
 export { CdkCicd } from './runtime/attach';
+
+// CICD (pipeline) config -- the `cicd.config.ts` authoring surface. `Repository`, the enums and the
+// resolved structs are jsii-modeled. `defineCICD` is exported for the TypeScript authoring path but,
+// being a free function with a union-typed input, is invisible to jsii (Python/Java authoring parity
+// is a later concern -- design open-question O1); the input interfaces (CicdConfigProps/StageInput/
+// StageEnvInput) stay internal to ./config/define for the same union reason.
+export { Repository, RepositorySourceType } from './config/repository';
+export {
+  DeploymentConfig,
+  RegionOrder,
+  ResolvedCicdConfig,
+  ResolvedStage,
+  StageEnvironment,
+  SynthesizerConfig,
+  SynthesizerType,
+} from './config/types';
+export { defineCICD } from './config/define';
