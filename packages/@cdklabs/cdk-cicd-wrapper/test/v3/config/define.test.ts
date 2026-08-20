@@ -3,7 +3,7 @@
 
 import { defineCICD, resolveCicdConfig } from '../../../src/v3/config/define';
 import { Repository } from '../../../src/v3/config/repository';
-import { RegionOrder, SynthesizerType } from '../../../src/v3/config/types';
+import { EngineType, RegionOrder, SynthesizerType } from '../../../src/v3/config/types';
 
 const REPO = Repository.github('org/repo');
 
@@ -66,6 +66,23 @@ describe('m3-config: defineCICD top-level defaults', () => {
   test('an application that sanitizes to nothing falls back to a valid qualifier', () => {
     // e.g. an all-punctuation name -> no alphanumerics left -> must not yield an empty qualifier.
     expect(defineCICD({ application: '!!!', repository: REPO, stages: [] }).qualifier).toBe('cdkcicd');
+  });
+
+  test('engine defaults to CODEPIPELINE and ci defaults to empty (engine supplies its own steps)', () => {
+    const cfg = defineCICD({ repository: REPO, stages: [] });
+    expect(cfg.engine).toBe(EngineType.CODEPIPELINE);
+    expect(cfg.ci).toEqual({ steps: {}, synthStages: [], image: undefined });
+  });
+
+  test("ci.synthStages 'all' collapses to an empty list; an explicit list is kept", () => {
+    expect(defineCICD({ repository: REPO, stages: [], ci: { synthStages: 'all' } }).ci.synthStages).toEqual([]);
+    expect(defineCICD({ repository: REPO, stages: [], ci: { synthStages: ['dev'] } }).ci.synthStages).toEqual(['dev']);
+  });
+
+  test('ci.steps overrides and image pass through', () => {
+    const cfg = defineCICD({ repository: REPO, stages: [], ci: { steps: { lint: 'npx cdk-cicd validate' }, image: 'node:24' } });
+    expect(cfg.ci.steps).toEqual({ lint: 'npx cdk-cicd validate' });
+    expect(cfg.ci.image).toBe('node:24');
   });
 
   test('synthesizer defaults to DEFAULT and an explicit type wins', () => {

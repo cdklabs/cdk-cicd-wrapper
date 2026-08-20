@@ -14,7 +14,9 @@
 
 import { Repository } from './repository';
 import {
+  CiConfig,
   DeploymentConfig,
+  EngineType,
   RegionOrder,
   ResolvedCicdConfig,
   ResolvedStage,
@@ -41,6 +43,13 @@ export interface StageInput {
   readonly deployment?: DeploymentConfig;
 }
 
+/** CI config as written. `synthStages` may be the string `'all'` or an explicit list. */
+export interface CiConfigInput {
+  readonly steps?: { [key: string]: string };
+  readonly synthStages?: string[] | 'all';
+  readonly image?: string;
+}
+
 /** What a user passes to `defineCICD`. Deliberately permissive; normalized to `ResolvedCicdConfig`. */
 export interface CicdConfigProps {
   readonly application?: string;
@@ -49,6 +58,17 @@ export interface CicdConfigProps {
   /** Each stage is either a bare name (`'dev'`) or a full object. */
   readonly stages: Array<string | StageInput>;
   readonly synthesizer?: { readonly type?: SynthesizerType };
+  readonly engine?: EngineType;
+  readonly ci?: CiConfigInput;
+}
+
+/** Normalize the permissive CI input, collapsing `synthStages: 'all'` to an empty list. */
+function normalizeCi(ci?: CiConfigInput): CiConfig {
+  return {
+    steps: ci?.steps ?? {},
+    synthStages: ci?.synthStages === undefined || ci.synthStages === 'all' ? [] : ci.synthStages,
+    image: ci?.image,
+  };
 }
 
 /** Derive a ≤10-char, lowercase-alphanumeric bootstrap qualifier from an application name. */
@@ -90,6 +110,8 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     repository: props.repository,
     stages: props.stages.map(normalizeStage),
     synthesizer: { type: props.synthesizer?.type ?? SynthesizerType.DEFAULT },
+    engine: props.engine ?? EngineType.CODEPIPELINE,
+    ci: normalizeCi(props.ci),
   };
 }
 

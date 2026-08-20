@@ -34,7 +34,9 @@ export { CdkCicd } from './runtime/attach';
 // StageEnvInput) stay internal to ./config/define for the same union reason.
 export { Repository, RepositorySourceType } from './config/repository';
 export {
+  CiConfig,
   DeploymentConfig,
+  EngineType,
   RegionOrder,
   ResolvedCicdConfig,
   ResolvedStage,

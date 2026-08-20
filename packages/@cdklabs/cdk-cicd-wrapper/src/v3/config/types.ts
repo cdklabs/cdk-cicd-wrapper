@@ -24,6 +24,25 @@ export enum SynthesizerType {
   APP_STAGING = 'app_staging',
 }
 
+/** Which CI/CD engine renders the pipeline. */
+export enum EngineType {
+  /** AWS CodePipeline -- the v3 default (and, in M4, the only one). */
+  CODEPIPELINE = 'codepipeline',
+}
+
+/** Resolved CI configuration: the checks/build steps and which stages CI synthesizes for validation. */
+export interface CiConfig {
+  /**
+   * Named build steps as shell commands, e.g. `{ lint: 'npx cdk-cicd validate' }`. Empty means the
+   * engine applies its built-in default set.
+   */
+  readonly steps: { [key: string]: string };
+  /** Stages CI synthesizes for validation. Empty means all stages. */
+  readonly synthStages: string[];
+  /** Optional CodeBuild image override. */
+  readonly image?: string;
+}
+
 /** A resolved stage's target environment. `regions` is always a list, even for a single region. */
 export interface StageEnvironment {
   /** Target account. Omitted means environment-agnostic (resolved from ambient creds at deploy). */
@@ -72,4 +91,8 @@ export interface ResolvedCicdConfig {
   readonly stages: ResolvedStage[];
   /** The synthesizer configuration. */
   readonly synthesizer: SynthesizerConfig;
+  /** Which engine renders the pipeline. Defaults to CodePipeline. */
+  readonly engine: EngineType;
+  /** Resolved CI configuration. */
+  readonly ci: CiConfig;
 }
