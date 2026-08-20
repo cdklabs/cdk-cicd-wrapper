@@ -48,6 +48,10 @@ export class RootConfig extends yarn.Monorepo {
       devDeps: [
         'cdklabs-projen-project-types@^0.5.2',
         `constructs@${CONSTRUCTS_VERSION}`,
+        // The monorepo release task runs `yarn workspaces run shx rm -rf dist`, but neither
+        // cdklabs-projen-project-types nor projen >=0.99 declares shx (projen 0.97 pulled it in
+        // transitively). Declare it here so the hoisted bin exists.
+        'shx@^0.4.0',
         'node-fetch@^2',
         'eslint@^8',
         '@typescript-eslint/eslint-plugin@^7',
