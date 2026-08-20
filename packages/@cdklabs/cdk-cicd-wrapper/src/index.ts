@@ -25,3 +25,6 @@ export * from './utils';
 
 // Exporting all exports from the './plugins' file
 export * from './plugins';
+
+// Exporting the v3 public surface (curated for jsii — see ./v3/index.ts)
+export * from './v3';

@@ -77,6 +77,39 @@
       "title": "The orphan sweep's stack-age arithmetic depends on GNU date and aborts the whole sweep if a timestamp fails to parse",
       "detail": "cmd_sweep computes each stack's age with an arithmetic expression that embeds a date -u -d command substitution. The -d flag is GNU-specific, which is fine for this repo's Linux target but would break on BSD/macOS. More to the point, if that substitution ever produces empty output the arithmetic becomes a syntax error and the sweep exits non-zero having listed nothing useful, which is a poor failure mode for the one command whose job is finding leaked stacks. Latent rather than live: CloudFormation always returns a parseable ISO 8601 CreationTime, so there is no known input that triggers it today. Left unfixed as it is cosmetic against the reviewed change and the sweep's safety properties do not depend on the age column at all -- age is display-only and never feeds the teardown guard. Fix direction: compute the age in a guarded step and fall back to printing the raw timestamp when parsing fails.",
       "location": { "path": "test/proof/harness.sh" }
+    },
+    {
+      "id": "code-review-appconfig-context-skips-defaults-merge",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "AppConfig.of applies base + derived defaults on the file path but not on the injected-context path, so the same app can see differently-shaped config",
+      "detail": "AppConfig.load (the file path) does deepMerge(getDefaultConfig(), file) then applyDerivedDefaults then validate. AppConfig.of on the injected-context path validates the raw context object with no base-defaults merge and no derived-defaults step. So an app run under the future 'cdk-cicd exec' (config arriving via cicd:config context) can see config lacking the removalPolicies RETAIN defaults and lacking CDK_DEFAULT_ACCOUNT/_REGION derivation, while the same app under plain cdk deploy (config from file) sees them. This is only correct if the injecting wrapper pre-applies base+derived defaults before writing the context value, which is what accessor.ts's comment assumes. It is latent, not a present bug, because the injecting wrapper does not exist yet. Recorded so the M2 runtime-injection milestone (m2-register and friends) does not silently reintroduce the asymmetry: either the wrapper must resolve the full config (base + derived) before writing context, or AppConfig.of must run the same merge/derive pipeline on the context value that load runs on the file. Decide which at M2 and add a test that the two paths produce identical config for identical input.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/accessor.ts", "line": 59 }
+    },
+    {
+      "id": "code-review-deepmerge-aliases-override-arrays",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "deepMerge assigns array-valued override keys by reference, so a later mutation of the parsed config would leak into an already-merged config",
+      "detail": "mergeRecords recurses into plain objects (which both clones and applies the UNSAFE_KEYS filter at depth) but assigns any non-plain-object value, including arrays, directly: result[key] = value. The deepMerge doc correctly says arrays replace rather than concatenate, and that is the intended semantics, but it does not clone them. The 'override object is not aliased into the result' test covers nested objects only, not arrays, so an array-valued key in the merged result is the same reference as in the caller's parsed object. Harmless today because the loader does not mutate the parsed config after merging and callers are not expected to either. It would become a real aliasing bug if any later code mutates a parsed config in place after AppConfig has returned. Fix direction if revisited: shallow-copy arrays on assignment (result[key] = value.slice() when Array.isArray(value)) and extend the aliasing test to an array-valued key.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/defaults.ts", "line": 39 }
+    },
+    {
+      "id": "code-review-stringlist-skips-element-type-check",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "FieldKind.STRING_LIST validation checks only that the value is a non-empty array, not that its elements are strings",
+      "detail": "isMissing for STRING_LIST returns false as soon as the value is an array with length > 0, so a config value like [1, 2] or a mixed list satisfies a field declared STRING_LIST. This matches the enum member's documented semantics ('A non-empty array'), so it is very likely intentional rather than a defect, and tightening it would be a behaviour change that could reject configs that validate today. Recorded only so the choice stays conscious: if a later milestone relies on STRING_LIST fields actually being lists of strings (e.g. availabilityZones passed straight into a CDK construct that will throw on a non-string), either strengthen isMissing to check every element is a non-blank string or rename the kind to make the loose semantics explicit. No change now.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/validation.ts", "line": 59 }
     }
   ]
 }
