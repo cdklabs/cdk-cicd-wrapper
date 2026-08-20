@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cdklabs/cdk-cicd-wrapper/schemas/tasks.schema.json",
+  "title": "Task Board",
+  "description": "Schema for the repo's evolving task board (task.md is the human-readable board; tasks conform to this contract). Each task is designed to be as INDEPENDENT as possible: tasks in the same `wave` have no dependency on one another and run in parallel, and `dependsOn` carries the only ordering — keep it minimal and push shared work into its own upstream task. Not v3-specific; this schema outlives any one initiative. Restricted to the JSON Schema subset Claude's Structured Outputs supports, so an agent can be constrained to it when emitting a task.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tasks"],
+  "properties": {
+    "schemaVersion": {
+      "description": "Stable schema version. Bump only on breaking changes to this contract.",
+      "type": "integer",
+      "const": 1
+    },
+    "tasks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "description", "component", "type", "wave", "status"],
+      "properties": {
+        "id": {
+          "description": "Stable, unique kebab-case key (dedupe key across edits). Convention: <initiative-or-milestone>-<slug>, e.g. 'm1-config-loader', 'harness-teardown-guard'. No counters; pick a slug and check for collision before adding.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Short human-facing title (a phrase, not the id slug).",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the task does and why. Enough for someone to pick it up cold without re-deriving context.",
+          "type": "string"
+        },
+        "component": {
+          "description": "Ownership axis — the package/area the task touches (same axis as findings.schema.json). 'wrapper' = @cdklabs/cdk-cicd-wrapper (jsii constructs). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. 'projen' = @cdklabs/cdk-cicd-wrapper-projen. 'shared' = spans packages. 'infra' = tooling/docs/samples/test-harness/schema.",
+          "type": "string",
+          "enum": ["wrapper", "cli", "projen", "shared", "infra"]
+        },
+        "type": {
+          "description": "Work kind — drives the conventional-commit type and separates build-work from verify-work. 'spike' = time-boxed investigation with a written outcome.",
+          "type": "string",
+          "enum": ["feature", "test", "docs", "chore", "migration", "spike"]
+        },
+        "wave": {
+          "description": "AWS-style wave planning. Tasks in the same wave have NO dependency on each other and are meant to run in parallel; ordering across waves is expressed by dependsOn. Wave 0 is foundational (runs first). Lower waves generally precede higher ones, but the real ordering constraint is dependsOn, not the number.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "description": "Lifecycle. 'blocked' means a dependency or open decision is unresolved (say which in notes). Flip in place; do not delete finished tasks (history stays visible), mark 'done' or 'wontfix'.",
+          "type": "string",
+          "enum": ["todo", "in-progress", "blocked", "done", "wontfix"]
+        },
+        "spec": {
+          "description": "Reference to the authoritative spec for this task: a repo path plus section/anchor, e.g. 'docs/design/v3-devops-experience.md #Application configuration management'. Multiple refs separated by '; '.",
+          "type": "string"
+        },
+        "dependsOn": {
+          "description": "Ids of tasks that must be done first (the ONLY ordering signal). Keep minimal — independence is the goal. A task that many others need should be its own upstream task rather than duplicated.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "acceptance": {
+          "description": "The verification/gate that proves the task is done — a concrete, checkable criterion (a passing test, an asserted-then-destroyed real deploy, a green `projen compat`). This repo is goal-driven: no task is 'done' without its check green.",
+          "type": "string"
+        },
+        "produces": {
+          "description": "Concrete outputs the task creates (file paths, constructs, artifacts), so its completion is checkable and the task is self-contained.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "breaking": {
+          "description": "True if the task changes or removes published API/behaviour (guarded by `npx projen compat`). Under the additive-before-destructive rule these wait for a major release.",
+          "type": "boolean"
+        },
+        "owner": {
+          "description": "Optional assignee — a person or an agent role.",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Optional freeform: risks, assumptions, why blocked, or links to findings.json ids / decisions.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

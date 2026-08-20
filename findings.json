@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "findings": [
+    {
+      "id": "planning-projen-majorversion-mismatch",
+      "component": "infra",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "medium",
+      "status": "open",
+      "title": "projen majorVersion is 1 but the package has only ever published 0.x (latest 0.3.8)",
+      "detail": "RootConfig.ts sets majorVersion: 1 and prerelease: 'alpha', yet npm shows 50 published versions all in 0.x with no 1.x, no alpha, and only a 'latest' dist-tag. The config has never produced a shipped release. To make the v3 redesign version 1.0.0-alpha (decision D6), main's majorVersion must move to 0 to avoid a release-branch major collision — which also aligns the config with the actually-published 0.x line. Confirm the maintainer's intent for the current line before changing main's release config or enabling the v3 release branch.",
+      "location": { "path": "projenrc/RootConfig.ts", "line": 37 }
+    },
+    {
+      "id": "harness-asciinema-skill-gap",
+      "component": "infra",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "low",
+      "status": "open",
+      "title": "The asciinema-recorder skill only documents interactive shell-wrapping, not the scripted recording + mp4 export this repo's milestone proofs need",
+      "detail": "Decision D3 says to build the milestone recorder on the user's asciinema-recorder skill. The skill's actual workflow is 'exit your agent, wrap your shell in asciinema rec, work normally' and it assumes brew/apt for installation. A milestone gate has to produce its proof unattended, so test/proof/record-demo.sh uses 'asciinema rec --command <script>' instead, and the skill documents no cast->mp4 export path at all (no agg/ffmpeg). The recorder built here works and is self-contained, so nothing is blocked. Out of scope to fix because the skill lives outside this repo in a shared global skills directory and editing it would change behaviour for the user's other projects; the skill's own self-evolution policy would have it patched, so raise it with the maintainer rather than silently amending a shared file.",
+      "location": { "path": "test/proof/record-demo.sh" }
+    },
+    {
+      "id": "qa-compat-gate-already-red",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "npx projen compat is already failing with 64 pre-existing API-removal errors, so it cannot serve as the API-break tripwire",
+      "detail": "CLAUDE.md names 'npx projen compat' as the tripwire that guards the published multi-language API, and ground rule 1 relies on it. It currently exits 1 with 64 'has been removed' errors before any v3 work is added, so it reports nothing useful. Root cause looks like aws-cdk-lib version skew rather than a deliberate API change: the removals are overwhelmingly members this repo inherits from aws-cdk-lib rather than declares (propertyInjectors on many *Props structs, Stack.removeStackTag, Stack.env, and the .with() methods on IEncryptionKey/IParameterConstruct/IRepositoryStack). The dependency is declared as a caret range (aws-cdk-lib@^<cdkVersion>) while the lockfile resolves locally to exactly the range floor, so the published release was compiled against a newer minor that has those members and the local build is compared against an older one that does not. Confirmed unrelated to the v3 work: 0 of the 122 types in the generated .jsii assembly are sourced from src/v3, so the new module contributes nothing to the diff. Left unfixed because resolving it means moving a dependency version or curating a .compatignore (which does not exist yet) for the published 0.x line, both outside an additive v3 task. Consequence while it stays red: a genuine break in the v3 public surface introduced by m1-accessor or a later milestone would be indistinguishable from this noise, so treat compat as uninformative until it is fixed. Fix direction: align the resolved aws-cdk-lib with the version the last release was built against, re-diff, and only then add genuinely-accepted keys to a .compatignore.",
+      "location": { "path": "projenrc/PipelineConfig.ts", "line": 29 }
+    },
+    {
+      "id": "code-review-jsii-silently-omits-free-functions",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Exported bare functions compile fine but are silently dropped from the jsii assembly, so they do not exist for Python/Java/.NET consumers",
+      "detail": "jsii only models types, so a bare exported function is compiled by tsc and then omitted from the generated assembly with no error and no warning. Verified against the existing published surface: mergeCodeBuildOptions is exported from the package entry point via src/resource-providers, yet the generated .jsii contains zero entries for it. TypeScript consumers can call it; Python, Java and .NET consumers cannot see it at all. This is pre-existing on the current 0.x line, not introduced by v3, and it is a silent failure mode rather than a build break, which is why it has gone unnoticed. Recorded here because it is a trap for every future milestone: the v3 public barrel deliberately exports only classes, interfaces and enums for this reason, and anything that needs to be callable from a non-TS language has to be a static method on a class rather than a function. Fix direction for the existing case: decide whether mergeCodeBuildOptions is meant to be public, and if so move it onto a class; if not, stop exporting it from the entry point.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/resource-providers/CodeBuildFactoryProvider.ts", "line": 296 }
+    },
+    {
+      "id": "code-review-derived-defaults-drops-malformed-aws",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "applyDerivedDefaults silently discards an aws value that is present but not an object, repairing a typo from ambient env instead of reporting it",
+      "detail": "applyDerivedDefaults replaces a non-plain-object aws value with a fresh object and then fills it from the environment, so a config file that says aws as a bare string or a list has that value thrown away with no signal. If the caller's schema lists aws.accountId as a required key the mistake still fails closed with MISSING_KEY, but if it does not, the typo is silently repaired from CDK_DEFAULT_ACCOUNT/CDK_DEFAULT_REGION and the user never learns their config was ignored. Consistent with the deliberate, tested behaviour that a whole config document which is not an object falls back to base defaults, so it is not an inconsistency so much as an open design question. Left unfixed because reporting it honestly needs a fifth ConfigError kind for a type mismatch, and the m1-validation task scope is explicitly ConfigError with four kinds. Revisit when M3 resolves config for real stages, where a silently ignored aws block would be much more costly.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/defaults.ts", "line": 73 }
+    },
+    {
+      "id": "code-review-level0-fixture-lacks-feature-flags",
+      "component": "infra",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The level0-app fixture omits the cdk.json context feature-flag block that real cdk init emits, so it synthesizes under legacy defaults",
+      "detail": "level0-app exists to prove Level-0 inertness against an untouched cdk init app, and its TypeScript is faithful: it imports only aws-cdk-lib and constructs, with no wrapper symbol anywhere. Its cdk.json, however, is three lines, whereas cdk init app --language typescript emits a large context block of feature flags (and also package.json, jest.config.js, test/ and a watch key). The fixture therefore synthesizes under default/legacy feature-flag behaviour rather than the behaviour a newly initialised user app actually gets. Harmless for the current deploy/assert/destroy lifecycle test, which only checks a stack and an SSM parameter. It becomes a silent divergence for any later milestone that compares a synthesized template against what a real user app would produce, which is exactly what the M2 injection and M3 deploy-time-synth gates do. Fix direction: paste the feature-flag context from a real cdk init of the pinned aws-cdk version, and note the version it came from so it can be refreshed deliberately. The absent package.json is a separate, deliberate choice (root node_modules resolution) and is not part of this finding.",
+      "location": { "path": "test/fixtures/level0-app/cdk.json" }
+    },
+    {
+      "id": "code-review-sweep-age-requires-gnu-date",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The orphan sweep's stack-age arithmetic depends on GNU date and aborts the whole sweep if a timestamp fails to parse",
+      "detail": "cmd_sweep computes each stack's age with an arithmetic expression that embeds a date -u -d command substitution. The -d flag is GNU-specific, which is fine for this repo's Linux target but would break on BSD/macOS. More to the point, if that substitution ever produces empty output the arithmetic becomes a syntax error and the sweep exits non-zero having listed nothing useful, which is a poor failure mode for the one command whose job is finding leaked stacks. Latent rather than live: CloudFormation always returns a parseable ISO 8601 CreationTime, so there is no known input that triggers it today. Left unfixed as it is cosmetic against the reviewed change and the sweep's safety properties do not depend on the age column at all -- age is display-only and never feeds the teardown guard. Fix direction: compute the age in a guarded step and fall back to printing the raw timestamp when parsing fails.",
+      "location": { "path": "test/proof/harness.sh" }
+    }
+  ]
+}

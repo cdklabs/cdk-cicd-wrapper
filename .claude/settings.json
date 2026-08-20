@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "PATH": "/home/gyalai/.nvm/versions/node/v24.19.0/bin:${PATH}",
+    "NODE_OPTIONS": "--max-old-space-size=6144",
+    "GIT_PAGER": "cat"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(node --version)",
+      "Bash(yarn --version)",
+      "Bash(npx projen compat)",
+      "Bash(npm run test:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(aws sts get-caller-identity)",
+      "Bash(aws cloudformation describe-stacks:*)",
+      "Bash(aws cloudformation list-stacks:*)",
+      "Bash(aws codeartifact describe-domain:*)",
+      "Bash(aws codeartifact describe-repository:*)",
+      "Bash(aws codebuild list-projects:*)",
+      "Bash(aws codepipeline list-pipelines:*)",
+      "Bash(aws codepipeline get-pipeline-state:*)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(npm publish:*)",
+      "Bash(git commit:* --no-verify)"
+    ]
+  }
+}
