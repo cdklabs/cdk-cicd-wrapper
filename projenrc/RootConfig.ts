@@ -1,6 +1,14 @@
 import * as pj from 'projen';
 import { yarn } from 'cdklabs-projen-project-types';
 
+/**
+ * Shared by the root devDep, the workspaces' peer floor and the yarn resolution below, which must
+ * all agree: `constructs` types are nominal, so a second copy in the tree makes them unassignable.
+ *
+ * Module scope because instance fields are not readable inside `super()`.
+ */
+const CONSTRUCTS_VERSION = '10.5.0';
+
 export class RootConfig extends yarn.Monorepo {
   public readonly repositoryUrl = 'https://github.com/cdklabs/cdk-cicd-wrapper.git';
   public readonly eslintDeps = [
@@ -13,7 +21,7 @@ export class RootConfig extends yarn.Monorepo {
   public readonly cdkVersion = '2.195.0';
   public readonly integVersion = '2.186.0';
   public readonly cdkNagVersion = '2.28.0';
-  public readonly constructsVersion = '10.3.0';
+  public readonly constructsVersion = CONSTRUCTS_VERSION;
   public readonly authorName = 'CDK CI/CD Wrapper Team';
 
   public readonly licenseTask: pj.Task;
@@ -35,9 +43,11 @@ export class RootConfig extends yarn.Monorepo {
       projenrcTs: true,
       defaultReleaseBranch: 'main',
       majorVersion: 1,
+      // Floor required by cdklabs-projen-project-types 0.5.x
+      projenVersion: '^0.99.68',
       devDeps: [
-        'cdklabs-projen-project-types',
-        `constructs@10.3.0`,
+        'cdklabs-projen-project-types@^0.5.2',
+        `constructs@${CONSTRUCTS_VERSION}`,
         'node-fetch@^2',
         'eslint@^8',
         '@typescript-eslint/eslint-plugin@^7',
@@ -60,7 +70,10 @@ export class RootConfig extends yarn.Monorepo {
       workflowRunsOn: ['ubuntu-latest'],
       pullRequestTemplate: true,
       autoApproveOptions: {
-        allowedUsernames: ['aws-cdk-automation', 'dependabot[bot]'],
+        // GitHub only forbids approving your *own* PR, so `github-actions[bot]` approving a
+        // maintainer's PR is allowed. Requires the `auto-approve` label per PR, and mergify still
+        // holds the merge until every condition in `strengthenMergeGate` passes.
+        allowedUsernames: ['aws-cdk-automation', 'dependabot[bot]', 'gyalai-aws'],
       },
       autoApproveUpgrades: true,
       release: true,
@@ -71,6 +84,12 @@ export class RootConfig extends yarn.Monorepo {
         }),
       },
       githubOptions: {
+        dependencyReview: true,
+        dependencyReviewOptions: {
+          // Fork PRs get a read-only token, so the comment step cannot post. The findings still
+          // appear in the job summary and, being a merge condition, still block.
+          commentSummaryInPr: 'never',
+        },
         pullRequestLintOptions: {
           semanticTitleOptions: {
             types: ['feat', 'fix', 'chore', 'refactor'],
@@ -106,6 +125,12 @@ export class RootConfig extends yarn.Monorepo {
       ],
     });
 
+    // projen and cdklabs-projen-project-types depend on `constructs` with differing ranges, which
+    // yarn would otherwise install as separate copies.
+    this.package.addPackageResolutions(`constructs@${CONSTRUCTS_VERSION}`);
+
+    this.strengthenMergeGate();
+
     this.configureLinting();
     this.validateTask = this.configureValidate();
     this.licenseTask = this.configureLicense();
@@ -121,7 +146,26 @@ export class RootConfig extends yarn.Monorepo {
     this.configureContributors();
   }
 
+  /**
+   * projen's default gate is `#approved-reviews-by>=1` + `status-success=build`, which an approval
+   * alone satisfies even when a reviewer has since requested changes or left unresolved threads.
+   *
+   * Only add conditions for checks that run on *every* PR — mergify reports a skipped job as
+   * neutral rather than success, so a conditionally-skipped check stalls the queue indefinitely.
+   */
+  private strengthenMergeGate() {
+    this.autoMerge?.addConditions(
+      '#changes-requested-reviews-by=0',
+      '#review-threads-unresolved=0',
+      'status-success=dependency-review',
+    );
+  }
+
   private configureLinting() {
+    // `yarn.Monorepo` omits this, so ESLint walks up past the repo and picks up a second
+    // @typescript-eslint from any parent config — e.g. a git worktree checked out below the repo.
+    this.tryFindObjectFile('.eslintrc.json')?.addOverride('root', true);
+
     const lint = this.addTask('lint', {
       description: 'Lint all code',
     });

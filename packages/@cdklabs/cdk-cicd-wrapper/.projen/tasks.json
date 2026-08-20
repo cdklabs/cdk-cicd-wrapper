@@ -51,7 +51,7 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/jest,@types/node,cdk-pipelines-github,copyfiles,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,jsii-diff,jsii-pacmak,prettier,ts-jest,typescript,@cloudcomponents/cdk-pull-request-approval-rule,@cloudcomponents/cdk-pull-request-check,yaml"
+          "exec": "npx npm-check-updates@20 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/jest,@types/node,cdk-pipelines-github,copyfiles,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,jsii-diff,jsii-pacmak,prettier,ts-jest,typescript,@cloudcomponents/cdk-pull-request-approval-rule,@cloudcomponents/cdk-pull-request-check,yaml"
         }
       ]
     },
@@ -78,7 +78,8 @@
       "description": "Synthesize project files",
       "steps": [
         {
-          "exec": "cd ../../.. && npx projen default"
+          "exec": "projen default",
+          "cwd": "../../.."
         }
       ]
     },
@@ -86,7 +87,8 @@
       "name": "eslint",
       "description": "Runs eslint against the codebase",
       "env": {
-        "ESLINT_USE_FLAT_CONFIG": "false"
+        "ESLINT_USE_FLAT_CONFIG": "false",
+        "NODE_NO_WARNINGS": "1"
       },
       "steps": [
         {
@@ -147,7 +149,7 @@
       "description": "Creates the distribution package",
       "steps": [
         {
-          "spawn": "package-all"
+          "spawn": "package:js"
         }
       ]
     },
@@ -176,8 +178,7 @@
         {
           "exec": "jsii-pacmak -v --target dotnet"
         }
-      ],
-      "condition": "[ -n \"$CI\" ] || [ -n \"$DOTNET_ENABLED\" ]"
+      ]
     },
     "package:java": {
       "name": "package:java",
@@ -186,8 +187,7 @@
         {
           "exec": "jsii-pacmak -v --target java"
         }
-      ],
-      "condition": "[ -n \"$CI\" ] || [ -n \"$JAVA_ENABLED\" ]"
+      ]
     },
     "package:js": {
       "name": "package:js",
@@ -205,13 +205,15 @@
         {
           "exec": "jsii-pacmak -v --target python"
         }
-      ],
-      "condition": "[ -n \"$CI\" ] || [ -n \"$PYTHON_ENABLED\" ]"
+      ]
     },
     "post-compile": {
       "name": "post-compile",
       "description": "Runs after successful compilation",
       "steps": [
+        {
+          "spawn": "rosetta:extract"
+        },
         {
           "exec": "copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock src/projen/Taskfile.yaml lib"
         },
@@ -223,6 +225,15 @@
     "pre-compile": {
       "name": "pre-compile",
       "description": "Prepare the project for compilation"
+    },
+    "rosetta:extract": {
+      "name": "rosetta:extract",
+      "description": "Test rosetta extract",
+      "steps": [
+        {
+          "exec": "jsii-rosetta extract --strict"
+        }
+      ]
     },
     "test": {
       "name": "test",

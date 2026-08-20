@@ -45,3 +45,5 @@ junit.xml
 !/.eslintrc.js
 .jsii
 tsconfig.json
+.jsii.tabl.json
+!/rosetta/default.ts-fixture
