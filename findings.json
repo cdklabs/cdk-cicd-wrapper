@@ -110,6 +110,28 @@
       "title": "FieldKind.STRING_LIST validation checks only that the value is a non-empty array, not that its elements are strings",
       "detail": "isMissing for STRING_LIST returns false as soon as the value is an array with length > 0, so a config value like [1, 2] or a mixed list satisfies a field declared STRING_LIST. This matches the enum member's documented semantics ('A non-empty array'), so it is very likely intentional rather than a defect, and tightening it would be a behaviour change that could reject configs that validate today. Recorded only so the choice stays conscious: if a later milestone relies on STRING_LIST fields actually being lists of strings (e.g. availabilityZones passed straight into a CDK construct that will throw on a non-string), either strengthen isMissing to check every element is a non-blank string or rename the kind to make the loose semantics explicit. No change now.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/validation.ts", "line": 59 }
+    },
+    {
+      "id": "code-review-register-context-read-asymmetry",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The preload's construction-time config read sees a narrower context set than AppConfig.of, so a cicd:config in cdk.json drives the read side but not the injected tags/synthesizer",
+      "detail": "register.ts's readInjectedConfig runs before super(), when there is no App node, so it can only consult props.context and CDK_CONTEXT_JSON. The read side, AppConfig.of, reads the App's fully-merged context and its docstring notes cicd:config can also be hand-set in cdk.json's context field. So a cicd:config placed directly in cdk.json would be seen by AppConfig.of (used inside stacks) but would NOT drive the hook's tags/synthesizer, because the hook cannot read the cdk.json file pre-super without a node. This is fine for the supported path -- cdk-cicd exec (m2-exec) injects via CDK_CONTEXT_JSON, and command-line --context is merged into CDK_CONTEXT_JSON by the CDK CLI, so both are covered. It is an asymmetry to keep in mind when m2-exec is built and when documenting how config reaches the wrapper: the hook's inputs are CDK_CONTEXT_JSON + AppProps.context only. Fix direction if it ever bites: have exec normalise a cdk.json-level cicd:config into CDK_CONTEXT_JSON, or document that cdk.json-level cicd:config is read-only (consumed by AppConfig.of, not by injection).",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/inject.ts", "line": 70 }
+    },
+    {
+      "id": "code-review-register-no-cross-copy-version-check",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The multi-copy App patch does not check that the distinct aws-cdk-lib copies agree on version, so a dev/monorepo minor-version skew could silently misapply Aspects/tags",
+      "detail": "register.ts patches every distinct aws-cdk-lib copy reachable from the app entry / cwd / the hook, to survive workspaces that carry more than one copy. The cross-copy mechanism is sound for SAME-version copies: Aspects.of stores under Symbol.for('cdk-aspects') (a hardcoded global-registry key) and synthesis reads it back the same way, so the nested-copy applyWrapper and the root-copy synth share the same node metadata slot regardless of which copy's class created the App. All copies in this workspace are 2.195.0. The latent fragility: if two copies disagree on aws-cdk-lib minor version, data written by one copy's classes is read by another's synth logic, and interface drift (e.g. aspect-priority handling) could silently misbehave. Published installs are single-copy because aws-cdk-lib is a peerDependency, so this never affects users -- only dev/monorepo setups. Optional hardening: have distinctCdkCopies emit a warning (not throw) when the resolved copies' versions differ, so a skew is visible rather than silent. Not a correctness bug at the pinned version.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/register.ts", "line": 76 }
     }
   ]
 }

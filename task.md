@@ -262,11 +262,29 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 2 — Runtime injection + `cdk-cicd exec` (M2)  *(first real deploy; demo #1)*
 
-- **`m2-register`** — register preload  ·  todo · wave 2 · wrapper · feature
+- **`m2-register`** — register preload  ·  done · wave 2 · wrapper · feature
   - **desc:** Subclass `App` at the **leaf module** `core/lib/app.js`, inject
     `defaultStackSynthesizer`, register Aspects in the constructor. Do NOT monkeypatch `synth()` —
     Aspects run tree-wide before template emission.
   - **spec:** `docs/design/v3-devops-experience.md` #Seam mechanics — spiked and verified
+  - **produces:** `src/v3/runtime/register.ts` (the preload) + `src/v3/runtime/inject.ts` (the shared
+    post-construction core `applyWrapper` + `resolveSynthesizer` + the construction counter + the layout
+    guard, all internal — reused by m2-attach and m2-bundled-diagnostic); `test/v3/runtime/register.test.ts`.
+  - **notes:** ✅ Verified two ways: jest 70/70 in-process, and the real `node -r register.js bin/app.js`
+    preload run from a fixture dir (App is `WrappedApp`, cdk-nag `AwsSolutionsChecks` applied, injected
+    `cicd:config` tags reach the synthesized template). Nothing from `src/v3/runtime` enters the `.jsii`
+    assembly (checked, not assumed). Two corrections beyond the spike: (1) the synthesizer prop is typed
+    `IReusableStackSynthesizer`, not `IStackSynthesizer` (`DefaultStackSynthesizer` satisfies it), and a
+    reusable synthesizer is bound per-stack so `stack.synthesizer` is a bound clone — the test asserts
+    the custom qualifier survives into the template instead of instance identity. (2) **Instance
+    matching is load-bearing:** Node caches modules by resolved path, and the hook must patch the SAME
+    aws-cdk-lib the app loads. The dev workspace has TWO real copies (one nested in the wrapper as a jsii
+    devDep, one at root) — resolving from the hook's own location patched the wrong one and the app saw a
+    plain `App` (the exact silent-no-op failure `m2-bundled-diagnostic` guards against). Fixed by patching
+    every distinct copy reachable from the app entry / cwd / the hook, deduped; same-version copies share
+    aws-cdk-lib's internal metadata keys so cross-copy Aspects/Tags still apply. In a published install
+    aws-cdk-lib is a single peer copy and this is moot. The layout guard throws a clear, version-named
+    error rather than a silent try/catch, per the spec.
   - **notes:** **Seam spiked and verified end-to-end** (aws-cdk-lib 2.195.0 / node 24) — see the spec
     section for detail. Three corrections the implementation must honour: (1) `require('aws-cdk-lib/
     core/lib/app')` is **blocked** by the package `exports` map (`ERR_PACKAGE_PATH_NOT_EXPORTED`) —
