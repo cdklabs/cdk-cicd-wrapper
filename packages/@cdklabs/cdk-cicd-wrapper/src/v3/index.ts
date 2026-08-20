@@ -35,6 +35,7 @@ export { CdkCicd } from './runtime/attach';
 export { Repository, RepositorySourceType } from './config/repository';
 export {
   CiConfig,
+  CodeArtifactConfig,
   DeploymentConfig,
   EngineType,
   RegionOrder,

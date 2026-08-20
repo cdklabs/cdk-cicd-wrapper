@@ -15,6 +15,7 @@
 import { Repository } from './repository';
 import {
   CiConfig,
+  CodeArtifactConfig,
   DeploymentConfig,
   EngineType,
   RegionOrder,
@@ -60,6 +61,7 @@ export interface CicdConfigProps {
   readonly synthesizer?: { readonly type?: SynthesizerType };
   readonly engine?: EngineType;
   readonly ci?: CiConfigInput;
+  readonly codeArtifact?: CodeArtifactConfig;
 }
 
 /** Normalize the permissive CI input, collapsing `synthStages: 'all'` to an empty list. */
@@ -112,6 +114,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     synthesizer: { type: props.synthesizer?.type ?? SynthesizerType.DEFAULT },
     engine: props.engine ?? EngineType.CODEPIPELINE,
     ci: normalizeCi(props.ci),
+    codeArtifact: props.codeArtifact,
   };
 }
 

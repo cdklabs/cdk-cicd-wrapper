@@ -629,8 +629,25 @@ Not tasks — resolved/open design decisions that tasks reference.
     zero unsuppressed findings under `AwsSolutionsChecks`, with each suppression justified from the
     rendered template rather than copied from v2's CDK-Pipelines-shaped paths; v2's existing compliance
     tests are re-pointed at real assertions and whatever they now surface is triaged.
+- **`m4-private-registry`** — codeArtifact login in the buildspec  ·  done · wave 4 · wrapper · feature
+  - **desc:** Opt-in `codeArtifact` config so the pipeline's builds authenticate to a private npm repo.
+  - **depends-on:** m4-approval-selfupdate
+  - **notes:** Surfaced as an `m4-verify` blocker: the pipeline's CodeBuild runs `npm ci` + `npx
+    cdk-cicd …`, but the wrapper/CLI are unpublished, so CodeBuild must install them from CodeArtifact —
+    and the engine wired no registry login. Added a `CodeArtifactConfig` (`domain`, `repository`,
+    optional `account`/`region`/`npmScope`) on `ResolvedCicdConfig` + `defineCICD`. When set, **every**
+    build project (CI Build, UpdatePipeline, each Deploy-<stage>) runs `aws codeartifact login --tool npm
+    …` in a `pre_build` phase before `npm ci`, and its role gets the three read grants
+    (`GetAuthorizationToken` on the domain, `GetRepositoryEndpoint`+`ReadFromRepository` on the repo,
+    `sts:GetServiceBearerToken` service-scoped). Reshaped from v2's `CodeArtifactPlugin`; ARNs now use
+    `stack.partition`. Strictly opt-in — a default pipeline is byte-identical. 141/141 v3 tests, `.jsii`
+    153 → 154 (`CodeArtifactConfig`), lint clean. Login command validated against real AWS (writes the
+    `@cdklabs:registry` + token an `npm ci` uses). Review clean, no fix-now; 3 low follow-ups appended
+    to `findings.json`, and the untested no-`npmScope` branch was closed with a test rather than deferred.
+  - **acceptance:** with `codeArtifact` set, every CodeBuild project's buildspec logs in before `npm ci`
+    and its role can read the repo; with it unset, no login and no grant. ✅
 - **`m4-verify`** — M4 gate  ·  todo · wave 4 · shared · test
-  - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks, m4-nag-compliance
+  - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks, m4-nag-compliance, m4-private-registry
   - **acceptance:** `deploy-ci` provisions a working pipeline in the test account; a commit flows
     dev→prod with approval; **CodeBuild project count recorded and compared to v2**; full teardown.
     **Recorded demo #2.**

@@ -18,7 +18,7 @@ import {
   aws_iam as iam,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ResolvedCicdConfig } from '../../config/types';
+import { CodeArtifactConfig, ResolvedCicdConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
 import { EngineRenderProps, IEngine } from '../types';
 import { buildSourceAction } from './source';
@@ -80,7 +80,7 @@ export class CodePipelineEngine implements IEngine {
       actions: [
         new actions.CodeBuildAction({
           actionName: 'Build',
-          project: this.project(scope, 'BuildProject', this.ciCommands(config)),
+          project: this.project(scope, 'BuildProject', this.ciCommands(config), config.codeArtifact),
           input: sourceOutput,
         }),
       ],
@@ -97,7 +97,7 @@ export class CodePipelineEngine implements IEngine {
     // bucket and key on the first run -- so thread the flag through, keyed off the removal policy in hand.
     const deployCi =
       this.removalPolicy === RemovalPolicy.DESTROY ? 'npx cdk-cicd deploy-ci --disposable' : 'npx cdk-cicd deploy-ci';
-    const selfUpdate = this.project(scope, 'UpdatePipeline', ['npm ci', deployCi]);
+    const selfUpdate = this.project(scope, 'UpdatePipeline', ['npm ci', deployCi], config.codeArtifact);
     this.grantDeployPermissions(selfUpdate, stack.account, [stack.region]);
     pipeline.addStage({
       stageName: 'UpdatePipeline',
@@ -106,10 +106,12 @@ export class CodePipelineEngine implements IEngine {
 
     // One deploy action per stage; the region fan-out lives inside `cdk-cicd deploy`.
     for (const stage of config.stages) {
-      const project = this.project(scope, `Deploy-${stage.name}`, [
-        'npm ci',
-        `npx cdk-cicd deploy --stage ${stage.name} --yes`,
-      ]);
+      const project = this.project(
+        scope,
+        `Deploy-${stage.name}`,
+        ['npm ci', `npx cdk-cicd deploy --stage ${stage.name} --yes`],
+        config.codeArtifact,
+      );
       // An empty region list means "wherever the pipeline itself runs" (an env-agnostic stage).
       const account = stage.env.account ?? stack.account;
       const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
@@ -188,16 +190,64 @@ export class CodePipelineEngine implements IEngine {
     return steps.length > 0 ? ['npm ci', ...steps] : DEFAULT_CI_COMMANDS;
   }
 
-  private project(scope: Construct, id: string, commands: string[]): codebuild.PipelineProject {
-    return new codebuild.PipelineProject(scope, id, {
+  private project(
+    scope: Construct,
+    id: string,
+    commands: string[],
+    codeArtifact?: CodeArtifactConfig,
+  ): codebuild.PipelineProject {
+    const stack = Stack.of(scope);
+    // Every project runs `npm ci`; a private-registry login has to come first, or the install resolves
+    // against public npm and fails on the private packages (the wrapper's own, before it is published).
+    const phases = codeArtifact
+      ? { pre_build: { commands: [codeArtifactLogin(stack, codeArtifact)] }, build: { commands } }
+      : { build: { commands } };
+
+    const project = new codebuild.PipelineProject(scope, id, {
       environment:
         this.buildImage !== undefined
           ? { buildImage: codebuild.LinuxBuildImage.fromDockerRegistry(this.buildImage) }
           : undefined,
-      buildSpec: codebuild.BuildSpec.fromObject({
-        version: '0.2',
-        phases: { build: { commands } },
-      }),
+      buildSpec: codebuild.BuildSpec.fromObject({ version: '0.2', phases }),
     });
+    if (codeArtifact) {
+      grantCodeArtifactRead(project, codeArtifact);
+    }
+    return project;
   }
+}
+
+/** The `codeartifact login` that binds npm to the private repo, defaulting to the pipeline's own env. */
+function codeArtifactLogin(stack: Stack, ca: CodeArtifactConfig): string {
+  const account = ca.account ?? stack.account;
+  const region = ca.region ?? stack.region;
+  const scope = ca.npmScope !== undefined && ca.npmScope.length > 0 ? ` --namespace ${ca.npmScope}` : '';
+  return `aws codeartifact login --tool npm --domain ${ca.domain} --domain-owner ${account} --region ${region} --repository ${ca.repository}${scope}`;
+}
+
+/** The read grants `codeartifact login` + `npm ci` need: a bearer token and read on the repo. */
+function grantCodeArtifactRead(project: codebuild.PipelineProject, ca: CodeArtifactConfig): void {
+  const stack = Stack.of(project);
+  const account = ca.account ?? stack.account;
+  const region = ca.region ?? stack.region;
+  project.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['codeartifact:GetAuthorizationToken'],
+      resources: [`arn:${stack.partition}:codeartifact:${region}:${account}:domain/${ca.domain}`],
+    }),
+  );
+  project.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['codeartifact:GetRepositoryEndpoint', 'codeartifact:ReadFromRepository'],
+      resources: [`arn:${stack.partition}:codeartifact:${region}:${account}:repository/${ca.domain}/${ca.repository}`],
+    }),
+  );
+  // The token is minted through STS on CodeArtifact's behalf; scoped to that service, not blanket.
+  project.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['sts:GetServiceBearerToken'],
+      resources: ['*'],
+      conditions: { StringEquals: { 'sts:AWSServiceName': 'codeartifact.amazonaws.com' } },
+    }),
+  );
 }

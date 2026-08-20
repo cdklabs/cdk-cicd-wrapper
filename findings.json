@@ -649,6 +649,39 @@
       "title": "The self-update IAM test can't tell the pipeline's own account from the first stage's, because they coincide",
       "detail": "The test 'the self-update project may assume the bootstrap roles in the pipeline own account/region' renders with `stages: ['dev']`, a bare stage whose env falls back to the pipeline stack's env (111111111111/us-west-2). So the self-update grant (pipeline account) and the first stage's grant (also 111111111111 by fallback) target the same ARNs. Mutation confirmed during review: rewriting the self-update grant to derive account/region from `config.stages[0].env` instead of `stack.account`/`stack.region` left all tests green. The implementation is correct (it uses the pipeline's own env); the test just cannot catch a regression that swaps to stage env. Out of scope for the self-update commit. Fix direction: render the pipeline in one account with a stage pinned to a DIFFERENT account, and assert the self-update policy grants the pipeline's account, not the stage's.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/engine/codepipeline/CodePipelineEngine.test.ts", "line": 54 }
+    },
+    {
+      "id": "code-review-codeartifact-login-needs-aws-cli-on-custom-image",
+      "component": "wrapper",
+      "layer": "production",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "codeArtifact login adds an implicit aws-CLI dependency that a custom buildImage may not satisfy",
+      "detail": "When `codeArtifact` is set, every build project runs `aws codeartifact login` in pre_build -- a dependency on the AWS CLI that a bare `npm ci` did not have. The default image (CDK PipelineProject -> STANDARD_7_0) ships aws CLI v2 + npm, so the common path is fine. But a user who sets `CodePipelineEngineProps.buildImage` via `fromDockerRegistry` to an image without the aws CLI on PATH only finds out at deploy time, when pre_build fails. Pre-existing shape (v2's CodeArtifactPlugin assumed the same). Not worth code now; fix direction is a doc note on `buildImage`/`codeArtifact` that the image must carry the aws CLI when a private registry is configured.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 225 }
+    },
+    {
+      "id": "code-review-codeartifact-npmscope-leading-at-not-stripped",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "A codeArtifact npmScope passed with a leading @ is neither stripped nor rejected",
+      "detail": "`CodeArtifactConfig.npmScope` is documented as the bare scope (`cdklabs` for `@cdklabs/*`) and passed straight into `--namespace <scope>`. A user who follows npm's own convention and writes `@cdklabs` produces `aws codeartifact login --namespace @cdklabs`, which CodeArtifact rejects -- a late, confusing failure for a natural mistake. v2 behaved identically. Fix direction: strip a leading `@` (and/or validate the scope) in `codeArtifactLogin`, or tighten the doc. Low because it fails loudly at deploy, not silently.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 224 }
+    },
+    {
+      "id": "code-review-engine-codeartifact-helpers-freefn-vs-method",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CodeArtifact helpers are module-level functions while the sibling deploy-grant is a private method",
+      "detail": "`codeArtifactLogin`/`grantCodeArtifactRead` are module-level free functions, whereas the sibling `grantDeployPermissions` (same file, same statelessness w.r.t. instance fields) is a private method; additionally `codeArtifactLogin` receives `stack` as a parameter while `grantCodeArtifactRead` recomputes `Stack.of(project)` itself. Purely stylistic -- both work and both are covered -- recorded so a later consistency pass can align them rather than re-notice. Not worth churn on its own.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 209 }
     }
   ]
 }

@@ -148,6 +148,75 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     });
   });
 
+  test('a codeArtifact config logs every build project into the private repo before npm ci', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev', 'prod'],
+      codeArtifact: { domain: 'shop-domain', repository: 'shop-repo', npmScope: 'cdklabs' },
+    });
+    const t = render(config);
+
+    // Every project runs npm ci, so every project must log in first -- CI build, self-update and both
+    // deploys. A login missing from any one of them fails that project's install on the private packages.
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    expect(projects).toHaveLength(4);
+    for (const p of projects) {
+      const spec = JSON.stringify(p.Properties.Source.BuildSpec);
+      expect(spec).toContain(
+        'aws codeartifact login --tool npm --domain shop-domain --domain-owner 111111111111 ' +
+          '--region us-west-2 --repository shop-repo --namespace cdklabs',
+      );
+    }
+    // And the projects' roles can actually fetch the token + read the repo.
+    t.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'codeartifact:GetAuthorizationToken',
+            Resource: arnEndingIn(':codeartifact:us-west-2:111111111111:domain/shop-domain'),
+          }),
+          Match.objectLike({
+            Action: Match.arrayWith(['codeartifact:ReadFromRepository']),
+            Resource: arnEndingIn(':codeartifact:us-west-2:111111111111:repository/shop-domain/shop-repo'),
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('a codeArtifact config without npmScope logs in against the default scope (no --namespace)', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      codeArtifact: { domain: 'shop-domain', repository: 'shop-repo' },
+    });
+    const build = Object.values(render(config).findResources('AWS::CodeBuild::Project'))[0];
+    const spec = JSON.stringify(build.Properties.Source.BuildSpec);
+
+    // The doc calls npmScope optional; when omitted the login must NOT carry a dangling `--namespace`,
+    // which CodeArtifact would reject. Assert the login is present AND the flag is absent.
+    expect(spec).toContain('aws codeartifact login --tool npm --domain shop-domain');
+    expect(spec).not.toContain('--namespace');
+  });
+
+  test('without a codeArtifact config no project logs in and no codeartifact grant is made', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+    const t = render(config);
+
+    // The private-registry login must be strictly opt-in: a default pipeline talks to public npm.
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    for (const p of projects) {
+      expect(JSON.stringify(p.Properties.Source.BuildSpec)).not.toContain('codeartifact login');
+    }
+    const policies = Object.values(t.findResources('AWS::IAM::Policy'));
+    const grantsCodeArtifact = policies.some((p) =>
+      JSON.stringify(p.Properties.PolicyDocument).includes('codeartifact:GetAuthorizationToken'),
+    );
+    expect(grantsCodeArtifact).toBe(false);
+  });
+
   test('the artifact store is the wrapper support bucket, encrypted with the support key', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
     const t = render(config);

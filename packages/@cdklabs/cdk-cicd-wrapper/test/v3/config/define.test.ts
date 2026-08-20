@@ -80,7 +80,11 @@ describe('m3-config: defineCICD top-level defaults', () => {
   });
 
   test('ci.steps overrides and image pass through', () => {
-    const cfg = defineCICD({ repository: REPO, stages: [], ci: { steps: { lint: 'npx cdk-cicd validate' }, image: 'node:24' } });
+    const cfg = defineCICD({
+      repository: REPO,
+      stages: [],
+      ci: { steps: { lint: 'npx cdk-cicd validate' }, image: 'node:24' },
+    });
     expect(cfg.ci.steps).toEqual({ lint: 'npx cdk-cicd validate' });
     expect(cfg.ci.image).toBe('node:24');
   });
@@ -90,6 +94,12 @@ describe('m3-config: defineCICD top-level defaults', () => {
     expect(
       defineCICD({ repository: REPO, stages: [], synthesizer: { type: SynthesizerType.APP_STAGING } }).synthesizer.type,
     ).toBe(SynthesizerType.APP_STAGING);
+  });
+
+  test('codeArtifact defaults to undefined (opt-in) and an explicit config passes through unchanged', () => {
+    expect(defineCICD({ repository: REPO, stages: [] }).codeArtifact).toBeUndefined();
+    const codeArtifact = { domain: 'd', repository: 'r', npmScope: 'cdklabs' };
+    expect(defineCICD({ repository: REPO, stages: [], codeArtifact }).codeArtifact).toEqual(codeArtifact);
   });
 
   test('resolveCicdConfig (the YAML path) produces the same result as defineCICD', () => {

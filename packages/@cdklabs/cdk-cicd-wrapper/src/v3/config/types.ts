@@ -43,6 +43,25 @@ export interface CiConfig {
   readonly image?: string;
 }
 
+/**
+ * A private CodeArtifact npm repository the pipeline's builds authenticate against. When set, every
+ * build project runs `aws codeartifact login` before `npm ci` and is granted read access to the
+ * repository -- which is how a pipeline installs private packages (including the wrapper itself before
+ * it is published to the public npm registry).
+ */
+export interface CodeArtifactConfig {
+  /** The CodeArtifact domain. */
+  readonly domain: string;
+  /** The repository within the domain. */
+  readonly repository: string;
+  /** Domain-owning account. Defaults to the pipeline's own account. */
+  readonly account?: string;
+  /** Region the domain lives in. Defaults to the pipeline's own region. */
+  readonly region?: string;
+  /** npm scope to bind to the repository, e.g. `cdklabs` for `@cdklabs/*`. Omit for the default scope. */
+  readonly npmScope?: string;
+}
+
 /** A resolved stage's target environment. `regions` is always a list, even for a single region. */
 export interface StageEnvironment {
   /** Target account. Omitted means environment-agnostic (resolved from ambient creds at deploy). */
@@ -95,4 +114,6 @@ export interface ResolvedCicdConfig {
   readonly engine: EngineType;
   /** Resolved CI configuration. */
   readonly ci: CiConfig;
+  /** Private CodeArtifact npm repository the builds authenticate against, if any. */
+  readonly codeArtifact?: CodeArtifactConfig;
 }
