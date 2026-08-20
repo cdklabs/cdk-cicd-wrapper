@@ -17,6 +17,21 @@ import { App, Aspects, DefaultStackSynthesizer, IReusableStackSynthesizer, Tags 
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { AppConfig } from '../appconfig/accessor';
 
+/**
+ * Environment flag that `cdk-cicd exec` (m2-exec) sets to arm the bundled-app diagnostic. It is a
+ * contract between the CLI launcher and this preload, deliberately OFF by default: the diagnostic
+ * installs a `process.on('exit')` hook that can fail the process, and that must never fire when the
+ * module is merely imported (jest, a library consumer) rather than driving a real `cdk-cicd exec` run.
+ */
+export const EXEC_FLAG = 'CDK_CICD_EXEC';
+
+/** The actionable message the diagnostic prints when the preload injected nothing. */
+export const BUNDLED_DIAGNOSTIC_MESSAGE =
+  'cdk-cicd-wrapper: the injection preload loaded but no App passed through it, so the wrapper ' +
+  'applied NOTHING -- no synthesizer, tags or Aspects. This happens when the entry point is bundled ' +
+  '(esbuild inlines its own aws-cdk-lib), native ESM, or uses a vendored aws-cdk-lib. Add ' +
+  'CdkCicd.attach(app) in your bin/ immediately after you create the App to apply the wrapper explicitly.';
+
 /** How many Apps have passed through the wrapper. Read by the bundled-app diagnostic (m2-bundled-diagnostic). */
 let appConstructionCount = 0;
 
@@ -28,6 +43,16 @@ export function markAppConstructed(): void {
 /** Number of Apps the wrapper has wrapped in this process. Zero after the hook loads means it patched nothing. */
 export function appsConstructed(): number {
   return appConstructionCount;
+}
+
+/**
+ * Whether the preload injected nothing and should fail the run. Pure so the decision is unit-testable
+ * without a real process exit: fire only when the diagnostic was armed (a real `cdk-cicd exec` run),
+ * the wrapper wrapped zero Apps, and the run otherwise succeeded -- a non-zero code means the app
+ * already failed for its own reason and this diagnostic must not mask it.
+ */
+export function shouldWarnBundled(params: { armed: boolean; constructed: number; exitCode: number }): boolean {
+  return params.armed && params.constructed === 0 && params.exitCode === 0;
 }
 
 /**
@@ -104,9 +129,7 @@ export function isConfigObject(value: unknown): value is Record<string, unknown>
  */
 export function assertAppModuleLayout(appModule: unknown, cdkVersion: string): void {
   const descriptor =
-    appModule !== null && typeof appModule === 'object'
-      ? Object.getOwnPropertyDescriptor(appModule, 'App')
-      : undefined;
+    appModule !== null && typeof appModule === 'object' ? Object.getOwnPropertyDescriptor(appModule, 'App') : undefined;
   const app = (appModule as { App?: unknown } | null | undefined)?.App;
   if (typeof app !== 'function' || descriptor === undefined || descriptor.writable !== true) {
     throw new Error(

@@ -325,12 +325,22 @@ Not tasks — resolved/open design decisions that tasks reference.
     **successfully with no synthesizer, no tags and no Aspects** — a silently non-compliant deploy.
     Same shape for native ESM and a vendored `aws-cdk-lib`.
   - **depends-on:** m2-register          - **acceptance:** fires on the `bundled-app` fixture; stays
-    silent on `level0-app` and `level1-app` (no false positives).
-  - **notes:** Detection strategy spiked and working: the hook counts Apps that pass through its
-    constructor and checks on `process.on('exit')` — *hook loaded + zero constructions + success exit*
-    ⇒ injection was bypassed ⇒ fail non-zero pointing at `CdkCicd.attach(app)`. Verified silent on a
-    normal app and erroring on a real 43 MB esbuild bundle. Prefer this over inspecting the assembly:
-    it is in-process, needs no assembly parsing, and fires before templates are trusted.
+    silent on `level0-app` and `level1-app` (no false positives).  ·  **done**
+  - **produces:** the `shouldWarnBundled` predicate + `BUNDLED_DIAGNOSTIC_MESSAGE` + `EXEC_FLAG` in
+    `src/v3/runtime/inject.ts`; the `process.on('exit')` handler in `register.ts`; the pinned esbuild in
+    `test/fixtures/bundled-app/bundle.sh`; `test/v3/runtime/bundled-diagnostic.test.ts`.
+  - **notes:** ✅ The hook counts Apps through the wrapper and, on `process.on('exit')`, fails the run
+    non-zero (`process.exitCode = 1`, which flips a natural success without masking a run that already
+    failed) with a pointer to `CdkCicd.attach(app)` — iff *armed + zero Apps wrapped + success exit*.
+    **Armed only under `cdk-cicd exec`** via the `CDK_CICD_EXEC` env flag (a contract m2-exec will set),
+    deliberately OFF on import so it never fires under jest or a library consumer. Proven: 84/84 jest
+    (pure predicate truth-table + the exit-handler wiring exercised via subprocesses against the
+    COMPILED preload — fires on no-App, silent when an App is wrapped, silent unarmed, and does NOT mask
+    an app that throws), plus a manual run of the **real 42 MB esbuild bundle** of `bundled-app` under
+    the armed preload → exit 1 + the attach message. The fixture-level fires-on-bundled / silent-on-
+    level0+level1 proof under a real `cdk-cicd exec` invocation is the `m2-verify` gate (needs exec).
+    `bundled-app` is now active — `bundle.sh` fetches a pinned `esbuild@0.24.2` on demand (no yarn.lock
+    churn), which this task owns.
 - **`m2-cli-depends-wrapper`** — CLI depends on wrapper (D5b)  ·  todo · wave 2 · shared · chore
   - **desc:** CLI gains a dependency on the wrapper so `npm i @cdklabs/cdk-cicd-wrapper-cli` installs
     the `cdk-cicd` bin + `register` hook + constructs in one shot. `exec`'s `node -r .../register`

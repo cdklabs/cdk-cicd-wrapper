@@ -16,9 +16,13 @@ import type { App, AppProps } from 'aws-cdk-lib';
 import {
   applyWrapper,
   assertAppModuleLayout,
+  BUNDLED_DIAGNOSTIC_MESSAGE,
+  EXEC_FLAG,
+  appsConstructed,
   markAppConstructed,
   readInjectedConfig,
   resolveSynthesizer,
+  shouldWarnBundled,
 } from './inject';
 
 // Marks a class this hook has already wrapped, so a second load is a no-op.
@@ -108,4 +112,20 @@ if (copies.length === 0) {
 }
 for (const { cdkRoot, cdkVersion } of copies) {
   patchCopy(cdkRoot, cdkVersion);
+}
+
+// Bundled-app diagnostic. When a real `cdk-cicd exec` run (EXEC_FLAG set) finishes successfully but
+// no App ever came through the wrapper, the preload was defeated -- esbuild inlined its own App, or a
+// native-ESM/vendored aws-cdk-lib bypassed the module registry -- and the app synthesized silently
+// non-compliant, which is worse than a crash. Fail the run with an actionable pointer to attach().
+// `process.exitCode = 1` inside 'exit' flips a natural success to a failure; a non-zero code is left
+// alone so this never masks the app's own error. Armed only under exec, so importing this module
+// (jest, a library consumer) never installs a process-failing hook.
+if (process.env[EXEC_FLAG] === '1') {
+  process.on('exit', (code) => {
+    if (shouldWarnBundled({ armed: true, constructed: appsConstructed(), exitCode: code })) {
+      process.stderr.write(`${BUNDLED_DIAGNOSTIC_MESSAGE}\n`);
+      process.exitCode = 1;
+    }
+  });
 }

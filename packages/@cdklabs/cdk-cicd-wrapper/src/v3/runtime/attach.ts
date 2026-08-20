@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { App } from 'aws-cdk-lib';
-import { AppConfig } from '../appconfig/accessor';
 import { applyWrapper, isConfigObject, markAppConstructed } from './inject';
+import { AppConfig } from '../appconfig/accessor';
 
 /**
  * Explicit, reliable entry point for applying the wrapper when the `node -r` preload

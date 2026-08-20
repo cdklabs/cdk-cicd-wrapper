@@ -143,6 +143,28 @@
       "title": "CdkCicd.attach reuses markAppConstructed(), conflating an explicit attach with a wrapped-constructor App -- fine for today's diagnostic, revisit when m2-bundled-diagnostic is built",
       "detail": "The construction counter (inject.ts markAppConstructed/appsConstructed) is named for Apps that pass through the wrapped constructor, but CdkCicd.attach also increments it so that an app which opts into attach counts as wrapped and the future bundled-app diagnostic stays silent. The counter's real semantic (appsConstructed = 'Apps the wrapper has wrapped') is satisfied and this is correct for the diagnostic's only current requirement (non-zero when the wrapper was applied). The coupling is baked in before m2-bundled-diagnostic exists: if that diagnostic later needs to distinguish an attach from constructor-wrapping (e.g. to warn that a non-bundled app called attach unnecessarily), this shared counter is too coarse and attach would need its own signal. Resolve when building m2-bundled-diagnostic: either keep the shared counter (if 'was the wrapper applied at all' stays the only question) or split into distinct construct-vs-attach counters. No change needed now.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/attach.ts", "line": 32 }
+    },
+    {
+      "id": "code-review-exec-flag-cross-package-literal",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The CDK_CICD_EXEC arming flag is a cross-package contract exported only from an internal deep path, so m2-exec will likely duplicate the literal string",
+      "detail": "The bundled-app diagnostic arms only when process.env.CDK_CICD_EXEC === '1'. That flag is defined as EXEC_FLAG in the wrapper's internal src/v3/runtime/inject.ts, but its OTHER end -- the cdk-cicd exec launcher -- lives in the separate cdk-cicd-wrapper-cli package, which cannot import a non-exported deep runtime path (the jsii package's exports map does not publish it, and importing lib/v3/runtime/inject reaches past the public surface). So m2-exec will most likely hardcode the literal 'CDK_CICD_EXEC' a second time. Resolve when building m2-exec: either expose the flag name somewhere the CLI can import cleanly, or add a small test that asserts the two copies of the string agree, so a rename on one side cannot silently disarm the diagnostic on real runs.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/inject.ts", "line": 26 }
+    },
+    {
+      "id": "code-review-bundled-diagnostic-test-needs-compiled-lib",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The bundled-diagnostic subprocess test depends on a compiled lib/ that the test task does not build, so it only passes after a separate compile step",
+      "detail": "bundled-diagnostic.test.ts runs the COMPILED preload (lib/v3/runtime/register.js) under node -r in a subprocess -- the only faithful way to exercise a process.on('exit') handler. But the projen 'test' task is jest + eslint with no compile step, and lib/ is gitignored, so a bare `npx jest` after a clean checkout would hit the test's beforeAll guard ('run npx projen compile first') and fail deterministically. It passes under the canonical `npm run build` (compile then test) and in this session because compile was run first. Not flaky, just order-dependent. Fix direction: have the wrapper's projen 'test' task spawn 'compile' first, or move the subprocess wiring test behind an integration-test task that depends on compile, so the standalone `npx jest` invocation is self-sufficient.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/runtime/bundled-diagnostic.test.ts", "line": 34 }
     }
   ]
 }

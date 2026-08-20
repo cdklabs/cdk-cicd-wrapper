@@ -1,16 +1,11 @@
-# `bundled-app` fixture — blocked on a missing prerequisite
+# `bundled-app` fixture — active as of `m2-bundled-diagnostic`
 
-## Missing prerequisite: `esbuild`
+## `esbuild` is fetched on demand, pinned
 
-`esbuild` is **not resolvable** from the repo-root `node_modules` today
-(`require.resolve('esbuild')` throws). The harness task that created this fixture deliberately did not
-install it — adding a dependency would churn `yarn.lock`, and the choice of where it belongs
-(root `devDependencies` vs. a fixture-local install vs. `npx esbuild@x` pinned in `bundle.sh`) is a
-call for whoever activates the fixture.
-
-Consequence: `./bundle.sh` exits 1 with that message, and because `cdk.json#build` runs it,
-**`npx cdk synth` fails here by design**. Everything else about the fixture is complete — the shape is
-what matters, and the shape is on disk.
+`bundle.sh` runs `npx -y esbuild@0.24.2` rather than depending on a repo-installed esbuild. This
+fixture is the only thing that needs esbuild, and a `devDependency` would churn `yarn.lock` for every
+install, so `m2-bundled-diagnostic` (which owns this fixture) fetches a pinned version on demand. The
+first bundle pays a one-time download; `dist/` is build output and is gitignored.
 
 ## What it is for
 
