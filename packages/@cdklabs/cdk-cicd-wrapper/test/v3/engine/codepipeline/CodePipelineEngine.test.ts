@@ -31,8 +31,44 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     const t = render(config);
 
     t.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
-    // 1 build project + 1 per stage (dev, prod) = 3 -- and NOT one-per-region (dev has 2 regions).
-    t.resourceCountIs('AWS::CodeBuild::Project', 3);
+    // 1 CI build + 1 self-update + 1 per stage (dev, prod) = 4 -- and NOT one-per-region (dev has 2).
+    t.resourceCountIs('AWS::CodeBuild::Project', 4);
+  });
+
+  test('a self-update stage re-deploys the pipeline from config, before any application deploy', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+    const t = render(config);
+    const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const names = (pipeline.Properties.Stages as any[]).map((s) => s.Name);
+
+    // Ordered after the CI build and AHEAD of the first deploy: a config change (new stage, changed
+    // gate) is applied to the pipeline before the run reaches the stages it affects.
+    expect(names).toEqual(['Source', 'Build', 'UpdatePipeline', 'dev']);
+    // The action runs `deploy-ci`, which re-synths the pipeline from cicd.config.ts and redeploys it.
+    t.hasResourceProperties('AWS::CodeBuild::Project', {
+      Source: { BuildSpec: Match.stringLikeRegexp('cdk-cicd deploy-ci') },
+    });
+  });
+
+  test('the self-update project may assume the bootstrap roles in the pipeline own account/region', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+
+    // deploy-ci deploys the pipeline stack into the pipeline's own env (111111111111/us-west-2 here),
+    // so its project needs the bootstrap roles THERE -- not for any application stage's account.
+    render(config).hasResourceProperties('AWS::IAM::Policy', {
+      Roles: [{ Ref: Match.stringLikeRegexp('UpdatePipelineRole') }],
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sts:AssumeRole',
+            Resource: Match.arrayWith([
+              arnEndingIn(':iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-west-2'),
+            ]),
+          }),
+        ]),
+      }),
+    });
   });
 
   test('a multi-region stage is ONE deploy action (region fan-out is inside cdk-cicd deploy)', () => {
@@ -145,6 +181,29 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     t.hasResource('AWS::S3::Bucket', { DeletionPolicy: 'Delete' });
     t.hasResource('AWS::KMS::Key', { DeletionPolicy: 'Delete' });
     t.resourceCountIs('Custom::S3AutoDeleteObjects', 1);
+  });
+
+  test('a disposable pipeline stays disposable: its self-update re-emits itself with --disposable', () => {
+    const renderWith = (removalPolicy?: RemovalPolicy) => {
+      const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+      new CodePipelineEngine({ removalPolicy }).render(stack, {
+        config: defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] }),
+        pipelineName: 'shop-pipeline',
+      });
+      return Template.fromStack(stack);
+    };
+
+    // Without the flag the self-update runs a default (RETAIN) deploy-ci and un-disposes the pipeline's
+    // own bucket/key on its first execution -- the teardown m4-verify relies on would then leak them.
+    renderWith(RemovalPolicy.DESTROY).hasResourceProperties('AWS::CodeBuild::Project', {
+      Source: { BuildSpec: Match.stringLikeRegexp('cdk-cicd deploy-ci --disposable') },
+    });
+    // And the default pipeline must NOT pass --disposable, or a real pipeline would delete its own
+    // artifact history on the next push.
+    const disposableProjects = Object.values(renderWith().findResources('AWS::CodeBuild::Project')).filter((p) =>
+      JSON.stringify(p.Properties.Source.BuildSpec).includes('--disposable'),
+    );
+    expect(disposableProjects).toEqual([]);
   });
 
   test('a stage deploy project may assume the bootstrap roles in every region of its stage', () => {
@@ -281,8 +340,14 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       const t = render(stages(gated));
       const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect((pipeline.Properties.Stages as any[]).map((s) => s.Name)).toEqual(['Source', 'Build', 'prod']);
-      t.resourceCountIs('AWS::CodeBuild::Project', 2);
+      expect((pipeline.Properties.Stages as any[]).map((s) => s.Name)).toEqual([
+        'Source',
+        'Build',
+        'UpdatePipeline',
+        'prod',
+      ]);
+      // CI build + self-update + the one deploy = 3; the gate itself adds no project.
+      t.resourceCountIs('AWS::CodeBuild::Project', 3);
       // ManualApprovalAction creates a topic as soon as it is given notifyEmails, so pin the absence:
       // a notification default sneaking in would put an unmanaged SNS topic in every user's pipeline.
       t.resourceCountIs('AWS::SNS::Topic', 0);
@@ -301,8 +366,9 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     );
     // Asserted positively rather than as `not.toContain('Approval')`: a bare negative over a derived
     // list passes when the list is EMPTY, so a future change that moves the pipeline into a nested
-    // stack would make this test green while checking nothing.
-    expect(actionTypes).toEqual(['Source', 'Build', 'Build']);
+    // stack would make this test green while checking nothing. Source, CI Build, self-update, deploy --
+    // all Build category except Source, and crucially no Approval.
+    expect(actionTypes).toEqual(['Source', 'Build', 'Build', 'Build']);
   });
 
   test('a stage with no regions falls back to the pipeline stack region', () => {

@@ -638,6 +638,17 @@
       "title": "PipelineApp is exported to all jsii languages but its required config can only be built by the TS-only defineCICD",
       "detail": "`PipelineApp`/`PipelineAppProps` are exported from the v3 barrel and cross the jsii boundary (subclassing `aws-cdk-lib.App` is jsii-sound and `PipelineAppProps` is a proper readonly struct). But `PipelineAppProps.config: ResolvedCicdConfig` can in practice only be produced by `defineCICD`, a free function with a union-typed input that jsii omits (see the barrel comment and design open-question O1). So the advertised 'explicit opt-in: instantiate PipelineApp in your own bin/' story holds only for TypeScript consumers; a Python/Java consumer can import `PipelineApp` but has no ergonomic way to construct a `ResolvedCicdConfig` to pass it. Not a defect in this unit -- it is the same non-TS authoring gap O1 already tracks, now reachable through a second door -- but worth recording against PipelineApp specifically. Fix direction is whatever O1 lands (a jsii-modeled config builder); until then the non-TS opt-in path is provisioning via `cdk-cicd deploy-ci`, not `new PipelineApp`.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/app/PipelineApp.ts", "line": 44 }
+    },
+    {
+      "id": "code-review-self-update-iam-test-account-coincides",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The self-update IAM test can't tell the pipeline's own account from the first stage's, because they coincide",
+      "detail": "The test 'the self-update project may assume the bootstrap roles in the pipeline own account/region' renders with `stages: ['dev']`, a bare stage whose env falls back to the pipeline stack's env (111111111111/us-west-2). So the self-update grant (pipeline account) and the first stage's grant (also 111111111111 by fallback) target the same ARNs. Mutation confirmed during review: rewriting the self-update grant to derive account/region from `config.stages[0].env` instead of `stack.account`/`stack.region` left all tests green. The implementation is correct (it uses the pipeline's own env); the test just cannot catch a regression that swaps to stage env. Out of scope for the self-update commit. Fix direction: render the pipeline in one account with a stage pinned to a DIFFERENT account, and assert the self-update policy grants the pipeline's account, not the stage's.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/engine/codepipeline/CodePipelineEngine.test.ts", "line": 54 }
     }
   ]
 }

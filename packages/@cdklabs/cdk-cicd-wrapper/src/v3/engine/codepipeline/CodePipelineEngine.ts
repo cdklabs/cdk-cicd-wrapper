@@ -18,7 +18,7 @@ import {
   aws_iam as iam,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ResolvedCicdConfig, ResolvedStage } from '../../config/types';
+import { ResolvedCicdConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
 import { EngineRenderProps, IEngine } from '../types';
 import { buildSourceAction } from './source';
@@ -86,13 +86,34 @@ export class CodePipelineEngine implements IEngine {
       ],
     });
 
+    // Self-update: before any application deploys, the pipeline re-synths its own definition from
+    // `cicd.config.ts` and re-deploys itself. `restartExecutionOnUpdate` (set above) then restarts the
+    // run under the new definition, so a change to the config -- a new stage, a changed gate -- takes
+    // effect on the same push that introduced it, with no separate `deploy-ci` by hand. The target is
+    // the pipeline's own account/region, so it needs the bootstrap roles there just like a deploy does.
+    const stack = Stack.of(scope);
+    // The self-update must re-emit the SAME pipeline it is part of. A disposable pipeline that ran a
+    // bare `deploy-ci` here would re-synth itself with the default RETAIN and quietly un-dispose its own
+    // bucket and key on the first run -- so thread the flag through, keyed off the removal policy in hand.
+    const deployCi =
+      this.removalPolicy === RemovalPolicy.DESTROY ? 'npx cdk-cicd deploy-ci --disposable' : 'npx cdk-cicd deploy-ci';
+    const selfUpdate = this.project(scope, 'UpdatePipeline', ['npm ci', deployCi]);
+    this.grantDeployPermissions(selfUpdate, stack.account, [stack.region]);
+    pipeline.addStage({
+      stageName: 'UpdatePipeline',
+      actions: [new actions.CodeBuildAction({ actionName: 'SelfMutate', project: selfUpdate, input: sourceOutput })],
+    });
+
     // One deploy action per stage; the region fan-out lives inside `cdk-cicd deploy`.
     for (const stage of config.stages) {
       const project = this.project(scope, `Deploy-${stage.name}`, [
         'npm ci',
         `npx cdk-cicd deploy --stage ${stage.name} --yes`,
       ]);
-      this.grantDeployPermissions(scope, project, stage);
+      // An empty region list means "wherever the pipeline itself runs" (an env-agnostic stage).
+      const account = stage.env.account ?? stack.account;
+      const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
+      this.grantDeployPermissions(project, account, regions, stage.deployment?.deployRole);
 
       // A gated stage puts its approval in the SAME pipeline stage as the deploy, ordered ahead of it,
       // rather than in a stage of its own: run order already sequences them, and one stage per
@@ -115,9 +136,10 @@ export class CodePipelineEngine implements IEngine {
   }
 
   /**
-   * Let a stage's deploy project actually deploy. `cdk deploy` does everything through the CDK
-   * bootstrap roles, so the project's own role needs nothing but permission to assume them, plus any
-   * forced deployer role the stage configures. Without this the project runs and fails AccessDenied.
+   * Let a `cdk deploy` project actually deploy into `account`/`regions` -- a stage's application
+   * deploy, or the self-update stage deploying the pipeline into its own account. `cdk deploy` does
+   * everything through the CDK bootstrap roles, so the project's own role needs nothing but permission
+   * to assume them, plus any forced deployer role passed in. Without this the project fails AccessDenied.
    *
    * The bootstrap version parameter is granted for the CLI's base-credentials path only; on the
    * normal path the CLI reads it under the *assumed* bootstrap role, not under this project's role.
@@ -129,11 +151,13 @@ export class CodePipelineEngine implements IEngine {
    * does move their app's roles, and this grant does NOT follow -- see finding
    * `code-review-bootstrap-qualifier-not-single-source-of-truth`.
    */
-  private grantDeployPermissions(scope: Construct, project: codebuild.PipelineProject, stage: ResolvedStage): void {
-    const stack = Stack.of(scope);
-    const account = stage.env.account ?? stack.account;
-    // An empty region list means "wherever the pipeline itself runs" (an env-agnostic stage).
-    const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
+  private grantDeployPermissions(
+    project: codebuild.PipelineProject,
+    account: string,
+    regions: string[],
+    forcedDeployRole?: string,
+  ): void {
+    const stack = Stack.of(project);
     const qualifier = DefaultStackSynthesizer.DEFAULT_QUALIFIER;
 
     const roleArns = regions.flatMap((region) =>
@@ -143,7 +167,6 @@ export class CodePipelineEngine implements IEngine {
     );
     // Same emptiness guard the CLI applies before passing --role-arn: a blank configured role is
     // "no forced role", not an empty ARN (which would make the policy document malformed).
-    const forcedDeployRole = stage.deployment?.deployRole;
     if (forcedDeployRole !== undefined && forcedDeployRole.length > 0) {
       roleArns.push(forcedDeployRole);
     }

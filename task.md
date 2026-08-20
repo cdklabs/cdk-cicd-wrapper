@@ -553,9 +553,13 @@ Not tasks — resolved/open design decisions that tasks reference.
     `findings.json`, two of them medium and worth reading before `m4-verify`: the bootstrap qualifier has
     three unreconciled sources (`code-review-bootstrap-qualifier-not-single-source-of-truth`) and the CI
     project has no lookup-role grant (`code-review-ci-project-lacks-lookup-role`).
-- **`m4-approval-selfupdate`** — approvals + deploy-ci  ·  in-progress · wave 4 · cli · feature
+- **`m4-approval-selfupdate`** — approvals + deploy-ci  ·  done · wave 4 · cli · feature
   - **desc:** Manual approval gates; `cdk-cicd deploy-ci` provisions + self-updates the pipeline.
   - **depends-on:** m4-codepipeline
+  - **acceptance:** From a bare `cicd.config.ts`, `cdk-cicd deploy-ci` synths one pipeline stack whose
+    stages run `Source → Build → UpdatePipeline(SelfMutate) → <deploy stages>`, gated stages carry a
+    manual approval ahead of their deploy, and the self-update re-emits the pipeline from config each run.
+    Proven by unit tests + end-to-end synth; live pipeline behaviour is `m4-verify`. ✅
   - **notes:** Shipped in three commits. **1/3 done — approval gates.** The engine reads
     `stage.manualApproval` and emits a `ManualApprovalAction` at `runOrder: 1` with that stage's deploy at
     `runOrder: 2` in the **same** pipeline stage, so a gate costs no extra stage, no CodeBuild project and
@@ -575,10 +579,17 @@ Not tasks — resolved/open design decisions that tasks reference.
     stage/action shape and 3 CodeBuild projects, and `--disposable` flipped the bucket to `Delete`. The nag
     test asserts only that the aspect is **registered**, because this workspace's duplicate `aws-cdk-lib`
     still makes the rules inert (liveness is `m4-nag-compliance`). 4 review follow-ups appended to
-    `findings.json`. **3/3 remaining:** the pipeline self-update stage (re-synth its own definition each run
-    via `deploy-ci`, needs a small `grantDeployPermissions` signature change to grant the pipeline's own
-    account/region). Carry into `m4-verify`: `code-review-m4-verify-must-approve-gated-stage` — the gate must
-    drive `codepipeline put-approval-result`, or a real run waits 7 days on the gate it just created.
+    `findings.json`. **3/3 done — self-update.** An `UpdatePipeline` stage runs after `Build` and before the
+    deploy stages; its `SelfMutate` action runs `npx cdk-cicd deploy-ci`, so the pipeline re-synths its own
+    definition from `cicd.config.ts` on every run (`restartExecutionOnUpdate: true` restarts under the new
+    one). `grantDeployPermissions` refactored to `(project, account, regions, forcedDeployRole?)` so the
+    self-update stage grants bootstrap roles for the pipeline's OWN account/region; deploy path unchanged.
+    Footprint grows by exactly one fixed project (still flat vs v2's 100+). Review caught a real defect, fixed
+    before commit: a disposable pipeline's self-update ran a bare `deploy-ci` and re-emitted itself with
+    RETAIN, un-disposing its own bucket/key on the first run — now the flag threads through when
+    `removalPolicy === DESTROY`, with a test; 2 more review follow-ups appended to `findings.json`. Carry into
+    `m4-verify`: `code-review-m4-verify-must-approve-gated-stage` — the gate must drive
+    `codepipeline put-approval-result`, or a real run waits 7 days on the gate it just created.
 - **`m4-ci-checks`** — default-on CI checks via CLI  ·  done · wave 4 · cli · feature
   - **desc:** validate/audit/license/security run by the CLI in CI — fresh project passes with no
     npm-script surgery.
