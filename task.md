@@ -243,10 +243,22 @@ Not tasks — resolved/open design decisions that tasks reference.
     curated symbols cross the language boundary — verified against `.jsii`, not assumed. Watch out:
     jsii **silently omits** exported free functions rather than erroring (finding
     `code-review-jsii-silently-omits-free-functions`), so "it compiled" is not evidence a symbol shipped.
-- **`m1-verify`** — M1 gate  ·  todo · wave 1 · wrapper · test
+- **`m1-verify`** — M1 gate  ·  done · wave 1 · wrapper · test
   - **depends-on:** m1-accessor, harness-fixtures
   - **acceptance:** unit green; `config/local.json` and `config/dev.json` drive a fixture synth; a
     missing required key exits `cdk synth` non-zero with the right `ConfigError.kind`.
+  - **produces:** `test/proof/m1-verify.sh`; the config read in `test/fixtures/level1-app/lib/level1-stack.ts`.
+  - **notes:** ✅ All three legs green (`bash test/proof/m1-verify.sh` → 3/3). The config read went into
+    `lib/level1-stack.ts`, NOT `bin/app.ts`: that keeps `bin/app.ts` byte-for-byte with level0 (the A/B
+    contract) and leaves the wave-2 zero-touch-`bin/` injection story clean, while still satisfying
+    "config drives a fixture synth". Forward-compatible — `AppConfig.of(this, …)` reads injected
+    `cicd:config` context first (wave 2) and falls back to the file (wave 1). Negative case needed real
+    determinism work: the CDK CLI auto-fills `CDK_DEFAULT_ACCOUNT` from ambient creds (a container
+    endpoint AND `~/.aws/credentials` here), which masked the failure, so the gate fully isolates
+    credentials (unset the container/shared-file/IMDS sources, `AWS_*_FILE=/dev/null`) before the
+    negative synth. The schema is the fixture's own (wrapper ships none); `aws.accountId` is a
+    `requiredAttribute`, absent from `config/*.json` because account ids never enter this repo, so it is
+    derived on the positive path and → `MISSING_ATTRIBUTE` when no account resolves.
 
 ## Wave 2 — Runtime injection + `cdk-cicd exec` (M2)  *(first real deploy; demo #1)*
 

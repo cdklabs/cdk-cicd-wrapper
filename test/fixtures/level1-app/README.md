@@ -1,12 +1,21 @@
-# `level1-app` fixture — dormant until wave 3
+# `level1-app` fixture — partially active from wave 1
 
-`bin/`, `lib/`, `cdk.json`, `tsconfig.json` are byte-for-byte the same shape as
-[`../level0-app`](../level0-app). The fixture exists for the two files level0 does *not* have:
+`bin/`, `cdk.json`, `tsconfig.json` are structurally identical to
+[`../level0-app`](../level0-app) (same shape, differing only where a name must — `Level1Stack`,
+the `-level1` id) — and `bin/app.ts` stays untouched by wave 1 on purpose, so the
+A/B "wrapper inert vs active" contract holds and the wave-2 "zero edits to `bin/`"
+injection story stays clean. The fixture exists for the files level0 does *not* have:
 
 | File | Activated by |
 |---|---|
 | `cicd.config.ts` — `defineCICD({ stages: [dev, prod] })` | `m3-definecicd`, `m3-config-discovery` (wave 3) |
 | `config/local.json`, `config/dev.json`, `config/prod.json` | `m1-loader`, `m1-accessor`, `m1-verify` (wave 1) |
+
+As of `m1-verify`, `lib/level1-stack.ts` is the one file that diverges from level0: it
+reads its config through `AppConfig.of(this, …)`. The read lives in the stack, not
+`bin/app.ts`, precisely to keep `bin/app.ts` identical to level0. `AppConfig.of` reads
+the injected `cicd:config` context first (wave 2) and falls back to loading
+`config/<stage>.json` (wave 1), so the same line serves both waves.
 
 ## Why `cicd.config.ts` is not compiled today
 
