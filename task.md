@@ -450,9 +450,23 @@ Not tasks — resolved/open design decisions that tasks reference.
     `000000000000`/`eu-west-1`) → `checkAssembly` against a test-account target → `account-mismatch`,
     not deployable — exactly why that fixture can never reach AWS. Wiring into the deploy flow (abort
     before deploy) is `m3-deploy`.
-- **`m3-forced-roles`** — forced deploy/CFN roles  ·  todo · wave 3 · cli · feature
+- **`m3-forced-roles`** — forced deploy/CFN roles  ·  done · wave 3 · cli · feature
   - **desc:** Thread configured roles through synth + deploy (`--role-arn`, cdk-assets overrides).
   - **depends-on:** m3-synth
+  - **produces:** `resolveSynthesizer` now reads the role env in `src/v3/runtime/inject.ts` (+ exported
+    `DEPLOY_ROLE_FLAG`/`CFN_EXEC_ROLE_FLAG`); `forcedRoleEnv` in `ExecCommand.ts`; tests
+    `test/v3/runtime/synthesizer.test.ts` + exec forcedRoleEnv/contract cases.
+  - **notes:** ✅ Closes the M2 `resolveSynthesizer` seam. The CLI exports the active stage's
+    `deployment.{deployRole,cfnExecutionRole}` as `CDK_CICD_DEPLOY_ROLE_ARN`/`CDK_CICD_CFN_EXEC_ROLE_ARN`
+    (via `forcedRoleEnv`, folded into exec's child env from the resolved cicd stage), and the preload's
+    `resolveSynthesizer` reads them from the ENVIRONMENT — the wrapper never parses cicd.config, keeping
+    the layers decoupled. Proven at synth level: a stack synthed under those env vars carries the forced
+    `assumeRoleArn` (deploy role) and `cloudFormationExecutionRoleArn` in its assembly artifact
+    (synthesizer.test.ts, 4/4). Env-gated: no roles set → bare `DefaultStackSynthesizer`, so the M2
+    path is unchanged (no re-deploy needed). App-staging forced roles (`DeploymentIdentities`) stay
+    deferred (alpha). The `--role-arn` pass at `cdk deploy` time is m3-deploy. jsii assembly unchanged
+    (inject stays internal). CLI 37/37, wrapper 101/101. The role-flag literals join EXEC_FLAG under the
+    cross-package contract test (finding `code-review-exec-flag-cross-package-literal`).
 - **`m3-deploy`** — cdk-cicd deploy --stage  ·  todo · wave 3 · cli · feature
   - **desc:** Synth the stage against its config at deploy time, then deploy (assets via cdk-assets).
     Promoted unit is code+deps (sha), not a prebuilt assembly.

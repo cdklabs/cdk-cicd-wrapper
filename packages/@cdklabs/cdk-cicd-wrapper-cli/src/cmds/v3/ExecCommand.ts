@@ -30,6 +30,26 @@ const CONFIG_CONTEXT_KEY = 'cicd:config';
 // tracked as finding code-review-exec-flag-cross-package-literal until it has a shared home.
 const EXEC_FLAG = 'CDK_CICD_EXEC';
 
+// The forced-role env vars the preload's resolveSynthesizer reads (same cross-package literal contract
+// as EXEC_FLAG; the constructs package exports these as DEPLOY_ROLE_FLAG / CFN_EXEC_ROLE_FLAG).
+const DEPLOY_ROLE_FLAG = 'CDK_CICD_DEPLOY_ROLE_ARN';
+const CFN_EXEC_ROLE_FLAG = 'CDK_CICD_CFN_EXEC_ROLE_ARN';
+
+/** Env vars carrying the active stage's forced deploy/CFN-exec roles, if it configured any. */
+export function forcedRoleEnv(cicdStage?: { deployment?: { deployRole?: string; cfnExecutionRole?: string } }): {
+  [key: string]: string;
+} {
+  const out: { [key: string]: string } = {};
+  const deployment = cicdStage?.deployment;
+  if (deployment?.deployRole) {
+    out[DEPLOY_ROLE_FLAG] = deployment.deployRole;
+  }
+  if (deployment?.cfnExecutionRole) {
+    out[CFN_EXEC_ROLE_FLAG] = deployment.cfnExecutionRole;
+  }
+  return out;
+}
+
 /** The active stage: `CDK_STAGE` when set and non-blank, else the plain-`cdk deploy` `local` stage. */
 export function resolveStage(env: NodeJS.ProcessEnv): string {
   return (env.CDK_STAGE ?? '').trim() || 'local';
@@ -201,6 +221,7 @@ class Command implements yargs.CommandModule {
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
       ...stageEnv(stage, target),
+      ...forcedRoleEnv(cicdStage),
       CDK_CONTEXT_JSON: buildContextJson(config, process.env, cwd),
       [EXEC_FLAG]: '1',
     };

@@ -56,12 +56,29 @@ export function shouldWarnBundled(params: { armed: boolean; constructed: number;
 }
 
 /**
- * The synthesizer the wrapper installs. `DefaultStackSynthesizer` is the v3 default
- * (app-staging is opt-in, still alpha). Forced deployer/CFN-exec roles from config are
- * threaded in at wave 3 (m3-forced-roles); today this just makes the wrapper the owner
- * of the choice so that later flip needs no bin change.
+ * Env vars the CLI (cdk-cicd exec, populated from the stage's `deployment` config) sets so the preload
+ * can install forced roles without the wrapper ever parsing cicd.config. Contract with the CLI --
+ * the CLI hardcodes the same literals (tracked in finding code-review-exec-flag-cross-package-literal).
+ */
+export const DEPLOY_ROLE_FLAG = 'CDK_CICD_DEPLOY_ROLE_ARN';
+export const CFN_EXEC_ROLE_FLAG = 'CDK_CICD_CFN_EXEC_ROLE_ARN';
+
+function envArn(value: string | undefined): string | undefined {
+  return value !== undefined && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+/**
+ * The synthesizer the wrapper installs. `DefaultStackSynthesizer` is the v3 default (app-staging is
+ * opt-in, still alpha). When the CLI has exported forced deployer / CloudFormation-execution role ARNs
+ * for the active stage (m3-forced-roles), they are threaded into the synthesizer here -- read from the
+ * environment, not from config, so the wrapper stays decoupled from cicd.config parsing.
  */
 export function resolveSynthesizer(_config: Record<string, unknown>): IReusableStackSynthesizer {
+  const deployRoleArn = envArn(process.env[DEPLOY_ROLE_FLAG]);
+  const cloudFormationExecutionRole = envArn(process.env[CFN_EXEC_ROLE_FLAG]);
+  if (deployRoleArn !== undefined || cloudFormationExecutionRole !== undefined) {
+    return new DefaultStackSynthesizer({ deployRoleArn, cloudFormationExecutionRole });
+  }
   return new DefaultStackSynthesizer();
 }
 

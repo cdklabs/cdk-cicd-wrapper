@@ -242,6 +242,28 @@
       "title": "A partially-agnostic environment (e.g. aws://unknown-account/us-east-1) is treated as fully agnostic, dropping a region-mismatch warning",
       "detail": "analyzeManifest treats a stack as agnostic when EITHER the account or the region is unknown-*. So an env like aws://unknown-account/us-east-1 (concrete but wrong region) short-circuits to 'agnostic' and never emits the region-mismatch warning it otherwise would. Impact is only a lost WARNING (never a blocked deploy -- account is unknown so the account guard correctly does not fire either), and this mixed shape is unusual in real CDK output (an env-agnostic stack is normally unknown-account AND unknown-region). Left as-is for simplicity. Revisit only if a real assembly is observed producing the mixed shape and the missing region warning matters; the fix is to evaluate account-agnostic and region-agnostic independently.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DriftCheck.ts", "line": 72 }
+    },
+    {
+      "id": "code-review-forced-roles-asset-roles-stay-default",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "m3-forced-roles sets the deploy and CFN-execution roles but leaves asset-publishing/lookup roles at bootstrap defaults",
+      "detail": "resolveSynthesizer threads CDK_CICD_DEPLOY_ROLE_ARN and CDK_CICD_CFN_EXEC_ROLE_ARN into DefaultStackSynthesizer, but the asset file/image publishing roles and the lookup role keep their bootstrap defaults. In a strict setup where the default asset roles are unusable (e.g. a locked-down bootstrap), assets would still publish under bootstrap roles while the stack deploys under the forced role -- a partial forcing. This is the documented M3 scope: the design (v3-devops-experience.md ~214-218) leaves full synthesizer control (all roles baked into the manifest) to a later escape hatch, and app-staging's DeploymentIdentities.specifyRoles is deferred (alpha). Recorded so it is not rediscovered as a bug when the full-control escape hatch lands: extend resolveSynthesizer to also accept fileAssetPublishingRoleArn/imageAssetPublishingRoleArn/lookupRoleArn from env (or move to AppStagingSynthesizer.DeploymentIdentities) when a consumer needs strict asset roles.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/inject.ts", "line": 78 }
+    },
+    {
+      "id": "code-review-forced-roles-ambient-env-passthrough",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "For a stage with no deployment config, an ambient CDK_CICD_DEPLOY_ROLE_ARN/CFN_EXEC_ROLE_ARN in the caller's env is still honored by the preload",
+      "detail": "exec folds forcedRoleEnv(cicdStage) into childEnv after ...process.env, so a stage that configures roles overrides the ambient value (correct, stage-wins). But when the stage has NO deployment, forcedRoleEnv returns {} and any ambient CDK_CICD_DEPLOY_ROLE_ARN/CDK_CICD_CFN_EXEC_ROLE_ARN in the caller's environment passes straight through ...process.env and is read by resolveSynthesizer. These are undocumented wrapper-private contract vars, so real-world impact is nil, but the 'no deployment => no forced roles' guarantee only holds with a clean ambient environment. Optional hardening if it ever matters: have exec explicitly clear the two role vars when the resolved stage has no deployment, so the stage config is the sole source of truth regardless of ambient env.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts", "line": 224 }
     }
   ]
 }
