@@ -50,3 +50,4 @@ export { defineCICD } from './config/define';
 // and later GitHub Actions / container engines implement; concrete engines will be exported here as
 // they land.
 export { EngineRenderProps, IEngine } from './engine/types';
+export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeline/CodePipelineEngine';

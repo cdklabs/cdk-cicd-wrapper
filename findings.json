@@ -297,6 +297,39 @@
       "title": "m3-verify assert_region_deployed reports 'not wrapped' even when the underlying get-template call itself failed",
       "detail": "assert_region_deployed does `aws_masked cloudformation get-template ... | grep -q '\"Stage\"' || die '...lacks the injected Stage tag -- not wrapped'`. Under pipefail a get-template API failure (throttling, transient error) also trips the `|| die` and is reported as 'not wrapped' rather than the real cause. It is fail-CLOSED (correct direction for a positive assertion -- the gate errors rather than passing), so this is a message/consistency nit versus m2-verify's deliberately-split has_wrapper_tag, not a correctness bug. Fix if revisited: split the get-template call from the grep (capture, die on the AWS call failing with a distinct message, then grep the captured body) -- mirroring the m2-verify has_wrapper_tag hardening.",
       "location": { "path": "test/proof/m3-verify.sh", "line": 40 }
+    },
+    {
+      "id": "code-review-codepipeline-deploy-role-lacks-iam",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The CodePipeline deploy CodeBuild project has no deploy IAM, so a real pipeline run will fail AccessDenied -- blocks m4-verify",
+      "detail": "CodePipelineEngine's per-stage deploy PipelineProject runs `npx cdk-cicd deploy --stage <name>`, which runs `cdk deploy` and needs sts:AssumeRole on the CDK bootstrap roles (cdk-<qualifier>-{deploy,file-publishing,image-publishing,lookup}-role-*) plus SSM read of the bootstrap version param. The engine grants the project's default CodeBuild service role none of this, so a real deploy fails with AccessDenied. Synth-level tests cannot catch it (the engine skeleton is correct at synth). No existing M4 task explicitly owns this IAM. It must be added before m4-verify's 'a commit flows dev->prod' gate can go green: grant the deploy project role assume-role on the bootstrap role ARNs, scoped to the target account/region (wherever the deploy-time role wiring lands -- likely m4-support-resources or a small addition in the engine). Recorded so m4-verify is not surprised.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 70 }
+    },
+    {
+      "id": "code-review-codepipeline-no-cdknag-suppressions",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "CodePipelineEngine adds no cdk-nag suppressions for the pipeline's own auto-generated roles/bucket -- will block pipeline-stack synth if AwsSolutionsChecks runs on it",
+      "detail": "v3 applies AwsSolutionsChecks on the workload app (inject.ts applyWrapper). The CodePipeline engine's auto-generated pipeline role, CodeBuild roles and artifact bucket carry wildcard IAM (IAM5) and other findings that v2 suppressed (CDKPipeline.ts:312-368). When m4-approval-selfupdate's `cdk-cicd deploy-ci` provisions the pipeline stack, if that path applies AwsSolutionsChecks, synth of the pipeline stack will error and block provisioning. Adding suppressions now is premature -- the provisioning app (PipelineApp) does not exist yet, so where they attach is unknown -- hence logged, not fixed here. m4-approval-selfupdate / m4-verify must port v2's pipeline suppression list (or decide the pipeline stack is not nag-checked). Flagged prominently so the M4 gate is not blocked by an un-suppressed nag error.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 1 }
+    },
+    {
+      "id": "code-review-codepipeline-manualapproval-ignored",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CodePipelineEngine does not yet read stage.manualApproval (no ManualApprovalAction) -- owned by m4-approval-selfupdate",
+      "detail": "ResolvedStage.manualApproval is populated but the engine's render() ignores it: no codepipeline_actions.ManualApprovalAction is inserted before a gated stage's deploy action, and render returns void (no handle to the created Pipeline). This is expected for the m4-codepipeline skeleton -- real approval gates are m4-approval-selfupdate. Cleanest resolution: have the engine itself read stage.manualApproval and insert the approval action before the deploy action (no pipeline getter needed, keeping render void). Recorded as the seam m4-approval-selfupdate builds on.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 55 }
     }
   ]
 }

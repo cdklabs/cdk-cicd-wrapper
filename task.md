@@ -501,12 +501,30 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 4 — CodePipeline engine (M4)  *(v2 parity bar; demo #2)*
 
-- **`m4-iengine`** — IEngine interface  ·  todo · wave 4 · wrapper · feature
+- **`m4-iengine`** — IEngine interface  ·  done · wave 4 · wrapper · feature
   - **desc:** Engine-neutral so iteration-2 engines slot in (D4).          - **spec:** D4
-- **`m4-codepipeline`** — CodePipelineEngine  ·  todo · wave 4 · wrapper · feature
+  - **notes:** ✅ `IEngine.render(scope, EngineRenderProps): void` (side-effecting so a non-construct
+    engine like GHA-YAML also fits) + `EngineRenderProps {config, pipelineName}`. Both jsii-modeled;
+    also enabled by the config change adding `EngineType`/`CiConfig` to `ResolvedCicdConfig`.
+- **`m4-codepipeline`** — CodePipelineEngine  ·  done · wave 4 · wrapper · feature
   - **desc:** ONE synth project + ONE deploy action per stage. The "100+ projects" fix — measure the
     CodeBuild project count, don't assert it in prose.
   - **depends-on:** m4-iengine, m3-deploy
+  - **produces:** `src/v3/engine/codepipeline/{CodePipelineEngine,source}.ts` (curated
+    `CodePipelineEngine`/`CodePipelineEngineProps`); `test/v3/engine/codepipeline/CodePipelineEngine.test.ts`.
+  - **notes:** ✅ Raw `aws-codepipeline` (NOT CDK Pipelines): Source → one CI/build project (`cdk-cicd
+    synth --all` + any `ci.steps`) → ONE CodeBuild deploy action per stage running `cdk-cicd deploy
+    --stage <name> --yes`. The region fan-out lives inside the M3 CLI, so a multi-region stage is ONE
+    action and there are NO per-asset publishing projects. **Flat-footprint locked by test**:
+    `AWS::CodePipeline::Pipeline`=1 and `AWS::CodeBuild::Project`=1+stages (3 for dev[2 regions]+prod) —
+    the direct measurement vs v2's 100+. Source mapping covers S3 (bucket/key split, the m4-verify
+    source), CodeCommit (by name), CodeStar/GitHub (requires a connection ARN — else a clear error;
+    `Repository.github` has no ARN param so GitHub needs `Repository.codestarConnection`). 6/6 engine
+    tests, wrapper v3 110→112/... green. **Three follow-ups logged that BLOCK m4-verify's real deploy**:
+    the deploy CodeBuild role has no deploy IAM (`code-review-codepipeline-deploy-role-lacks-iam`); no
+    cdk-nag suppressions on the pipeline's own resources (`code-review-codepipeline-no-cdknag-suppressions`);
+    and `stage.manualApproval` is not yet read (`code-review-codepipeline-manualapproval-ignored`, owned
+    by m4-approval-selfupdate).
 - **`m4-support-resources`** — lazy support resources  ·  todo · wave 4 · wrapper · feature
   - **desc:** Encryption key, compliance/log bucket, SSM provisioned only when referenced via DI;
     de-singletoned `ResourceContext`.
