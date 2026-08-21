@@ -27,12 +27,19 @@ export interface SynthTarget {
 /**
  * Enumerate the (stage × region) synth targets. `stageName` undefined selects every stage (the
  * CI-validation `--all` case); a name selects that one stage's region list. Order follows the config.
+ *
+ * `regionOverride` pins every selected stage to exactly that one region, ignoring the stage's own region
+ * list. That is how container mode (Repo 2) deploys one target/region per image run: the `deploy.config`
+ * target's env is authoritative for where to deploy, so a single-region run must be able to override
+ * whatever region set the image's own `cicd.config` happens to carry -- including an env-agnostic stage
+ * with no regions, which then still yields one target rather than nothing.
  */
-export function synthTargets(config: ResolvedCicdConfig, stageName?: string): SynthTarget[] {
+export function synthTargets(config: ResolvedCicdConfig, stageName?: string, regionOverride?: string): SynthTarget[] {
   const stages = stageName !== undefined ? config.stages.filter((s) => s.name === stageName) : config.stages;
   const targets: SynthTarget[] = [];
   for (const stage of stages) {
-    for (const region of stage.env.regions) {
+    const regions = regionOverride !== undefined ? [regionOverride] : stage.env.regions;
+    for (const region of regions) {
       targets.push({
         stage: stage.name,
         region,

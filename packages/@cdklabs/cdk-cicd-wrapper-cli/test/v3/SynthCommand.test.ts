@@ -30,6 +30,28 @@ describe('m3-synth: synthTargets', () => {
     expect(synthTargets(CONFIG, 'nope')).toEqual([]);
   });
 
+  test('a region override pins the selected stage to that one region, ignoring the config list', () => {
+    // A multi-region stage collapses to exactly the overridden region (container mode: one region per run).
+    expect(synthTargets(CONFIG, 'prod', 'ap-southeast-2').map((t) => `${t.stage}/${t.region}`)).toEqual([
+      'prod/ap-southeast-2',
+    ]);
+    // The override carries into the env pins, so the synth actually targets that region.
+    const [only] = synthTargets(CONFIG, 'prod', 'ap-southeast-2');
+    expect(only.env.CDK_DEFAULT_REGION).toBe('ap-southeast-2');
+    expect(only.env.AWS_REGION).toBe('ap-southeast-2');
+    expect(only.account).toBe('222222222222');
+  });
+
+  test('a region override yields one target even for an env-agnostic stage with no regions', () => {
+    const agnostic = {
+      ...CONFIG,
+      stages: [{ name: 'dev', env: { account: undefined, regions: [], regionOrder: 'sequential' as any }, manualApproval: false }],
+    } as unknown as ResolvedCicdConfig;
+    expect(synthTargets(agnostic, 'dev', 'us-west-2').map((t) => t.region)).toEqual(['us-west-2']);
+    // Without the override the same stage produces nothing.
+    expect(synthTargets(agnostic, 'dev')).toEqual([]);
+  });
+
   test('each target carries the per-region env and a segregated output dir', () => {
     const [, prodUsW1] = synthTargets(CONFIG);
     expect(prodUsW1.outDir).toBe(path.join('cdk.out', 'prod', 'us-west-1'));

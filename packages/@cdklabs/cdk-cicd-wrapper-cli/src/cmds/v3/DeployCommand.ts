@@ -10,7 +10,8 @@ import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import * as yargs from 'yargs';
-import { load as loadCicdConfig, stageByName } from './CicdConfig';
+import { load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
+import { runFromImage } from './DeployFromImage';
 import { checkAssembly } from './DriftCheck';
 import { synthTargets } from './SynthCommand';
 import { logger } from '../../utils/Logging';
@@ -133,11 +134,26 @@ class Command implements yargs.CommandModule {
 
   public builder(args: yargs.Argv) {
     return args
-      .option('stage', { type: 'string', demandOption: true, describe: 'The stage to deploy' })
+      // Not demanded: `--from-image` reads deploy.config's targets instead of a single --stage. The
+      // handler enforces that --stage is required in every other mode.
+      .option('stage', { type: 'string', describe: 'The stage to deploy (required unless --from-image)' })
       .option('yes', {
         type: 'boolean',
         default: false,
         describe: 'Proceed even when the stage requires manual approval',
+      })
+      .option('region', {
+        type: 'string',
+        describe: 'Deploy only this one region, ignoring the stage config region list (used by container mode)',
+      })
+      .option('deploy-role', {
+        type: 'string',
+        describe: 'Deploy role that overrides the stage config deployRole for every region of this run (used by container mode)',
+      })
+      .option('from-image', {
+        type: 'boolean',
+        default: false,
+        describe: 'Run the pinned image in deploy.config against each target (container mode, Repo 2)',
       })
       .option('from-assembly', {
         type: 'boolean',
@@ -157,13 +173,29 @@ class Command implements yargs.CommandModule {
 
   public async handler(args: yargs.Arguments) {
     const cwd = process.cwd();
+
+    if (args.fromImage as boolean) {
+      // Container mode (Repo 2): the topology comes from deploy.config's targets, not a single stage.
+      const deployment = loadDeployment(cwd);
+      if (deployment === undefined) {
+        logger.error('cdk-cicd deploy --from-image: no deploy.config.ts found next to cdk.json');
+        process.exit(1);
+      }
+      const code = runFromImage(deployment, { yes: args.yes as boolean });
+      process.exit(code);
+    }
+
     const config = loadCicdConfig(cwd);
     if (config === undefined) {
       logger.error('cdk-cicd deploy: no cicd.config.ts found next to cdk.json');
       process.exit(1);
     }
 
-    const stageName = args.stage as string;
+    const stageName = args.stage as string | undefined;
+    if (stageName === undefined) {
+      logger.error('cdk-cicd deploy: pass --stage <name> (or --from-image for container mode)');
+      process.exit(1);
+    }
     const stage = stageByName(config, stageName);
     if (stage === undefined) {
       logger.error(`cdk-cicd deploy: no stage '${stageName}' in cicd.config`);
@@ -182,7 +214,8 @@ class Command implements yargs.CommandModule {
       logger.warn('cdk-cicd deploy: could not resolve the deploy account via STS; drift will not check the account');
     }
 
-    const targets = synthTargets(config, stageName);
+    const regionOverride = args.region as string | undefined;
+    const targets = synthTargets(config, stageName, regionOverride);
     if (targets.length === 0) {
       logger.warn(`cdk-cicd deploy: stage '${stageName}' has no regions -- nothing to deploy`);
       return;
@@ -240,9 +273,11 @@ class Command implements yargs.CommandModule {
         process.exit(1);
       }
 
+      // A --deploy-role flag (container mode) overrides the stage config's forced role.
+      const deployRole = (args.deployRole as string | undefined) ?? stage.deployment?.deployRole;
       const deploy = spawnSync(
         'npx',
-        deployArgs(target.outDir, stage.deployment?.deployRole, prepareOnly ? changeSetName : undefined),
+        deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined),
         {
           stdio: 'inherit',
           cwd,

@@ -11,16 +11,20 @@
 
 import { existsSync } from 'fs';
 import * as path from 'path';
-import { ResolvedCicdConfig, ResolvedStage } from '@cdklabs/cdk-cicd-wrapper';
+import { ResolvedCicdConfig, ResolvedDeploymentConfig, ResolvedStage } from '@cdklabs/cdk-cicd-wrapper';
 
 // Probe order. TypeScript is the primary authoring path (D-config-authoring); .js supports an
 // already-compiled config. YAML pipeline config is a later addition (it needs a Repository
 // reconstruction step and a yaml dep in the CLI) -- app-config YAML is separate and unaffected.
 const CANDIDATES = ['cicd.config.ts', 'cicd.config.js'];
 
-/** The path to the pipeline config next to `cdk.json`, or undefined when there is none (Level 0). */
-export function discover(cwd: string): string | undefined {
-  for (const candidate of CANDIDATES) {
+// Container mode (Repo 2): the deploy-side config `defineDeployment` produces, consumed by
+// `deploy --from-image`. Same probe order as the pipeline config, a sibling file next to `cdk.json`.
+const DEPLOYMENT_CANDIDATES = ['deploy.config.ts', 'deploy.config.js'];
+
+/** The first of `candidates` that exists in `cwd`, as an absolute path, or undefined. */
+function discoverIn(cwd: string, candidates: string[]): string | undefined {
+  for (const candidate of candidates) {
     // resolve, not join: a relative cwd must still yield an absolute path, or the later `require`
     // would treat a bare 'cicd.config.ts' as a node_modules module specifier rather than a file.
     const candidatePath = path.resolve(cwd, candidate);
@@ -29,6 +33,11 @@ export function discover(cwd: string): string | undefined {
     }
   }
   return undefined;
+}
+
+/** The path to the pipeline config next to `cdk.json`, or undefined when there is none (Level 0). */
+export function discover(cwd: string): string | undefined {
+  return discoverIn(cwd, CANDIDATES);
 }
 
 let tsNodeRegistered = false;
@@ -48,17 +57,11 @@ let tsNodeRegistered = false;
 export const TS_NODE_COMPILER_OPTIONS = { module: 'commonjs' };
 
 /**
- * Load and return the resolved pipeline config, or undefined when there is no config file. A `.ts`
+ * Register ts-node once (for a `.ts` config) and `require` `file`, returning its `default` export. The
  * file is loaded in-process via ts-node (the same transpiler the app entry uses), so the user writes
- * exactly one config file with no build step. The file's `default` export is the `defineCICD(...)`
- * result -- already normalized to `ResolvedCicdConfig`.
+ * exactly one config file with no build step. Shared by the pipeline config and the deployment config.
  */
-export function load(cwd: string): ResolvedCicdConfig | undefined {
-  const file = discover(cwd);
-  if (file === undefined) {
-    return undefined;
-  }
-
+function requireConfigFile<T>(file: string): T {
   if (file.endsWith('.ts') && !tsNodeRegistered) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -69,7 +72,7 @@ export function load(cwd: string): ResolvedCicdConfig | undefined {
       throw new Error(
         `cdk-cicd: loading a TypeScript ${path.basename(file)} needs ts-node, which could not be ` +
           `resolved (${(error as Error).message}). Install ts-node in your project, or compile the ` +
-          'config to cicd.config.js.',
+          'config to JavaScript.',
       );
     }
     tsNodeRegistered = true;
@@ -77,8 +80,32 @@ export function load(cwd: string): ResolvedCicdConfig | undefined {
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const loaded = require(file);
-  const config = (loaded?.default ?? loaded) as ResolvedCicdConfig;
-  return config;
+  return (loaded?.default ?? loaded) as T;
+}
+
+/**
+ * Load and return the resolved pipeline config, or undefined when there is no config file. The file's
+ * `default` export is the `defineCICD(...)` result -- already normalized to `ResolvedCicdConfig`.
+ */
+export function load(cwd: string): ResolvedCicdConfig | undefined {
+  const file = discover(cwd);
+  if (file === undefined) {
+    return undefined;
+  }
+  return requireConfigFile<ResolvedCicdConfig>(file);
+}
+
+/**
+ * Load the container-mode deployment config (Repo 2), or undefined when there is no `deploy.config`.
+ * The `default` export is the `defineDeployment(...)` result -- already normalized to
+ * `ResolvedDeploymentConfig`. Consumed by `deploy --from-image`.
+ */
+export function loadDeployment(cwd: string): ResolvedDeploymentConfig | undefined {
+  const file = discoverIn(cwd, DEPLOYMENT_CANDIDATES);
+  if (file === undefined) {
+    return undefined;
+  }
+  return requireConfigFile<ResolvedDeploymentConfig>(file);
 }
 
 /** The stage with the given name, or undefined. */
