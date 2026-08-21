@@ -511,13 +511,14 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     test('promotion is the DEFAULT: Build publishes cdk.out and deploys consume it without synthing', () => {
       const t = render(cfg());
 
-      // The Build project publishes the assembly...
+      // The Build project publishes the WHOLE source tree plus cdk.out, minus node_modules. A hardcoded
+      // allowlist broke multi-file configs, tsconfig-compiled configs, and postinstall inputs -- all of
+      // which `cdk-cicd deploy --from-assembly` still needs because it loads cicd.config.ts under ts-node
+      // and runs `npm ci`. Assert the whole-tree publish AND the node_modules exclusion, since dropping
+      // either silently breaks a promoted deploy while leaving Build green.
       const build = specContaining(t, 'cdk-cicd synth --all');
-      expect(build.artifacts.files).toContain('cdk.out/**/*');
-      // ...and never `**/*`, which would sweep in the node_modules npm ci just installed.
-      expect(build.artifacts.files).not.toContain('**/*');
-      // package.json + a lock file travel too, because the deploy still runs `npm ci`.
-      expect(build.artifacts.files).toContain('package.json');
+      expect(build.artifacts.files).toEqual(['**/*']);
+      expect(build.artifacts['exclude-paths']).toEqual(['node_modules/**/*']);
 
       // ...and each deploy consumes it rather than synthesizing.
       for (const stage of ['dev', 'prod']) {
@@ -601,6 +602,29 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       ).toThrow(/unknown stage\(s\): staging/);
     });
 
+    test("ci.synthStages: 'all' synthesizes EVERY stage under deploy-time synth, not just the first", () => {
+      // The documented meaning of 'all'. It once collapsed to [] and the engine read [] as "one env",
+      // so 'all' silently synthesized only the first stage -- the opposite of what it says.
+      const t = render(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.s3('shop-src/app.zip'),
+          stages: ['dev', 'prod'],
+          deployModel: DeployModel.DEPLOY_TIME_SYNTH,
+          ci: { synthStages: 'all' },
+        }),
+      );
+      const ci = JSON.stringify(specContaining(t, 'cdk-cicd synth').phases.build.commands);
+      expect(ci).toContain('--stage dev');
+      expect(ci).toContain('--stage prod');
+      // ...and both stages then reuse what CI built, rather than re-synthing.
+      for (const s of ['dev', 'prod']) {
+        expect(JSON.stringify(specContaining(t, `deploy --stage ${s}`).phases.build.commands)).toContain(
+          '--from-assembly',
+        );
+      }
+    });
+
     test('narrowing synthStages under promotion is a clear error, not a silently broken pipeline', () => {
       // Every stage's assembly IS its deployed artifact here, so a narrowed set would leave a stage with
       // nothing to deploy -- the failure would otherwise surface as a deploy-time "no manifest.json".
@@ -654,6 +678,66 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       expect(JSON.stringify(specContaining(t, 'deploy --stage prod').phases.build.commands)).toContain(
         '--prepare-only --plan-parameter /cdk-cicd/shop-pipeline/prod/deploy-plan',
       );
+
+      // The Await action must tell the Lambda WHICH parameter to read -- assert the payload, not just the
+      // action's existence. A wrong/absent planParameterName had the Lambda read the wrong plan while the
+      // template still rendered (mutation-confirmed in review).
+      expect(byName('Await-prod').Configuration.UserParameters).toContain('/cdk-cicd/shop-pipeline/prod/deploy-plan');
+
+      // And the driver must actually be granted to execute change sets -- deleting this grant left the
+      // template green and failed only at runtime with AccessDenied.
+      t.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: Match.arrayWith(['cloudformation:ExecuteChangeSet', 'cloudformation:DescribeStacks']),
+            }),
+          ]),
+        }),
+      });
+    });
+
+    test('the driver Lambda is NOT granted sts:AssumeRole, even when the stage forces a deploy role', () => {
+      // A stage's deployRole is a CloudFormation SERVICE role baked into the change set via --role-arn;
+      // the Lambda executes under its own identity and must not try to assume it (that role does not
+      // trust the Lambda). Regression guard for the two commits that disagreed on what deployRole means.
+      const t = render(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.s3('shop-src/app.zip'),
+          stages: [
+            {
+              name: 'dev',
+              env: { account: '111111111111', region: 'us-west-2' },
+              deployment: { deployRole: 'arn:aws:iam::111111111111:role/Deployer' },
+            },
+          ],
+          asyncDeploy: true,
+        }),
+      );
+      const awaitRolePolicies = Object.entries(t.findResources('AWS::IAM::Policy')).filter(([id]) =>
+        id.includes('Await'),
+      );
+      const assumeOnAwait = awaitRolePolicies.some(([, p]) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (p.Properties.PolicyDocument.Statement as any[]).some((s) =>
+          JSON.stringify(s.Action).includes('sts:AssumeRole'),
+        ),
+      );
+      expect(assumeOnAwait).toBe(false);
+    });
+
+    test('a cross-account stage with asyncDeploy is refused at render time, not left to fail mid-deploy', () => {
+      expect(() =>
+        render(
+          defineCICD({
+            application: 'shop',
+            repository: Repository.s3('shop-src/app.zip'),
+            stages: [{ name: 'dev', env: { account: '999999999999', region: 'us-west-2' } }],
+            asyncDeploy: true,
+          }),
+        ),
+      ).toThrow(/asyncDeploy does not yet support a cross-account stage/);
     });
 
     test('the plan parameter is the only channel: build writes it, driver reads it, both scoped to it', () => {

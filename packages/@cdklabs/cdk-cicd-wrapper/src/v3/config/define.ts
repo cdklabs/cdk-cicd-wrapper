@@ -69,11 +69,17 @@ export interface CicdConfigProps {
   readonly asyncDeploy?: boolean;
 }
 
-/** Normalize the permissive CI input, collapsing `synthStages: 'all'` to an empty list. */
-function normalizeCi(ci?: CiConfigInput): CiConfig {
+/**
+ * Normalize the permissive CI input. `synthStages` has THREE meanings, so it cannot collapse to one:
+ * unset -> `[]`, which the engine reads as its efficiency default (one env); `'all'` -> the full stage
+ * list (the documented "synth every stage" -- resolved here, since only here are the stage names known);
+ * an explicit list -> that list. Collapsing `'all'` to `[]` -- as this once did -- silently synthesized
+ * only the first stage, contradicting the field's own doc.
+ */
+function normalizeCi(ci: CiConfigInput | undefined, stageNames: string[]): CiConfig {
   return {
     steps: ci?.steps ?? {},
-    synthStages: ci?.synthStages === undefined || ci.synthStages === 'all' ? [] : ci.synthStages,
+    synthStages: ci?.synthStages === undefined ? [] : ci.synthStages === 'all' ? [...stageNames] : ci.synthStages,
     image: ci?.image,
   };
 }
@@ -111,14 +117,18 @@ function normalizeStage(stage: string | StageInput): ResolvedStage {
  */
 export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
   const application = props.application;
+  const stages = props.stages.map(normalizeStage);
   return {
     application,
     qualifier: props.qualifier ?? (application !== undefined ? deriveQualifier(application) : undefined),
     repository: props.repository,
-    stages: props.stages.map(normalizeStage),
+    stages,
     synthesizer: { type: props.synthesizer?.type ?? SynthesizerType.DEFAULT },
     engine: props.engine ?? EngineType.CODEPIPELINE,
-    ci: normalizeCi(props.ci),
+    ci: normalizeCi(
+      props.ci,
+      stages.map((s) => s.name),
+    ),
     codeArtifact: props.codeArtifact,
     deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,
     asyncDeploy: props.asyncDeploy ?? false,

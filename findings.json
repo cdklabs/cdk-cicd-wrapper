@@ -737,6 +737,39 @@
       "title": "cdk-cicd exec overwrites a user's own TS_NODE_COMPILER_OPTIONS, and the injection has no test",
       "detail": "`ExecCommand` spreads `process.env` first and then sets `TS_NODE_COMPILER_OPTIONS`, so a user who exported their own (e.g. `{\"target\":\"ES2022\"}`) loses it silently rather than having `module: commonjs` merged into it. Overriding is deliberately the safer default -- a merge would let a user reintroduce `module: esnext` and break the child with the exact error this fixes -- so the recommendation is to keep the override and document it, not to merge. Second half: the childEnv injection lives inside the yargs `handler` and is asserted nowhere; `ExecCommand.test.ts` only covers the exported `preloadArgs`/`buildContextJson` helpers, and the config-side register path is covered in `CicdConfig.test.ts`. Fix direction: extract the childEnv construction into an exported pure function and assert the key is present, which also makes the precedence explicit.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts", "line": 226 }
+    },
+    {
+      "id": "code-review-await-listfunctions-suppression-reason",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "lambda:ListFunctions on * on the Await action role is covered only by an artifact-bucket-worded suppression",
+      "detail": "aws-cdk-lib's `LambdaInvokeAction.bound()` adds `lambda:ListFunctions` on `*` to each Await action's CodePipeline role, which the render()-level AwsSolutions-IAM5 suppression (applyToChildren) silences under a reason that talks only about the KMS-encrypted artifact bucket. Read-only enumeration on an internal action role, imposed by aws-cdk-lib, so it is safe -- but the evidence text does not name it. Overlaps `code-review-nag-suppression-applytochildren-too-broad`. Fix direction: extend the reason or add a scoped suppression on the action role with its own evidence. Documentation-scope only.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 229 }
+    },
+    {
+      "id": "code-review-await-iam4-reason-overstated",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The driver Lambda's AwsSolutions-IAM4 suppression reason understates AWSLambdaBasicExecutionRole scope",
+      "detail": "The IAM4 suppression on the deploy-driver Lambda says the managed AWSLambdaBasicExecutionRole grants 'only CloudWatch Logs writes for this function's own log group'. The managed policy actually grants Logs actions (incl. CreateLogGroup) on `arn:aws:logs:*:*:*` -- account-wide, not this function's group. Wording only; the ground truth is one line away in the rendered template and the grant is the CDK default for any non-VPC Lambda. Fix direction: correct the reason (or leave as-is if the file is not otherwise touched).",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 349 }
+    },
+    {
+      "id": "code-review-async-crossstack-importvalue-at-createchangeset",
+      "component": "cli",
+      "layer": "production",
+      "producer": "code-review",
+      "severity": "high",
+      "status": "open",
+      "title": "asyncDeploy prepares ALL change sets up front, but Fn::ImportValue resolves at CreateChangeSet -- a first cross-stack deploy may be unpreparable",
+      "detail": "The asyncDeploy prepare step runs one `cdk deploy --all --no-execute`, which CREATES every stack's change set before any executes. CloudFormation resolves `Fn::ImportValue` at CreateChangeSet time, so on a FIRST deploy of an app with a cross-stack reference, the consumer's change set is created against an export that does not exist yet -> change set FAILED -> prepare exits non-zero. The same app deploys fine with asyncDeploy OFF, because `cdk deploy --all` fully deploys the producer before creating the consumer's change set. The driver's topological ordering only helps at EXECUTE time, not CREATE time. NOT confirmed offline (this is the one link that needs AWS) -- it must be the first thing an asyncDeploy AWS gate checks, with a 2-stack cross-stack fixture where the producer is not yet created. If confirmed, the fix is a redesign: create each change set inside the driver just before executing it (so producers exist first), or document the limitation loudly and refuse cross-stack apps under asyncDeploy. Until then asyncDeploy is safe only for apps whose stacks have no cross-stack exports on first deploy. The current m4-verify async fixture is single-stack and does not exercise this.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts", "line": 218 }
     }
   ]
 }

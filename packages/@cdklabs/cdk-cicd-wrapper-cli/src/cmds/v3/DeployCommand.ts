@@ -60,37 +60,62 @@ export interface PlanEntry {
   readonly region: string;
 }
 
+/** Reads and parses the `manifest.json` of the assembly rooted at `dir`. Injectable for tests. */
+export type ManifestReader = (dir: string) => any;
+const readManifestFromDisk: ManifestReader = (dir) =>
+  JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf-8'));
+
 /**
- * The stacks of a synthesized assembly, in **dependency order**, as change-set entries for the Lambda
- * deploy driver to execute one at a time.
+ * The stacks of a synthesized assembly at `outDir`, in **dependency order**, as change-set entries for
+ * the Lambda deploy driver to execute one at a time.
+ *
+ * Recurses into `aws:cloud-assembly` artifacts. That is not optional: a `cdk.Stage` (mainstream CDK)
+ * synthesizes its stacks into a NESTED assembly, and `cdk deploy --all --no-execute` creates change sets
+ * for those nested stacks. A flat, top-level-only scan would miss them -- the driver would then execute
+ * nothing (or only the top-level stacks) and the pipeline action would still go GREEN, deploying part or
+ * none of the app. So each nested assembly is read from its `directory` and its stacks folded in.
  *
  * Order matters and is not decorative: a stack that consumes another's export must be executed after it,
- * which is ordering `cdk deploy` normally does for us. `dependencies` in the manifest reference artifact
- * ids, so this is a topological sort over those, with the manifest's own order as the tie-break so the
- * result is deterministic for a given assembly.
+ * which is ordering `cdk deploy` normally does for us. `dependencies` reference artifact ids within a
+ * manifest, so this topologically sorts within each manifest; a nested assembly is emitted where its
+ * artifact sits in the parent order, after anything it depends on.
  */
-export function planFromAssembly(manifest: any, region: string, changeSetName: string): PlanEntry[] {
-  const artifacts: { [id: string]: any } = manifest?.artifacts ?? {};
-  const stackIds = Object.keys(artifacts).filter((id) => artifacts[id]?.type === 'aws:cloudformation:stack');
+export function planFromAssembly(
+  outDir: string,
+  region: string,
+  changeSetName: string,
+  readManifest: ManifestReader = readManifestFromDisk,
+): PlanEntry[] {
+  const collect = (dir: string): string[] => {
+    const artifacts: { [id: string]: any } = readManifest(dir)?.artifacts ?? {};
+    const ids = Object.keys(artifacts);
+    const relevant = (id: string) =>
+      artifacts[id]?.type === 'aws:cloudformation:stack' || artifacts[id]?.type === 'aws:cloud-assembly';
 
-  const ordered: string[] = [];
-  const visiting = new Set<string>();
-  const visit = (id: string): void => {
-    if (ordered.includes(id) || visiting.has(id)) return; // already placed, or a cycle we refuse to chase
-    visiting.add(id);
-    for (const dep of (artifacts[id]?.dependencies ?? []) as string[]) {
-      if (stackIds.includes(dep)) visit(dep);
-    }
-    visiting.delete(id);
-    ordered.push(id);
+    const ordered: string[] = [];
+    const visiting = new Set<string>();
+    const visit = (id: string): void => {
+      if (ordered.includes(id) || visiting.has(id) || !relevant(id)) return;
+      visiting.add(id);
+      for (const dep of (artifacts[id]?.dependencies ?? []) as string[]) {
+        if (relevant(dep)) visit(dep);
+      }
+      visiting.delete(id);
+      ordered.push(id);
+    };
+    ids.filter(relevant).forEach(visit);
+
+    // Flatten in order: a stack emits its own name; a nested assembly emits its stacks, recursively.
+    return ordered.flatMap((id) => {
+      const a = artifacts[id];
+      if (a.type === 'aws:cloud-assembly') {
+        return collect(path.join(dir, a.properties.directory));
+      }
+      return [(a.properties?.stackName as string) ?? id];
+    });
   };
-  stackIds.forEach(visit);
 
-  return ordered.map((id) => ({
-    stackName: (artifacts[id]?.properties?.stackName as string) ?? id,
-    changeSetName,
-    region,
-  }));
+  return collect(outDir).map((stackName) => ({ stackName, changeSetName, region }));
 }
 
 /** The account the deploy will actually run against (the ambient creds), for the drift check. */
@@ -236,20 +261,30 @@ class Command implements yargs.CommandModule {
       }
 
       if (prepareOnly) {
-        // Record what the driver must execute. Written per target, so a multi-region stage accumulates
-        // every region's change sets into one plan the Lambda walks in order.
-        plan.push(
-          ...planFromAssembly(
-            JSON.parse(readFileSync(path.join(target.outDir, 'manifest.json'), 'utf-8')),
-            target.region,
-            changeSetName,
-          ),
-        );
+        // Record what the driver must execute -- recursing into nested assemblies. Written per target, so
+        // a multi-region stage accumulates every region's change sets into one plan the Lambda walks.
+        plan.push(...planFromAssembly(target.outDir, target.region, changeSetName));
       }
     }
 
     if (prepareOnly) {
-      const document = JSON.stringify({ stacks: plan, assumeRoleArn: stage.deployment?.deployRole });
+      // A deploy stage always has at least one stack, so an empty plan is never legitimate here -- it
+      // means `synthTargets` produced nothing (a region-less stage; see the deploy-time-synth caveat) or
+      // the assembly parse missed every stack. Writing it would let the driver "successfully" deploy
+      // nothing and go green, so fail loudly at prepare instead.
+      if (plan.length === 0) {
+        logger.error(
+          `cdk-cicd deploy: --prepare-only produced an empty plan for '${stageName}' -- no stacks to ` +
+            'deploy. A stage that deploys must resolve at least one stack x region.',
+        );
+        process.exit(1);
+      }
+      // No assumeRoleArn: a stage's `deployRole` is a CloudFormation SERVICE role (trusted by
+      // cloudformation.amazonaws.com), passed to `cdk deploy` as --role-arn and baked into the change
+      // set's RoleARN -- CloudFormation assumes it at execute time. The driver must NOT sts:AssumeRole it
+      // (that role does not trust the Lambda); it executes the change set under its own identity and
+      // CloudFormation uses the baked role. Cross-account is refused at render time (engine).
+      const document = JSON.stringify({ stacks: plan });
       const put = spawnSync(
         'aws',
         ['ssm', 'put-parameter', '--name', planParameter!, '--type', 'String', '--overwrite', '--value', document],

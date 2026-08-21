@@ -51,52 +51,76 @@ describe('m4-deploy-observer: planFromAssembly', () => {
     dependencies: deps,
     properties: stackName ? { stackName } : {},
   });
+  // A reader mapping directory -> manifest, so nested assemblies are modelled without touching disk.
+  const reader = (manifests: { [dir: string]: any }) => (dir: string) => {
+    if (!(dir in manifests)) throw new Error(`no manifest at ${dir}`);
+    return manifests[dir];
+  };
 
   test('orders stacks so a dependency is executed before the stack that needs it', () => {
-    // Ordering is load-bearing, not cosmetic: a stack consuming another's export must be executed after
-    // it. `cdk deploy` does this for us; the driver executes change sets itself, so we must do it here.
-    const manifest = {
-      artifacts: {
-        Consumer: stack(['Producer'], 'consumer-stack'),
-        Producer: stack([], 'producer-stack'),
-        Assets: { type: 'cdk:asset-manifest' },
+    // Ordering is load-bearing: a stack consuming another's export must be executed after it. cdk deploy
+    // does this for us; the driver executes change sets itself, so we must reproduce it.
+    const r = reader({
+      o: {
+        artifacts: {
+          Consumer: stack(['Producer'], 'consumer-stack'),
+          Producer: stack([], 'producer-stack'),
+          Assets: { type: 'cdk:asset-manifest' },
+        },
       },
-    };
-    expect(planFromAssembly(manifest, 'us-west-2', 'cs-1').map((e) => e.stackName)).toEqual([
+    });
+    expect(planFromAssembly('o', 'us-west-2', 'cs-1', r).map((e) => e.stackName)).toEqual([
       'producer-stack',
       'consumer-stack',
     ]);
   });
 
   test('ignores non-stack artifacts and carries region + change-set name onto every entry', () => {
-    const manifest = {
-      artifacts: { A: stack([], 'a'), Tree: { type: 'cdk:tree' }, B: stack(['A'], 'b') },
-    };
-    const plan = planFromAssembly(manifest, 'eu-west-1', 'cs-9');
-    expect(plan).toEqual([
+    const r = reader({ o: { artifacts: { A: stack([], 'a'), Tree: { type: 'cdk:tree' }, B: stack(['A'], 'b') } } });
+    expect(planFromAssembly('o', 'eu-west-1', 'cs-9', r)).toEqual([
       { stackName: 'a', changeSetName: 'cs-9', region: 'eu-west-1' },
       { stackName: 'b', changeSetName: 'cs-9', region: 'eu-west-1' },
     ]);
   });
 
+  test('RECURSES into nested cloud assemblies (cdk.Stage) -- else those stacks silently never deploy', () => {
+    // A cdk.Stage synthesizes into a nested assembly. A flat scan of the top manifest misses its stacks,
+    // the driver executes nothing for them, and the action goes green having deployed part (or none).
+    const r = reader({
+      o: {
+        artifacts: {
+          Prod: { type: 'aws:cloud-assembly', dependencies: [], properties: { directory: 'assembly-Prod' } },
+          Top: stack([], 'top-stack'),
+        },
+      },
+      'o/assembly-Prod': { artifacts: { S1: stack([], 'prod-s1'), S2: stack(['S1'], 'prod-s2') } },
+    });
+    expect(planFromAssembly('o', 'us-west-2', 'cs', r).map((e) => e.stackName)).toEqual([
+      'prod-s1',
+      'prod-s2',
+      'top-stack',
+    ]);
+  });
+
   test('falls back to the artifact id when the manifest carries no stackName', () => {
-    expect(planFromAssembly({ artifacts: { OnlyId: stack() } }, 'us-west-2', 'cs')[0].stackName).toEqual('OnlyId');
+    const r = reader({ o: { artifacts: { OnlyId: stack() } } });
+    expect(planFromAssembly('o', 'us-west-2', 'cs', r)[0].stackName).toEqual('OnlyId');
   });
 
   test('a dependency cycle still terminates instead of hanging the build', () => {
-    // Defensive: CDK should never emit one, but a topological walk that trusts its input is how a synth
-    // bug becomes an infinite loop inside a deploy action.
-    const manifest = { artifacts: { A: stack(['B'], 'a'), B: stack(['A'], 'b') } };
+    const r = reader({ o: { artifacts: { A: stack(['B'], 'a'), B: stack(['A'], 'b') } } });
     expect(
-      planFromAssembly(manifest, 'us-west-2', 'cs')
+      planFromAssembly('o', 'us-west-2', 'cs', r)
         .map((e) => e.stackName)
         .sort(),
     ).toEqual(['a', 'b']);
   });
 
   test('an assembly with no stacks yields an empty plan, not a crash', () => {
-    expect(planFromAssembly({ artifacts: { Tree: { type: 'cdk:tree' } } }, 'us-west-2', 'cs')).toEqual([]);
-    expect(planFromAssembly({}, 'us-west-2', 'cs')).toEqual([]);
+    expect(
+      planFromAssembly('o', 'us-west-2', 'cs', reader({ o: { artifacts: { Tree: { type: 'cdk:tree' } } } })),
+    ).toEqual([]);
+    expect(planFromAssembly('o', 'us-west-2', 'cs', reader({ o: {} }))).toEqual([]);
   });
 });
 

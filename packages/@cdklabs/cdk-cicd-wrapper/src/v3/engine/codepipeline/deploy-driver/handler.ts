@@ -7,9 +7,13 @@
 //
 // It is a CodePipeline **asynchronous** action. The contract is: return `PutJobSuccessResult` with a
 // `continuationToken` to mean "not finished, invoke me again", plain success to finish the action, and
-// `PutJobFailureResult` to fail the stage. The token carries all the state -- which stack we are on and
-// whether its change set has been started -- so there is no table to provision, and a retry that loses
-// the token simply re-derives it from CloudFormation.
+// `PutJobFailureResult` to fail the stage. The token carries the position in the plan.
+//
+// The step logic is idempotent by DESIGN, not by relying on the token: it reads each change set's
+// ExecutionStatus, so a re-invocation that lost the token (CodePipeline's manual "retry failed actions"
+// carries none and does not re-run the prepare step) RESUMES rather than re-executing completed change
+// sets. `step()` is exported and takes an injected CloudFormation client so it is unit-testable without
+// AWS.
 //
 // Written as a compiled .ts rather than a plain .js asset because `jsii` does NOT copy non-TypeScript
 // files from src/ into lib/ (measured -- the .py assets that appear in lib/ are stale build output), so a
@@ -19,17 +23,25 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 
 /** What the build action recorded for us to drive, read from SSM. */
-interface DeployPlan {
+export interface DeployPlan {
   /** Stacks in dependency order; each entry is one prepared change set. */
   readonly stacks: Array<{ readonly stackName: string; readonly changeSetName: string; readonly region: string }>;
-  /** Role to assume per target account, when the stage deploys somewhere other than the pipeline. */
-  readonly assumeRoleArn?: string;
 }
 
 /** Position in the plan. Serialized into the CodePipeline continuation token. */
-interface Progress {
+export interface Progress {
   readonly index: number;
   readonly started: boolean;
+}
+
+/** The slice of a CloudFormation client `step()` needs; a fake supplies the same shape in tests. */
+export interface CfnClient {
+  describeChangeSet(input: {
+    StackName: string;
+    ChangeSetName: string;
+  }): Promise<{ Status?: string; StatusReason?: string; ExecutionStatus?: string }>;
+  executeChangeSet(input: { StackName: string; ChangeSetName: string }): Promise<unknown>;
+  describeStacks(input: { StackName: string }): Promise<{ Stacks: Array<{ StackStatus: string }> }>;
 }
 
 const TERMINAL_OK = ['CREATE_COMPLETE', 'UPDATE_COMPLETE', 'IMPORT_COMPLETE'];
@@ -43,24 +55,53 @@ const TERMINAL_BAD = [
   'DELETE_FAILED',
 ];
 
-function cfnClient(region: string, credentials?: any): any {
-  const { CloudFormationClient } = require('@aws-sdk/client-cloudformation');
-  return new CloudFormationClient({ region, credentials });
+/** True when a change set carries no changes -- `cdk deploy` treats this as success, so we must too. */
+function isEmptyChangeSet(described: { Status?: string; StatusReason?: string }): boolean {
+  return (
+    described.Status === 'FAILED' &&
+    /didn't contain changes|No updates are to be performed|The submitted information didn't contain changes/i.test(
+      described.StatusReason ?? '',
+    )
+  );
 }
 
-/** Credentials for the target account, or undefined to use the function's own role. */
-async function credentialsFor(assumeRoleArn: string | undefined, region: string): Promise<any> {
-  if (!assumeRoleArn) return undefined;
-  const { STSClient, AssumeRoleCommand } = require('@aws-sdk/client-sts');
-  const sts = new STSClient({ region });
-  const out = await sts.send(
-    new AssumeRoleCommand({ RoleArn: assumeRoleArn, RoleSessionName: 'cdk-cicd-deploy-driver' }),
-  );
-  return {
-    accessKeyId: out.Credentials.AccessKeyId,
-    secretAccessKey: out.Credentials.SecretAccessKey,
-    sessionToken: out.Credentials.SessionToken,
-  };
+/**
+ * Drive one step of the plan. Returns the next progress to continue with, or undefined when the whole
+ * plan is done. Throws to fail the pipeline action. `cfnFor` yields a client bound to a stack's region.
+ */
+export async function step(
+  plan: DeployPlan,
+  at: Progress,
+  cfnFor: (region: string) => CfnClient,
+): Promise<Progress | undefined> {
+  const target = plan.stacks[at.index];
+  if (target === undefined) return undefined;
+  const cfn = cfnFor(target.region);
+
+  if (!at.started) {
+    const described = await cfn.describeChangeSet({ StackName: target.stackName, ChangeSetName: target.changeSetName });
+    // Empty change set: nothing to execute, advance. (cdk treats "no changes" as success.)
+    if (isEmptyChangeSet(described)) {
+      return { index: at.index + 1, started: false };
+    }
+    // Idempotent resume: a token-less retry re-enters here with started=false. If this change set was
+    // already executed on a previous invocation, DO NOT execute it again (that is InvalidChangeSetStatus)
+    // -- treat it as in-flight/done and fall through to the status poll below.
+    if (described.ExecutionStatus !== 'EXECUTE_COMPLETE' && described.ExecutionStatus !== 'EXECUTE_IN_PROGRESS') {
+      await cfn.executeChangeSet({ StackName: target.stackName, ChangeSetName: target.changeSetName });
+    }
+    return { index: at.index, started: true };
+  }
+
+  const stacks = await cfn.describeStacks({ StackName: target.stackName });
+  const status = stacks.Stacks[0].StackStatus;
+  if (TERMINAL_BAD.includes(status)) {
+    throw new Error(`${target.stackName} in ${target.region} reached ${status}`);
+  }
+  if (TERMINAL_OK.includes(status)) {
+    return { index: at.index + 1, started: false };
+  }
+  return at; // still working -- stay put and be invoked again
 }
 
 async function readPlan(parameterName: string, region: string): Promise<DeployPlan> {
@@ -70,48 +111,20 @@ async function readPlan(parameterName: string, region: string): Promise<DeployPl
   return JSON.parse(out.Parameter.Value) as DeployPlan;
 }
 
-/**
- * Drive one step of the plan. Returns the next progress to continue with, or undefined when the whole
- * plan is done. Throws to fail the pipeline action.
- */
-async function step(plan: DeployPlan, at: Progress, ownRegion: string): Promise<Progress | undefined> {
-  const target = plan.stacks[at.index];
-  if (target === undefined) return undefined;
-
-  const credentials = await credentialsFor(plan.assumeRoleArn, ownRegion);
-  const cfn = cfnClient(target.region, credentials);
+/** A real CloudFormation client adapted to the CfnClient shape, bound to `region`. */
+function realCfn(region: string): CfnClient {
   const {
+    CloudFormationClient,
+    DescribeChangeSetCommand,
     ExecuteChangeSetCommand,
     DescribeStacksCommand,
-    DescribeChangeSetCommand,
   } = require('@aws-sdk/client-cloudformation');
-
-  if (!at.started) {
-    // An empty change set is a no-op, not a failure: `cdk deploy` treats "no changes" as success, and so
-    // must we, or an unchanged stack would fail the stage.
-    const described = await cfn.send(
-      new DescribeChangeSetCommand({ StackName: target.stackName, ChangeSetName: target.changeSetName }),
-    );
-    if (
-      described.Status === 'FAILED' &&
-      /didn't contain changes|No updates are to be performed/i.test(described.StatusReason ?? '')
-    ) {
-      return { index: at.index + 1, started: false };
-    }
-    await cfn.send(new ExecuteChangeSetCommand({ StackName: target.stackName, ChangeSetName: target.changeSetName }));
-    return { index: at.index, started: true };
-  }
-
-  const stacks = await cfn.send(new DescribeStacksCommand({ StackName: target.stackName }));
-  const status: string = stacks.Stacks[0].StackStatus;
-  if (TERMINAL_BAD.includes(status)) {
-    throw new Error(`${target.stackName} in ${target.region} reached ${status}`);
-  }
-  if (TERMINAL_OK.includes(status)) {
-    return { index: at.index + 1, started: false };
-  }
-  // Still working -- stay put and be invoked again.
-  return at;
+  const c = new CloudFormationClient({ region });
+  return {
+    describeChangeSet: (i) => c.send(new DescribeChangeSetCommand(i)),
+    executeChangeSet: (i) => c.send(new ExecuteChangeSetCommand(i)),
+    describeStacks: (i) => c.send(new DescribeStacksCommand(i)),
+  };
 }
 
 export async function handler(event: any): Promise<void> {
@@ -132,7 +145,7 @@ export async function handler(event: any): Promise<void> {
       ? (JSON.parse(job.data.continuationToken) as Progress)
       : { index: 0, started: false };
 
-    const next = await step(plan, at, region);
+    const next = await step(plan, at, realCfn);
     await pipeline.send(
       new PutJobSuccessResultCommand(
         next === undefined ? { jobId } : { jobId, continuationToken: JSON.stringify(next) },

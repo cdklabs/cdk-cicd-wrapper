@@ -57,7 +57,11 @@ export interface CiConfig {
    * engine applies its built-in default set.
    */
   readonly steps: { [key: string]: string };
-  /** Stages CI synthesizes for validation. Empty means all stages. */
+  /**
+   * Which stages CI synthesizes. Empty means the engine's default -- every stage under
+   * `ASSEMBLY_PROMOTION`, one env under `DEPLOY_TIME_SYNTH`. A non-empty list names the stages
+   * explicitly; `defineCICD`'s `'all'` shorthand resolves to the full stage list here.
+   */
   readonly synthStages: string[];
   /** Optional CodeBuild image override. */
   readonly image?: string;

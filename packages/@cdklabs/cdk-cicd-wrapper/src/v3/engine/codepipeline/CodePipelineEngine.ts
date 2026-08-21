@@ -180,6 +180,18 @@ export class CodePipelineEngine implements IEngine {
       const account = stage.env.account ?? stack.account;
       const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
 
+      // Cross-account async is not implemented: the driver Lambda runs in the pipeline's account and
+      // executes change sets under its own identity, so it cannot reach a stage in another account.
+      // Refuse it at render time -- otherwise the first Await invocation fails with an opaque AccessDenied
+      // mid-deploy. (Same-account cross-region is fine; the Lambda is granted CFN in every stage region.)
+      if (config.asyncDeploy && stage.env.account !== undefined && stage.env.account !== stack.account) {
+        throw new Error(
+          `cdk-cicd: asyncDeploy does not yet support a cross-account stage ('${stage.name}' targets a ` +
+            'different account than the pipeline). Deploy that stage synchronously (omit asyncDeploy) until ' +
+            'cross-account async lands.',
+        );
+      }
+
       // With asyncDeploy the build only PREPARES change sets and exits; a Lambda executes and awaits them,
       // so no build minutes are billed for the CloudFormation wait (D-deploy-wait). The plan travels
       // through an SSM parameter whose name is fixed at render time, so both halves can name it without
@@ -200,9 +212,7 @@ export class CodePipelineEngine implements IEngine {
       }
 
       const driver =
-        planParam !== undefined
-          ? this.deployDriver(scope, stage.name, planParam, account, regions, stage.deployment?.deployRole)
-          : undefined;
+        planParam !== undefined ? this.deployDriver(scope, stage.name, planParam, account, regions) : undefined;
 
       // A gated stage puts its approval in the SAME pipeline stage as the deploy, ordered ahead of it,
       // rather than in a stage of its own: run order already sequences them, and one stage per
@@ -306,7 +316,6 @@ export class CodePipelineEngine implements IEngine {
     );
   }
 
-  /** The CI/build commands: config-provided step values in order, else the engine default set. */
   /**
    * The Lambda that executes and awaits the change sets the prepare step created (D-deploy-wait).
    *
@@ -321,7 +330,6 @@ export class CodePipelineEngine implements IEngine {
     planParam: string,
     account: string,
     regions: string[],
-    forcedDeployRole?: string,
   ): lambda.Function {
     const stack = Stack.of(scope);
     const fn = new lambda.Function(scope, `Await-${stageName}`, {
@@ -353,9 +361,10 @@ export class CodePipelineEngine implements IEngine {
         resources: regions.map((region) => `arn:${stack.partition}:cloudformation:${region}:${account}:stack/*/*`),
       }),
     );
-    if (forcedDeployRole !== undefined && forcedDeployRole.length > 0) {
-      fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: [forcedDeployRole] }));
-    }
+    // NOTE: no sts:AssumeRole for a stage's `deployRole`. That role is a CloudFormation SERVICE role
+    // (trusted by cloudformation.amazonaws.com), baked into the change set as its RoleARN via
+    // `cdk deploy --role-arn`; CloudFormation assumes it at ExecuteChangeSet time. The Lambda executes
+    // the change set under its OWN identity and does not -- cannot -- assume that role.
 
     NagSuppressions.addResourceSuppressions(
       fn,
@@ -423,17 +432,13 @@ export class CodePipelineEngine implements IEngine {
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases,
-        // Publish the synthesized assembly plus the few source files a deploy still needs: the deploy
-        // runs `npm ci` (so package.json + a lock file) and re-reads `cicd.config.*` to resolve its
-        // stage's targets. Deliberately NOT `**/*` -- that would sweep in the `node_modules` this build
-        // just installed and turn every artifact into hundreds of MB.
-        ...(publishAssembly
-          ? {
-              artifacts: {
-                files: ['cdk.out/**/*', 'package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'cicd.config.*'],
-              },
-            }
-          : {}),
+        // Publish the WHOLE source tree plus the synthesized assembly, excluding only node_modules (the
+        // deploy re-runs `npm ci`). A hardcoded file allowlist was wrong: `cdk-cicd deploy --from-assembly`
+        // still loads `cicd.config.ts` under ts-node, so a config that imports another file, a tsconfig it
+        // compiles against, or a package.json `postinstall`/`prepare` that reads `scripts/`/`patches/` --
+        // all ordinary layouts -- would be missing from the artifact and fail at the deploy stage, after
+        // Build had already gone green. Excluding node_modules keeps the artifact from ballooning.
+        ...(publishAssembly ? { artifacts: { files: ['**/*'], 'exclude-paths': ['node_modules/**/*'] } } : {}),
       }),
     });
     if (codeArtifact) {
