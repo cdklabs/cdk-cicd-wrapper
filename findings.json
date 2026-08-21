@@ -847,6 +847,17 @@
       "title": "Container GIT_SHA tag silently degrades to latest for S3/artifact sources (and version-id chars can be illegal in a tag)",
       "detail": "The GIT_SHA tag default relies on CODEBUILD_RESOLVED_SOURCE_VERSION, which is not reliably populated for a CodeBuild action inside CodePipeline when the SOURCE is S3/artifact (vs a raw git checkout). When empty the buildspec's ${...:-latest} fallback silently tags the image `latest`, so the GIT_SHA promise of an immutable per-commit tag is fiction for S3/CodeCommit-via-artifact sources -- repeated runs overwrite one mutable `latest`. If the var IS populated for S3 it holds the object version id, which can contain / and + (both illegal in a Docker tag), risking a non-deterministic `docker build -t` failure. The container-verify gate cannot catch this: it asserts only that an ECR image digest exists, never that the tag is a sha (the run PASSED, so the tag was SOME valid value -- unknown which). Fix direction: scope GIT_SHA to git sources, sanitize the value to the allowed tag charset, and have the gate assert the produced tag. Slice-1 goal (build+push to ECR) is proven; this is a tag-correctness refinement.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 363 }
+    },
+    {
+      "id": "code-review-regionorder-declared-not-honored",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Stage env.regionOrder (SEQUENTIAL/PARALLEL) is declared and normalized but never consumed -- PARALLEL is a no-op",
+      "detail": "RegionOrder is a public enum, is a field on StageEnvInput/StageEnvironment, and defineCICD/defineDeployment normalize it (define.ts:107,183 default SEQUENTIAL). But NO engine or CLI code ever reads regionOrder: the CodePipeline engine renders one deploy action per stage, and cdk-cicd deploy iterates a stage's regions with a plain sequential `for (const target of targets)` loop (DeployCommand). So regions always roll out sequentially and setting RegionOrder.PARALLEL has zero effect -- a config knob that silently does nothing. This surfaced while uplifting the v3 workshop: the docs must not teach a no-op, so the region-order content was removed from chapters 2 and 3. Fix direction: either implement parallel region rollout (deploy a stage's regions concurrently when PARALLEL) or remove the field until it is honored. Multi-region deploy itself works (sequential); only the order/parallelism switch is inert.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/config/define.ts", "line": 107 }
     }
   ]
 }

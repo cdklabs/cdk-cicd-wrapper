@@ -1,14 +1,21 @@
-# Container mode: build a deployer image to ECR
+# Container mode: build once, deploy many
+
+!!! abstract "What you'll build"
+    - **Repo 1 — CI pipeline:** runs CI and pushes a config-agnostic deployer image to ECR — it deploys
+      nothing.
+    - **Repo 2 — CD pipeline:** a config-only `deploy.config.ts` whose pipeline pulls that image and
+      deploys each target (or run the same executor locally with `cdk-cicd deploy --from-image`).
+    - An understanding of the "one image → many deployments" scale-out and rollback-by-retag.
 
 For an enterprise / "Automation Framework" flow, v3 supports a **two-repo split**:
 
-- **Repo 1 (this chapter)** — the CDK app repo. Its pipeline runs CI and then builds & pushes a
+- **Repo 1 (CI pipeline)** — the CDK app repo. Its pipeline runs CI and then builds & pushes a
   **config-agnostic deployer image** (your CDK code + its npm deps + the wrapper tooling) to ECR. It
   deploys nothing.
-- **Repo 2** — a generic deployer that runs that image against each target's config and `cdk deploy`s,
-  synthesizing per target at run time. One image → many deployments. (Repo 2 is on the roadmap.)
+- **Repo 2 (CD pipeline)** — a config-only repo (no CDK code) whose pipeline pulls that image and runs it
+  against each target's config, synthesizing per target at run time. One image → many deployments.
 
-## Turn the pipeline into an image builder
+## Repo 1 — turn the pipeline into an image builder
 
 Add a `deployerImage` to the config. The pipeline then renders as `Source → BuildImage` — no deploy
 stages:
@@ -27,7 +34,7 @@ export default defineCICD({
 });
 ```
 
-## What the pipeline does
+### What the Repo 1 pipeline does
 
 `cdk-cicd deploy-ci` provisions a **secondary CodePipeline** whose single build project:
 
@@ -35,12 +42,105 @@ export default defineCICD({
 2. logs in to ECR (`aws ecr get-login-password | docker login …`),
 3. `docker build`s your Dockerfile and pushes the image, tagged by the resolved commit.
 
+<!-- SCREENSHOT: CodePipeline console showing the Repo 1 pipeline as Source → BuildImage (no deploy stages) -->
+
 If you don't name an existing repo, the pipeline **provisions** one (`<application>-deployer`); a
 disposable pipeline empties and deletes it on teardown.
 
-## Why the image, not `cdk.out`
+### Why the image, not `cdk.out`
 
 The image bakes code + deps but **never** `cdk.out`, so Repo 2 can synth-and-deploy it **offline** against
 any target's config — no `npm install` and no registry access at deploy time. That's what collapses the
 per-target pipeline sprawl: targets become config rows a single image is run against, not pipeline
 resources.
+
+## Repo 2 — the CD pipeline that deploys the image
+
+Repo 2 is a small, app-agnostic **config repo** (no CDK code) that says **which image** to run and
+**where** to deploy it. Describe that with `defineDeployment` in a `deploy.config.ts`:
+
+```ts
+// deploy.config.ts
+import { defineDeployment, Repository } from '@cdklabs/cdk-cicd-wrapper';
+
+export default defineDeployment({
+  // WHAT to deploy: the pinned image is authoritative — the app and its stages are baked in.
+  image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2',
+
+  // The config-only source repo this CD pipeline watches (only deploy.config.ts + package.json live here).
+  repository: Repository.codecommit('my-app-deploy-config'),
+
+  // WHERE to deploy: each target supplies the account/region/role for a stage.
+  targets: [
+    { stage: 'dev',  env: { account: '111111111111', region: 'eu-west-1' } },
+    {
+      stage: 'prod',
+      env: { account: '222222222222', regions: ['eu-west-1', 'us-east-1'] },
+      manualApproval: true,
+      deployment: { deployRole: 'arn:aws:iam::222222222222:role/automation-deployer' },
+    },
+  ],
+});
+```
+
+Provision the CD pipeline — the deploy-side twin of `deploy-ci` for a CI pipeline:
+
+```bash
+npx cdk-cicd deploy-ci     # sees deploy.config.ts (not cicd.config.ts) → provisions the CD pipeline
+```
+
+This renders a second CodePipeline: **Source** (your config repo) **→ Deploy** (a privileged CodeBuild
+that logs in to ECR, pulls the pinned image, and runs it once per target to synth-and-deploy that stage).
+So the two repos give you two pipelines:
+
+- **CI pipeline (Repo 1):** source → CI → build & **push** the deployer image to ECR.
+- **CD pipeline (Repo 2):** config change → **pull** that image → synth & deploy each target.
+
+<!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (CodeBuild) -->
+
+!!! tip "Run it locally without a pipeline"
+    The CodeBuild step is just the `cdk-cicd deploy --from-image --yes` executor, which you can also run
+    from any machine or CI runner (it pulls the image and deploys each target). Omit `repository` from
+    `deploy.config.ts` to use only the local executor with no CD pipeline. On a runner whose default docker
+    network can't reach AWS, add `--docker-network host`.
+
+Either way, the pinned image runs **once per (target × region)**: for each run the container synthesizes
+that stage against the target's injected environment — offline, inside the image — and deploys the result.
+One build produces one image, and that image drives *N* deploys.
+
+!!! info "Division of authority: WHAT vs WHERE"
+    The **image** is authoritative for *what* to deploy — the app code and its stage definitions are baked
+    in at build time. The **`deploy.config.ts` target** is authoritative for *where* — the account,
+    region(s), and role for each stage. A target's `deployment.deployRole` (chapter 2's shape) is threaded
+    through to each target's deploy.
+
+!!! warning "Manual-approval gates today"
+    A target's `manualApproval: true` is honored by the **local executor** (`cdk-cicd deploy --from-image`
+    is fail-closed — it refuses a gated target unless you pass `--yes`). The **CD pipeline** currently runs
+    every target in one CodeBuild pass, so it does not yet render per-target Manual Approval actions —
+    per-target pipeline gates are a planned refinement. Until then, gate at the pipeline level (e.g. a
+    separate approval before the CD pipeline) or use the local executor for gated targets.
+
+!!! tip "Rollback is a retag"
+    To roll back, point `image:` at the previous version tag (e.g. `:1.4.1`) and re-run
+    `cdk-cicd deploy --from-image`. Because the image pins code + deps and config supplies the lookups,
+    the same image + same config always synthesizes the same template — a deterministic rollback with no
+    rebuild.
+
+## Verify
+
+!!! success "Verify"
+    - **Repo 1 (CI pipeline):** renders as `Source → BuildImage` (no deploy stages), and after a run the
+      tagged image is present in ECR (`aws ecr describe-images --repository-name my-app-deployer`).
+    - **Repo 2 (CD pipeline):** `deploy-ci` provisions a `Source → Deploy` CodePipeline; a config change
+      triggers the CodeBuild that pulls the image and creates/updates each target's CloudFormation stack.
+    - Change nothing but the `image:` tag and re-run — the deploy reproduces the pinned version, proving
+      one image serves many deployments and rollbacks.
+
+## Recap
+
+Container mode splits build from deploy into **two pipelines**: the CI pipeline (Repo 1) builds and pushes
+one config-agnostic, offline-capable image; the CD pipeline (Repo 2, config-only) pulls that image and
+deploys as many targets as you like — the same `cdk-cicd deploy --from-image` executor you can also run
+locally. Targets are config rows, not pipeline resources — that's the scale-out win — and rollback is just
+pointing at a previous image tag. Next: migrating an existing v2 app to any of these v3 patterns.
