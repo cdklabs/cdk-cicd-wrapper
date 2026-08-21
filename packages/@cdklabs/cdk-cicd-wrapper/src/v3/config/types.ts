@@ -159,3 +159,32 @@ export interface ResolvedCicdConfig {
    */
   readonly asyncDeploy: boolean;
 }
+
+/**
+ * A resolved deployment target for container mode (Repo 2): a stage to deploy the pinned image against,
+ * with its own environment and optional forced roles. `env` mirrors a `ResolvedStage`'s environment, but a
+ * target names the stage it maps to rather than defining it -- the stage's stacks live in the image, not
+ * here. `manualApproval` defaults the same way stages do (gated unless `dev`/`res`).
+ */
+export interface ResolvedDeploymentTarget {
+  /** The stage in the image's app to deploy (passed to the in-container `cdk-cicd deploy --stage`). */
+  readonly stage: string;
+  /** Where this target deploys. */
+  readonly env: StageEnvironment;
+  /** Whether a manual approval gates this target. */
+  readonly manualApproval: boolean;
+  /** Forced roles for this target, if any. */
+  readonly deployment?: DeploymentConfig;
+}
+
+/**
+ * The fully resolved container-mode deployment configuration `defineDeployment` produces (Repo 2 of the
+ * two-repo split). It pins one config-agnostic deployer image and lists the targets to run it against;
+ * `cdk-cicd deploy --from-image` runs the image per target, synthesizing and deploying in-container.
+ */
+export interface ResolvedDeploymentConfig {
+  /** The pinned deployer image to run each target against (an ECR/OCI reference, tag or digest). */
+  readonly image: string;
+  /** The deployment targets, in order. */
+  readonly targets: ResolvedDeploymentTarget[];
+}

@@ -22,6 +22,8 @@ import {
   EngineType,
   RegionOrder,
   ResolvedCicdConfig,
+  ResolvedDeploymentConfig,
+  ResolvedDeploymentTarget,
   ResolvedStage,
   StageEnvironment,
   SynthesizerType,
@@ -152,4 +154,57 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
  */
 export function defineCICD(props: CicdConfigProps): ResolvedCicdConfig {
   return resolveCicdConfig(props);
+}
+
+/** A deployment target, as written in Repo 2's `deploy.config.ts`. `env` takes one region or many. */
+export interface DeploymentTargetInput {
+  readonly stage: string;
+  readonly env?: StageEnvInput;
+  readonly manualApproval?: boolean;
+  readonly deployment?: DeploymentConfig;
+}
+
+/** What a user passes to `defineDeployment` (Repo 2). Deliberately permissive; normalized to resolved structs. */
+export interface DeploymentProps {
+  /** The pinned deployer image to run each target against (an ECR/OCI reference, tag or digest). */
+  readonly image: string;
+  /** The targets to run the image against, in order. */
+  readonly targets: DeploymentTargetInput[];
+}
+
+function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarget {
+  const env: StageEnvInput = target.env ?? {};
+  const regions = env.regions ?? (env.region !== undefined ? [env.region] : []);
+  return {
+    stage: target.stage,
+    env: {
+      account: env.account,
+      regions,
+      regionOrder: env.regionOrder ?? RegionOrder.SEQUENTIAL,
+    },
+    // Same gate default as stages: inner-loop targets deploy without approval, the rest require it.
+    manualApproval: target.manualApproval ?? !AUTO_APPROVE_STAGES.has(target.stage),
+    deployment: target.deployment,
+  };
+}
+
+/**
+ * The container-mode (Repo 2) entry point a user writes in `deploy.config.ts`:
+ *
+ * ```ts
+ * export default defineDeployment({
+ *   image: 'ACCT.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2',
+ *   targets: [
+ *     { stage: 'dev', env: { account: '...', region: 'eu-west-1' } },
+ *     { stage: 'prod', env: { account: '...', regions: ['eu-west-1', 'us-east-1'] }, manualApproval: true },
+ *   ],
+ * });
+ * ```
+ *
+ * TS-only for the same reason as `defineCICD`: jsii silently omits free functions, and this is loaded
+ * in-process by the CLI (via ts-node) so it never crosses the jsii boundary. Only the resolved
+ * `ResolvedDeploymentConfig` is jsii-modeled.
+ */
+export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConfig {
+  return { image: props.image, targets: props.targets.map(normalizeTarget) };
 }

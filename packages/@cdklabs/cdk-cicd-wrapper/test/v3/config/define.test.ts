@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineCICD, resolveCicdConfig } from '../../../src/v3/config/define';
+import { defineCICD, defineDeployment, resolveCicdConfig } from '../../../src/v3/config/define';
 import { Repository } from '../../../src/v3/config/repository';
 import { EngineType, RegionOrder, SynthesizerType } from '../../../src/v3/config/types';
 
@@ -105,5 +105,62 @@ describe('m3-config: defineCICD top-level defaults', () => {
   test('resolveCicdConfig (the YAML path) produces the same result as defineCICD', () => {
     const props = { application: 'shop', repository: REPO, stages: ['dev', 'prod'] };
     expect(resolveCicdConfig(props)).toEqual(defineCICD(props));
+  });
+});
+
+describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
+  test('the image passes through and targets keep their order', () => {
+    const cfg = defineDeployment({
+      image: 'acct.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2',
+      targets: [{ stage: 'dev' }, { stage: 'prod' }],
+    });
+    expect(cfg.image).toBe('acct.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2');
+    expect(cfg.targets.map((t) => t.stage)).toEqual(['dev', 'prod']);
+  });
+
+  test('a target with no env becomes environment-agnostic (empty region list)', () => {
+    const cfg = defineDeployment({ image: 'img:tag', targets: [{ stage: 'dev' }] });
+    expect(cfg.targets[0]).toEqual({
+      stage: 'dev',
+      env: { account: undefined, regions: [], regionOrder: RegionOrder.SEQUENTIAL },
+      manualApproval: false,
+      deployment: undefined,
+    });
+  });
+
+  test('single region and region list both normalize to a regions[] with a default order', () => {
+    const single = defineDeployment({ image: 'img:tag', targets: [{ stage: 'a', env: { region: 'us-west-2' } }] });
+    expect(single.targets[0].env.regions).toEqual(['us-west-2']);
+    expect(single.targets[0].env.regionOrder).toBe(RegionOrder.SEQUENTIAL);
+
+    const many = defineDeployment({
+      image: 'img:tag',
+      targets: [{ stage: 'a', env: { regions: ['us-west-2', 'us-west-1'], regionOrder: RegionOrder.PARALLEL } }],
+    });
+    expect(many.targets[0].env.regions).toEqual(['us-west-2', 'us-west-1']);
+    expect(many.targets[0].env.regionOrder).toBe(RegionOrder.PARALLEL);
+  });
+
+  test('manualApproval defaults by stage name (same rule as stages) and an explicit value wins', () => {
+    const cfg = defineDeployment({
+      image: 'img:tag',
+      targets: [{ stage: 'dev' }, { stage: 'res' }, { stage: 'prod' }, { stage: 'dev', manualApproval: true }],
+    });
+    expect(cfg.targets.map((t) => t.manualApproval)).toEqual([false, false, true, true]);
+  });
+
+  test('the target account and forced roles pass through unchanged', () => {
+    const cfg = defineDeployment({
+      image: 'img:tag',
+      targets: [
+        {
+          stage: 'prod',
+          env: { account: '333333333333', region: 'eu-west-1' },
+          deployment: { deployRole: 'arn:role/deploy' },
+        },
+      ],
+    });
+    expect(cfg.targets[0].env.account).toBe('333333333333');
+    expect(cfg.targets[0].deployment).toEqual({ deployRole: 'arn:role/deploy' });
   });
 });
