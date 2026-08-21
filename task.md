@@ -888,7 +888,14 @@ Not tasks — resolved/open design decisions that tasks reference.
     before building this.
   - **desc:** Render from the model directly (replaces v2 buildspec reverse-engineering).
   - **depends-on:** m4-iengine
-- **`spike-python-hook`** — Python injection path  ·  todo · wave 6 · wrapper · spike
+- **`spike-python-hook`** — Python injection path  ·  done · wave 6
+  - **notes:** Conclusion (finding `spike-python-injection-is-node-preload-only`): zero-touch injection
+    is Node-only -- `cdk-cicd exec` preloads a Node module (`-r register.js`) and cannot apply to a
+    `python app.py`. Config DATA is language-agnostic (rides CDK_CONTEXT_JSON, read via tryGetContext),
+    but applying the synthesizer/tags/Aspects is not. The wrapper ships a Python jsii binding and
+    `CdkCicd.attach` is exported, so the Python path is the explicit opt-in (attach + self-set
+    synthesizer) -- the same fallback the bundled-app diagnostic points to. Post-alpha options recorded
+    (language-aware exec, or document the explicit opt-in). No code; spike analysis. · wrapper · spike
   - **desc:** Is the import hook acceptable in Python, or is `CdkCicd.attach(app)` the primary path?
     (jsii can't ship a Python import hook cleanly.) Written outcome.
 - **`spike-naming`** — CLI/API naming pass  ·  done · wave 6
