@@ -6,6 +6,87 @@ This document outlines the notable migration and cleanup tasks involved in upgra
 
 Each section details the changes introduced between specific version ranges (e.g., [0.0.0] - [0.0.6]).
 
+### [0.2.x] → [1.0 / v3] Migration — config-driven pipelines, zero wrapper code in your app
+
+> **Status:** v3 develops on the `v3` branch and, when first exposed, ships as `1.0.0-alpha.N` under the
+> npm dist-tag `next` — **not** `latest`. The 0.x (`PipelineBlueprint`) line keeps working and publishing
+> until the v3.0 major. This chapter is the mapping you follow when you move; it is additive, so you can
+> adopt v3 on a branch while 0.x stays in production. Some v2 capabilities are not in v3 yet — those rows
+> are marked **(roadmap)** below, and you should not migrate a project that depends on them yet.
+
+**The one big change.** In v2 you *wrote wrapper code in your `bin/`* — `PipelineBlueprint.builder()…
+.synth(app)`. In v3 your `bin/` stays exactly what `cdk init` produced (a plain `App` with your stacks),
+and the pipeline is described in a separate **`cicd.config.ts`** next to `cdk.json`. The wrapper is
+injected at synth time via `cdk.json`'s app command (`npx cdk-cicd exec bin/app.ts`); with no
+`cicd.config.ts` present the wrapper is inert and your app deploys as stock CDK. You provision the
+pipeline once with `cdk-cicd deploy-ci`, and it self-updates from `cicd.config.ts` on every run.
+
+#### Before (v2) → After (v3)
+
+```TypeScript
+// v2 — bin/app.ts
+const app = new App();
+PipelineBlueprint.builder()
+  .defineStages(['RES', { stage: 'DEV', env: { account: '…', region: 'us-east-1' } }, 'PROD'])
+  .addStack({ provide: (ctx) => new MyStack(ctx.scope, 'my-app') })
+  .synth(app);
+```
+
+```TypeScript
+// v3 — bin/app.ts stays plain CDK; cdk.json runs `npx cdk-cicd exec bin/app.ts`
+const app = new App();
+new MyStack(app, 'my-app');
+```
+
+```TypeScript
+// v3 — cicd.config.ts (new file, next to cdk.json)
+import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.codestarConnection('org/my-app', 'arn:aws:codestar-connections:…'),
+  stages: ['dev', { name: 'prod', env: { region: 'us-east-1' } }], // 'prod' is gated by default
+});
+```
+
+#### Mapping table
+
+| v2 | v3 |
+|---|---|
+| `PipelineBlueprint.builder().defineStages(...).addStack(...).synth(app)` | `defineCICD({ stages, ... })` in `cicd.config.ts`; your stacks stay in `bin/` |
+| `ACCOUNT_<STAGE>` / `CDK_QUALIFIER` / `npm_package_config_*` env | fields in `cicd.config.ts` (env interpolation is still allowed) |
+| `RepositorySource.codecommit()/github()/s3()` | `Repository.codecommit()/github()/s3()`, plus `Repository.codestarConnection(name, connectionArn)` for GitHub via a CodeStar connection |
+| `IResourceProvider` + `ResourceContext.instance()` singleton | same DI concept, de-singletoned and typed (`SupportResources`), lazily provisioned |
+| `definePhase` / `PhaseCommand` | `ci.steps` — a command map run in the CI build |
+| default-on validate/audit/license/security | same, run by `cdk-cicd check` in the CI build (no npm-script surgery needed) |
+| manual approval steps | `manualApproval` per stage; non-`dev`/`res` stages are gated by default |
+| `deployment.deployRole` / forced synth roles | `deployment.deployRole` on a stage (unchanged concept) |
+| pipeline provisioning by deploying the app stack | `cdk-cicd deploy-ci` provisions the pipeline; it self-updates from config each run |
+| Plugins (Aspect-based) | unchanged; applied by the runtime injection hook |
+| `workbench(...)` | Level-0 direct `cdk deploy` (no pipeline) |
+| `GitHubPipelinePlugin` / GitHub Actions | **(roadmap)** a first-class GitHub Actions engine — not in v3 yet; v3 today is the CodePipeline engine |
+| container / two-repo image mode | **(roadmap)** not in v3 yet |
+| `@cdklabs/cdk-cicd-wrapper-projen` project type | replaced by `cicd.config.ts` (+ `cdk-cicd` CLI); the projen product is deprecated and removed at the major |
+
+#### Notable v3 behaviours worth knowing
+
+- **Flat footprint.** The CodePipeline engine builds ONE pipeline: source → one CI build → a
+  self-update stage → one deploy action per stage. Where v2 (CDK Pipelines) grew a CodeBuild project per
+  asset per stage (100+ on a real app), v3 is `1 + 1 + <stage count>`.
+- **Deploy model (default: assembly promotion).** The CI build synthesizes every stage once, keeps
+  `cdk.out`, and promotes it; deploy stages consume that assembly and do not re-synthesize. A second
+  model, `DeployModel.DEPLOY_TIME_SYNTH`, synthesizes per stage at deploy time (with CI synthesizing one
+  env by default). Docker mode is roadmap.
+- **Private registry.** Set `codeArtifact` in `cicd.config.ts` to have every build authenticate to a
+  private npm repo before `npm ci`.
+- **Optional async deploy.** `asyncDeploy: true` hands the CloudFormation wait to a Lambda instead of
+  billing build compute for it. Opt-in; cross-account stages are not supported under it yet.
+
+#### Codemod
+
+A `cdk-cicd migrate` codemod that rewrites a mechanical `PipelineBlueprint.builder()…synth(app)` into a
+`cicd.config.ts` + the `cdk.json` app command is **planned but not yet available** — migrate by hand
+using the table above for now.
+
 ### [0.1.5] - [0.2.0] Migration - VPC management and compliance bucket name
 
 This upgrade introduces a new property to define the vpc configuration and name of the compliance bucket for each stage.

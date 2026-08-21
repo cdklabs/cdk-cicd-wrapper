@@ -834,7 +834,7 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 5 — Migration (M5)
 
-- **`m5-migration-doc`** — MIGRATION.md v2→v3  ·  todo · wave 5 · docs · docs
+- **`m5-migration-doc`** — MIGRATION.md v2→v3  ·  done · wave 5 · docs · docs
   - **spec:** `docs/design/v3-devops-experience.md` #v2 → v3 mapping
 - **`m5-codemod`** — cdk-cicd migrate codemod  ·  todo · wave 5 · cli · feature
   - **desc:** Rewrite mechanical `PipelineBlueprint.builder()...synth(app)` into `cicd.config.ts` +
