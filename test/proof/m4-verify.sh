@@ -63,19 +63,37 @@ build_bundle() {
   # The run-specific config: baked (not env-driven) because the pipeline re-reads it inside CodeBuild
   # during self-update, where the gate's env vars do not exist. Account is omitted on purpose -- it
   # defaults to the pipeline's own account -- so nothing here carries an account id.
+  # Which of the two deploy models (and whether the Lambda deploy driver is on) this run proves. Driven by
+  # the environment so one gate script covers every combination -- the models render very different
+  # pipelines, and the only way to know a mode works is to run it.
+  #   M4_DEPLOY_MODEL=ASSEMBLY_PROMOTION (default) | DEPLOY_TIME_SYNTH
+  #   M4_ASYNC_DEPLOY=true                         -- hand the CloudFormation wait to the Lambda driver
+  local modelLine='' asyncLine=''
+  case "${M4_DEPLOY_MODEL:-ASSEMBLY_PROMOTION}" in
+    ASSEMBLY_PROMOTION) modelLine='  deployModel: DeployModel.ASSEMBLY_PROMOTION,' ;;
+    DEPLOY_TIME_SYNTH)  modelLine='  deployModel: DeployModel.DEPLOY_TIME_SYNTH,' ;;
+    *) die "M4_DEPLOY_MODEL must be ASSEMBLY_PROMOTION or DEPLOY_TIME_SYNTH (got '${M4_DEPLOY_MODEL}')" ;;
+  esac
+  [ "${M4_ASYNC_DEPLOY:-false}" = 'true' ] && asyncLine='  asyncDeploy: true,'
+
   cat >"$bundle/cicd.config.ts" <<EOF
-import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
+import { defineCICD, DeployModel, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: '${app}',
   repository: Repository.s3('${bucket}/app.zip'),
   codeArtifact: { domain: '${CA_DOMAIN}', repository: '${CA_REPO}', npmScope: 'cdklabs' },
+${modelLine}
+${asyncLine}
   stages: [
     { name: 'dev', env: { region: '${DEV_REGION}' } },
     { name: 'prod', env: { region: '${PROD_REGION}' }, manualApproval: true },
   ],
 });
 EOF
+  # >&2 deliberately: this function's stdout IS its return value (the bundle dir), and `log`/`info` print
+  # to stdout, so anything logged here without redirection ends up prepended to the path the caller uses.
+  log "deploy model: ${M4_DEPLOY_MODEL:-ASSEMBLY_PROMOTION}, asyncDeploy: ${M4_ASYNC_DEPLOY:-false}" >&2
 
   # The run id has to travel INSIDE the bundle: the app is synthesized in the pipeline's CodeBuild,
   # which never sees CDK_CICD_TEST_RUN_ID. Without this the fixture fell back to `local` and deployed
@@ -85,9 +103,21 @@ EOF
 
   npmrc="$(mktemp)"
   ca_login "$npmrc"
-  ( cd "$bundle" && NPM_CONFIG_USERCONFIG="$npmrc" npm install --no-audit --no-fund >/dev/null 2>&1 ) \
+  # --prefer-online: the wrapper is republished under the SAME version (0.0.0) between runs, and npm
+  # caches tarballs by name@version, so without this a run silently installs the PREVIOUS build. That
+  # cost two full gate runs -- both failed on a defect that had already been fixed and republished.
+  ( cd "$bundle" && NPM_CONFIG_USERCONFIG="$npmrc" npm install --no-audit --no-fund --prefer-online >/dev/null 2>&1 ) \
     || die 'npm install of the bundle failed (CodeArtifact resolution?)'
   rm -f "$npmrc"
+
+  # ...and prove it, rather than trusting the flag: the installed engine must be byte-identical to the one
+  # just built here. A mismatch means the bundle is testing something other than this working tree, which
+  # makes every downstream assertion meaningless.
+  local built="$(repo_root)/packages/@cdklabs/cdk-cicd-wrapper/lib/v3/engine/codepipeline/CodePipelineEngine.js"
+  local installed="$bundle/node_modules/@cdklabs/cdk-cicd-wrapper/lib/v3/engine/codepipeline/CodePipelineEngine.js"
+  if [ -f "$built" ] && ! cmp -s "$built" "$installed"; then
+    die "the installed @cdklabs/cdk-cicd-wrapper differs from the local build -- stale npm cache or a missed publish; run 'npm cache clean --force' and republish"
+  fi
   printf '%s\n' "$bundle"
 }
 
@@ -136,6 +166,22 @@ destroy_src_bucket() {
     log "could not delete $bucket -- check the console"
     return 1
   fi
+}
+
+# Delete the deploy-plan SSM parameters. They are written by `cdk-cicd deploy --prepare-only` with
+# put-parameter, so CloudFormation does not own them and destroying the pipeline stack leaves them behind
+# -- only reachable when asyncDeploy is on. Guarded on the cdkcicdtest- prefixed path so this can only
+# ever touch this run's parameters.
+destroy_plan_parameters() {
+  local prefix="/cdk-cicd/$(pipeline_name)/" names
+  case "$prefix" in "/cdk-cicd/$STACK_PREFIX-"*) ;; *) die "guard: refusing to delete parameters under '$prefix'" ;; esac
+  names="$(aws ssm get-parameters-by-path --path "$prefix" --recursive --region "$DEV_REGION" \
+             --query 'Parameters[].Name' --output text 2>/dev/null)" || return 0
+  [ -n "$names" ] && [ "$names" != 'None' ] || return 0
+  for name in $names; do
+    aws ssm delete-parameter --name "$name" --region "$DEV_REGION" >/dev/null 2>&1 \
+      && info "deleted plan parameter $name" || log "could not delete plan parameter $name"
+  done
 }
 
 # --- tag the pipeline stack so the teardown guard will accept it -----------------------------------
@@ -329,6 +375,7 @@ main_m4() {
     ( destroy_stack "$(app_stack)" "$region" ) || { log "app stack teardown in $region incomplete"; rc=1; }
   done
   destroy_src_bucket "$bucket" || rc=1
+  destroy_plan_parameters
   rm -rf "$bundle" /tmp/m4-app.zip
 
   if [ "$rc" = 0 ]; then

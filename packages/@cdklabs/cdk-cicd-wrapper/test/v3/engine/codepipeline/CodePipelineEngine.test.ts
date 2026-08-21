@@ -3,6 +3,7 @@
 
 import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
+import { Runtime, RuntimeFamily } from 'aws-cdk-lib/aws-lambda';
 import { defineCICD } from '../../../../src/v3/config/define';
 import { Repository } from '../../../../src/v3/config/repository';
 import { DeployModel } from '../../../../src/v3/config/types';
@@ -681,6 +682,24 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       expect(
         statements.filter((s) => s.actions.some((a: string) => a.startsWith('ssm:')) && s.resource === '"*"'),
       ).toEqual([]);
+    });
+
+    test('the driver Lambda uses the newest runtime THIS aws-cdk-lib knows, not a hardcoded one', () => {
+      const t = render(asyncCfg());
+      const runtimes = Object.values(t.findResources('AWS::Lambda::Function')).map((f) => f.Properties.Runtime);
+      const newest = Runtime.ALL.filter((r) => r.family === RuntimeFamily.NODEJS && /^nodejs\d+\./.test(r.name))
+        .map((r) => parseInt(r.name.replace('nodejs', ''), 10))
+        .reduce((a, b) => Math.max(a, b), 0);
+
+      // Measured on a real run: cdk-nag's AwsSolutions-L1 derives "latest" from the RESOLVED aws-cdk-lib,
+      // and the wrapper peer-depends on ^2.195.0, so a user gets whatever is current. A hardcoded runtime
+      // becomes a synth ERROR -- blocking deploy-ci outright -- as soon as AWS ships a newer one. Pinning
+      // 22 passed here (2.195.0 knows up to 22) and failed against 2.266.0 (which knows 24), so assert
+      // against the library rather than a literal, or this test would re-freeze the bug.
+      expect(runtimes).not.toEqual([]);
+      for (const r of runtimes) {
+        expect(r).toEqual(`nodejs${newest}.x`);
+      }
     });
 
     test('asyncDeploy is off by default, so the proven build-compute path renders unchanged', () => {

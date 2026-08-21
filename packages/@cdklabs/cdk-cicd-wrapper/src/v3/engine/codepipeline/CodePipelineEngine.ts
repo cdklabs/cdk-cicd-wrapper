@@ -46,6 +46,25 @@ const BOOTSTRAP_ROLE_KINDS = ['deploy', 'file-publishing', 'image-publishing', '
  */
 const NODE_RUNTIME_VERSION = 22;
 
+/**
+ * The newest Node runtime the CONSUMER's `aws-cdk-lib` knows about, for the deploy-driver Lambda.
+ *
+ * Deliberately derived rather than pinned. cdk-nag's `AwsSolutions-L1` computes "latest" from
+ * `Runtime.ALL` of whatever aws-cdk-lib is resolved, and the wrapper's peer range is `^2.195.0`, so a
+ * user gets whatever is current. Any hardcoded version therefore becomes a synth ERROR -- which blocks
+ * `deploy-ci` entirely -- the moment AWS adds a newer runtime. Measured, not theorised: pinning
+ * `NODEJS_22_X` passed against the repo's own 2.195.0 (whose newest is 22) and FAILED L1 in a real run
+ * that resolved 2.266.0 (whose newest is 24). Reading the same list nag reads keeps the two in step by
+ * construction. `Runtime.NODEJS_LATEST` is NOT a substitute -- it is a conservative alias (nodejs18.x in
+ * 2.195.0) and fails L1 too. The handler is plain JS on the AWS SDK v3, so any modern Node suits it.
+ */
+function latestNodeRuntime(): lambda.Runtime {
+  const major = (r: lambda.Runtime): number => parseInt(r.name.replace('nodejs', ''), 10);
+  return lambda.Runtime.ALL.filter(
+    (r) => r.family === lambda.RuntimeFamily.NODEJS && /^nodejs\d+\./.test(r.name),
+  ).reduce((best, r) => (major(r) > major(best) ? r : best), lambda.Runtime.NODEJS_22_X);
+}
+
 /** Options for the CodePipeline engine. */
 export interface CodePipelineEngineProps {
   /** CodeBuild image for the CI and deploy projects. Defaults to the standard Amazon Linux image. */
@@ -306,7 +325,7 @@ export class CodePipelineEngine implements IEngine {
   ): lambda.Function {
     const stack = Stack.of(scope);
     const fn = new lambda.Function(scope, `Await-${stageName}`, {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: latestNodeRuntime(),
       // The AWS SDK v3 clients the handler uses are provided by the runtime, so the asset is just the
       // compiled handler -- no bundler, and no SDK dependency pushed into every consumer's install.
       code: lambda.Code.fromAsset(path.join(__dirname, 'deploy-driver')),
