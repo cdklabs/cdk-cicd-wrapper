@@ -65,6 +65,11 @@ EOF
   aws ecr create-repository --repository-name "$repo" --region "$REGION" \
     --tags "Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID" >/dev/null 2>&1 \
     || die "could not create ECR repo $repo"
+  # Arm teardown NOW that a standalone resource (the ECR repo) exists. Every `die` below fires before the
+  # explicit teardown is reachable, and `harness.sh sweep` only finds CloudFormation stacks -- so without
+  # this trap an early failure (login/install/staleness/bucket) would leak the ECR repo with no recovery.
+  # destroy_all is guarded + idempotent, so running it once on EXIT (success or die) is safe.
+  trap 'destroy_all' EXIT
 
   local npmrc; npmrc="$(mktemp)"
   NPM_CONFIG_USERCONFIG="$npmrc" aws codeartifact login --tool npm --domain "$CA_DOMAIN" \
@@ -81,8 +86,8 @@ EOF
 
   ensure_src_bucket "$bucket"
   rm -f /tmp/container-app.zip
-  ( cd "$bundle" && zip -qr /tmp/container-app.zip . -x 'node_modules/*' 'cdk.out/*' ) || { destroy_all; die 'zip failed'; }
-  aws s3 cp /tmp/container-app.zip "s3://$bucket/app.zip" --region "$REGION" 2>&1 | redact || { destroy_all; die 'upload failed'; }
+  ( cd "$bundle" && zip -qr /tmp/container-app.zip . -x 'node_modules/*' 'cdk.out/*' ) || die 'zip failed'
+  aws s3 cp /tmp/container-app.zip "s3://$bucket/app.zip" --region "$REGION" 2>&1 | redact || die 'upload failed'
   info "uploaded source to s3://$bucket/app.zip"
 
   # --- provision the image-build pipeline ---------------------------------------------------------
@@ -109,8 +114,9 @@ EOF
     else rc=1; fi
   fi
 
-  log 'teardown: pipeline stack, ECR repo, source bucket'
-  destroy_all
+  # Teardown runs via the EXIT trap (armed after the ECR repo was created), so it covers this normal
+  # return AND every early `die`. rm the local bundle here; the trap does the AWS teardown.
+  log 'teardown (pipeline stack, ECR repo, source bucket) runs on exit'
   rm -rf "$bundle" /tmp/container-app.zip
   [ "$rc" = 0 ] && log 'container-verify PASSED: image-build pipeline from cicd.config.ts pushed a deployer image to ECR, then torn down' \
                 || log 'container-verify FAILED'

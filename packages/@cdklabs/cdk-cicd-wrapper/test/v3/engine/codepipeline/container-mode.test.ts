@@ -56,6 +56,18 @@ describe('m6-container: image-build pipeline', () => {
     expect(cmds).toContain('CODEBUILD_RESOLVED_SOURCE_VERSION');
   });
 
+  test('the build role can actually push to ECR (grantPullPush), incl. the auth token for docker login', () => {
+    // Without this a dropped grantPullPush passes every other test (buildspec/repo/env unchanged) and only
+    // fails at runtime with AccessDenied. Scan every policy statement's actions and pin the push action +
+    // the token grant, rather than assume how grantPullPush groups them into statements.
+    const t = render(cfg(BuildImage.docker()));
+    const actions = Object.values(t.findResources('AWS::IAM::Policy'))
+      .flatMap((p) => p.Properties.PolicyDocument.Statement as Array<{ Action: string | string[] }>)
+      .flatMap((s) => (Array.isArray(s.Action) ? s.Action : [s.Action]));
+    expect(actions).toContain('ecr:PutImage'); // push
+    expect(actions).toContain('ecr:GetAuthorizationToken'); // docker login
+  });
+
   test('a custom dockerfile path and LATEST tag strategy are honoured', () => {
     const cmds = buildCommands(
       render(cfg(BuildImage.docker({ dockerfile: 'ci/Dockerfile', tagStrategy: ImageTagStrategy.LATEST }))),

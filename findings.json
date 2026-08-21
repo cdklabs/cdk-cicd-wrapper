@@ -836,6 +836,17 @@
       "title": "Zero-touch injection is Node-only; a Python CDK app must use the explicit CdkCicd.attach opt-in",
       "detail": "spike-python-hook conclusion. v3's zero-touch injection is a Node preload: cdk-cicd exec spawns process.execPath (node) with -r ts-node/register + -r register.js and runs the entry as a Node module (ExecCommand.ts). That cannot apply to a Python entry (you cannot -r a Node module into a python process), so `cdk-cicd exec app.py` does not work. What IS language-agnostic: config reaches the app via CDK_CONTEXT_JSON (cicd:config), which Python CDK reads with node.tryGetContext, so config/tags DATA crosses fine. What does NOT cross: applying the synthesizer + tags + Aspects (register.js patches the Node App). The wrapper ships a Python jsii binding (cdklabs.cdk_cicd_wrapper) and CdkCicd.attach(app) is exported, so the Python path is the SAME explicit opt-in the bundled-app diagnostic points to: the app constructs its own App (+ defaultStackSynthesizer) and calls CdkCicd.attach(app); attach applies tags/Aspects but NOT the synthesizer (documented in attach.ts), so the synthesizer must be set at construction. Recommendation (post-alpha): (a) make cdk-cicd exec language-aware -- for a non-.ts/.js entry run the app's own cdk.json command with CDK_CONTEXT_JSON + stage env set, skipping the Node preload -- or (b) document the explicit Python opt-in as the supported path, leaving zero-touch a Node/TS feature. No code changed; spike analysis.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts", "line": 218 }
+    },
+    {
+      "id": "code-review-container-gitsha-tag-degrades-on-s3",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Container GIT_SHA tag silently degrades to latest for S3/artifact sources (and version-id chars can be illegal in a tag)",
+      "detail": "The GIT_SHA tag default relies on CODEBUILD_RESOLVED_SOURCE_VERSION, which is not reliably populated for a CodeBuild action inside CodePipeline when the SOURCE is S3/artifact (vs a raw git checkout). When empty the buildspec's ${...:-latest} fallback silently tags the image `latest`, so the GIT_SHA promise of an immutable per-commit tag is fiction for S3/CodeCommit-via-artifact sources -- repeated runs overwrite one mutable `latest`. If the var IS populated for S3 it holds the object version id, which can contain / and + (both illegal in a Docker tag), risking a non-deterministic `docker build -t` failure. The container-verify gate cannot catch this: it asserts only that an ECR image digest exists, never that the tag is a sha (the run PASSED, so the tag was SOME valid value -- unknown which). Fix direction: scope GIT_SHA to git sources, sanitize the value to the allowed tag charset, and have the gate assert the produced tag. Slice-1 goal (build+push to ECR) is proven; this is a tag-correctness refinement.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts", "line": 363 }
     }
   ]
 }
