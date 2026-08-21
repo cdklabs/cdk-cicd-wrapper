@@ -13,6 +13,7 @@ import check from './cmds/v3/CheckCommand';
 import deployCi from './cmds/v3/DeployCiCommand';
 import deploy from './cmds/v3/DeployCommand';
 import exec from './cmds/v3/ExecCommand';
+import migrate from './cmds/v3/MigrateCommand';
 import pipelineApp from './cmds/v3/PipelineAppCommand';
 import synth from './cmds/v3/SynthCommand';
 import validate from './cmds/ValidateCommand';
@@ -38,6 +39,7 @@ async function main() {
   ya.command(deploy);
   ya.command(pipelineApp);
   ya.command(deployCi);
+  ya.command(migrate);
 
   // Enable command recommendations and strict command handling
   ya.recommendCommands();

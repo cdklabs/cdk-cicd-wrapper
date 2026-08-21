@@ -57,6 +57,7 @@
     "globby": "11.1.0",
     "ts-node": "^10.9.2",
     "tslog": "^4.10.2",
+    "typescript": "^5.9.3",
     "yargs": "^17.7.3"
   },
   "keywords": [

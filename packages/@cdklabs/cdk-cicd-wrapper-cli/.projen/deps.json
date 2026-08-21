@@ -119,6 +119,11 @@
       "type": "runtime"
     },
     {
+      "name": "typescript",
+      "version": "^5.9.3",
+      "type": "runtime"
+    },
+    {
       "name": "yargs",
       "version": "^17.7.3",
       "type": "runtime"
