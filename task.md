@@ -873,9 +873,20 @@ Not tasks — resolved/open design decisions that tasks reference.
     `deploy-ci` provisioned a secondary CodePipeline (1 CodeBuild project), the BuildImage stage ran
     CI + `docker build` + push, and a real image landed in ECR; pipeline stack + ECR repo + source
     bucket all torn down. The gate's Dockerfile is intentionally minimal -- it proves build+push, not a
-    fully functional deployer image. **Remaining (slice 2):** Repo 2 -- `cdk-cicd deploy --from-image`
-    that runs the pushed image against a target's config and `cdk deploy`s offline (defineDeployment /
-    deploy.config.ts per the design doc). Stays in-progress until slice 2 lands. · cli · feature
+    fully functional deployer image.
+    **Slice 2 (Repo 2 executor) DONE and PROVEN on AWS** by `test/proof/container-deploy-verify.sh`:
+    `defineDeployment` + `cdk-cicd deploy --from-image` run the pinned image once per (target x region),
+    synthing+deploying each stage offline in-container; the gate deployed a real stack via the image with
+    NO pipeline, then torn down. Added `--docker-network` for constrained/air-gapped runners.
+    **Slice 3 (Repo 2 CD pipeline) BUILT + unit-tested** (26 tests, jsii-safe): `defineDeployment.repository`
+    + `DeploymentPipeline`/`DeploymentPipelineApp`; `deploy-ci` auto-routes cicd.config.ts->CI, deploy.config.ts->CD
+    (Source -> privileged CodeBuild: ECR login -> deploy --from-image). Review-hardened (bootstrap-role
+    grants per target, in-build cred materialization, cross-account ECR login, nag parity).
+    **Remaining:** end-to-end AWS proof of the CD pipeline (provision from a config repo + a CI-built image
+    + run) -- the executor and CI-pipeline-provisioning are each AWS-proven; the CD-pipeline-in-CodePipeline
+    round trip is the open gate. Also proven this wave: the v2->v3 migration of a real app (tef-ivms,
+    deployed both with & without pipeline into the sandbox, see development/) and a multi-region global
+    DynamoDB gate (`test/proof/global-ddb-verify.sh`, PASSED us-west-2 + us-west-1 replica). · cli · feature
   - **desc:** `BuildImage.docker` (repo 1 build/push of a **config-agnostic** image = code + vendored
     npm deps, no `cdk.out`, runs offline) + `defineDeployment` / `deploy --from-image` (repo 2 synths
     in-container against its config, then deploys). S3 artifact store default + ECR/OCI.
