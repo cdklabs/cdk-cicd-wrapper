@@ -837,6 +837,9 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **`m5-migration-doc`** — MIGRATION.md v2→v3  ·  done · wave 5 · docs · docs
   - **spec:** `docs/design/v3-devops-experience.md` #v2 → v3 mapping
 - **`m5-codemod`** — cdk-cicd migrate codemod  ·  done · wave 5 · cli · feature
+  - **notes:** paired with `stageStackName` (stack-name control) and a MIGRATION.md "preserve deployed
+    resources" section. Continuity PROVEN on AWS by `test/proof/migration-continuity.sh`: a same-name
+    re-deploy UPDATED in place (bucket physical id unchanged); a mismatched name created a NEW bucket.
   - **desc:** Rewrite mechanical `PipelineBlueprint.builder()...synth(app)` into `cicd.config.ts` +
     `cdk.json` app command.          - **depends-on:** m3-definecicd
 - **`m5-sample-migrate`** — migrate the TS sample  ·  todo · wave 5 · infra · migration
