@@ -8,10 +8,13 @@
 // action, and there are no per-asset publishing projects. This flat footprint is the whole point:
 // it replaces v2's per-asset/per-stage CDK Pipelines project sprawl.
 
+import * as path from 'path';
 import {
   DefaultStackSynthesizer,
+  Duration,
   RemovalPolicy,
   Stack,
+  aws_lambda as lambda,
   aws_codebuild as codebuild,
   aws_codepipeline as codepipeline,
   aws_codepipeline_actions as actions,
@@ -154,11 +157,33 @@ export class CodePipelineEngine implements IEngine {
       // still applies to.
       const reuse = synthed.includes(stage.name);
       const deployCmd = `npx cdk-cicd deploy --stage ${stage.name} --yes${reuse ? ' --from-assembly' : ''}`;
-      const project = this.project(scope, `Deploy-${stage.name}`, ['npm ci', deployCmd], config.codeArtifact);
       // An empty region list means "wherever the pipeline itself runs" (an env-agnostic stage).
       const account = stage.env.account ?? stack.account;
       const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
+
+      // With asyncDeploy the build only PREPARES change sets and exits; a Lambda executes and awaits them,
+      // so no build minutes are billed for the CloudFormation wait (D-deploy-wait). The plan travels
+      // through an SSM parameter whose name is fixed at render time, so both halves can name it without
+      // the Lambda having to download and unzip a pipeline artifact.
+      const planParam = config.asyncDeploy ? `/cdk-cicd/${props.pipelineName}/${stage.name}/deploy-plan` : undefined;
+      const stageCmd =
+        planParam !== undefined ? `${deployCmd} --prepare-only --plan-parameter ${planParam}` : deployCmd;
+
+      const project = this.project(scope, `Deploy-${stage.name}`, ['npm ci', stageCmd], config.codeArtifact);
       this.grantDeployPermissions(project, account, regions, stage.deployment?.deployRole);
+      if (planParam !== undefined) {
+        project.addToRolePolicy(
+          new iam.PolicyStatement({
+            actions: ['ssm:PutParameter'],
+            resources: [`arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter${planParam}`],
+          }),
+        );
+      }
+
+      const driver =
+        planParam !== undefined
+          ? this.deployDriver(scope, stage.name, planParam, account, regions, stage.deployment?.deployRole)
+          : undefined;
 
       // A gated stage puts its approval in the SAME pipeline stage as the deploy, ordered ahead of it,
       // rather than in a stage of its own: run order already sequences them, and one stage per
@@ -179,6 +204,17 @@ export class CodePipelineEngine implements IEngine {
             input: reuse && assembly !== undefined ? assembly : sourceOutput,
             runOrder: stage.manualApproval ? 2 : 1,
           }),
+          // Ordered strictly after the prepare step: it reads the plan that step writes.
+          ...(driver !== undefined
+            ? [
+                new actions.LambdaInvokeAction({
+                  actionName: `Await-${stage.name}`,
+                  lambda: driver,
+                  userParameters: { planParameterName: planParam },
+                  runOrder: stage.manualApproval ? 3 : 2,
+                }),
+              ]
+            : []),
         ],
       });
     }
@@ -252,6 +288,80 @@ export class CodePipelineEngine implements IEngine {
   }
 
   /** The CI/build commands: config-provided step values in order, else the engine default set. */
+  /**
+   * The Lambda that executes and awaits the change sets the prepare step created (D-deploy-wait).
+   *
+   * It is invoked as a CodePipeline **asynchronous** action: it does one unit of work per invocation and
+   * returns a continuation token, so it is billed in ~1s slices instead of holding a build container for
+   * the whole CloudFormation wait. The timeout is deliberately short for the same reason -- the function
+   * is never supposed to sit and poll inside a single invocation.
+   */
+  private deployDriver(
+    scope: Construct,
+    stageName: string,
+    planParam: string,
+    account: string,
+    regions: string[],
+    forcedDeployRole?: string,
+  ): lambda.Function {
+    const stack = Stack.of(scope);
+    const fn = new lambda.Function(scope, `Await-${stageName}`, {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      // The AWS SDK v3 clients the handler uses are provided by the runtime, so the asset is just the
+      // compiled handler -- no bundler, and no SDK dependency pushed into every consumer's install.
+      code: lambda.Code.fromAsset(path.join(__dirname, 'deploy-driver')),
+      handler: 'handler.handler',
+      timeout: Duration.minutes(1),
+      description: `cdk-cicd: execute and await CloudFormation change sets for stage ${stageName}`,
+    });
+
+    fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [`arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter${planParam}`],
+      }),
+    );
+    // Scoped to the stage's own account and regions. The stack name cannot be known when the pipeline is
+    // rendered -- the app is synthesized inside the pipeline -- which is the whole reason this is a Lambda
+    // and not a set of native CloudFormation actions, so the stack segment is necessarily a wildcard.
+    fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'cloudformation:ExecuteChangeSet',
+          'cloudformation:DescribeChangeSet',
+          'cloudformation:DescribeStacks',
+        ],
+        resources: regions.map((region) => `arn:${stack.partition}:cloudformation:${region}:${account}:stack/*/*`),
+      }),
+    );
+    if (forcedDeployRole !== undefined && forcedDeployRole.length > 0) {
+      fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: [forcedDeployRole] }));
+    }
+
+    NagSuppressions.addResourceSuppressions(
+      fn,
+      [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason:
+            'AWSLambdaBasicExecutionRole is the CDK default for a Lambda with no VPC; it grants only ' +
+            "CloudWatch Logs writes for this function's own log group.",
+        },
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            "Scoped to the stage's own account and regions. The stack name is a wildcard because the app " +
+            'is synthesized inside the pipeline, so the stack set of a stage is not known when the ' +
+            'pipeline is rendered -- that is precisely why this is a Lambda rather than native ' +
+            'CloudFormation actions. codepipeline:PutJob*Result is granted on "*" by LambdaInvokeAction ' +
+            'itself and cannot be resource-scoped.',
+        },
+      ],
+      true,
+    );
+    return fn;
+  }
+
   private ciCommands(config: ResolvedCicdConfig, synthed: string[], promote: boolean): string[] {
     const steps = Object.values(config.ci.steps);
     const base = steps.length > 0 ? ['npm ci', ...steps] : DEFAULT_CI_COMMANDS;

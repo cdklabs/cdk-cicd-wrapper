@@ -65,6 +65,8 @@ export interface CicdConfigProps {
   readonly codeArtifact?: CodeArtifactConfig;
   /** How the deployed assembly is produced. Defaults to `DeployModel.ASSEMBLY_PROMOTION`. */
   readonly deployModel?: DeployModel;
+  /** Let a Lambda execute and await CloudFormation instead of paying build compute to wait. Off by default. */
+  readonly asyncDeploy?: boolean;
 }
 
 /** Normalize the permissive CI input, collapsing `synthStages: 'all'` to an empty list. */
@@ -119,6 +121,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     ci: normalizeCi(props.ci),
     codeArtifact: props.codeArtifact,
     deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,
+    asyncDeploy: props.asyncDeploy ?? false,
   };
 }
 

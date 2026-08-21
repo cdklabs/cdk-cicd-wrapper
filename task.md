@@ -714,18 +714,57 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **acceptance:** default CI synth covers one env; `ci.synthStages` selects which; a stage synthed in CI
     is not synthesized a second time by its own deploy. ✅ (unit-proven; the live proof of the promotion
     path is the `m4-verify` re-run)
-- **`m4-deploy-observer`** — stateful Lambda watches CFN instead of idle compute  ·  todo · wave 4 · wrapper · feature
+- **`m4-deploy-observer`** — stateful Lambda watches CFN instead of idle compute  ·  in-progress · wave 4 · wrapper · feature
   - **desc:** Stop paying CodeBuild compute to wait on CloudFormation. Start the deployment, then have a
     stateful Lambda observe deployment state and complete the pipeline action.
   - **spec:** `task.md` D-deploy-wait.
   - **depends-on:** m4-verify
   - **notes:** Applies to both implementations. Measured baseline to beat, from the m4-verify runs: the
-    pipeline's deploy actions hold a CodeBuild container for the whole CloudFormation wait. Design points
-    to settle: which CodePipeline action type completes asynchronously (a Lambda invoke action, or a
-    CodeBuild action whose job token is completed out of band), where the observer's state lives, and how
-    failure/rollback surfaces as an action failure rather than a hang.
+    pipeline's deploy actions hold a CodeBuild container for the whole CloudFormation wait.
+    **The three design points are now settled (verified against aws-cdk-lib 2.195.0 and the cdk CLI):**
+    1. *Which action completes asynchronously* — `LambdaInvokeAction`. Its `bound()` already grants the
+       function `codepipeline:PutJobSuccessResult`/`PutJobFailureResult`, which is what enables the
+       async pattern: return success with a **continuationToken** to mean "not finished, invoke me again".
+    2. *Where the state lives* — the continuation token itself (which stack/changeset we are on), seeded by
+       a small state file the CodeBuild step writes as an output artifact. Hence "stateful", with no table.
+    3. *How rollback surfaces* — a terminal `*_FAILED`/`ROLLBACK_COMPLETE` becomes
+       `PutJobFailureResult`, so the stage fails instead of hanging until the action times out.
+    **Constraint discovered while designing, and it is the reason a Lambda is the right answer:** the
+    obvious cheaper design — emit one native `CloudFormationCreateUpdateStackAction` per stack, which
+    CodePipeline waits on for free, as CDK Pipelines v1 did — is **not available to us**. Those actions
+    must be enumerated when the *pipeline* is rendered, but in v3 the app is synthesized **inside** the
+    pipeline, so the stack set of a stage is unknown until run time. Only something that discovers stacks
+    at run time can do this, i.e. a Lambda.
+    Consequence: the Lambda cannot merely *watch* — `cdk deploy` blocks, so to stop paying for the wait the
+    blocking deploy must not run at all. The shape is: CodeBuild does the fast part (`npm ci`,
+    publish assets, `cdk deploy --no-execute` to create change sets) and exits; the Lambda then executes
+    and polls them in dependency order. That makes this a deployment *driver*, not just an observer —
+    materially bigger than the task title suggests, which is why the scope is a maintainer call.
+  - **produces:** `asyncDeploy` config flag (opt-in, default off); `deployDriver()` in the engine emitting a
+    `LambdaInvokeAction` (`Await-<stage>`) after the prepare step; the driver Lambda at
+    `src/v3/engine/codepipeline/deploy-driver/handler.ts`; `cdk-cicd deploy --prepare-only
+    --plan-parameter` plus the exported `planFromAssembly()` topological sort.
+  - **notes (implementation):** Shipped **opt-in** behind `asyncDeploy`, so the build-compute path that
+    `m4-verify` proves stays the default until a real run validates this one (ground rule 1). Shape: the
+    build runs `cdk deploy --no-execute --change-set-name <run>` (publishes assets, creates change sets,
+    returns immediately) and writes a plan to an **SSM parameter** whose name is fixed at render time;
+    the Lambda then executes and polls the change sets, one unit of work per invocation, returning a
+    CodePipeline **continuationToken** as its only state. SSM rather than a pipeline artifact deliberately:
+    an artifact would force the Lambda to download and unzip a zip to read one JSON file.
+    Two correctness details that are easy to get wrong and are now tested: stacks are executed in
+    **topological order** (a stack consuming another's export must follow it — ordering `cdk deploy`
+    normally does for us), and an **empty change set is a no-op, not a failure** (`cdk deploy` treats "no
+    changes" as success, so an unchanged stack must not fail the stage). A terminal `*_FAILED`/rollback
+    becomes `PutJobFailureResult`, so a rollback fails the stage instead of hanging to the action timeout.
+    Packaging gotcha, measured: `jsii` does **not** copy non-TypeScript files from `src/` into `lib/` (the
+    `.py` assets visible in `lib/` are stale build output), so a hand-written `.js` handler would have
+    shipped as an empty asset. The handler is therefore TypeScript compiled by jsii, and the asset points
+    at the compiled directory.
+    **Not done:** no real-AWS run yet, so the compute saving is unmeasured — the acceptance below is
+    unproven. Cross-account stages are also unhandled: the driver assumes a `deployRole` when the stage
+    configures one, but does not assume the CDK bootstrap deploy role for a stage in another account.
   - **acceptance:** a deploy stage's billed compute time is materially below its CloudFormation wall time,
-    and a rollback still fails the stage.
+    and a rollback still fails the stage. ← unproven; needs an `m4-verify` run with `asyncDeploy: true`
 - **`m4-verify`** — M4 gate  ·  in-progress · wave 4 · shared · test
   - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks, m4-private-registry
   - **produces:** `test/proof/m4-verify.sh`; `test/fixtures/pipeline-app/` (self-contained source bundle —

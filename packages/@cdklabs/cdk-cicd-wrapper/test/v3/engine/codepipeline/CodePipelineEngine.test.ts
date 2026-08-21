@@ -22,6 +22,14 @@ function arnEndingIn(suffix: string) {
   return Match.objectLike({ 'Fn::Join': Match.arrayWith([Match.arrayWith([suffix])]) });
 }
 
+/** The parsed buildspec of the one CodeBuild project whose build commands contain `marker`. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function specContaining(t: Template, marker: string): any {
+  return Object.values(t.findResources('AWS::CodeBuild::Project'))
+    .map((p) => JSON.parse(p.Properties.Source.BuildSpec))
+    .find((s) => JSON.stringify(s.phases.build.commands).includes(marker));
+}
+
 describe('m4-codepipeline: CodePipelineEngine', () => {
   test('builds ONE pipeline with a flat footprint: 1 build project + 1 project per stage', () => {
     const config = defineCICD({
@@ -499,11 +507,6 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
 
     /** The buildspec of the project whose commands contain `marker`, parsed. */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const specContaining = (t: Template, marker: string): any =>
-      Object.values(t.findResources('AWS::CodeBuild::Project'))
-        .map((p) => JSON.parse(p.Properties.Source.BuildSpec))
-        .find((s) => JSON.stringify(s.phases.build.commands).includes(marker));
-
     test('promotion is the DEFAULT: Build publishes cdk.out and deploys consume it without synthing', () => {
       const t = render(cfg());
 
@@ -618,6 +621,81 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       const commands = JSON.stringify(specContaining(render(cfg()), 'deploy-ci').phases.build.commands);
       expect(commands).toContain('cdk-cicd deploy-ci');
       expect(commands).not.toContain('--from-assembly');
+    });
+  });
+
+  describe('m4-deploy-observer: asyncDeploy', () => {
+    const asyncCfg = () =>
+      defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev', 'prod'],
+        asyncDeploy: true,
+      });
+
+    test('the deploy prepares change sets and a Lambda action awaits them, ordered after it', () => {
+      const t = render(asyncCfg());
+      const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const prod = (pipeline.Properties.Stages as any[]).find((s) => s.Name === 'prod');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const byName = (n: string) => prod.Actions.find((a: any) => a.Name === n);
+
+      // prod is gated, so: approval(1) -> prepare(2) -> await(3). The await MUST be strictly after the
+      // prepare -- it reads the plan that step writes, so equal run orders would race.
+      expect(byName('Approve-prod').RunOrder).toBe(1);
+      expect(byName('Deploy-prod').RunOrder).toBe(2);
+      expect(byName('Await-prod').RunOrder).toBe(3);
+      expect(byName('Await-prod').ActionTypeId).toMatchObject({ Category: 'Invoke', Provider: 'Lambda' });
+
+      // One driver per stage, and the build only prepares.
+      t.resourceCountIs('AWS::Lambda::Function', 2);
+      expect(JSON.stringify(specContaining(t, 'deploy --stage prod').phases.build.commands)).toContain(
+        '--prepare-only --plan-parameter /cdk-cicd/shop-pipeline/prod/deploy-plan',
+      );
+    });
+
+    test('the plan parameter is the only channel: build writes it, driver reads it, both scoped to it', () => {
+      const t = render(asyncCfg());
+      const policies = Object.values(t.findResources('AWS::IAM::Policy'));
+      const statements = policies.flatMap((p) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (p.Properties.PolicyDocument.Statement as any[]).map((s) => ({
+          actions: Array.isArray(s.Action) ? s.Action : [s.Action],
+          resource: JSON.stringify(s.Resource),
+        })),
+      );
+
+      // Least privilege on the handoff: the build may only PUT this one parameter, the driver only GET it.
+      // Filtered on the plan parameter, because `ssm:GetParameter` is ALSO granted for the CDK bootstrap
+      // version parameter -- a count over the bare action would silently include those.
+      const onPlan = statements.filter((s) => s.resource.includes('deploy-plan'));
+      const put = onPlan.filter((s) => s.actions.includes('ssm:PutParameter'));
+      const get = onPlan.filter((s) => s.actions.includes('ssm:GetParameter'));
+      expect(put).toHaveLength(2); // one prepare step per stage
+      expect(get).toHaveLength(2); // one driver per stage
+      for (const s of onPlan) {
+        expect(s.resource).toContain('parameter/cdk-cicd/shop-pipeline/');
+      }
+      // And nothing hands out ssm on a wildcard.
+      expect(
+        statements.filter((s) => s.actions.some((a: string) => a.startsWith('ssm:')) && s.resource === '"*"'),
+      ).toEqual([]);
+    });
+
+    test('asyncDeploy is off by default, so the proven build-compute path renders unchanged', () => {
+      // Ground rule 1: the new capability ships alongside what already works, not in place of it.
+      const t = render(
+        defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev', 'prod'] }),
+      );
+      t.resourceCountIs('AWS::Lambda::Function', 0);
+      const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const names = (pipeline.Properties.Stages as any[]).flatMap((s) => s.Actions.map((a: any) => a.Name));
+      expect(names.filter((n: string) => n.startsWith('Await-'))).toEqual([]);
+      expect(JSON.stringify(specContaining(t, 'deploy --stage dev').phases.build.commands)).not.toContain(
+        '--prepare-only',
+      );
     });
   });
 

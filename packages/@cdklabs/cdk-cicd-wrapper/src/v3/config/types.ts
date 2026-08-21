@@ -138,4 +138,13 @@ export interface ResolvedCicdConfig {
   readonly codeArtifact?: CodeArtifactConfig;
   /** How the deployed cloud assembly is produced. Defaults to `ASSEMBLY_PROMOTION`. */
   readonly deployModel: DeployModel;
+  /**
+   * Hand the CloudFormation wait to a Lambda instead of holding CodeBuild compute for it (D-deploy-wait).
+   *
+   * Off by default: the build-compute path is what `m4-verify` proves end to end, and this one replaces
+   * how deployment actually executes -- change sets prepared by the build, then executed and polled by a
+   * Lambda -- so it is opt-in until a real run validates it. When on, a deploy stage stops billing build
+   * minutes for the (usually dominant) stretch where CloudFormation is working.
+   */
+  readonly asyncDeploy: boolean;
 }

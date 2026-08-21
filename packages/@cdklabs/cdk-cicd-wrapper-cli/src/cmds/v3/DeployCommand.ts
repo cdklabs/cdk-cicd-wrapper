@@ -7,7 +7,7 @@
 // synth happens here at deploy, not from a prebuilt assembly.
 
 import { spawnSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, stageByName } from './CicdConfig';
@@ -15,9 +15,18 @@ import { checkAssembly } from './DriftCheck';
 import { synthTargets } from './SynthCommand';
 import { logger } from '../../utils/Logging';
 
-/** The `cdk` argv to deploy one already-synthesized assembly, optionally under a forced deploy role. */
-export function deployArgs(outDir: string, deployRole?: string): string[] {
+/**
+ * The `cdk` argv to deploy one already-synthesized assembly, optionally under a forced deploy role.
+ *
+ * With `changeSetName` it PREPARES instead of deploying: `--no-execute` publishes the assets and creates
+ * the change sets, then returns immediately. That is what lets the Lambda deploy driver own the
+ * CloudFormation wait -- the expensive part -- rather than a build container (D-deploy-wait).
+ */
+export function deployArgs(outDir: string, deployRole?: string, changeSetName?: string): string[] {
   const args = ['cdk', 'deploy', '--app', outDir, '--all', '--require-approval', 'never'];
+  if (changeSetName !== undefined) {
+    args.push('--no-execute', '--change-set-name', changeSetName);
+  }
   if (deployRole !== undefined && deployRole.length > 0) {
     // cdk assumes this role to perform the deployment (the forced deployer role).
     args.push('--role-arn', deployRole);
@@ -42,6 +51,46 @@ export function assertPromotedAssembly(outDir: string, exists: (p: string) => bo
         "(no manifest.json) -- the Build stage must publish cdk.out as this action's input artifact",
     );
   }
+}
+
+/** One prepared change set for the deploy driver to execute. */
+export interface PlanEntry {
+  readonly stackName: string;
+  readonly changeSetName: string;
+  readonly region: string;
+}
+
+/**
+ * The stacks of a synthesized assembly, in **dependency order**, as change-set entries for the Lambda
+ * deploy driver to execute one at a time.
+ *
+ * Order matters and is not decorative: a stack that consumes another's export must be executed after it,
+ * which is ordering `cdk deploy` normally does for us. `dependencies` in the manifest reference artifact
+ * ids, so this is a topological sort over those, with the manifest's own order as the tie-break so the
+ * result is deterministic for a given assembly.
+ */
+export function planFromAssembly(manifest: any, region: string, changeSetName: string): PlanEntry[] {
+  const artifacts: { [id: string]: any } = manifest?.artifacts ?? {};
+  const stackIds = Object.keys(artifacts).filter((id) => artifacts[id]?.type === 'aws:cloudformation:stack');
+
+  const ordered: string[] = [];
+  const visiting = new Set<string>();
+  const visit = (id: string): void => {
+    if (ordered.includes(id) || visiting.has(id)) return; // already placed, or a cycle we refuse to chase
+    visiting.add(id);
+    for (const dep of (artifacts[id]?.dependencies ?? []) as string[]) {
+      if (stackIds.includes(dep)) visit(dep);
+    }
+    visiting.delete(id);
+    ordered.push(id);
+  };
+  stackIds.forEach(visit);
+
+  return ordered.map((id) => ({
+    stackName: (artifacts[id]?.properties?.stackName as string) ?? id,
+    changeSetName,
+    region,
+  }));
 }
 
 /** The account the deploy will actually run against (the ambient creds), for the drift check. */
@@ -69,6 +118,15 @@ class Command implements yargs.CommandModule {
         type: 'boolean',
         default: false,
         describe: 'Deploy the already-synthesized cdk.out/<stage>/<region> instead of synthesizing now',
+      })
+      .option('prepare-only', {
+        type: 'boolean',
+        default: false,
+        describe: 'Create change sets without executing them, and record a plan for the deploy driver',
+      })
+      .option('plan-parameter', {
+        type: 'string',
+        describe: 'SSM parameter to write the deploy plan to (required with --prepare-only)',
       });
   }
 
@@ -106,6 +164,17 @@ class Command implements yargs.CommandModule {
     }
 
     const fromAssembly = args.fromAssembly as boolean;
+    const prepareOnly = args.prepareOnly as boolean;
+    const planParameter = args.planParameter as string | undefined;
+    if (prepareOnly && (planParameter === undefined || planParameter.length === 0)) {
+      logger.error('cdk-cicd deploy: --prepare-only requires --plan-parameter <ssm parameter name>');
+      process.exit(1);
+    }
+    // One change-set name for every stack of this run, so the plan needs to carry only the name once.
+    // Unique per execution: reusing a name across runs collides with the change set still sitting on the
+    // stack from the previous one.
+    const changeSetName = `cdk-cicd-${process.env.CODEBUILD_BUILD_NUMBER ?? Date.now()}`;
+    const plan: PlanEntry[] = [];
 
     for (const target of targets) {
       logger.info(`cdk-cicd deploy: ${target.stage} -> ${target.region}`);
@@ -146,11 +215,15 @@ class Command implements yargs.CommandModule {
         process.exit(1);
       }
 
-      const deploy = spawnSync('npx', deployArgs(target.outDir, stage.deployment?.deployRole), {
-        stdio: 'inherit',
-        cwd,
-        env: { ...process.env, ...target.env },
-      });
+      const deploy = spawnSync(
+        'npx',
+        deployArgs(target.outDir, stage.deployment?.deployRole, prepareOnly ? changeSetName : undefined),
+        {
+          stdio: 'inherit',
+          cwd,
+          env: { ...process.env, ...target.env },
+        },
+      );
       if (deploy.error) {
         logger.error(
           `cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`,
@@ -161,6 +234,36 @@ class Command implements yargs.CommandModule {
         logger.error(`cdk-cicd deploy: deploy failed for ${target.stage}/${target.region}`);
         process.exit(deploy.status ?? 1);
       }
+
+      if (prepareOnly) {
+        // Record what the driver must execute. Written per target, so a multi-region stage accumulates
+        // every region's change sets into one plan the Lambda walks in order.
+        plan.push(
+          ...planFromAssembly(
+            JSON.parse(readFileSync(path.join(target.outDir, 'manifest.json'), 'utf-8')),
+            target.region,
+            changeSetName,
+          ),
+        );
+      }
+    }
+
+    if (prepareOnly) {
+      const document = JSON.stringify({ stacks: plan, assumeRoleArn: stage.deployment?.deployRole });
+      const put = spawnSync(
+        'aws',
+        ['ssm', 'put-parameter', '--name', planParameter!, '--type', 'String', '--overwrite', '--value', document],
+        { stdio: 'inherit', cwd },
+      );
+      if (put.error || put.status !== 0) {
+        // Failing here rather than exiting 0 matters: the driver action that follows would otherwise read
+        // a stale plan from the previous run and "successfully" await the wrong change sets.
+        logger.error(`cdk-cicd deploy: could not write the deploy plan to ${planParameter}`);
+        process.exit(put.status ?? 1);
+      }
+      logger.info(
+        `cdk-cicd deploy: prepared ${plan.length} change set(s) for '${stageName}'; the deploy driver will execute them`,
+      );
     }
   }
 }
