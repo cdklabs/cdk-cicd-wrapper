@@ -842,7 +842,15 @@ Not tasks — resolved/open design decisions that tasks reference.
     re-deploy UPDATED in place (bucket physical id unchanged); a mismatched name created a NEW bucket.
   - **desc:** Rewrite mechanical `PipelineBlueprint.builder()...synth(app)` into `cicd.config.ts` +
     `cdk.json` app command.          - **depends-on:** m3-definecicd
-- **`m5-sample-migrate`** — migrate the TS sample  ·  todo · wave 5 · infra · migration
+- **`m5-sample-migrate`** — migrate the TS sample  ·  done · wave 5 · infra · migration
+  - **notes:** delivered as a SIBLING `samples/cdk-v3-example/` (plain CDK app + one `cicd.config.ts`,
+    no wrapper code in the app, `stageStackName` for names), leaving `cdk-ts-example` as the untouched v2
+    copy. Converting the v2 sample IN PLACE was declined: it is built by the deprecated
+    `@cdklabs/cdk-cicd-wrapper-projen` type (D5), so an in-place flip is entangled with the major-gated
+    projen removal and would churn/break its build. Smoke-tested against CodeArtifact: installs, the app
+    synths via `cdk-cicd exec` (stageStackName resolves), and `cdk-cicd pipeline-app` renders
+    Source->Build->UpdatePipeline->dev->prod with 4 projects. Full pipeline deploy not re-run (redundant
+    with the pipeline-app fixture / m4-verify).
   - **desc:** Move `samples/cdk-ts-example` to the v3 shape as a living smoke test; keep a v2 copy
     until the flip.          - **depends-on:** m4-verify
 - **`m5-deprecate-projen`** — deprecate the projen product (D5a)  ·  done · wave 5 · projen · chore

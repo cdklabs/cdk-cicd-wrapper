@@ -1,0 +1,5 @@
+cdk.out/
+node_modules/
+# A lockfile generated against a private CodeArtifact repo embeds the account id in its resolved URLs;
+# this repo is public, so it must not be committed. `npm install` regenerates it locally.
+package-lock.json
