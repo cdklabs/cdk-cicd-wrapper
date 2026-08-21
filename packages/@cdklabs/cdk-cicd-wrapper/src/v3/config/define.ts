@@ -12,6 +12,7 @@
 // separate, later concern (design open-question O1); for now `Repository` + the enums + the resolved
 // structs are the jsii surface, and this function serves the TS path.
 
+import { BuildImage } from './build-image';
 import { Repository } from './repository';
 import {
   CiConfig,
@@ -67,6 +68,8 @@ export interface CicdConfigProps {
   readonly deployModel?: DeployModel;
   /** Let a Lambda execute and await CloudFormation instead of paying build compute to wait. Off by default. */
   readonly asyncDeploy?: boolean;
+  /** Container mode (Repo 1): build & push a deployer image to ECR instead of deploying. See `BuildImage`. */
+  readonly deployerImage?: BuildImage;
 }
 
 /**
@@ -132,6 +135,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     codeArtifact: props.codeArtifact,
     deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,
     asyncDeploy: props.asyncDeploy ?? false,
+    deployerImage: props.deployerImage,
   };
 }
 

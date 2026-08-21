@@ -18,10 +18,12 @@ import {
   aws_codebuild as codebuild,
   aws_codepipeline as codepipeline,
   aws_codepipeline_actions as actions,
+  aws_ecr as ecr,
   aws_iam as iam,
 } from 'aws-cdk-lib';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
+import { BuildImage, BuildImageKind, ImageTagStrategy } from '../../config/build-image';
 import { CodeArtifactConfig, DeployModel, ResolvedCicdConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
 import { EngineRenderProps, IEngine } from '../types';
@@ -98,6 +100,14 @@ export class CodePipelineEngine implements IEngine {
       // encrypted with the wrapper's key and follows the configured removal policy.
       artifactBucket: support.artifactBucket,
     });
+
+    // Container mode (Repo 1): a SECONDARY pipeline that runs CI and then builds & pushes a deployer image
+    // to ECR -- it deploys nothing (Repo 2 deploys from the image). Distinct enough from the deploy
+    // pipeline to be its own render path rather than bolted onto the stage loop.
+    if (config.deployerImage !== undefined && config.deployerImage.kind === BuildImageKind.DOCKER) {
+      this.renderImageBuild(scope, pipeline, support, sourceOutput, config, config.deployerImage);
+      return;
+    }
 
     // The pipeline stack contains ONLY the wrapper's own plumbing -- no user resources deploy here
     // (those land in the per-stage app stacks the deploy actions create). AwsSolutionsChecks is live
@@ -314,6 +324,108 @@ export class CodePipelineEngine implements IEngine {
         ),
       }),
     );
+  }
+
+  /**
+   * Render the container-mode (Repo 1) pipeline: Source -> CI -> build & push a config-agnostic deployer
+   * image to ECR. It deploys nothing; Repo 2 deploys from the image. The ECR repo is provisioned here
+   * (named `<application>-deployer`) unless the config names an existing one, so the pipeline is
+   * self-contained and its `--disposable` teardown takes the repo with it.
+   */
+  private renderImageBuild(
+    scope: Construct,
+    pipeline: codepipeline.Pipeline,
+    support: SupportResources,
+    sourceOutput: codepipeline.Artifact,
+    config: ResolvedCicdConfig,
+    build: BuildImage,
+  ): void {
+    const stack = Stack.of(scope);
+    const appName = config.application ?? 'cdk-cicd';
+
+    // Reference an existing repo by name, else provision one. Provisioned repos follow the pipeline's
+    // removal policy (a disposable pipeline deletes its repo, and empties images so the delete succeeds).
+    const repository =
+      build.repositoryName !== undefined
+        ? ecr.Repository.fromRepositoryName(scope, 'DeployerImage', build.repositoryName)
+        : new ecr.Repository(scope, 'DeployerImage', {
+            repositoryName: `${appName}-deployer`,
+            removalPolicy: this.removalPolicy,
+            emptyOnDelete: this.removalPolicy === RemovalPolicy.DESTROY,
+            imageScanOnPush: true,
+          });
+
+    pipeline.addStage({ stageName: 'Source', actions: [buildSourceAction(scope, config.repository, sourceOutput)] });
+
+    // The image tag: the resolved source commit, so the image is immutable and hash-versioned; `latest`
+    // when the strategy asks for it. `CODEBUILD_RESOLVED_SOURCE_VERSION` is the commit CodeBuild checked
+    // out. The registry URI is derived from the pipeline's own account/region at run time.
+    const tag =
+      build.tagStrategy === ImageTagStrategy.LATEST ? 'latest' : '${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}';
+    const uri = `${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}/${repository.repositoryName}`;
+    const commands = [
+      ...(config.codeArtifact ? [codeArtifactLogin(stack, config.codeArtifact)] : []),
+      'npm ci',
+      'npx cdk-cicd check',
+      // Log in to ECR, build the deployer image from the source, tag by commit, push. The image payload
+      // is the app + deps (per the Dockerfile), NOT cdk.out -- Repo 2 synths at run time.
+      `aws ecr get-login-password --region ${stack.region} | docker login --username AWS --password-stdin ${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}`,
+      `docker build -f ${build.dockerfile} -t ${uri}:${tag} .`,
+      `docker push ${uri}:${tag}`,
+    ];
+
+    const project = new codebuild.PipelineProject(scope, 'BuildImage', {
+      // Docker builds need a privileged environment; runtime pinned like the deploy projects.
+      environment: {
+        buildImage:
+          this.buildImage !== undefined ? codebuild.LinuxBuildImage.fromDockerRegistry(this.buildImage) : undefined,
+        privileged: true,
+      },
+      buildSpec: codebuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          ...(this.buildImage === undefined
+            ? { install: { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } }
+            : {}),
+          build: { commands },
+        },
+      }),
+    });
+    repository.grantPullPush(project);
+    if (config.codeArtifact) grantCodeArtifactRead(project, config.codeArtifact);
+    // Provisioned repos derive the URI from the pipeline account; a referenced repo may be elsewhere, but
+    // grantPullPush + ECR's token endpoint cover same-account. (Cross-account push is a later slice.)
+
+    pipeline.addStage({
+      stageName: 'BuildImage',
+      actions: [new actions.CodeBuildAction({ actionName: 'BuildAndPush', project, input: sourceOutput })],
+    });
+
+    NagSuppressions.addResourceSuppressions(
+      pipeline,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            "CDK-generated grants for the pipeline to read its own KMS-encrypted artifact bucket and the source object; scoped to the pipeline's own stores.",
+        },
+      ],
+      true,
+    );
+    NagSuppressions.addResourceSuppressions(
+      project,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            'ECR grantPullPush issues ecr:GetAuthorizationToken on "*" (the token endpoint is not resource-scopable) plus repo-scoped push actions; the CodeBuild log/report and artifact-bucket wildcards are the project\'s own, as in the deploy pipeline.',
+        },
+      ],
+      true,
+    );
+    NagSuppressions.addResourceSuppressions(support.artifactBucket, [
+      { id: 'AwsSolutions-S1', reason: "The pipeline's internal artifact store; see the deploy-pipeline suppression." },
+    ]);
   }
 
   /**

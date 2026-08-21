@@ -6,6 +6,7 @@
 // many, a stage as a bare name or an object) use TS unions and live in ./define.ts; they are never
 // part of the jsii surface. Only the resolved structs here cross the language boundary.
 
+import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
 /** Order in which a stage's regions are rolled out. */
@@ -142,6 +143,12 @@ export interface ResolvedCicdConfig {
   readonly codeArtifact?: CodeArtifactConfig;
   /** How the deployed cloud assembly is produced. Defaults to `ASSEMBLY_PROMOTION`. */
   readonly deployModel: DeployModel;
+  /**
+   * Container mode (Repo 1): when set, the pipeline runs CI then builds & pushes a config-agnostic
+   * deployer image to ECR instead of deploying stages. Undefined = the normal deploy pipeline. (Named
+   * `deployerImage`, not `build` -- jsii reserves `build` as a struct member name.)
+   */
+  readonly deployerImage?: BuildImage;
   /**
    * Hand the CloudFormation wait to a Lambda instead of holding CodeBuild compute for it (D-deploy-wait).
    *

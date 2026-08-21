@@ -867,7 +867,7 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 6 — Iteration 2 (designed, deferred)
 
-- **`m6-container`** — Container two-repo mode  ·  todo · wave 6 · cli · feature
+- **`m6-container`** — Container two-repo mode  ·  in-progress · wave 6 · cli · feature
   - **desc:** `BuildImage.docker` (repo 1 build/push of a **config-agnostic** image = code + vendored
     npm deps, no `cdk.out`, runs offline) + `defineDeployment` / `deploy --from-image` (repo 2 synths
     in-container against its config, then deploys). S3 artifact store default + ECR/OCI.
