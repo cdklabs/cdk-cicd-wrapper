@@ -856,6 +856,10 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **spec:** `docs/design/v3-devops-experience.md` #Level 2          - **depends-on:** m4-verify
   - **notes:** offline guarantee = complete deterministic dep closure at image build (no runtime fetch).
 - **`m7-gha`** — GitHub Actions engine  ·  todo · wave 6 · wrapper · feature
+  - **notes:** Not a drop-in `IEngine.render` — a GHA pipeline is a committed workflow file, not a
+    CFN stack, so it needs a non-CFN provisioning path (emit + commit) and GHA-auth (OIDC) config that
+    `ResolvedCicdConfig` lacks. See finding `planning-iengine-provisioning-is-cfn-shaped` — settle that
+    before building this.
   - **desc:** Render from the model directly (replaces v2 buildspec reverse-engineering).
   - **depends-on:** m4-iengine
 - **`spike-python-hook`** — Python injection path  ·  todo · wave 6 · wrapper · spike
