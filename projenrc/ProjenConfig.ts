@@ -6,7 +6,9 @@ export class ProjenConfig extends yarn.TypeScriptWorkspace {
     super({
       parent: root,
       name: '@cdklabs/cdk-cicd-wrapper-projen',
-      description: 'This repository contains the projen support for the project',
+      description:
+        'DEPRECATED: projen support for cdk-cicd-wrapper. Replaced in v3 by a cicd.config.ts + the ' +
+        'cdk-cicd CLI; kept publishing until the v3.0 major. See MIGRATION.md.',
       projenrcTs: true,
       npmTrustedPublishing: true,
       releaseEnvironment: 'release',

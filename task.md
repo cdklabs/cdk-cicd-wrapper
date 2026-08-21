@@ -842,7 +842,7 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **`m5-sample-migrate`** — migrate the TS sample  ·  todo · wave 5 · infra · migration
   - **desc:** Move `samples/cdk-ts-example` to the v3 shape as a living smoke test; keep a v2 copy
     until the flip.          - **depends-on:** m4-verify
-- **`m5-deprecate-projen`** — deprecate the projen product (D5a)  ·  todo · wave 5 · projen · chore
+- **`m5-deprecate-projen`** — deprecate the projen product (D5a)  ·  done · wave 5 · projen · chore
   - **desc:** Mark `@cdklabs/cdk-cicd-wrapper-projen` deprecated; document that `cdk-cicd configure` +
     `cicd.config.ts` replaces it; migration note. Keeps publishing until the major (see m8-remove-v2).
     Rework the sample's `.projenrc.ts`.          - **spec:** D5
