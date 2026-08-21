@@ -19,7 +19,7 @@ import {
 } from 'aws-cdk-lib';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
-import { CodeArtifactConfig, ResolvedCicdConfig } from '../../config/types';
+import { CodeArtifactConfig, DeployModel, ResolvedCicdConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
 import { EngineRenderProps, IEngine } from '../types';
 import { buildSourceAction } from './source';
@@ -29,7 +29,7 @@ import { buildSourceAction } from './source';
  * `check` runs the validate/audit/license/security set before synth, which is what makes those checks
  * default-on in CI: a project that configures no `ci.steps` still gets them.
  */
-const DEFAULT_CI_COMMANDS = ['npm ci', 'npx cdk-cicd check', 'npx cdk-cicd synth --all'];
+const DEFAULT_CI_COMMANDS = ['npm ci', 'npx cdk-cicd check'];
 
 /**
  * The CDK bootstrap roles `cdk deploy` assumes: the deploy role drives CloudFormation, the two
@@ -97,13 +97,32 @@ export class CodePipelineEngine implements IEngine {
       actions: [buildSourceAction(scope, config.repository, sourceOutput)],
     });
 
+    // ASSEMBLY_PROMOTION (the default): the Build phase's `cdk-cicd synth --all` output IS the deployed
+    // artifact, so publish `cdk.out` and hand it to every deploy stage -- one synth per pipeline run.
+    // DEPLOY_TIME_SYNTH: Build's synth is validation only, its output is discarded, and each stage
+    // synthesizes its own assembly from the source. See `task.md` D-deploy.
+    const promote = config.deployModel === DeployModel.ASSEMBLY_PROMOTION;
+    // Stages whose assembly CI produces. Those stages deploy from it; any others synthesize at deploy
+    // time. In promotion mode that is every stage; otherwise it is one stage by default.
+    const synthed = ciSynthStages(config, promote);
+    // Publish the assembly whenever CI produced one worth reusing -- so the single stage CI synthesizes
+    // in deploy-time-synth mode is reused too, not synthesized a second time by its own deploy.
+    const assembly = synthed.length > 0 ? new codepipeline.Artifact('Assembly') : undefined;
+
     pipeline.addStage({
       stageName: 'Build',
       actions: [
         new actions.CodeBuildAction({
           actionName: 'Build',
-          project: this.project(scope, 'BuildProject', this.ciCommands(config), config.codeArtifact),
+          project: this.project(
+            scope,
+            'BuildProject',
+            this.ciCommands(config, synthed, promote),
+            config.codeArtifact,
+            assembly !== undefined,
+          ),
           input: sourceOutput,
+          outputs: assembly !== undefined ? [assembly] : undefined,
         }),
       ],
     });
@@ -128,12 +147,14 @@ export class CodePipelineEngine implements IEngine {
 
     // One deploy action per stage; the region fan-out lives inside `cdk-cicd deploy`.
     for (const stage of config.stages) {
-      const project = this.project(
-        scope,
-        `Deploy-${stage.name}`,
-        ['npm ci', `npx cdk-cicd deploy --stage ${stage.name} --yes`],
-        config.codeArtifact,
-      );
+      // `--from-assembly` makes the deploy use the promoted `cdk.out/<stage>/<region>` from its input
+      // artifact instead of synthesizing. It refuses rather than falling back if the assembly is absent,
+      // so broken artifact wiring fails loudly instead of silently costing a synth per stage. A stage CI
+      // did NOT synth still synthesizes here -- that is the deploy-time-synth model for the stages it
+      // still applies to.
+      const reuse = synthed.includes(stage.name);
+      const deployCmd = `npx cdk-cicd deploy --stage ${stage.name} --yes${reuse ? ' --from-assembly' : ''}`;
+      const project = this.project(scope, `Deploy-${stage.name}`, ['npm ci', deployCmd], config.codeArtifact);
       // An empty region list means "wherever the pipeline itself runs" (an env-agnostic stage).
       const account = stage.env.account ?? stack.account;
       const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
@@ -151,7 +172,11 @@ export class CodePipelineEngine implements IEngine {
           new actions.CodeBuildAction({
             actionName: `Deploy-${stage.name}`,
             project,
-            input: sourceOutput,
+            // Per stage, not per pipeline: a reusing stage takes the Build output (cdk.out + the few
+            // source files `npm ci` needs), while a stage that still synthesizes must take the RAW
+            // SOURCE -- the assembly artifact deliberately omits bin/ and lib/, so synthesizing from it
+            // would fail.
+            input: reuse && assembly !== undefined ? assembly : sourceOutput,
             runOrder: stage.manualApproval ? 2 : 1,
           }),
         ],
@@ -227,9 +252,14 @@ export class CodePipelineEngine implements IEngine {
   }
 
   /** The CI/build commands: config-provided step values in order, else the engine default set. */
-  private ciCommands(config: ResolvedCicdConfig): string[] {
+  private ciCommands(config: ResolvedCicdConfig, synthed: string[], promote: boolean): string[] {
     const steps = Object.values(config.ci.steps);
-    return steps.length > 0 ? ['npm ci', ...steps] : DEFAULT_CI_COMMANDS;
+    const base = steps.length > 0 ? ['npm ci', ...steps] : DEFAULT_CI_COMMANDS;
+    // The synth is appended, never replaced by `ci.steps`. In promotion mode it produces the artifact
+    // every deploy stage consumes, so a config that dropped it would render a pipeline that cannot
+    // deploy at all; in deploy-time-synth mode it is the validation gate. `ci.steps` still replaces the
+    // check step -- see finding `code-review-ci-steps-replace-drops-checks`, unchanged here.
+    return [...base, ...synthCommands(synthed, promote)];
   }
 
   private project(
@@ -237,6 +267,7 @@ export class CodePipelineEngine implements IEngine {
     id: string,
     commands: string[],
     codeArtifact?: CodeArtifactConfig,
+    publishAssembly = false,
   ): codebuild.PipelineProject {
     const stack = Stack.of(scope);
     // Pin the Node runtime, but ONLY on the default (CodeBuild-managed) image. Without
@@ -260,7 +291,21 @@ export class CodePipelineEngine implements IEngine {
         this.buildImage !== undefined
           ? { buildImage: codebuild.LinuxBuildImage.fromDockerRegistry(this.buildImage) }
           : undefined,
-      buildSpec: codebuild.BuildSpec.fromObject({ version: '0.2', phases }),
+      buildSpec: codebuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases,
+        // Publish the synthesized assembly plus the few source files a deploy still needs: the deploy
+        // runs `npm ci` (so package.json + a lock file) and re-reads `cicd.config.*` to resolve its
+        // stage's targets. Deliberately NOT `**/*` -- that would sweep in the `node_modules` this build
+        // just installed and turn every artifact into hundreds of MB.
+        ...(publishAssembly
+          ? {
+              artifacts: {
+                files: ['cdk.out/**/*', 'package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'cicd.config.*'],
+              },
+            }
+          : {}),
+      }),
     });
     if (codeArtifact) {
       grantCodeArtifactRead(project, codeArtifact);
@@ -288,6 +333,46 @@ export class CodePipelineEngine implements IEngine {
     );
     return project;
   }
+}
+
+/**
+ * Which stages the CI/Build phase synthesizes, and therefore which stages can deploy from a promoted
+ * assembly instead of synthesizing again (`task.md` D-deploy, rule 2 -- efficiency first).
+ *
+ * - `ASSEMBLY_PROMOTION`: every stage, always. The assemblies ARE the deployed artifacts, so narrowing
+ *   would leave a stage with nothing to deploy -- hence `ci.synthStages` is rejected rather than
+ *   silently ignored in this mode.
+ * - `DEPLOY_TIME_SYNTH`: `ci.synthStages` when set, otherwise **one** stage (the first). Synthesizing
+ *   every stage in CI and then again per stage was the concrete waste that prompted the amendment; the
+ *   one stage CI does synth is promoted and reused rather than synthesized twice.
+ */
+function ciSynthStages(config: ResolvedCicdConfig, promote: boolean): string[] {
+  const names = config.stages.map((s) => s.name);
+  const configured = config.ci.synthStages;
+  if (promote) {
+    if (configured.length > 0) {
+      throw new Error(
+        'cdk-cicd: ci.synthStages cannot be narrowed when deployModel is ASSEMBLY_PROMOTION -- every ' +
+          "stage's assembly is synthesized once and promoted, so restricting the set would leave a stage " +
+          'with nothing to deploy. Remove ci.synthStages, or set deployModel: DEPLOY_TIME_SYNTH.',
+      );
+    }
+    return names;
+  }
+  if (configured.length === 0) {
+    return names.slice(0, 1);
+  }
+  const unknown = configured.filter((name) => !names.includes(name));
+  if (unknown.length > 0) {
+    throw new Error(`cdk-cicd: ci.synthStages names unknown stage(s): ${unknown.join(', ')}`);
+  }
+  return configured;
+}
+
+/** The synth command(s) the CI phase runs for `synthed`. */
+function synthCommands(synthed: string[], promote: boolean): string[] {
+  // `--all` when it really is all, so the emitted buildspec keeps saying what it means.
+  return promote ? ['npx cdk-cicd synth --all'] : synthed.map((name) => `npx cdk-cicd synth --stage ${name}`);
 }
 
 /** The `codeartifact login` that binds npm to the private repo, defaulting to the pipeline's own env. */

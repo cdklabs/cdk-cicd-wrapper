@@ -5,6 +5,7 @@ import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { defineCICD } from '../../../../src/v3/config/define';
 import { Repository } from '../../../../src/v3/config/repository';
+import { DeployModel } from '../../../../src/v3/config/types';
 import { CodePipelineEngine } from '../../../../src/v3/engine/codepipeline/CodePipelineEngine';
 
 function render(config: ReturnType<typeof defineCICD>): Template {
@@ -486,6 +487,139 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
   // It is NOT unassertable in principle: forcing a single copy (a jest `moduleNameMapper` for
   // `^aws-cdk-lib(/.*)?$`, or a `Module._resolveFilename` shim) makes nag live here and reproduces
   // 53 findings -> 0, control assertion included. Wiring that into this suite is `m4-nag-compliance`.
+
+  describe('m4-assembly-promotion: deploy model', () => {
+    const cfg = (deployModel?: DeployModel) =>
+      defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev', 'prod'],
+        deployModel,
+      });
+
+    /** The buildspec of the project whose commands contain `marker`, parsed. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const specContaining = (t: Template, marker: string): any =>
+      Object.values(t.findResources('AWS::CodeBuild::Project'))
+        .map((p) => JSON.parse(p.Properties.Source.BuildSpec))
+        .find((s) => JSON.stringify(s.phases.build.commands).includes(marker));
+
+    test('promotion is the DEFAULT: Build publishes cdk.out and deploys consume it without synthing', () => {
+      const t = render(cfg());
+
+      // The Build project publishes the assembly...
+      const build = specContaining(t, 'cdk-cicd synth --all');
+      expect(build.artifacts.files).toContain('cdk.out/**/*');
+      // ...and never `**/*`, which would sweep in the node_modules npm ci just installed.
+      expect(build.artifacts.files).not.toContain('**/*');
+      // package.json + a lock file travel too, because the deploy still runs `npm ci`.
+      expect(build.artifacts.files).toContain('package.json');
+
+      // ...and each deploy consumes it rather than synthesizing.
+      for (const stage of ['dev', 'prod']) {
+        expect(JSON.stringify(specContaining(t, `deploy --stage ${stage}`).phases.build.commands)).toContain(
+          '--from-assembly',
+        );
+      }
+    });
+
+    test('the deploy actions take the Build output artifact as input, not the source', () => {
+      const pipeline = Object.values(render(cfg()).findResources('AWS::CodePipeline::Pipeline'))[0];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stages = pipeline.Properties.Stages as any[];
+      const build = stages.find((s) => s.Name === 'Build').Actions[0];
+      const deploy = stages.find((s) => s.Name === 'dev').Actions[0];
+
+      // Without this wiring the deploy would run --from-assembly against a source-only input and fail
+      // (by design) -- so pin that the artifact Build produces is exactly what the deploy consumes.
+      expect(build.OutputArtifacts).toEqual([{ Name: 'Assembly' }]);
+      expect(deploy.InputArtifacts).toEqual([{ Name: 'Assembly' }]);
+    });
+
+    test('deploy-time synth: CI synths ONE env by default, that stage reuses it, the rest synth themselves', () => {
+      const t = render(cfg(DeployModel.DEPLOY_TIME_SYNTH));
+      const build = specContaining(t, 'cdk-cicd synth');
+      const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stages = pipeline.Properties.Stages as any[];
+
+      // Efficiency rule 2: one env in CI, not `--all`. Synthesizing every stage in CI and then again per
+      // stage is the waste that prompted the D-deploy amendment.
+      const ciCommands = JSON.stringify(build.phases.build.commands);
+      expect(ciCommands).toContain('cdk-cicd synth --stage dev');
+      expect(ciCommands).not.toContain('--all');
+      expect(ciCommands).not.toContain('--stage prod');
+
+      // dev reuses what CI already built... (marker must say `deploy`, since CI now also mentions
+      // `--stage dev` via its synth command)
+      expect(JSON.stringify(specContaining(t, 'deploy --stage dev').phases.build.commands)).toContain(
+        '--from-assembly',
+      );
+      // ...prod still synthesizes, so it must receive the RAW SOURCE, not the reduced assembly artifact
+      // (which omits bin/ and lib/ and could not be synthesized).
+      expect(JSON.stringify(specContaining(t, 'deploy --stage prod').phases.build.commands)).not.toContain(
+        '--from-assembly',
+      );
+      expect(stages.find((s) => s.Name === 'dev').Actions[0].InputArtifacts).toEqual([{ Name: 'Assembly' }]);
+      expect(stages.find((s) => s.Name === 'prod').Actions[0].InputArtifacts).not.toEqual([{ Name: 'Assembly' }]);
+    });
+
+    test('ci.synthStages selects which stages CI synthesizes, and rejects an unknown name', () => {
+      const t = render(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.s3('shop-src/app.zip'),
+          stages: ['dev', 'prod'],
+          deployModel: DeployModel.DEPLOY_TIME_SYNTH,
+          ci: { synthStages: ['prod'] },
+        }),
+      );
+      // The lever now does something: it was declared, normalized and read by nothing before this task
+      // (finding `qa-ci-synthstages-declared-but-inert`).
+      const ciCommands = JSON.stringify(specContaining(t, 'cdk-cicd synth').phases.build.commands);
+      expect(ciCommands).toContain('--stage prod');
+      expect(ciCommands).not.toContain('--stage dev');
+      expect(JSON.stringify(specContaining(t, '--stage prod --yes').phases.build.commands)).toContain(
+        '--from-assembly',
+      );
+
+      // A typo used to be silently ignored; now it names the offending stage.
+      expect(() =>
+        render(
+          defineCICD({
+            application: 'shop',
+            repository: Repository.s3('shop-src/app.zip'),
+            stages: ['dev'],
+            deployModel: DeployModel.DEPLOY_TIME_SYNTH,
+            ci: { synthStages: ['staging'] },
+          }),
+        ),
+      ).toThrow(/unknown stage\(s\): staging/);
+    });
+
+    test('narrowing synthStages under promotion is a clear error, not a silently broken pipeline', () => {
+      // Every stage's assembly IS its deployed artifact here, so a narrowed set would leave a stage with
+      // nothing to deploy -- the failure would otherwise surface as a deploy-time "no manifest.json".
+      expect(() =>
+        render(
+          defineCICD({
+            application: 'shop',
+            repository: Repository.s3('shop-src/app.zip'),
+            stages: ['dev', 'prod'],
+            ci: { synthStages: ['dev'] },
+          }),
+        ),
+      ).toThrow(/ci.synthStages cannot be narrowed when deployModel is ASSEMBLY_PROMOTION/);
+    });
+
+    test('the self-update never uses --from-assembly: it re-synths the pipeline from config', () => {
+      // The pipeline's own definition comes from cicd.config.ts, not from the app's promoted assembly --
+      // pointing deploy-ci at a promoted cdk.out would deploy the app's stacks, not the pipeline.
+      const commands = JSON.stringify(specContaining(render(cfg()), 'deploy-ci').phases.build.commands);
+      expect(commands).toContain('cdk-cicd deploy-ci');
+      expect(commands).not.toContain('--from-assembly');
+    });
+  });
 
   test('a stage with no regions falls back to the pipeline stack region', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });

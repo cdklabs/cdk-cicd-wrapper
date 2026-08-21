@@ -7,6 +7,8 @@
 // synth happens here at deploy, not from a prebuilt assembly.
 
 import { spawnSync } from 'child_process';
+import { existsSync } from 'fs';
+import * as path from 'path';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, stageByName } from './CicdConfig';
 import { checkAssembly } from './DriftCheck';
@@ -21,6 +23,25 @@ export function deployArgs(outDir: string, deployRole?: string): string[] {
     args.push('--role-arn', deployRole);
   }
   return args;
+}
+
+/**
+ * Assert `outDir` already holds a synthesized cloud assembly -- the promoted-artifact deploy model,
+ * where the Build stage synthed every stage once and published `cdk.out` as the deploy input.
+ *
+ * Checks for `manifest.json` rather than the directory: CodePipeline materializes the input artifact as
+ * a tree, so an empty (or wrong-stage) `cdk.out/<stage>/<region>` exists but holds nothing, and the
+ * failure would surface much later from inside `cdk deploy`. Falling back to synthesizing here would be
+ * worse still -- it would quietly re-introduce the deploy-time synth this mode exists to avoid, so a
+ * broken artifact wiring would look like a slow success instead of a failure.
+ */
+export function assertPromotedAssembly(outDir: string, exists: (p: string) => boolean = existsSync): void {
+  if (!exists(path.join(outDir, 'manifest.json'))) {
+    throw new Error(
+      `cdk-cicd deploy: --from-assembly was given but ${outDir} holds no synthesized assembly ` +
+        "(no manifest.json) -- the Build stage must publish cdk.out as this action's input artifact",
+    );
+  }
 }
 
 /** The account the deploy will actually run against (the ambient creds), for the drift check. */
@@ -39,7 +60,16 @@ class Command implements yargs.CommandModule {
   public builder(args: yargs.Argv) {
     return args
       .option('stage', { type: 'string', demandOption: true, describe: 'The stage to deploy' })
-      .option('yes', { type: 'boolean', default: false, describe: 'Proceed even when the stage requires manual approval' });
+      .option('yes', {
+        type: 'boolean',
+        default: false,
+        describe: 'Proceed even when the stage requires manual approval',
+      })
+      .option('from-assembly', {
+        type: 'boolean',
+        default: false,
+        describe: 'Deploy the already-synthesized cdk.out/<stage>/<region> instead of synthesizing now',
+      });
   }
 
   public async handler(args: yargs.Arguments) {
@@ -75,21 +105,37 @@ class Command implements yargs.CommandModule {
       return;
     }
 
+    const fromAssembly = args.fromAssembly as boolean;
+
     for (const target of targets) {
       logger.info(`cdk-cicd deploy: ${target.stage} -> ${target.region}`);
 
-      const synth = spawnSync('npx', ['cdk', 'synth', '--output', target.outDir], {
-        stdio: 'inherit',
-        cwd,
-        env: { ...process.env, ...target.env },
-      });
-      if (synth.error) {
-        logger.error(`cdk-cicd deploy: could not run cdk synth for ${target.stage}/${target.region}: ${synth.error.message}`);
-        process.exit(1);
-      }
-      if (synth.status !== 0) {
-        logger.error(`cdk-cicd deploy: synth failed for ${target.stage}/${target.region}`);
-        process.exit(synth.status ?? 1);
+      if (fromAssembly) {
+        // The promoted-assembly model: Build already synthed this stage, so deploying is all that is
+        // left. Costs one synth per pipeline run instead of one per stage.
+        try {
+          assertPromotedAssembly(target.outDir);
+        } catch (error) {
+          logger.error((error as Error).message);
+          process.exit(1);
+        }
+        logger.info(`cdk-cicd deploy: using the promoted assembly at ${target.outDir} (no synth)`);
+      } else {
+        const synth = spawnSync('npx', ['cdk', 'synth', '--output', target.outDir], {
+          stdio: 'inherit',
+          cwd,
+          env: { ...process.env, ...target.env },
+        });
+        if (synth.error) {
+          logger.error(
+            `cdk-cicd deploy: could not run cdk synth for ${target.stage}/${target.region}: ${synth.error.message}`,
+          );
+          process.exit(1);
+        }
+        if (synth.status !== 0) {
+          logger.error(`cdk-cicd deploy: synth failed for ${target.stage}/${target.region}`);
+          process.exit(synth.status ?? 1);
+        }
       }
 
       const drift = checkAssembly(target.outDir, { account: deployAccount, region: target.region });
@@ -106,7 +152,9 @@ class Command implements yargs.CommandModule {
         env: { ...process.env, ...target.env },
       });
       if (deploy.error) {
-        logger.error(`cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`);
+        logger.error(
+          `cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`,
+        );
         process.exit(1);
       }
       if (deploy.status !== 0) {

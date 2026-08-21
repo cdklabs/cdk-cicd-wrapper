@@ -36,6 +36,7 @@ export { Repository, RepositorySourceType } from './config/repository';
 export {
   CiConfig,
   CodeArtifactConfig,
+  DeployModel,
   DeploymentConfig,
   EngineType,
   RegionOrder,

@@ -16,6 +16,7 @@ import { Repository } from './repository';
 import {
   CiConfig,
   CodeArtifactConfig,
+  DeployModel,
   DeploymentConfig,
   EngineType,
   RegionOrder,
@@ -62,6 +63,8 @@ export interface CicdConfigProps {
   readonly engine?: EngineType;
   readonly ci?: CiConfigInput;
   readonly codeArtifact?: CodeArtifactConfig;
+  /** How the deployed assembly is produced. Defaults to `DeployModel.ASSEMBLY_PROMOTION`. */
+  readonly deployModel?: DeployModel;
 }
 
 /** Normalize the permissive CI input, collapsing `synthStages: 'all'` to an empty list. */
@@ -115,6 +118,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     engine: props.engine ?? EngineType.CODEPIPELINE,
     ci: normalizeCi(props.ci),
     codeArtifact: props.codeArtifact,
+    deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,
   };
 }
 

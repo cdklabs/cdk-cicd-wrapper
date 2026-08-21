@@ -30,6 +30,26 @@ export enum EngineType {
   CODEPIPELINE = 'codepipeline',
 }
 
+/**
+ * How the deployed cloud assembly is produced. See `task.md` D-deploy: two CodePipeline
+ * implementations, efficiency first.
+ */
+export enum DeployModel {
+  /**
+   * The default, and what v2 did: the CI/build phase synthesizes every stage **once** and keeps
+   * `cdk.out`, which is promoted as the pipeline artifact. Each deploy stage consumes that assembly and
+   * performs no synth of its own -- one synth per pipeline run.
+   */
+  ASSEMBLY_PROMOTION = 'assembly-promotion',
+  /**
+   * Each stage synthesizes at deploy time from code + pinned deps, against that stage's injected config.
+   * The promoted unit is the code, not a baked assembly; CI synth is validation only. Costs one synth per
+   * stage, and is the model to pick when a stage's template must be produced with that stage's
+   * credentials (for example a synth-time lookup that only the target account can resolve).
+   */
+  DEPLOY_TIME_SYNTH = 'deploy-time-synth',
+}
+
 /** Resolved CI configuration: the checks/build steps and which stages CI synthesizes for validation. */
 export interface CiConfig {
   /**
@@ -116,4 +136,6 @@ export interface ResolvedCicdConfig {
   readonly ci: CiConfig;
   /** Private CodeArtifact npm repository the builds authenticate against, if any. */
   readonly codeArtifact?: CodeArtifactConfig;
+  /** How the deployed cloud assembly is produced. Defaults to `ASSEMBLY_PROMOTION`. */
+  readonly deployModel: DeployModel;
 }

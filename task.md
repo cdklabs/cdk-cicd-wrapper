@@ -663,7 +663,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     to `findings.json`, and the untested no-`npmScope` branch was closed with a test rather than deferred.
   - **acceptance:** with `codeArtifact` set, every CodeBuild project's buildspec logs in before `npm ci`
     and its role can read the repo; with it unset, no login and no grant. ✅
-- **`m4-assembly-promotion`** — the DEFAULT deploy model: synth once, promote cdk.out  ·  todo · wave 4 · wrapper · feature
+- **`m4-assembly-promotion`** — the DEFAULT deploy model: synth once, promote cdk.out  ·  done · wave 4 · wrapper · feature
   - **desc:** Make the v2 CodePipeline way the default: the Build/synth phase synths every stage once and
     **keeps `cdk.out`**, which is promoted as the pipeline output artifact; each deploy stage consumes that
     artifact and runs `cdk deploy --app <assembly>` with **no synth of its own**.
@@ -673,24 +673,47 @@ Not tasks — resolved/open design decisions that tasks reference.
     output artifact; deploy actions gain it as input and drop their synth step) and the CLI (`cdk-cicd
     deploy` needs a "deploy this prebuilt assembly" path — `deployArgs` already takes an `outDir`, so the
     CLI half is close; what is missing is not synthesizing first). Keep the existing deploy-time-synth
-    path working as the opt-in second implementation — additive, per ground rule 1. Open sub-question to
-    settle first: how the promoted assembly carries **per-stage config** when one assembly serves every
-    stage, since v3 injects config at synth time — that is the crux of why deploy-time synth was chosen
-    originally, so it must be answered before coding, not after.
+    path working as the opt-in second implementation — additive, per ground rule 1.
+    **The open sub-question resolved itself cheaply:** the worry was how one promoted assembly carries
+    per-stage config when v3 injects config at synth time. It does not have to — `cdk-cicd synth --all`
+    already writes a **separate** assembly per stage×region (`cdk.out/<stage>/<region>`, each synthed with
+    that stage's injected env), so promotion just keeps the directory that was already being produced and
+    thrown away. No `Stage`-wrapping, no stack renaming, no change to the injection model. That is why
+    this was the cheaper of the two candidate designs.
+    Shipped as: `DeployModel` enum (jsii) with `ASSEMBLY_PROMOTION` the default; Build publishes an
+    `Assembly` output artifact; each deploy action takes its input **per stage** — the promoted artifact
+    when it reuses, the raw source when it still synthesizes, because the artifact deliberately omits
+    `bin/`/`lib/` and could not be synthesized from. CLI half is `cdk-cicd deploy --from-assembly`, which
+    **refuses** rather than falling back if the assembly is absent, so broken artifact wiring fails loudly
+    instead of silently costing a synth per stage.
   - **acceptance:** a default-mode pipeline synths exactly once, every deploy stage consumes the promoted
-    artifact and performs no synth, and a real run deploys dev→prod from that single assembly.
-- **`m4-synth-efficiency`** — option 2: synth one env in CI, reuse it  ·  todo · wave 4 · wrapper · feature
+    artifact and performs no synth, and a real run deploys dev→prod from that single assembly. ✅ —
+    `m4-verify` PASSED in promotion mode on the test account (Build published the artifact; dev in
+    us-west-2 and prod in us-west-1 both deployed from it with correct per-stage markers; teardown clean).
+    Because `--from-assembly` refuses when the assembly is missing, a successful deploy is itself proof the
+    promotion happened rather than a silent fallback to synthesizing.
+- **`m4-synth-efficiency`** — option 2: synth one env in CI, reuse it  ·  done · wave 4 · wrapper · feature
   - **desc:** In the deploy-time-synth implementation, CI synths **one env by default** instead of
     `--all`, and a stage whose assembly CI already produced **reuses** it rather than synthesizing again.
   - **spec:** `task.md` D-deploy (amended), rule 2; finding `qa-ci-synthstages-declared-but-inert`.
   - **depends-on:** m4-verify
-  - **notes:** `ci.synthStages` already exists in `CiConfig`/`defineCICD` and is **read by nothing** — the
-    engine hardcodes `npx cdk-cicd synth --all` in `DEFAULT_CI_COMMANDS`, so the designed cost lever is
-    inert. Wiring it is the first half; the second is passing CI's `cdk.out` forward so the stage that was
-    synthed in CI does not repeat the work (which overlaps `m4-assembly-promotion` — do that one first and
-    reuse its artifact plumbing rather than building a second mechanism).
+  - **notes:** Shipped with `m4-assembly-promotion`, reusing its artifact plumbing rather than building a
+    second mechanism. `ciSynthStages()` now resolves which stages CI synthesizes — every stage under
+    promotion, else `ci.synthStages` or **one** stage (the first) — and each stage deploys with
+    `--from-assembly` **iff CI synthed it**, so the one env CI does build is reused instead of synthesized
+    twice. Two silent-config traps closed on the way: narrowing `synthStages` under `ASSEMBLY_PROMOTION`
+    is now a **clear error** (every stage's assembly is its deployed artifact, so narrowing would leave a
+    stage with nothing to deploy), and an unknown stage name in `synthStages` is rejected instead of
+    ignored. The deploy action's input is now chosen **per stage**: a reusing stage gets the Build
+    artifact, a synthesizing stage gets the raw source — the artifact deliberately omits `bin/`/`lib/`, so
+    handing it to a stage that must synth would fail. Resolves
+    `qa-ci-synthstages-declared-but-inert`. Also worth knowing: the synth command is now **appended** to
+    `ci.steps` rather than replaced by them, because under promotion it produces the artifact the pipeline
+    cannot deploy without; `ci.steps` still replaces the `check` step, so
+    `code-review-ci-steps-replace-drops-checks` stays open for `check`.
   - **acceptance:** default CI synth covers one env; `ci.synthStages` selects which; a stage synthed in CI
-    is not synthesized a second time by its own deploy.
+    is not synthesized a second time by its own deploy. ✅ (unit-proven; the live proof of the promotion
+    path is the `m4-verify` re-run)
 - **`m4-deploy-observer`** — stateful Lambda watches CFN instead of idle compute  ·  todo · wave 4 · wrapper · feature
   - **desc:** Stop paying CodeBuild compute to wait on CloudFormation. Start the deployment, then have a
     stateful Lambda observe deployment state and complete the pipeline action.
