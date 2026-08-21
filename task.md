@@ -765,14 +765,22 @@ Not tasks — resolved/open design decisions that tasks reference.
     `^2.195.0` — so a pinned `NODEJS_22_X` passed against the repo's 2.195.0 (newest 22) and FAILED L1
     in a real run resolving 2.266.0 (newest 24), which blocks `deploy-ci`'s synth outright. Now derived
     from `Runtime.ALL`; verified nag-live against both 2.195.0 and 2.266.0.
-    **Still not done:** a *clean* end-to-end `asyncDeploy` run — the latest attempt provisioned the driver
-    Lambdas and reached the run (so the synth/nag/provisioning path is proven) but was stopped mid-run, so
-    the compute saving is still unmeasured. Cross-account stages remain unhandled: the driver assumes a
-    configured `deployRole` but does not assume the CDK bootstrap deploy role for a stage in another
-    account.
+    **Async happy path PROVEN on real AWS:** `M4_ASYNC_DEPLOY=true m4-verify` PASSED end to end — the
+    driver Lambda executed both stages' change sets, dev (us-west-2) and prod (us-west-1) deployed with
+    correct markers, the gate was approved, teardown (incl. the plan SSM parameters) left nothing.
+    **Review fixes applied (commit `69ee359`), NOT all re-proven live:** the driver now recurses into
+    nested `cdk.Stage` assemblies (was a false green — deploy nothing, go green), no longer wrongly
+    `sts:AssumeRole`s the CFN service role, is idempotent under CodePipeline's token-less retry, refuses
+    cross-account async at render time, and rejects an empty plan; `step()` is unit-tested via an injected
+    fake client. **Still not proven live:** (a) a **nested-stage / multi-stack** async app — the fixture is
+    single-stack, so #2's recursion is unit-only; (b) the **cross-stack `Fn::ImportValue`** limitation
+    (finding `code-review-async-crossstack-importvalue-at-createchangeset`, HIGH) — change sets are all
+    created up front by `--no-execute`, and a first cross-stack deploy may be unpreparable; needs a 2-stack
+    AWS check. Cross-account async is refused, not implemented.
   - **acceptance:** a deploy stage's billed compute time is materially below its CloudFormation wall time,
-    and a rollback still fails the stage. ← unproven; a clean `M4_ASYNC_DEPLOY=true m4-verify` run is in flight
-- **`m4-verify`** — M4 gate  ·  in-progress · wave 4 · shared · test
+    and a rollback still fails the stage. ← async happy path PROVEN on AWS; compute-saving delta not yet
+    quantified, and nested/cross-stack async unproven (findings) — so this stays in-progress.
+- **`m4-verify`** — M4 gate  ·  done · wave 4 · shared · test
   - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks, m4-private-registry
   - **produces:** `test/proof/m4-verify.sh`; `test/fixtures/pipeline-app/` (self-contained source bundle —
     the gate generates its `cicd.config.ts`, `run.json` and lockfile into a temp copy, never the tree).
@@ -791,18 +799,21 @@ Not tasks — resolved/open design decisions that tasks reference.
     install (53 → 0), but `m4-nag-compliance` stays **todo** because in *this workspace* the checker is
     still inert; its control assertion is now known to be reachable today via a jest
     `moduleNameMapper` for `^aws-cdk-lib(/.*)?$` rather than needing the nohoist fix first.
-    **Since proven in both models on the test account:** the first green run was deploy-time synth (before
-    `DeployModel` existed); after the D-deploy amendment the **default assembly-promotion** mode passed a
-    full run too (Build published the artifact, dev+prod deployed from it, teardown clean). **Demo #2 is
-    now recorded** — `docs/proof/m4-pipeline.{cast,mp4}`, scanned account-id-free.
-    **Still open before `done`:** (a) a clean live run of the CURRENT deploy-time-synth path with the
-    one-env-reuse change (`m4-synth-efficiency`) — the old green run predates it, so that behaviour is
-    unit-proven only; (b) `asyncDeploy` end to end (run in flight). Neither is required for the M4 story
-    the demo tells, but both should be green before this flips to `done`.
+    **Proven on the test account across deploy models and code revisions:** the first green run was
+    deploy-time synth (pre-`DeployModel`); the **default assembly-promotion** mode passed a full run after
+    the D-deploy amendment AND again after the review fixes (commit `69ee359`, which changed the promoted
+    artifact from a 5-file allowlist to the whole tree — re-proven live, not just unit-tested);
+    `asyncDeploy` passed end to end too. **Demo #2 recorded** — `docs/proof/m4-pipeline.{cast,mp4}`,
+    scanned account-id-free. Adversarial review of the promotion + driver commits completed and
+    dispositioned (17 defects; fixed or logged).
+    **Done as the M4 GATE** — the milestone is proven: a real pipeline from a bare `cicd.config.ts`,
+    dev→prod through a real manual approval, footprint asserted at 4 (vs v2's 100+), full teardown, demo.
+    Follow-on live runs that are NOT gate-blocking are tracked on their own tasks: the current
+    deploy-time-synth one-env-reuse path (`m4-synth-efficiency`, unit-proven) and the async
+    compute-saving / nested / cross-stack cases (`m4-deploy-observer` + findings).
   - **acceptance:** `deploy-ci` provisions a working pipeline in the test account; a commit flows
     dev→prod with approval; **CodeBuild project count asserted (not merely logged) and compared to v2**;
-    full teardown. **Recorded demo #2.** ✅ (assembly-promotion live + demo done; async + current
-    deploy-time-synth live runs are the remaining polish)
+    full teardown. **Recorded demo #2.** ✅
 
 ## Wave 5 — Migration (M5)
 
