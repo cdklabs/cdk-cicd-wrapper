@@ -1,0 +1,10 @@
+---
+nav:
+  - index.md
+  - "Prerequisites": "00-prerequisites.md"
+  - "A config-driven pipeline (zero-touch)": "01-config-driven-pipeline.md"
+  - "Stages, approvals, and stack names": "02-stages-approvals-naming.md"
+  - "Deploy models and async deploy": "03-deploy-models.md"
+  - "Private npm registry (CodeArtifact)": "04-private-registry.md"
+  - "Container mode: build an image to ECR": "05-container-mode.md"
+  - "Migrating from v2": "06-migrating-from-v2.md"
