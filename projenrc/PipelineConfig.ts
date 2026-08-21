@@ -36,7 +36,20 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         'yaml',
       ],
       deps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check', 'yaml'],
-      jest: true,
+      jestOptions: {
+        jestConfig: {
+          // Force a SINGLE aws-cdk-lib copy in tests. This package bundles deps, which nests its own
+          // aws-cdk-lib, while cdk-nag resolves the root copy -- so cdk-nag's `instanceof` rule checks
+          // silently miss every construct and AwsSolutionsChecks is inert (finding
+          // qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert). Mapping every aws-cdk-lib request to the nested
+          // copy the src already uses unifies them, so the nag-compliance test can assert the checker is
+          // actually LIVE (a control finding) rather than vacuously green.
+          moduleNameMapper: {
+            '^aws-cdk-lib$': '<rootDir>/node_modules/aws-cdk-lib',
+            '^aws-cdk-lib/(.*)$': '<rootDir>/node_modules/aws-cdk-lib/$1',
+          },
+        },
+      },
       disableTsconfig: true,
     });
 

@@ -631,19 +631,28 @@ Not tasks — resolved/open design decisions that tasks reference.
     override silently drops this very gate.
   - **acceptance:** `cdk-cicd check` on a fresh project exits 0 having skipped what it cannot check; a
     configured project whose baseline drifted exits 1 naming every failing check. ✅
-- **`m4-nag-compliance`** — make cdk-nag actually run, then suppress  ·  todo · wave 4 · infra · chore
-  - **desc:** cdk-nag is currently **inert** inside `cdk-cicd-wrapper`: bundled deps force a yarn-1
-    `nohoist`, which nests a second `aws-cdk-lib`/`constructs`, so every rule's `instanceof` check fails
-    and nothing is ever reported. Fix the resolution, then add the measured suppression list for the
-    pipeline's own resources. Split out of `m4-approval-selfupdate` — suppressions cannot be verified
-    while the checker is inert.
+- **`m4-nag-compliance`** — make cdk-nag actually run, then suppress  ·  done · wave 4 · infra · chore
+  - **desc:** cdk-nag was **inert** inside `cdk-cicd-wrapper`: bundled deps nest a second `aws-cdk-lib`,
+    so every rule's `instanceof` check missed and nothing was reported. Make it live in the test suite,
+    then verify the pipeline's suppressions against it. Split out of `m4-approval-selfupdate` —
+    suppressions cannot be verified while the checker is inert.
+  - **notes:** Resolved WITHOUT the nohoist/bundling surgery originally feared — the dual copy is a
+    workspace artifact, not something a published consumer hits (they install one `aws-cdk-lib`), so the
+    fix is scoped to tests: a jest `moduleNameMapper` (`projenrc/PipelineConfig.ts`, regenerated via
+    projen) maps every `aws-cdk-lib` request to the nested copy the src uses, unifying the two so cdk-nag's
+    `instanceof` rules match. `test/v3/engine/codepipeline/nag-compliance.test.ts` then asserts BOTH a
+    control (a deliberately non-compliant bucket MUST yield an `AwsSolutions-*` finding — fails first if
+    the copies ever drift apart again) AND zero unsuppressed findings on the rendered pipeline. All 164
+    wrapper v3 tests pass with nag now live suite-wide, so the v2 compliance tests are no longer vacuous
+    either. Suppressions themselves shipped earlier (engine IAM5/S1 + driver IAM4/IAM5/L1) and are now
+    verified live. Resolves all three spec findings.
   - **depends-on:** m4-approval-selfupdate
   - **spec:** findings `qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert`, `qa-cdk-nag-compliance-tests-are-vacuous`,
     `code-review-codepipeline-no-cdknag-suppressions`
   - **acceptance:** a **control** assertion proves cdk-nag is live (a deliberately non-compliant
     resource MUST produce ≥1 `AwsSolutions-*` finding in the same run — no "expect zero" test without
     it, or a false green is indistinguishable from compliance); the rendered pipeline stack then has
-    zero unsuppressed findings under `AwsSolutionsChecks`, with each suppression justified from the
+    zero unsuppressed findings under `AwsSolutionsChecks`. ✅ — with each suppression justified from the
     rendered template rather than copied from v2's CDK-Pipelines-shaped paths; v2's existing compliance
     tests are re-pointed at real assertions and whatever they now surface is triaged.
 - **`m4-private-registry`** — codeArtifact login in the buildspec  ·  done · wave 4 · wrapper · feature
