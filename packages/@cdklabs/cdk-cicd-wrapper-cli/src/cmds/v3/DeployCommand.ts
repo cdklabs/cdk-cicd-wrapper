@@ -155,6 +155,10 @@ class Command implements yargs.CommandModule {
         default: false,
         describe: 'Run the pinned image in deploy.config against each target (container mode, Repo 2)',
       })
+      .option('docker-network', {
+        type: 'string',
+        describe: 'Docker network for the deployer container (e.g. host) -- for constrained/air-gapped runners',
+      })
       .option('from-assembly', {
         type: 'boolean',
         default: false,
@@ -181,7 +185,10 @@ class Command implements yargs.CommandModule {
         logger.error('cdk-cicd deploy --from-image: no deploy.config.ts found next to cdk.json');
         process.exit(1);
       }
-      const code = runFromImage(deployment, { yes: args.yes as boolean });
+      const code = runFromImage(deployment, {
+        yes: args.yes as boolean,
+        network: args.dockerNetwork as string | undefined,
+      });
       process.exit(code);
     }
 

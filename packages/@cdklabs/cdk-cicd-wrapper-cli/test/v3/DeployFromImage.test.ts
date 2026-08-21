@@ -55,6 +55,19 @@ describe('m6-container: dockerRunArgs', () => {
     ]);
   });
 
+  test('a network option inserts --network right after run --rm, before the env flags', () => {
+    const args = dockerRunArgs(IMAGE, { stage: 'dev', region: 'us-west-2' }, { network: 'host' });
+    expect(args.slice(0, 4)).toEqual(['run', '--rm', '--network', 'host']);
+    // still a valid single deploy after the image
+    const imageIdx = args.indexOf(IMAGE);
+    expect(args.slice(imageIdx + 1)).toEqual(['cdk-cicd', 'deploy', '--stage', 'dev', '--yes', '--region', 'us-west-2']);
+  });
+
+  test('no network option means no --network flag (default docker bridge)', () => {
+    const args = dockerRunArgs(IMAGE, { stage: 'dev' });
+    expect(args).not.toContain('--network');
+  });
+
   test('a region-agnostic target omits every region pin and the inner --region', () => {
     const args = dockerRunArgs(IMAGE, { stage: 'dev' });
     expect(args.some((a) => a.startsWith('CDK_DEFAULT_REGION') || a.startsWith('AWS_REGION'))).toBe(false);

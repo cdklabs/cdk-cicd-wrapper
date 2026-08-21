@@ -35,7 +35,7 @@ export interface DockerTarget {
  * by contrast, are literal `-e NAME=value` -- they are not secret and must be fixed for the run. Inside
  * the container the entrypoint is `cdk-cicd deploy` for the single stage, pinned to the one region.
  */
-export function dockerRunArgs(image: string, target: DockerTarget): string[] {
+export function dockerRunArgs(image: string, target: DockerTarget, options: { network?: string } = {}): string[] {
   const env: string[] = [];
   const setEnv = (name: string, value: string) => env.push('-e', `${name}=${value}`);
   const passEnv = (name: string) => env.push('-e', name); // inherit the host value by name
@@ -63,7 +63,11 @@ export function dockerRunArgs(image: string, target: DockerTarget): string[] {
     inner.push('--deploy-role', target.deployRole);
   }
 
-  return ['run', '--rm', ...env, image, ...inner];
+  // `--network` lets the caller pick the container's network mode. The default docker bridge is right for
+  // most runners; `host` (or a named network) is what a constrained/air-gapped runner needs so the deploy
+  // can reach the AWS endpoints from inside the container.
+  const net = options.network !== undefined ? ['--network', options.network] : [];
+  return ['run', '--rm', ...net, ...env, image, ...inner];
 }
 
 /** The (target x region) runs for one target: one per region, or a single region-agnostic run. */
@@ -86,7 +90,7 @@ const spawnDocker: DockerSpawn = (args) => spawnSync('docker', args, { stdio: 'i
  */
 export function runFromImage(
   config: ResolvedDeploymentConfig,
-  options: { yes: boolean; spawn?: DockerSpawn },
+  options: { yes: boolean; network?: string; spawn?: DockerSpawn },
 ): number {
   const spawn = options.spawn ?? spawnDocker;
 
@@ -98,7 +102,7 @@ export function runFromImage(
 
     for (const run of targetRuns(target)) {
       logger.info(`cdk-cicd deploy --from-image: ${run.stage} -> ${run.region ?? 'ambient region'} (${config.image})`);
-      const result = spawn(dockerRunArgs(config.image, run));
+      const result = spawn(dockerRunArgs(config.image, run, { network: options.network }));
       if (result.error) {
         logger.error(`cdk-cicd deploy --from-image: could not run docker for ${run.stage}: ${result.error.message}`);
         return 1;
