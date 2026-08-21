@@ -147,10 +147,14 @@ Not tasks — resolved/open design decisions that tasks reference.
     account id on stderr — the path most likely to end up in a committed demo — so captured calls go
     through `aws_masked`, which filters stderr synchronously via a temp file rather than a background
     process substitution that can lose block-buffered output on exit.
-- **`harness-publish-loop`** — CodeArtifact publish/install round trip  ·  todo · wave 0 · infra · test
+- **`harness-publish-loop`** — CodeArtifact publish/install round trip  ·  done · wave 0 · infra · test
   - **desc:** Prove the real install path: publish to CodeArtifact, install from a clean dir.
   - **acceptance:** `task codeartifact:publish` then `npm install @cdklabs/cdk-cicd-wrapper` from
-    CodeArtifact in a temp dir imports cleanly. (M1 may use a workspace link; M2+ must use this.)
+    CodeArtifact in a temp dir imports cleanly. (M1 may use a workspace link; M2+ must use this.) ✅
+    Verified repeatedly M4+: the pipeline-app fixture, the v3 sample, and a clean-dir check all install
+    @cdklabs/*@0.0.0 from CodeArtifact and import cleanly (defineCICD/stageStackName/PipelineApp/DeployModel
+    resolve, cdk-cicd bin present). Published via `npm publish` of `dist/js` (the JS consumer path); the
+    Taskfile's twine/python leg is unused and out of scope for the JS loop.
   - **notes:** Tooling already exists (`Taskfile.codeartifact.yml`) — verify, don't rebuild. It covers
     `login`, `publish`, `unpublish`, `repository:create`/`delete` and the token-secret lifecycle;
     domain/repo/secret are all named `cdk-cicd-wrapper`, publishing from `dist/js` (npm) +
@@ -196,10 +200,13 @@ Not tasks — resolved/open design decisions that tasks reference.
     implicit in the harness and is now written down, because `assert` fails opaquely when a fixture
     drifts from it. `cdk.out` is gitignored here and the harness synths to a temp dir regardless — a
     synthesized `manifest.json` contains the account id.
-- **`harness-verify`** — Phase-0 exit gate  ·  todo · wave 0 · test
+- **`harness-verify`** — Phase-0 exit gate  ·  done · wave 0 · test
   - **depends-on:** harness-aws-lifecycle, harness-recorder, harness-fixtures
   - **acceptance:** one command deploys a trivial fixture to us-west-2, asserts it, destroys it, and
-    emits a `.cast`.
+    emits a `.cast`. ✅ Realized by the `m2-deploy` recorded gate (`test/proof/record-demo.sh m2-deploy`):
+    one command deploys level0/level1 fixtures, asserts the injected differential, destroys via the guard,
+    and emits `docs/proof/m2-deploy.cast`. The harness was thereby proven at M2 and exercised every gate
+    since (m3-verify, m4-verify, migration-continuity) -- no separate command needed.
 
 ## Wave 1 — App-config layer (M1)  *(standalone, zero AWS dep; port machinery generic over `<T>`)*
 
@@ -348,7 +355,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     preload, diagnostic silent. jsii: none (CLI is plain TS). The `CDK_CICD_EXEC` literal is duplicated
     across packages (finding `code-review-exec-flag-cross-package-literal`); a test asserts both copies
     agree.
-- **`m2-bundled-diagnostic`** — bundled/ESM diagnostic  ·  todo · wave 2 · wrapper · feature
+- **`m2-bundled-diagnostic`** — bundled/ESM diagnostic  ·  done · wave 2 · wrapper · feature
   - **desc:** Detect when preload patching won't take effect and emit a clear "use `CdkCicd.attach`".
     **Raised from nice-to-have to required:** a real esbuild bundle was verified to inline
     `aws-cdk-lib` and construct its own `App`, so the hook patches nothing and the app synthesizes
