@@ -47,6 +47,9 @@ export {
   SynthesizerType,
 } from './config/types';
 export { defineCICD } from './config/define';
+// Stack-name control for `bin/` (TS-authoring, like `defineCICD`): a stage-qualified name, and the option
+// to reproduce v2's `<STAGE>-<base>` so a migration updates the existing stack in place. See naming.ts.
+export { stageStackName, StageStackNameOptions } from './config/naming';
 
 // The engine abstraction (m4-iengine). `IEngine`/`EngineRenderProps` are the seam CodePipeline (M4)
 // and later GitHub Actions / container engines implement; concrete engines will be exported here as

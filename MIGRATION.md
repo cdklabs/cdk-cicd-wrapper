@@ -53,6 +53,7 @@ export default defineCICD({
 | v2 | v3 |
 |---|---|
 | `PipelineBlueprint.builder().defineStages(...).addStack(...).synth(app)` | `defineCICD({ stages, ... })` in `cicd.config.ts`; your stacks stay in `bin/` |
+| stack names auto-prefixed by the stage (`DEV-myapp`) via `AppStage` | you name stacks in `bin/` — full control; use `stageStackName(base, { stageFirst: true, uppercaseStage: true })` to reproduce v2's name and update in place (see **Preserving already-deployed resources**) |
 | `ACCOUNT_<STAGE>` / `CDK_QUALIFIER` / `npm_package_config_*` env | fields in `cicd.config.ts` (env interpolation is still allowed) |
 | `RepositorySource.codecommit()/github()/s3()` | `Repository.codecommit()/github()/s3()`, plus `Repository.codestarConnection(name, connectionArn)` for GitHub via a CodeStar connection |
 | `IResourceProvider` + `ResourceContext.instance()` singleton | same DI concept, de-singletoned and typed (`SupportResources`), lazily provisioned |
@@ -81,11 +82,59 @@ export default defineCICD({
 - **Optional async deploy.** `asyncDeploy: true` hands the CloudFormation wait to a Lambda instead of
   billing build compute for it. Opt-in; cross-account stages are not supported under it yet.
 
+#### Preserving already-deployed resources (migrate without a redeploy)
+
+**This is the part to get right first.** CloudFormation keys resources to a stack by its **name**, so a
+v3 deploy only *updates* your existing stack (keeping its resources) if it uses the **same stack name**
+v2 deployed. Deploy a different name and CloudFormation creates a brand-new stack and leaves the old one
+orphaned — a full recreate, exactly what you want to avoid for stateful resources.
+
+The naming differs by default, and it is measurable:
+
+| | CloudFormation stack name |
+|---|---|
+| **v2** (your stacks were nested in an `AppStage`, i.e. a `cdk.Stage`) | `DEV-myapp` — the stage id, uppercased, prefixed |
+| **v3** (plain `new MyStack(app, 'myapp')` in `bin/`) | `myapp` — just the construct id |
+
+The **logical IDs inside the stack are unchanged** between v2 and v3, so once the names match it is a
+clean in-place update, not a resource replacement. To match v2's name, use `stageStackName` (a v3
+TS-authoring helper) in your `bin/`:
+
+```ts
+import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
+
+// Reproduces v2's `DEV-myapp` / `PROD-myapp`, so v3 UPDATES the existing stack in place.
+new MyStack(app, 'myapp', { stackName: stageStackName('myapp', { stageFirst: true, uppercaseStage: true }) });
+```
+
+For a **new** v3 project (no existing stacks to preserve) drop the options for the cleaner `myapp-dev` /
+`myapp-prod`, or set `stackName` to whatever you like — you have full control. `stageStackName` reads the
+stage from `CDK_STAGE`, which `cdk-cicd exec` sets per stage.
+
+**Verify before you switch the pipeline over.** Synthesize a stage and diff it against what is deployed:
+
+```bash
+CDK_STAGE=dev npx cdk-cicd synth --stage dev
+npx cdk diff --app cdk.out/dev/<region>    # expect only in-place changes, NO "(requires replacement)"
+```
+
+If names genuinely cannot be matched (you renamed stacks, or want a different scheme), the fallback is to
+set `RemovalPolicy.RETAIN` on the stateful resources, tear down the v2 pipeline **without** deleting its
+stacks, then adopt the resources into the v3 stack with `cdk import`. Prefer name-matching — it is a
+single-step in-place update and needs no import.
+
 #### Codemod
 
-A `cdk-cicd migrate` codemod that rewrites a mechanical `PipelineBlueprint.builder()…synth(app)` into a
-`cicd.config.ts` + the `cdk.json` app command is **planned but not yet available** — migrate by hand
-using the table above for now.
+`cdk-cicd migrate` scaffolds a `cicd.config.ts` from a v2 `PipelineBlueprint.builder()…synth(app)` entry:
+
+```bash
+npx cdk-cicd migrate --entry src/main.ts --application myapp   # add --dry-run to preview
+```
+
+It extracts your stages (and flags the repository, `workbench`, and any phases/hooks for you to set by
+hand) and then prints the remaining manual steps — including pointing `cdk.json` at `cdk-cicd exec` and
+choosing your stack names per **Preserving already-deployed resources** above. It deliberately does not
+rewrite your entry file's stack construction, so review the generated config and the printed TODOs.
 
 ### [0.1.5] - [0.2.0] Migration - VPC management and compliance bucket name
 

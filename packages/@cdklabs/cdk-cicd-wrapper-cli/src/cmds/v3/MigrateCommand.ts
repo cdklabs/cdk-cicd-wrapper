@@ -169,8 +169,11 @@ class Command implements yargs.CommandModule {
     logger.info('cdk-cicd migrate: next, do these by hand (see MIGRATION.md):');
     logger.info('  1. In your entry file, drop the PipelineBlueprint.builder()...synth(app) chain and');
     logger.info('     construct your stacks directly on a plain `new App()` (keep the App at the end).');
-    logger.info('  2. Point cdk.json\'s "app" at: npx cdk-cicd exec <entry>');
-    logger.info('  3. Provision the pipeline once: npx cdk-cicd deploy-ci');
+    logger.info("  2. To KEEP already-deployed resources, match v2's stack name so CloudFormation updates");
+    logger.info('     in place instead of recreating: stackName: stageStackName(base, { stageFirst: true,');
+    logger.info("     uppercaseStage: true }) reproduces v2's `DEV-<name>`. Verify with `cdk diff` first.");
+    logger.info('  3. Point cdk.json\'s "app" at: npx cdk-cicd exec <entry>');
+    logger.info('  4. Provision the pipeline once: npx cdk-cicd deploy-ci');
   }
 }
 
