@@ -867,7 +867,15 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 6 — Iteration 2 (designed, deferred)
 
-- **`m6-container`** — Container two-repo mode  ·  in-progress · wave 6 · cli · feature
+- **`m6-container`** — Container two-repo mode  ·  in-progress · wave 6
+  - **notes:** Slice 1 (Repo 1 -- ECR image build) DONE and PROVEN on AWS by
+    `test/proof/container-verify.sh`: from a bare cicd.config.ts with `deployerImage: BuildImage.docker`,
+    `deploy-ci` provisioned a secondary CodePipeline (1 CodeBuild project), the BuildImage stage ran
+    CI + `docker build` + push, and a real image landed in ECR; pipeline stack + ECR repo + source
+    bucket all torn down. The gate's Dockerfile is intentionally minimal -- it proves build+push, not a
+    fully functional deployer image. **Remaining (slice 2):** Repo 2 -- `cdk-cicd deploy --from-image`
+    that runs the pushed image against a target's config and `cdk deploy`s offline (defineDeployment /
+    deploy.config.ts per the design doc). Stays in-progress until slice 2 lands. · cli · feature
   - **desc:** `BuildImage.docker` (repo 1 build/push of a **config-agnostic** image = code + vendored
     npm deps, no `cdk.out`, runs offline) + `defineDeployment` / `deploy --from-image` (repo 2 synths
     in-container against its config, then deploys). S3 artifact store default + ECR/OCI.
