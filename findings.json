@@ -781,6 +781,17 @@
       "title": "The engine seam renders under a CloudFormation Stack and provisions via deploy-ci -- a GitHub Actions engine needs a different provisioning path",
       "detail": "IEngine.render(scope, props) takes a CDK Construct (the pipeline Stack), and the surrounding machinery is CloudFormation-shaped: PipelineApp builds one Stack, deploy-ci runs 'cdk deploy' of it, and it self-updates via a CFN stack. A GitHub Actions engine (m7-gha) does not fit this: a GHA 'pipeline' is a workflow YAML file committed to .github/workflows, not a stack you deploy -- so it needs an emit-and-commit provisioning path, not deploy-ci, and AWS auth via OIDC role config fields that ResolvedCicdConfig does not have. The IEngine.render side-effect contract technically allows writing a file, but PipelineApp/deploy-ci assume a deployable stack. Decision D4 anticipated non-CodePipeline engines; this records the concrete gap to close before m7-gha/m6-container: (a) a provisioning abstraction that is not CFN-only (deploy the stack vs write+commit a file vs build+push an image), and (b) engine-specific config (e.g. GHA OIDC role). Discovered while scoping m7-gha; it is a design decision, not a mechanical build.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/types.ts", "line": 20 }
+    },
+    {
+      "id": "code-review-migration-explicit-stackname-not-covered",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "MIGRATION.md's stage-prefix framing does not call out v2 stacks that set an explicit stackName (no prefix)",
+      "detail": "The 'Preserving already-deployed resources' section and the mapping-table row describe v2 as deploying '<stageId>-<id>'. That holds when the stack used the DEFAULT name (cdk.Stage prefixes the construct id). A v2 user who set an explicit props.stackName got NO stage prefix -- just their literal name -- so they should reuse that literal string, not stageStackName. The doc's escape hatch ('set stackName to whatever you like') covers it implicitly but does not flag the case. Fix direction: add a sentence noting that if your v2 stack set an explicit stackName, match that literal instead. Low: the escape hatch exists and cdk diff catches a mismatch. RESOLVED in the same commit: the section now says to reuse the explicit stackName literal if v2 set one.",
+      "location": { "path": "MIGRATION.md", "line": 76 }
     }
   ]
 }

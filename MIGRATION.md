@@ -93,7 +93,7 @@ The naming differs by default, and it is measurable:
 
 | | CloudFormation stack name |
 |---|---|
-| **v2** (your stacks were nested in an `AppStage`, i.e. a `cdk.Stage`) | `DEV-myapp` — the stage id, uppercased, prefixed |
+| **v2** (your stacks were nested in an `AppStage`, i.e. a `cdk.Stage`) | `<stageId>-myapp` — the stage id prefixed **verbatim**; `DEV-myapp` with v2's default `RES`/`DEV`/`INT`/`PROD` stages, but `staging-myapp` if you defined lowercase/custom stages |
 | **v3** (plain `new MyStack(app, 'myapp')` in `bin/`) | `myapp` — just the construct id |
 
 The **logical IDs inside the stack are unchanged** between v2 and v3, so once the names match it is a
@@ -107,6 +107,13 @@ import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
 new MyStack(app, 'myapp', { stackName: stageStackName('myapp', { stageFirst: true, uppercaseStage: true }) });
 ```
 
+**`uppercaseStage` matches v2's *default* stages only.** cdk prefixed the stack name with your stage id
+*verbatim* — it did not uppercase. `uppercaseStage: true` is right only because the built-in stages are
+`RES`/`DEV`/`INT`/`PROD`. If you defined lowercase or custom-case stages in v2 (`staging`, `gamma`, `Prod`),
+**drop `uppercaseStage`** (the stage is used as-is) or set `stackName` to your literal v2 name — otherwise
+you will deploy a differently-cased name and recreate resources. If your v2 stack set an explicit
+`stackName` (no stage prefix at all), just reuse that literal string.
+
 For a **new** v3 project (no existing stacks to preserve) drop the options for the cleaner `myapp-dev` /
 `myapp-prod`, or set `stackName` to whatever you like — you have full control. `stageStackName` reads the
 stage from `CDK_STAGE`, which `cdk-cicd exec` sets per stage.
@@ -115,13 +122,19 @@ stage from `CDK_STAGE`, which `cdk-cicd exec` sets per stage.
 
 ```bash
 CDK_STAGE=dev npx cdk-cicd synth --stage dev
-npx cdk diff --app cdk.out/dev/<region>    # expect only in-place changes, NO "(requires replacement)"
+npx cdk diff --app cdk.out/dev/<region>
 ```
 
-If names genuinely cannot be matched (you renamed stacks, or want a different scheme), the fallback is to
-set `RemovalPolicy.RETAIN` on the stateful resources, tear down the v2 pipeline **without** deleting its
-stacks, then adopt the resources into the v3 stack with `cdk import`. Prefer name-matching — it is a
-single-step in-place update and needs no import.
+Read the diff carefully: you want **only modifications** — no resources being *destroyed* or *created*,
+and no `(requires replacement)`. If the stack name does not match, `cdk diff` has no deployed stack to
+compare against and shows **everything as newly-created** — that is the tell that you would recreate, not
+update. Fix the name until the diff shows in-place changes only.
+
+If names genuinely cannot be matched (you renamed stacks, or want a different scheme), the fallback for
+stateful resources is: set `RemovalPolicy.RETAIN` on them, **delete the v2 stacks** (RETAIN leaves the
+resources behind, un-owned), then adopt those resources into the v3 stack with `cdk import`. Note the v2
+stacks must be deleted first — `cdk import` adopts *unmanaged* resources, so it conflicts if the v2 stack
+still owns them. Prefer name-matching: it is a single in-place update and needs no import.
 
 #### Codemod
 

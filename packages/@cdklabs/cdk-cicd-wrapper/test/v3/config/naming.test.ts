@@ -33,7 +33,12 @@ describe('m5: stageStackName', () => {
     expect(stageStackName('myapp', { stage: '' })).toBe('myapp');
   });
 
-  test('the separator is configurable', () => {
-    expect(stageStackName('myapp', { stage: 'dev', separator: '/' })).toBe('myapp/dev');
+  test('default casing lowercases the stage (pins the behavior, not just the already-lowercase input)', () => {
+    // A v3 config may carry an uppercase stage id; the clean default name is lowercase.
+    expect(stageStackName('myapp', { stage: 'DEV' })).toBe('myapp-dev');
+  });
+
+  test('uppercaseStage without stageFirst still applies (casing and order are independent)', () => {
+    expect(stageStackName('myapp', { stage: 'dev', uppercaseStage: true })).toBe('myapp-DEV');
   });
 });

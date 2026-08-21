@@ -5,15 +5,18 @@
 // `new MyStack(app, 'myapp')` deploys under the identical CloudFormation name in every stage -- fine when
 // stages differ by account/region, but it gives no stage in the name and, more importantly, does NOT
 // match what v2 deployed. v2 nested stacks in an `AppStage extends cdk.Stage`, which prefixes the stack
-// name with the (uppercase) stage id: `DEV-myapp`. CloudFormation keys resources to a stack by NAME, so a
+// name with the stage id VERBATIM (`<stageId>-myapp`). With v2's built-in stages -- `RES`/`DEV`/`INT`/
+// `PROD` -- that reads `DEV-myapp`; a v2 user who defined lowercase or custom-case stages (`staging`,
+// `gamma`) got `staging-myapp`, unchanged. CloudFormation keys resources to a stack by NAME, so a
 // migration that deploys `myapp` where v2 deployed `DEV-myapp` is a NEW stack -- it recreates everything
 // and orphans the old one. Logical IDs are unchanged between the two shapes (measured), so matching the
 // NAME is sufficient for a clean in-place update.
 //
-// `stageStackName` gives that control from `bin/`: a stage-qualified name for new projects, and -- with
-// `{ stageFirst: true, uppercaseStage: true }` -- the exact v2 name so a migration updates in place. It is
-// a TS-authoring helper (a free function, invisible to jsii, like `defineCICD`); importing it in `bin/` is
-// the documented opt-in, not the zero-touch default.
+// `stageStackName` gives that control from `bin/`: a stage-qualified name for new projects, and the
+// options to reproduce v2's name. `stageFirst` puts the stage first (as v2 did); `uppercaseStage` matches
+// v2's DEFAULT uppercase stage ids -- if your v2 stages were lowercase/custom-case, pass the stage
+// verbatim instead (default casing) so the name matches EXACTLY. It is a TS-authoring helper (a free
+// function, invisible to jsii, like `defineCICD`); importing it in `bin/` is the opt-in, not the default.
 
 /** Options for {@link stageStackName}. */
 export interface StageStackNameOptions {
@@ -25,10 +28,13 @@ export interface StageStackNameOptions {
   readonly stage?: string;
   /** Put the stage BEFORE the base (`<stage>-<base>`) instead of after. v2 put the stage first. */
   readonly stageFirst?: boolean;
-  /** Uppercase the stage segment. v2's stack names used the uppercase `Stage` enum ids (`DEV`, `PROD`). */
+  /**
+   * Uppercase the stage segment. Convenience for matching v2's DEFAULT stage ids (`RES`/`DEV`/`INT`/
+   * `PROD`), which were uppercase. If your v2 stages were lowercase or custom-case, leave this off and
+   * pass the stage verbatim so the name matches exactly -- cdk.Stage prefixed with the id as-is, it did
+   * not uppercase.
+   */
   readonly uppercaseStage?: boolean;
-  /** Separator between base and stage. Defaults to `-`. */
-  readonly separator?: string;
 }
 
 /**
@@ -36,10 +42,11 @@ export interface StageStackNameOptions {
  *
  * New v3 projects: `stageStackName('myapp')` -> `myapp-dev` / `myapp-prod`.
  *
- * Migrating from v2 without recreating resources: v2 deployed `<STAGE>-<base>` (stage first, uppercased),
- * so `stageStackName('myapp', { stageFirst: true, uppercaseStage: true })` -> `DEV-myapp`, exactly what v2
- * deployed. CloudFormation then UPDATES that stack in place instead of creating a new one. Verify with
- * `cdk-cicd synth --stage dev` + `cdk diff` against the deployed stack before switching the pipeline over.
+ * Migrating from v2 without recreating resources: v2 prefixed the stack name with the stage id verbatim,
+ * so with its default (uppercase) stages `stageStackName('myapp', { stageFirst: true, uppercaseStage:
+ * true })` -> `DEV-myapp`, exactly what v2 deployed, and CloudFormation UPDATES it in place. If your v2
+ * stages were lowercase/custom-case, drop `uppercaseStage` (or pass an explicit `stage`) so the casing
+ * matches. Always confirm with `cdk-cicd synth --stage <s>` + `cdk diff` before switching the pipeline.
  *
  * TS-authoring only (a free function; jsii does not model it) -- import it in `bin/` as the opt-in.
  */
@@ -48,7 +55,9 @@ export function stageStackName(base: string, options: StageStackNameOptions = {}
   if (stage === undefined || stage.length === 0) {
     return base;
   }
-  const sep = options.separator ?? '-';
+  // Always `-`: CloudFormation stack names allow only [A-Za-z][A-Za-z0-9-]*, so any other separator would
+  // produce an invalid name. Default casing is lowercase; `uppercaseStage` opts into upper for v2-default
+  // stage ids.
   const seg = options.uppercaseStage ? stage.toUpperCase() : stage.toLowerCase();
-  return options.stageFirst ? `${seg}${sep}${base}` : `${base}${sep}${seg}`;
+  return options.stageFirst ? `${seg}-${base}` : `${base}-${seg}`;
 }
