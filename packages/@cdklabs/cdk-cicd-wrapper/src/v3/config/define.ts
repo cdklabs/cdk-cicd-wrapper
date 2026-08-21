@@ -170,6 +170,12 @@ export interface DeploymentProps {
   readonly image: string;
   /** The targets to run the image against, in order. */
   readonly targets: DeploymentTargetInput[];
+  /**
+   * The config-only source repository the CD pipeline watches (where this `deploy.config.ts` lives).
+   * Omit for the local `cdk-cicd deploy --from-image` executor; set it to provision a CD CodePipeline
+   * with `cdk-cicd deploy-ci` (source -> CodeBuild that runs the image against each target).
+   */
+  readonly repository?: Repository;
 }
 
 function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarget {
@@ -206,5 +212,5 @@ function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarge
  * `ResolvedDeploymentConfig` is jsii-modeled.
  */
 export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConfig {
-  return { image: props.image, targets: props.targets.map(normalizeTarget) };
+  return { image: props.image, targets: props.targets.map(normalizeTarget), repository: props.repository };
 }

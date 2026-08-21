@@ -149,6 +149,12 @@ describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
     expect(cfg.targets.map((t) => t.manualApproval)).toEqual([false, false, true, true]);
   });
 
+  test('repository is optional and passes through for the CD pipeline path', () => {
+    expect(defineDeployment({ image: 'img:1', targets: [{ stage: 'dev' }] }).repository).toBeUndefined();
+    const repo = Repository.codecommit('my-deploy-config');
+    expect(defineDeployment({ image: 'img:1', repository: repo, targets: [{ stage: 'dev' }] }).repository).toBe(repo);
+  });
+
   test('the target account and forced roles pass through unchanged', () => {
     const cfg = defineDeployment({
       image: 'img:tag',

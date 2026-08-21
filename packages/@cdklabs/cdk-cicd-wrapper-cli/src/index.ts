@@ -12,6 +12,7 @@ import security from './cmds/SecurityCommand';
 import check from './cmds/v3/CheckCommand';
 import deployCi from './cmds/v3/DeployCiCommand';
 import deploy from './cmds/v3/DeployCommand';
+import deploymentApp from './cmds/v3/DeploymentAppCommand';
 import exec from './cmds/v3/ExecCommand';
 import migrate from './cmds/v3/MigrateCommand';
 import pipelineApp from './cmds/v3/PipelineAppCommand';
@@ -38,6 +39,7 @@ async function main() {
   ya.command(synth);
   ya.command(deploy);
   ya.command(pipelineApp);
+  ya.command(deploymentApp);
   ya.command(deployCi);
   ya.command(migrate);
 

@@ -63,11 +63,15 @@ export { stageStackName, StageStackNameOptions } from './config/naming';
 // they land.
 export { EngineRenderProps, IEngine } from './engine/types';
 export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeline/CodePipelineEngine';
+// Container mode (Repo 2) CD pipeline: consumes the pushed image and deploys each target. The deploy-side
+// twin of the CI CodePipeline; `cdk-cicd deploy-ci` provisions it from a `deploy.config.ts` with a `repository`.
+export { DeploymentPipeline, DeploymentPipelineProps } from './engine/codepipeline/DeploymentPipeline';
 
 // The app that holds the pipeline. `cdk-cicd deploy-ci` uses it through `--app` so no user file is
 // needed; it is exported because the same class is the explicit opt-in path for a user who would
 // rather instantiate the pipeline in their own `bin/`.
 export { PipelineApp, PipelineAppProps } from './app/PipelineApp';
+export { DeploymentPipelineApp, DeploymentPipelineAppProps } from './app/DeploymentPipelineApp';
 
 // The wrapper's own support resources (m4-support-resources) -- lazily provisioned, so a pipeline
 // only pays for what it references. This is v2's resource-provider concept with the singleton and the

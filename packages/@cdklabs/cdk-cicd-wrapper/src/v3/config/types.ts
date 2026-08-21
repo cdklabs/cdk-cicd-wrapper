@@ -187,4 +187,11 @@ export interface ResolvedDeploymentConfig {
   readonly image: string;
   /** The deployment targets, in order. */
   readonly targets: ResolvedDeploymentTarget[];
+  /**
+   * The config-only source repository the CD pipeline watches (where `deploy.config.ts` lives -- no CDK
+   * code). Optional: when omitted, the config drives only the local `cdk-cicd deploy --from-image`
+   * executor; set it to provision a CD CodePipeline (`cdk-cicd deploy-ci`) whose CodeBuild pulls the image
+   * and deploys each target. This is the deploy-side twin of `ResolvedCicdConfig.repository`.
+   */
+  readonly repository?: Repository;
 }
