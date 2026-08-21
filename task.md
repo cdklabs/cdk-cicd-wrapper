@@ -883,7 +883,16 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **`spike-python-hook`** — Python injection path  ·  todo · wave 6 · wrapper · spike
   - **desc:** Is the import hook acceptable in Python, or is `CdkCicd.attach(app)` the primary path?
     (jsii can't ship a Python import hook cleanly.) Written outcome.
-- **`spike-naming`** — CLI/API naming pass  ·  todo · wave 6 · shared · spike
+- **`spike-naming`** — CLI/API naming pass  ·  done · wave 6
+  - **notes:** Reviewed the full v3 surface (7 CLI commands + 39 jsii types + 3 TS-authoring free
+    functions). Verdict: largely consistent; the naming issues found are ALL breaking renames, so batch
+    them for a single pre-alpha rename pass rather than churn the API now (ground rule 1). Recorded as
+    findings `planning-naming-deploy-vs-deployci-confusable` (medium -- the one real footgun: `deploy`
+    deploys a stage app, `deploy-ci` deploys the pipeline), `planning-naming-cicd-acronym-casing`
+    (defineCICD vs CdkCicd/ResolvedCicdConfig), `planning-naming-enum-suffix-inconsistent`
+    (Type/Kind/Strategy/Model). Also noted but not filed: `pipeline-app` is an internal shim exposed as
+    a public command (consider hiding), and `deployerImage: BuildImage` reads slightly oddly (field vs
+    type name). No code changed -- a spike delivers the analysis; the renames are a later major-gated unit. · shared · spike
   - **desc:** `deploy-ci` vs `bootstrap-ci`; `exec` vs `synth`; `defineCICD`/`defineDeployment`.
 
 ## Wave 7 — The v3 major (breaking)

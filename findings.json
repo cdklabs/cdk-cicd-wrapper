@@ -792,6 +792,39 @@
       "title": "MIGRATION.md's stage-prefix framing does not call out v2 stacks that set an explicit stackName (no prefix)",
       "detail": "The 'Preserving already-deployed resources' section and the mapping-table row describe v2 as deploying '<stageId>-<id>'. That holds when the stack used the DEFAULT name (cdk.Stage prefixes the construct id). A v2 user who set an explicit props.stackName got NO stage prefix -- just their literal name -- so they should reuse that literal string, not stageStackName. The doc's escape hatch ('set stackName to whatever you like') covers it implicitly but does not flag the case. Fix direction: add a sentence noting that if your v2 stack set an explicit stackName, match that literal instead. Low: the escape hatch exists and cdk diff catches a mismatch. RESOLVED in the same commit: the section now says to reuse the explicit stackName literal if v2 set one.",
       "location": { "path": "MIGRATION.md", "line": 76 }
+    },
+    {
+      "id": "planning-naming-deploy-vs-deployci-confusable",
+      "component": "cli",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "medium",
+      "status": "open",
+      "title": "`deploy` and `deploy-ci` are confusably close for two very different actions",
+      "detail": "`cdk-cicd deploy --stage <s>` deploys a STAGE's application; `cdk-cicd deploy-ci` deploys the PIPELINE ITSELF. The names differ by a jargon suffix ('ci') and a user could easily run the wrong one -- e.g. `deploy` expecting to provision the pipeline. Found in the spike-naming pass. Options (all breaking, so batch for the pre-alpha rename): rename `deploy-ci` to a distinct verb like `provision`/`install-pipeline`/`bootstrap`, and/or make `deploy` refuse without an explicit --stage (it already requires --stage, but the name still invites confusion). No change now: renames wait for the major (ground rule 1); recorded so the rename pass has the list.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/index.ts", "line": 1 }
+    },
+    {
+      "id": "planning-naming-cicd-acronym-casing",
+      "component": "shared",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "low",
+      "status": "open",
+      "title": "The CICD/Cicd acronym is cased inconsistently across the public API",
+      "detail": "`defineCICD` uses all-caps CICD, while `CdkCicd`, `ResolvedCicdConfig` (and `cicd.config.ts`) use PascalCase `Cicd`. jsii/TS convention treats acronyms as words (Cicd). Pick one before the first alpha publish -- most likely `defineCicd` to match the classes -- since it is a breaking export rename. Batched for the pre-alpha rename pass.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/index.ts", "line": 1 }
+    },
+    {
+      "id": "planning-naming-enum-suffix-inconsistent",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "low",
+      "status": "open",
+      "title": "Enum suffixes are inconsistent: Type vs Kind vs Strategy vs Model",
+      "detail": "The v3 enums mix suffixes: `EngineType`/`SynthesizerType`/`RepositorySourceType` (Type), `BuildImageKind` (Kind), `ImageTagStrategy` (Strategy), `DeployModel` (Model). Each reads fine alone but the set is inconsistent. Consider standardizing (e.g. Type where it's a discriminator) in the pre-alpha rename pass; breaking, so not now. Note `RemovalPolicyValue` is a value enum, a separate category.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/index.ts", "line": 1 }
     }
   ]
 }
