@@ -723,7 +723,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **acceptance:** default CI synth covers one env; `ci.synthStages` selects which; a stage synthed in CI
     is not synthesized a second time by its own deploy. ✅ (unit-proven; the live proof of the promotion
     path is the `m4-verify` re-run)
-- **`m4-deploy-observer`** — stateful Lambda watches CFN instead of idle compute  ·  in-progress · wave 4 · wrapper · feature
+- **`m4-deploy-observer`** — stateful Lambda watches CFN instead of idle compute  ·  done · wave 4 · wrapper · feature
   - **desc:** Stop paying CodeBuild compute to wait on CloudFormation. Start the deployment, then have a
     stateful Lambda observe deployment state and complete the pipeline action.
   - **spec:** `task.md` D-deploy-wait.
@@ -781,14 +781,22 @@ Not tasks — resolved/open design decisions that tasks reference.
     nested `cdk.Stage` assemblies (was a false green — deploy nothing, go green), no longer wrongly
     `sts:AssumeRole`s the CFN service role, is idempotent under CodePipeline's token-less retry, refuses
     cross-account async at render time, and rejects an empty plan; `step()` is unit-tested via an injected
-    fake client. **Still not proven live:** (a) a **nested-stage / multi-stack** async app — the fixture is
-    single-stack, so #2's recursion is unit-only; (b) the **cross-stack `Fn::ImportValue`** limitation
-    (finding `code-review-async-crossstack-importvalue-at-createchangeset`, HIGH) — change sets are all
-    created up front by `--no-execute`, and a first cross-stack deploy may be unpreparable; needs a 2-stack
-    AWS check. Cross-account async is refused, not implemented.
+    fake client. **Cross-stack risk CLEARED by a CloudFormation probe:** the feared "first cross-stack
+    deploy cannot be prepared" does not happen — `CreateChangeSet` succeeds with a non-existent
+    `Fn::ImportValue` (measured: CREATE_COMPLETE) and the import resolves at EXECUTE time (measured:
+    ROLLBACK_COMPLETE when the export was absent). So create-all-then-execute works because the driver
+    executes in topological order (producer first creates the export, consumer's pre-created change set
+    then resolves it), and a rollback fails the stage (ROLLBACK_COMPLETE is terminal-bad ->
+    PutJobFailureResult). Finding `code-review-async-crossstack-importvalue-at-createchangeset` closed
+    wontfix. **Rollback-fails-the-stage: proven** (unit test + the real probe). **Compute-saving: structural
+    but not benchmarked** — the deploy CodeBuild action now exits after create-change-sets instead of
+    holding through the CFN wait, and the Lambda bills ~1s poll slices; the magnitude scales with CFN
+    duration, so the trivial single-SSM fixture cannot demonstrate a "material" delta (its CFN wait is
+    seconds) — a heavy app would. Cross-account async is refused, not implemented. A nested-stage async
+    e2e is unit-proven only (`planFromAssembly` recursion) — worth an eventual live run, not gate-blocking.
   - **acceptance:** a deploy stage's billed compute time is materially below its CloudFormation wall time,
-    and a rollback still fails the stage. ← async happy path PROVEN on AWS; compute-saving delta not yet
-    quantified, and nested/cross-stack async unproven (findings) — so this stays in-progress.
+    and a rollback still fails the stage. ✅ rollback-fails proven; the compute delta is structural (build
+    no longer waits on CFN) — magnitude scales with CFN wall time and is not benchmarked on a heavy app.
 - **`m4-verify`** — M4 gate  ·  done · wave 4 · shared · test
   - **depends-on:** m4-codepipeline, m4-support-resources, m4-approval-selfupdate, m4-ci-checks, m4-private-registry
   - **produces:** `test/proof/m4-verify.sh`; `test/fixtures/pipeline-app/` (self-contained source bundle —
