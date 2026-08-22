@@ -1,7 +1,6 @@
 import * as pj from 'projen';
 import { yarn } from 'cdklabs-projen-project-types';
 import { Eslint } from 'projen/lib/javascript';
-import { JSIIComponent } from './jsiicomponent';
 import { RootConfig } from './RootConfig';
 
 export class PipelineConfig extends yarn.TypeScriptWorkspace {
@@ -51,6 +50,9 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         },
       },
       disableTsconfig: true,
+      // Required here, not just on the mixin: only the project-level flag clears `npmTokenSecret`,
+      // and `publishToNpm` rejects a token alongside trusted publishing.
+      npmTrustedPublishing: true,
     });
 
     Eslint.of(this)!.addRules({
@@ -65,22 +67,31 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
     });
 
     const packageBasename = 'cdk-cicd-wrapper';
-    new JSIIComponent(this, {
-      publishToPypi: {
-        distName: `cdklabs.${packageBasename}`,
-        module: `cdklabs.${changeDelimiter(packageBasename, '_')}`,
-      },
-      publishToMaven: {
-        javaPackage: `io.github.cdklabs.${changeDelimiter(packageBasename, '.')}`,
-        mavenGroupId: `io.github.cdklabs`,
-        mavenArtifactId: packageBasename,
-        mavenServerId: 'central-ossrh',
-      },
-      publishToNuget: {
-        dotNetNamespace: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
-        packageId: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
-      },
-    });
+    this.with(
+      new yarn.WorkspaceJsiiBuild({
+        // jsii-docgen cannot locate `cdk-nag`/`cdk-pipelines-github`, which yarn hoists to the
+        // monorepo root. Enabling it needs those in `nohoist`; API.md stays hand-committed.
+        docgen: false,
+        publishToPypi: {
+          distName: `cdklabs.${packageBasename}`,
+          module: `cdklabs.${changeDelimiter(packageBasename, '_')}`,
+          // Only npm defaults to OIDC; without this PyPI falls back to TWINE_* secrets.
+          trustedPublishing: true,
+        },
+        publishToMaven: {
+          javaPackage: `io.github.cdklabs.${changeDelimiter(packageBasename, '.')}`,
+          mavenGroupId: `io.github.cdklabs`,
+          mavenArtifactId: packageBasename,
+          mavenServerId: 'central-ossrh',
+        },
+        publishToNuget: {
+          dotNetNamespace: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
+          packageId: `${upperCaseName('cdklabs')}.${upperCaseName(packageBasename)}`,
+          // As above: without this NuGet falls back to NUGET_API_KEY.
+          trustedPublishing: true,
+        },
+      }),
+    );
 
     root.addGitIgnore(this.workspaceDirectory + '/tsconfig.json');
 
@@ -110,12 +121,6 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
     const postCompile = this.tasks.tryFind('post-compile')!;
     // postCompile.exec("export DEP='@cloudcomponents';cp -rf ./node_modules/$DEP ./node_modules/ 2>/dev/null;");
     postCompile.exec("export DEP='yaml';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;");
-
-    // Disable packaging for other than TS
-    this.tasks.tryFind('package:dotnet')?.addCondition('[ -n "$CI" ] || [ -n "$DOTNET_ENABLED" ]');
-    this.tasks.tryFind('package:python')?.addCondition('[ -n "$CI" ] || [ -n "$PYTHON_ENABLED" ]');
-    this.tasks.tryFind('package:go')?.addCondition('[ -n "$CI" ] || [ -n "$GO_ENABLED" ]');
-    this.tasks.tryFind('package:java')?.addCondition('[ -n "$CI" ] || [ -n "$JAVA_ENABLED" ]');
   }
 }
 
