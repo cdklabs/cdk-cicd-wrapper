@@ -60,7 +60,9 @@ This deploys **one** pipeline into your hub account from `cicd.config.ts` alone.
 Source → Build (checks + synth) → UpdatePipeline (re-deploys itself from config) → deploy dev → deploy prod
 ```
 
-<!-- SCREENSHOT: CodePipeline console showing the flat Source → Build → UpdatePipeline → deploy dev → deploy prod pipeline for my-app -->
+![The flat v3 pipeline in the CodePipeline console: Source → Build → UpdatePipeline → deploy](images/flat-pipeline.png)
+
+*The flat v3 pipeline in the CodePipeline console — one linear pipeline, not v2's 100+ CodeBuild projects.*
 
 The **UpdatePipeline** stage means you never run `deploy-ci` again by hand: change `cicd.config.ts`, push,
 and the pipeline re-synthesizes its own definition on the next run and applies the change before the
