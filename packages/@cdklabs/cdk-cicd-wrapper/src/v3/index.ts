@@ -66,6 +66,15 @@ export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeli
 // Container mode (Repo 2) CD pipeline: consumes the pushed image and deploys each target. The deploy-side
 // twin of the CI CodePipeline; `cdk-cicd deploy-ci` provisions it from a `deploy.config.ts` with a `repository`.
 export { DeploymentPipeline, DeploymentPipelineProps } from './engine/codepipeline/DeploymentPipeline';
+// The v2-compatible engine: builds the pipeline with CDK Pipelines (`aws-cdk-lib/pipelines`), like v2 did,
+// for teams that want a pipeline shaped like their old one. Opt-in from an explicit `bin/` (it needs the
+// app's stacks in-synth via an IStageProvider), alongside the flat CodePipelineEngine default.
+export {
+  CdkPipelinesEngine,
+  CdkPipelinesEngineProps,
+  CdkPipelinesStageContext,
+  IStageProvider,
+} from './engine/cdkpipelines/CdkPipelinesEngine';
 
 // The app that holds the pipeline. `cdk-cicd deploy-ci` uses it through `--app` so no user file is
 // needed; it is exported because the same class is the explicit opt-in path for a user who would

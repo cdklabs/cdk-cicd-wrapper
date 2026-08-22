@@ -1,0 +1,168 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+//
+// The v2-compatible CD engine: builds the pipeline with **CDK Pipelines** (`aws-cdk-lib/pipelines`), the
+// same construct v2's PipelineBlueprint used. It produces a pipeline that looks like v2's -- a self-
+// mutating CodePipeline with a Synth step, an Assets stage, and one wave per deployment stage (with
+// optional pre-approval) -- so a team migrating from v2 gets a familiar shape.
+//
+// It sits ALONGSIDE the flat CodePipelineEngine (raw aws-codepipeline), not instead of it: the flat
+// engine is the lightweight default; this one is the opt-in for v2 parity. Because CDK Pipelines needs
+// the application's stacks IN the pipeline's own synth (it wraps them as `cdk.Stage`s and self-mutates),
+// this engine cannot be zero-touch like the flat one -- the caller supplies a `stages` factory that
+// builds the app's stacks for a given stage, exactly as v2's `.addStack(...)` did. So it is used from an
+// explicit `bin/` (the documented opt-in path), not the `deploy-ci` zero-touch flow.
+
+import { Environment, Stack, Stage } from 'aws-cdk-lib';
+import * as codecommit from 'aws-cdk-lib/aws-codecommit';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as pipelines from 'aws-cdk-lib/pipelines';
+import { Construct } from 'constructs';
+import { CodeArtifactConfig, ResolvedCicdConfig } from '../../config/types';
+import { Repository, RepositorySourceType } from '../../config/repository';
+
+/** Context passed to the stage factory for one deployment stage. */
+export interface CdkPipelinesStageContext {
+  /** The stage name from the config (e.g. `DEVFRA`). */
+  readonly stageName: string;
+  /** The stage's target environment (account + primary region). */
+  readonly env: Environment;
+}
+
+/**
+ * Builds the application's stacks for one deployment stage into the given `cdk.Stage`. This is the v2
+ * `IStackProvider` equivalent: CDK Pipelines deploys whatever stacks the provider adds to the stage. A
+ * behavioural interface (not a bare function) so it crosses the jsii boundary like v2's providers did.
+ */
+export interface IStageProvider {
+  /** Add the app's stacks for `context.stageName` into `stage`. */
+  stacks(stage: Stage, context: CdkPipelinesStageContext): void;
+}
+
+/** Props for the CDK Pipelines (v2-compatible) engine. */
+export interface CdkPipelinesEngineProps {
+  /** The resolved pipeline configuration (`defineCICD`). */
+  readonly config: ResolvedCicdConfig;
+  /** Builds the app's stacks per stage (the v2-compat opt-in — CDK Pipelines needs the stacks in-synth). */
+  readonly stages: IStageProvider;
+  /** Pipeline name; defaults to `<application>-pipeline`. */
+  readonly pipelineName?: string;
+}
+
+/** Map a resolved `Repository` to the CDK Pipelines source the Synth step reads from. */
+function sourceFor(scope: Construct, repository: Repository): pipelines.CodePipelineSource {
+  switch (repository.repositoryType) {
+    case RepositorySourceType.CODECOMMIT:
+      return pipelines.CodePipelineSource.codeCommit(
+        codecommit.Repository.fromRepositoryName(scope, 'SourceRepo', repository.name),
+        repository.branch,
+      );
+    case RepositorySourceType.GITHUB:
+    case RepositorySourceType.CODESTAR_CONNECTION:
+      // Both need a CodeStar (CodeConnections) connection ARN to read the git provider.
+      if (repository.connectionArn === undefined) {
+        throw new Error(
+          `cdk-cicd: a CodeStar connection ARN is required for a ${repository.repositoryType} source -- ` +
+            'use Repository.codestarConnection(name, connectionArn)',
+        );
+      }
+      return pipelines.CodePipelineSource.connection(repository.name, repository.branch, {
+        connectionArn: repository.connectionArn,
+      });
+    case RepositorySourceType.S3: {
+      // `name` is `bucket/key`; a bucket-only name defaults the key to source.zip (matches the flat engine).
+      const slash = repository.name.indexOf('/');
+      const bucketName = slash >= 0 ? repository.name.slice(0, slash) : repository.name;
+      const objectKey = slash >= 0 ? repository.name.slice(slash + 1) : 'source.zip';
+      return pipelines.CodePipelineSource.s3(s3.Bucket.fromBucketName(scope, 'SourceBucket', bucketName), objectKey);
+    }
+    default:
+      throw new Error(`cdk-cicd: unsupported repository type for the CDK Pipelines engine: ${repository.repositoryType}`);
+  }
+}
+
+/**
+ * A CDK Pipelines pipeline rendered from a v3 config + a stage factory. Reproduces the v2 shape:
+ * Source -> Synth (self-mutating) -> Assets -> one wave per stage (with a pre-approval when the stage is
+ * gated). Cross-account keys are on (v2 default) so multi-account stages work.
+ */
+export class CdkPipelinesEngine extends Construct {
+  public readonly pipeline: pipelines.CodePipeline;
+
+  constructor(scope: Construct, id: string, props: CdkPipelinesEngineProps) {
+    super(scope, id);
+    const config = props.config;
+    const name = props.pipelineName ?? `${config.application ?? 'cdk-cicd'}-pipeline`;
+    const region = Stack.of(this).region;
+
+    // The Synth step: install (CodeArtifact login for private/pre-release deps) then `cdk synth`, which
+    // re-runs the caller's bin -- the same app that built this pipeline -- so self-mutation works.
+    const installCommands = config.codeArtifact
+      ? [
+          `aws codeartifact login --tool npm --domain ${config.codeArtifact.domain} ` +
+            `--domain-owner ${config.codeArtifact.account ?? Stack.of(this).account} ` +
+            `--repository ${config.codeArtifact.repository} --region ${config.codeArtifact.region ?? region}` +
+            (config.codeArtifact.npmScope ? ` --namespace ${config.codeArtifact.npmScope}` : ''),
+        ]
+      : [];
+    const ciSteps = Object.values(config.ci.steps);
+
+    this.pipeline = new pipelines.CodePipeline(this, 'Pipeline', {
+      pipelineName: name,
+      crossAccountKeys: true,
+      enableKeyRotation: true,
+      synth: new pipelines.CodeBuildStep('Synth', {
+        input: sourceFor(this, config.repository),
+        installCommands,
+        // Run the default CI check, any configured extra steps, then synth the app.
+        commands: ['npm ci', 'npx cdk-cicd check', ...ciSteps, 'npx cdk synth'],
+        env: {
+          ...(config.qualifier ? { CDK_QUALIFIER: config.qualifier } : {}),
+          AWS_REGION: region,
+        },
+        // Grant the synth build the CodeArtifact read permissions its `codeartifact login` needs (the
+        // CodeBuildStep role has only logs/artifacts by default) -- else the login fails AccessDenied.
+        rolePolicyStatements: config.codeArtifact ? codeArtifactReadStatements(Stack.of(this), config.codeArtifact) : undefined,
+      }),
+    });
+
+    // One wave per (stage x region), in config order, wrapping the app stacks the provider builds. A gated
+    // stage gets a manual-approval step ahead of its FIRST region -- the fail-closed promotion gate v2 had.
+    // A multi-region stage becomes one wave per region (v2 deployed each region), not a single dropped one.
+    for (const stage of config.stages) {
+      const regions = stage.env.regions.length > 0 ? stage.env.regions : [region];
+      regions.forEach((stageRegion, i) => {
+        const env: Environment = { account: stage.env.account, region: stageRegion };
+        const stageId = regions.length > 1 ? `${stage.name}-${stageRegion}` : stage.name;
+        const appStage = new Stage(this, stageId, { env });
+        props.stages.stacks(appStage, { stageName: stage.name, env });
+        this.pipeline.addStage(appStage, {
+          pre: stage.manualApproval && i === 0 ? [new pipelines.ManualApprovalStep(`Approve-${stage.name}`)] : undefined,
+        });
+      });
+    }
+  }
+}
+
+/** The CodeArtifact read permissions a `codeartifact login` + `npm ci` need (mirrors the flat engine). */
+function codeArtifactReadStatements(stack: Stack, ca: CodeArtifactConfig): iam.PolicyStatement[] {
+  const account = ca.account ?? stack.account;
+  const region = ca.region ?? stack.region;
+  return [
+    new iam.PolicyStatement({
+      actions: ['codeartifact:GetAuthorizationToken'],
+      resources: [`arn:${stack.partition}:codeartifact:${region}:${account}:domain/${ca.domain}`],
+    }),
+    new iam.PolicyStatement({
+      actions: ['codeartifact:GetRepositoryEndpoint', 'codeartifact:ReadFromRepository'],
+      resources: [`arn:${stack.partition}:codeartifact:${region}:${account}:repository/${ca.domain}/${ca.repository}`],
+    }),
+    // The npm token is minted through STS on CodeArtifact's behalf; scoped to that service, not blanket.
+    new iam.PolicyStatement({
+      actions: ['sts:GetServiceBearerToken'],
+      resources: ['*'],
+      conditions: { StringEquals: { 'sts:AWSServiceName': 'codeartifact.amazonaws.com' } },
+    }),
+  ];
+}
