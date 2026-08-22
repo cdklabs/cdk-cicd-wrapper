@@ -90,19 +90,34 @@ const spawnDocker: DockerSpawn = (args) => spawnSync('docker', args, { stdio: 'i
  */
 export function runFromImage(
   config: ResolvedDeploymentConfig,
-  options: { yes: boolean; network?: string; spawn?: DockerSpawn },
+  options: { yes: boolean; network?: string; target?: string; spawn?: DockerSpawn },
 ): number {
   const spawn = options.spawn ?? spawnDocker;
 
-  for (const target of config.targets) {
+  // `target` deploys just that one stage (its own image version) -- how a CD pipeline runs one action per
+  // target, so bumping a stage's image in deploy.config and committing deploys only that stage.
+  const targets = options.target !== undefined ? config.targets.filter((t) => t.stage === options.target) : config.targets;
+  if (options.target !== undefined && targets.length === 0) {
+    logger.error(`cdk-cicd deploy --from-image: no target '${options.target}' in deploy.config`);
+    return 1;
+  }
+
+  for (const target of targets) {
     if (target.manualApproval && !options.yes) {
       logger.error(`cdk-cicd deploy --from-image: target '${target.stage}' requires manual approval -- re-run with --yes`);
       return 1;
     }
 
+    // Each target runs its OWN image (its pinned version), falling back to the config-level default.
+    const image = target.image ?? config.image;
+    if (image === undefined) {
+      logger.error(`cdk-cicd deploy --from-image: target '${target.stage}' has no image -- set the target's image or the config-level image`);
+      return 1;
+    }
+
     for (const run of targetRuns(target)) {
-      logger.info(`cdk-cicd deploy --from-image: ${run.stage} -> ${run.region ?? 'ambient region'} (${config.image})`);
-      const result = spawn(dockerRunArgs(config.image, run, { network: options.network }));
+      logger.info(`cdk-cicd deploy --from-image: ${run.stage} -> ${run.region ?? 'ambient region'} (${image})`);
+      const result = spawn(dockerRunArgs(image, run, { network: options.network }));
       if (result.error) {
         logger.error(`cdk-cicd deploy --from-image: could not run docker for ${run.stage}: ${result.error.message}`);
         return 1;

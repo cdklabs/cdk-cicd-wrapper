@@ -155,6 +155,28 @@ describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
     expect(defineDeployment({ image: 'img:1', repository: repo, targets: [{ stage: 'dev' }] }).repository).toBe(repo);
   });
 
+  test('a per-target image pins that stage version; top-level image is optional (the default)', () => {
+    const cfg = defineDeployment({
+      image: 'repo:base',
+      targets: [
+        { stage: 'dev', image: 'repo:dev-42' }, // its own version
+        { stage: 'prod' }, // falls back to the top-level default
+      ],
+    });
+    expect(cfg.targets[0].image).toBe('repo:dev-42');
+    expect(cfg.targets[1].image).toBeUndefined();
+    expect(cfg.image).toBe('repo:base');
+    // top-level image may be omitted entirely when every target pins its own
+    const noDefault = defineDeployment({ targets: [{ stage: 'dev', image: 'repo:dev-42' }] });
+    expect(noDefault.image).toBeUndefined();
+    expect(noDefault.targets[0].image).toBe('repo:dev-42');
+  });
+
+  test('codeArtifact passes through for the CD build (pre-release CLI install)', () => {
+    const ca = { domain: 'd', repository: 'r', npmScope: 'cdklabs' };
+    expect(defineDeployment({ image: 'i:1', codeArtifact: ca, targets: [{ stage: 'dev' }] }).codeArtifact).toEqual(ca);
+  });
+
   test('the target account and forced roles pass through unchanged', () => {
     const cfg = defineDeployment({
       image: 'img:tag',

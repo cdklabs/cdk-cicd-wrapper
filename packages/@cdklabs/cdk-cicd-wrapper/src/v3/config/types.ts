@@ -175,6 +175,12 @@ export interface ResolvedDeploymentTarget {
   readonly manualApproval: boolean;
   /** Forced roles for this target, if any. */
   readonly deployment?: DeploymentConfig;
+  /**
+   * The deployer image (tag/digest) to run for THIS target, overriding the config-level `image`. This is
+   * how a stage pins its own application version -- bump `dev`'s tag to ship a new version to dev alone,
+   * or set `int`/`prod` to the same tag to promote. When unset, the target uses the config-level `image`.
+   */
+  readonly image?: string;
 }
 
 /**
@@ -183,8 +189,12 @@ export interface ResolvedDeploymentTarget {
  * `cdk-cicd deploy --from-image` runs the image per target, synthesizing and deploying in-container.
  */
 export interface ResolvedDeploymentConfig {
-  /** The pinned deployer image to run each target against (an ECR/OCI reference, tag or digest). */
-  readonly image: string;
+  /**
+   * The default deployer image to run targets against (an ECR/OCI reference, tag or digest). A target's
+   * own `image` overrides this, so per-stage versions live on the targets; this is the shared fallback.
+   * Optional only because every target may pin its own `image` -- each target must resolve to one or the other.
+   */
+  readonly image?: string;
   /** The deployment targets, in order. */
   readonly targets: ResolvedDeploymentTarget[];
   /**
@@ -194,4 +204,9 @@ export interface ResolvedDeploymentConfig {
    * and deploys each target. This is the deploy-side twin of `ResolvedCicdConfig.repository`.
    */
   readonly repository?: Repository;
+  /**
+   * Private CodeArtifact repo the CD build authenticates against before `npm ci` (to install the wrapper
+   * CLI when it is pre-release / not on public npm). Same shape as the pipeline-config `codeArtifact`.
+   */
+  readonly codeArtifact?: CodeArtifactConfig;
 }

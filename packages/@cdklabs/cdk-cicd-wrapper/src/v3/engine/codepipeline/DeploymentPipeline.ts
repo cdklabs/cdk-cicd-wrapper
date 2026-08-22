@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The CD (deploy-side) CodePipeline of the container two-repo split (m6-container, Repo 2). Where the CI
-// pipeline (CodePipelineEngine + `deployerImage`) builds & pushes a config-agnostic image, THIS pipeline
-// consumes it: a config-only source repo (the `deploy.config.ts`, no CDK code) triggers a CodePipeline
-// whose single privileged CodeBuild logs in to ECR, then runs `cdk-cicd deploy --from-image` -- which pulls
-// the pinned image and runs it once per target to synth-and-deploy that stage. One image -> many CD runs.
+// pipeline (CodePipelineEngine + `deployerImage`) builds & pushes config-agnostic image(s), THIS pipeline
+// consumes them: a config-only source repo (the `deploy.config.ts`, no CDK code) triggers a CodePipeline
+// with one Deploy action per target. Each target deploys from ITS OWN image version -- the tag/digest lives
+// on the target in deploy.config and is read at RUN time -- so bumping one stage's image and committing
+// deploys only that stage. Non-gated targets deploy in parallel; a gated target waits on a manual approval.
 //
-// It is deliberately the deploy-side twin of `renderImageBuild`: Source -> one CodeBuild. Per-target
-// manual-approval gates are a later refinement (the CI pipeline already models per-stage approvals); this
-// runs every target of `deploy.config.ts` in one build, in order.
+// Source -> Deploy (per-target privileged CodeBuild actions). Each action runs `cdk-cicd deploy --from-image
+// --target <stage>`, which pulls that target's image and synth-and-deploys the stage offline in-container.
 
 import { DefaultStackSynthesizer, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
@@ -38,10 +38,11 @@ export interface DeploymentPipelineProps {
 }
 
 /**
- * Renders the CD CodePipeline into `scope` (a Stack): Source (the config repo) -> Deploy (one privileged
- * CodeBuild that ECR-logs-in and runs `cdk-cicd deploy --from-image --yes`). The CLI is installed from the
- * source repo's own `package.json` (`npm ci`), so the config repo carries no CDK code -- only config + the
- * CLI dependency.
+ * Renders the CD CodePipeline into `scope` (a Stack): Source (the config repo) -> a "Deploy" stage with one
+ * privileged-CodeBuild action per ungated target (parallel), then a "DeployGated" stage with the gated
+ * targets, each behind its own manual approval. Each action runs `cdk-cicd deploy --from-image --target
+ * <stage>` -- pulling that target's own image version, read from deploy.config at run time. The CLI is
+ * installed from the source repo's `package.json` (`npm ci`), so the config repo carries no CDK code.
  */
 export class DeploymentPipeline extends Construct {
   public readonly pipeline: codepipeline.Pipeline;
@@ -58,35 +59,46 @@ export class DeploymentPipeline extends Construct {
     const removalPolicy = props.removalPolicy;
     const stack = Stack.of(this);
 
-    // Log in to the image's OWN ECR registry (derived from `config.image`, not the pipeline account) so a
-    // cross-account/region image still pulls. Non-ECR (public/OCI) images need no login. Host shape:
-    // <account>.dkr.ecr.<region>.<suffix>/<repo>:<tag>.
-    const imageHost = config.image.split('/')[0];
-    const isEcr = imageHost.includes('.dkr.ecr.');
-    const ecrRegion = isEcr ? imageHost.split('.')[3] : stack.region;
-
     const sourceOutput = new codepipeline.Artifact();
     const support = new SupportResources(this, 'Support', { removalPolicy });
     const pipeline = new codepipeline.Pipeline(this, 'Pipeline', { artifactBucket: support.artifactBucket });
 
     pipeline.addStage({ stageName: 'Source', actions: [buildSourceAction(this, config.repository, sourceOutput)] });
 
-    // The deploy build: log in to ECR (so `docker run` can pull the pinned image), install the CLI from the
-    // config repo, materialize credentials, then deploy every target from the image. Runs privileged for
-    // the docker-in-docker. CodeBuild exposes credentials via the container-credentials endpoint, not as
-    // static AWS_* env vars -- but `deploy --from-image` forwards creds into the deployer container BY NAME,
-    // so we export them to static env vars first (via the AWS CLI, with a container-endpoint fallback).
+    // Log in to every distinct ECR registry across the targets' images (config default + per-target
+    // overrides). The registry host is stable across version bumps -- only the tag changes, and the tag is
+    // read from deploy.config at run time -- so logging in to the provision-time set of hosts is enough.
+    const images = config.targets.map((t) => t.image ?? config.image).filter((i): i is string => i !== undefined);
+    const ecrHosts = new Set(images.map((i) => i.split('/')[0]).filter((h) => h.includes('.dkr.ecr.')));
+    const ecrLoginCommands = [...ecrHosts].map(
+      (h) => `aws ecr get-login-password --region ${h.split('.')[3]} | docker login --username AWS --password-stdin ${h}`,
+    );
+
+    // Optional CodeArtifact login so `npm ci` can install a pre-release wrapper CLI.
+    const ca = config.codeArtifact;
+    const codeArtifactLogin = ca
+      ? [
+          `aws codeartifact login --tool npm --domain ${ca.domain} --domain-owner ${ca.account ?? stack.account} ` +
+            `--repository ${ca.repository} --region ${ca.region ?? stack.region}` +
+            (ca.npmScope ? ` --namespace ${ca.npmScope}` : ''),
+        ]
+      : [];
+
+    // ONE deploy build, run once per target as a separate pipeline action that sets TARGET_STAGE. It
+    // deploys just that target from ITS OWN image version (read from deploy.config at run time), so bumping
+    // a stage's image tag and committing deploys only that stage. Privileged for docker; creds materialized
+    // to static env vars (CodeBuild serves them via the container-credentials endpoint) so
+    // `deploy --from-image` can forward them into the deployer container by name.
     const commands = [
-      ...(isEcr
-        ? [`aws ecr get-login-password --region ${ecrRegion} | docker login --username AWS --password-stdin ${imageHost}`]
-        : []),
+      ...ecrLoginCommands,
+      ...codeArtifactLogin,
       'npm ci',
       'eval "$(aws configure export-credentials --format env 2>/dev/null)" || { ' +
         'CREDS=$(curl -s "http://169.254.170.2${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI}"); ' +
         'export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId); ' +
         'export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey); ' +
         'export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .Token); }',
-      'npx cdk-cicd deploy --from-image --yes',
+      'npx cdk-cicd deploy --from-image --target "$TARGET_STAGE" --yes',
     ];
     const project = new codebuild.PipelineProject(this, 'Deploy', {
       environment: {
@@ -137,11 +149,64 @@ export class DeploymentPipeline extends Construct {
     if (versionParams.size > 0) {
       project.addToRolePolicy(new iam.PolicyStatement({ actions: ['ssm:GetParameter'], resources: [...versionParams] }));
     }
+    // CodeArtifact read for the build's `npm ci` (pre-release CLI install).
+    if (ca) {
+      const caAccount = ca.account ?? stack.account;
+      const caRegion = ca.region ?? stack.region;
+      project.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['codeartifact:GetAuthorizationToken'],
+          resources: [`arn:${stack.partition}:codeartifact:${caRegion}:${caAccount}:domain/${ca.domain}`],
+        }),
+      );
+      project.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['codeartifact:GetRepositoryEndpoint', 'codeartifact:ReadFromRepository'],
+          resources: [`arn:${stack.partition}:codeartifact:${caRegion}:${caAccount}:repository/${ca.domain}/${ca.repository}`],
+        }),
+      );
+      project.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['sts:GetServiceBearerToken'],
+          resources: ['*'],
+          conditions: { StringEquals: { 'sts:AWSServiceName': 'codeartifact.amazonaws.com' } },
+        }),
+      );
+    }
 
-    pipeline.addStage({
-      stageName: 'Deploy',
-      actions: [new actions.CodeBuildAction({ actionName: 'DeployFromImage', project, input: sourceOutput })],
-    });
+    // Each target deploys from its OWN image version (read from deploy.config at run time via `--target`).
+    // Duplicate target stages would collide on action names -- reject them early with a clear message.
+    const names = config.targets.map((t) => t.stage);
+    const dup = names.find((s, i) => names.indexOf(s) !== i);
+    if (dup !== undefined) {
+      throw new Error(`cdk-cicd: duplicate deploy.config target stage '${dup}' -- each target needs a unique stage`);
+    }
+    const deployAction = (target: (typeof config.targets)[number], runOrder?: number) =>
+      new actions.CodeBuildAction({
+        actionName: `Deploy-${target.stage}`,
+        project,
+        input: sourceOutput,
+        runOrder,
+        environmentVariables: { TARGET_STAGE: { value: target.stage } },
+      });
+
+    // Two stages, so a pending gated approval never blocks the ungated targets:
+    //  - "Deploy": every ungated target, in parallel (bump one, e.g. dev, and only it redeploys).
+    //  - "DeployGated": every gated target, each behind its own manual approval; the deploys then run in
+    //    parallel after approval (int + prod promote together).
+    const ungated = config.targets.filter((t) => !t.manualApproval);
+    const gated = config.targets.filter((t) => t.manualApproval);
+    if (ungated.length > 0) {
+      pipeline.addStage({ stageName: 'Deploy', actions: ungated.map((t) => deployAction(t)) });
+    }
+    if (gated.length > 0) {
+      const gatedActions: codepipeline.IAction[] = [];
+      for (const target of gated) {
+        gatedActions.push(new actions.ManualApprovalAction({ actionName: `Approve-${target.stage}`, runOrder: 1 }));
+        gatedActions.push(deployAction(target, 2));
+      }
+      pipeline.addStage({ stageName: 'DeployGated', actions: gatedActions });
+    }
 
     // cdk-nag suppressions, mirroring the CI engine so a real `deploy-ci` synth (which runs
     // AwsSolutionsChecks via DeploymentPipelineApp) does not abort on expected pipeline findings.

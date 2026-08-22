@@ -131,6 +131,42 @@ describe('m6-container: runFromImage', () => {
     expect(calls.map((c) => c[c.indexOf('--stage') + 1])).toEqual(['dev', 'prod', 'prod']);
   });
 
+  test('--target deploys just that one target (its own image version)', () => {
+    const calls: string[][] = [];
+    const spawn = (args: string[]) => {
+      calls.push(args);
+      return ok();
+    };
+    const cfg = {
+      image: IMAGE,
+      targets: [
+        { stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false, image: 'acct.dkr.ecr.us-west-2.amazonaws.com/app:dev-42' },
+        { stage: 'prod', env: { regions: ['eu-west-1'], regionOrder: 'sequential' }, manualApproval: true },
+      ],
+    } as unknown as ResolvedDeploymentConfig;
+    const code = runFromImage(cfg, { yes: true, target: 'dev', spawn });
+    expect(code).toBe(0);
+    // only dev ran, and it used the target's OWN image (not the config default)
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain('acct.dkr.ecr.us-west-2.amazonaws.com/app:dev-42');
+    expect(calls[0][calls[0].indexOf('--stage') + 1]).toBe('dev');
+  });
+
+  test('--target with an unknown stage errors', () => {
+    const code = runFromImage(config([{ stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false }]), {
+      yes: true,
+      target: 'nope',
+      spawn: () => ok(),
+    });
+    expect(code).toBe(1);
+  });
+
+  test('a target with no image (and no config default) errors', () => {
+    const cfg = { targets: [{ stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false }] } as unknown as ResolvedDeploymentConfig;
+    const code = runFromImage(cfg, { yes: true, spawn: () => ok() });
+    expect(code).toBe(1);
+  });
+
   test('a gated target is refused without --yes, before any docker run', () => {
     const calls: string[][] = [];
     const spawn = (args: string[]) => {

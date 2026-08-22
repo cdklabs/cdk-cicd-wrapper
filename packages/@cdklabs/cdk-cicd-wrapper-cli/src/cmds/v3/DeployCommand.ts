@@ -159,6 +159,10 @@ class Command implements yargs.CommandModule {
         type: 'string',
         describe: 'Docker network for the deployer container (e.g. host) -- for constrained/air-gapped runners',
       })
+      .option('target', {
+        type: 'string',
+        describe: 'With --from-image: deploy only this one deploy.config target (its own image version)',
+      })
       .option('from-assembly', {
         type: 'boolean',
         default: false,
@@ -188,6 +192,7 @@ class Command implements yargs.CommandModule {
       const code = runFromImage(deployment, {
         yes: args.yes as boolean,
         network: args.dockerNetwork as string | undefined,
+        target: args.target as string | undefined,
       });
       process.exit(code);
     }

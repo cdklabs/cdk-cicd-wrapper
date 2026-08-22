@@ -162,12 +162,14 @@ export interface DeploymentTargetInput {
   readonly env?: StageEnvInput;
   readonly manualApproval?: boolean;
   readonly deployment?: DeploymentConfig;
+  /** This target's deployer image (tag/digest), overriding the top-level `image` -- the per-stage version. */
+  readonly image?: string;
 }
 
 /** What a user passes to `defineDeployment` (Repo 2). Deliberately permissive; normalized to resolved structs. */
 export interface DeploymentProps {
-  /** The pinned deployer image to run each target against (an ECR/OCI reference, tag or digest). */
-  readonly image: string;
+  /** Default deployer image (an ECR/OCI reference, tag or digest); optional if every target pins its own `image`. */
+  readonly image?: string;
   /** The targets to run the image against, in order. */
   readonly targets: DeploymentTargetInput[];
   /**
@@ -176,6 +178,8 @@ export interface DeploymentProps {
    * with `cdk-cicd deploy-ci` (source -> CodeBuild that runs the image against each target).
    */
   readonly repository?: Repository;
+  /** Private CodeArtifact repo the CD build logs into before `npm ci` (for a pre-release wrapper CLI). */
+  readonly codeArtifact?: CodeArtifactConfig;
 }
 
 function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarget {
@@ -191,6 +195,7 @@ function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarge
     // Same gate default as stages: inner-loop targets deploy without approval, the rest require it.
     manualApproval: target.manualApproval ?? !AUTO_APPROVE_STAGES.has(target.stage),
     deployment: target.deployment,
+    image: target.image,
   };
 }
 
@@ -212,5 +217,10 @@ function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarge
  * `ResolvedDeploymentConfig` is jsii-modeled.
  */
 export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConfig {
-  return { image: props.image, targets: props.targets.map(normalizeTarget), repository: props.repository };
+  return {
+    image: props.image,
+    targets: props.targets.map(normalizeTarget),
+    repository: props.repository,
+    codeArtifact: props.codeArtifact,
+  };
 }

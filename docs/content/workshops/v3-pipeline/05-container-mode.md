@@ -64,18 +64,21 @@ Repo 2 is a small, app-agnostic **config repo** (no CDK code) that says **which 
 import { defineDeployment, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineDeployment({
-  // WHAT to deploy: the pinned image is authoritative — the app and its stages are baked in.
+  // A default image, used by any target that doesn't pin its own version.
   image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2',
 
   // The config-only source repo this CD pipeline watches (only deploy.config.ts + package.json live here).
   repository: Repository.codecommit('my-app-deploy-config'),
 
-  // WHERE to deploy: each target supplies the account/region/role for a stage.
+  // Each target supplies WHERE to deploy AND which image VERSION to run there. Bumping one stage's `image`
+  // tag and committing deploys only that stage — dev can run a newer version than prod.
   targets: [
-    { stage: 'dev',  env: { account: '111111111111', region: 'eu-west-1' } },
+    { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' },
+      image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.5.0' },   // dev on a newer version
     {
       stage: 'prod',
       env: { account: '222222222222', regions: ['eu-west-1', 'us-east-1'] },
+      image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2',     // prod pinned to a stable one
       manualApproval: true,
       deployment: { deployRole: 'arn:aws:iam::222222222222:role/automation-deployer' },
     },
@@ -89,12 +92,16 @@ Provision the CD pipeline — the deploy-side twin of `deploy-ci` for a CI pipel
 npx cdk-cicd deploy-ci     # sees deploy.config.ts (not cicd.config.ts) → provisions the CD pipeline
 ```
 
-This renders a second CodePipeline: **Source** (your config repo) **→ Deploy** (a privileged CodeBuild
-that logs in to ECR, pulls the pinned image, and runs it once per target to synth-and-deploy that stage).
-So the two repos give you two pipelines:
+This renders a second CodePipeline with **one Deploy action per target**. Each action runs
+`cdk-cicd deploy --from-image --target <stage>`, which reads that stage's image **version from
+`deploy.config.ts` at run time**, pulls it, and synth-and-deploys the stage. So:
 
-- **CI pipeline (Repo 1):** source → CI → build & **push** the deployer image to ECR.
-- **CD pipeline (Repo 2):** config change → **pull** that image → synth & deploy each target.
+- **Per-stage versions:** bump `dev`'s `image` tag, commit → only `dev` redeploys, on its new version.
+- **Parallel deploys:** ungated targets deploy in parallel; a gated target (e.g. `prod`) waits on its
+  **manual-approval** action, then runs — so `int` and `prod` can promote in parallel once approved.
+- **Two pipelines total:** the CI pipeline (Repo 1) *pushes* the image; the CD pipeline (Repo 2) *pulls* it.
+
+<!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (per-target actions) -->
 
 <!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (CodeBuild) -->
 
