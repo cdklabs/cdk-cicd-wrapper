@@ -18,7 +18,7 @@ import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as pipelines from 'aws-cdk-lib/pipelines';
-import { AwsSolutionsChecks } from 'cdk-nag';
+import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { CodeArtifactConfig, ResolvedCicdConfig } from '../../config/types';
 import { Repository, RepositorySourceType } from '../../config/repository';
@@ -142,6 +142,54 @@ export class CdkPipelinesEngine extends Construct {
           pre: stage.manualApproval && i === 0 ? [new pipelines.ManualApprovalStep(`Approve-${stage.name}`)] : undefined,
         });
       });
+    }
+
+    // Force the pipeline's construction now (CDK Pipelines builds it lazily at synth) so its generated
+    // roles/buckets exist to annotate below, before the AwsSolutionsChecks aspect visits at synth time.
+    this.pipeline.buildPipeline();
+    this.suppressGeneratedPipelineNag();
+  }
+
+  /**
+   * Suppress the cdk-nag findings on the infrastructure **CDK Pipelines generates for itself** -- the
+   * pipeline/synth/self-mutation/assets roles' unavoidable wildcards and the internal artifact and
+   * cross-region replication buckets. This engine runs `AwsSolutionsChecks` (as v2's blueprint did) so the
+   * user's app stacks are still judged on their own merits; only the wrapper-owned pipeline plumbing is
+   * exempted here, with evidence, mirroring v2's `CDKPipeline` suppressions.
+   */
+  private suppressGeneratedPipelineNag(): void {
+    // The pipeline construct is entirely wrapper-generated plumbing; its roles read/write the pipeline's
+    // own KMS-encrypted artifact bucket and source object, actions CDK issues with wildcards it cannot
+    // resource-scope. The app stages are siblings under this engine (not under `pipeline`), so this stays
+    // off them.
+    NagSuppressions.addResourceSuppressions(
+      this.pipeline,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            "CDK Pipelines' own pipeline/synth/self-mutation/assets roles: S3 multipart + KMS envelope grants on the pipeline's own artifact store and the CDK bootstrap-role assumes it needs to deploy -- wildcards CDK generates for its plumbing, scoped to the pipeline's own resources. Includes the wrapper's own condition-scoped sts:GetServiceBearerToken on the synth role (the CodeArtifact token endpoint is not resource-scopable).",
+        },
+      ],
+      true,
+    );
+
+    const pipeline = this.pipeline.pipeline;
+    // The internal artifact store: transient build outputs, already KMS-encrypted/SSL-enforced/public-access
+    // blocked. Access logging would provision a second bucket just to record the pipeline's own reads.
+    NagSuppressions.addResourceSuppressions(pipeline.artifactBucket, [
+      { id: 'AwsSolutions-S1', reason: "The pipeline's internal artifact store, not a data bucket; already KMS-encrypted and non-public." },
+    ]);
+
+    // A stage in a region other than the pipeline's gets a CDK-generated cross-region *support stack* (a
+    // separate stack) holding a replication bucket + its KMS key. Suppress the same S1/IAM5 there.
+    for (const support of Object.values(pipeline.crossRegionSupport)) {
+      NagSuppressions.addResourceSuppressions(support.replicationBucket, [
+        { id: 'AwsSolutions-S1', reason: "CDK Pipelines' cross-region artifact replication bucket; internal store, KMS-encrypted and non-public." },
+      ]);
+      NagSuppressions.addStackSuppressions(support.stack, [
+        { id: 'AwsSolutions-IAM5', reason: "CDK-generated KMS key policy for the cross-region replication bucket; wildcards are on the pipeline's own key." },
+      ]);
     }
   }
 }

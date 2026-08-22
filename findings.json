@@ -858,6 +858,17 @@
       "title": "Stage env.regionOrder (SEQUENTIAL/PARALLEL) is declared and normalized but never consumed -- PARALLEL is a no-op",
       "detail": "RegionOrder is a public enum, is a field on StageEnvInput/StageEnvironment, and defineCICD/defineDeployment normalize it (define.ts:107,183 default SEQUENTIAL). But NO engine or CLI code ever reads regionOrder: the CodePipeline engine renders one deploy action per stage, and cdk-cicd deploy iterates a stage's regions with a plain sequential `for (const target of targets)` loop (DeployCommand). So regions always roll out sequentially and setting RegionOrder.PARALLEL has zero effect -- a config knob that silently does nothing. This surfaced while uplifting the v3 workshop: the docs must not teach a no-op, so the region-order content was removed from chapters 2 and 3. Fix direction: either implement parallel region rollout (deploy a stage's regions concurrently when PARALLEL) or remove the field until it is honored. Multi-region deploy itself works (sequential); only the order/parallelism switch is inert.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/config/define.ts", "line": 107 }
+    },
+    {
+      "id": "code-review-cdkpipelines-blanket-iam5-suppression",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CdkPipelinesEngine suppresses AwsSolutions-IAM5 blanket-wide on the pipeline construct rather than with v2's explicit action-wildcard allowlist",
+      "detail": "suppressGeneratedPipelineNag adds a recursive AwsSolutions-IAM5 suppression on this.pipeline with no appliesTo, so EVERY IAM5 anywhere under the CDK Pipelines construct subtree is silenced. This is scope-confined to wrapper-owned plumbing (the app stages are `new Stage(this, ...)` siblings of this.pipeline, not descendants, so it cannot leak onto user stacks -- confirmed in review), and it is intentionally simpler than the v2 CDKPipeline reference (CDKPipeline.ts:323-338), which scoped IAM5 to an explicit action-wildcard regex allowlist (s3:Abort/GetObject/DeleteObject/List/GetBucket, kms:GenerateDataKey/ReEncrypt, ec2messages/ssmmessages). The tradeoff: if a future change adds a genuinely over-broad IAM5 to one of the pipeline's own roles (e.g. a new rolePolicyStatement on the synth step), the blanket suppression would mask it instead of surfacing it. Left as-is per 'simplicity first' and because the pipeline construct is 100% generated plumbing. Fix direction if it ever matters: narrow to an appliesTo action-wildcard regex mirroring v2, plus a path-scoped Resource:: suppression for the pipeline/self-mutation/assets roles.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/cdkpipelines/CdkPipelinesEngine.ts", "line": 165 }
     }
   ]
 }

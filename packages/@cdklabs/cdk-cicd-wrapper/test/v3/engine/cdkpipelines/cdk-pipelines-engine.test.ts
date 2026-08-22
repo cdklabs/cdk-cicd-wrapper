@@ -4,9 +4,10 @@
 // The v2-compatible CDK Pipelines engine: reproduces the v2 pipeline shape (Source -> Build/Synth ->
 // UpdatePipeline self-mutation -> Assets -> one wave per stage, with a manual-approval gate on gated stages).
 
-import { App, Stack, Stage } from 'aws-cdk-lib';
+import { App, Aspects, Stack, Stage } from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
+import { AwsSolutionsChecks } from 'cdk-nag';
 import { defineCICD } from '../../../../src/v3/config/define';
 import { Repository } from '../../../../src/v3/config/repository';
 import { CdkPipelinesEngine, CdkPipelinesStageContext, IStageProvider, cdkPipelinesApp } from '../../../../src/v3/engine/cdkpipelines/CdkPipelinesEngine';
@@ -30,7 +31,8 @@ function render(): Template {
     }),
     stages: new StubStages(),
   });
-  engine.pipeline.buildPipeline();
+  // The engine builds the pipeline in its constructor; use it to keep the return type explicit.
+  void engine;
   return Template.fromStack(stack);
 }
 
@@ -76,7 +78,7 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
       }),
       stages: new StubStages(),
     });
-    engine.pipeline.buildPipeline();
+    void engine;
     const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
     expect(policies).toContain('codeartifact:GetAuthorizationToken');
     expect(policies).toContain('codeartifact:ReadFromRepository');
@@ -120,9 +122,33 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
       }),
       stages: new StubStages(),
     });
-    engine.pipeline.buildPipeline();
+    void engine;
     const pipeline = Object.values(Template.fromStack(stack).findResources('AWS::CodePipeline::Pipeline'))[0] as any;
     const names = (pipeline.Properties.Stages as any[]).map((s) => s.Name);
     expect(names).toEqual(expect.arrayContaining(['prod-eu-west-1', 'prod-us-east-1']));
+  });
+
+  test('emits no cdk-nag errors on its OWN generated infra (pipeline stack + cross-region support stack)', () => {
+    // AwsSolutionsChecks (as v2's blueprint ran it) flags CDK Pipelines' generated roles/buckets. The engine
+    // must suppress those on the wrapper-owned plumbing only. A cross-region stage (us-east-1 != the pipeline's
+    // us-west-2) also forces a cross-region *support* stack, so this covers the replication bucket + its key.
+    const app = new App();
+    const stack = new Stack(app, 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    const engine = new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev', { name: 'prod', env: { account: '222222222222', region: 'us-east-1' }, manualApproval: true }],
+      }),
+      stages: new StubStages(),
+    });
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
+
+    // Assert on the WRAPPER-owned stacks only (pipeline stack + cross-region support stacks); the app-stage
+    // stacks the provider builds are judged on their own merits, not suppressed by the engine.
+    const wrapperStacks = [stack, ...Object.values(engine.pipeline.pipeline.crossRegionSupport).map((s) => s.stack)];
+    for (const s of wrapperStacks) {
+      expect(Annotations.fromStack(s).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'))).toHaveLength(0);
+    }
   });
 });
