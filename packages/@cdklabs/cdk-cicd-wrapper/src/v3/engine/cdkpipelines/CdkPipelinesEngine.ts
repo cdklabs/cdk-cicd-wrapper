@@ -13,15 +13,15 @@
 // builds the app's stacks for a given stage, exactly as v2's `.addStack(...)` did. So it is used from an
 // explicit `bin/` (the documented opt-in path), not the `deploy-ci` zero-touch flow.
 
-import { App, Aspects, Environment, Stack, Stage } from 'aws-cdk-lib';
+import { Environment, Stack, Stage } from 'aws-cdk-lib';
 import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as pipelines from 'aws-cdk-lib/pipelines';
-import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
+import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
-import { CodeArtifactConfig, ResolvedCicdConfig } from '../../config/types';
 import { Repository, RepositorySourceType } from '../../config/repository';
+import { CodeArtifactConfig, ResolvedCicdConfig } from '../../config/types';
 
 /** Context passed to the stage factory for one deployment stage. */
 export interface CdkPipelinesStageContext {
@@ -79,7 +79,9 @@ function sourceFor(scope: Construct, repository: Repository): pipelines.CodePipe
       return pipelines.CodePipelineSource.s3(s3.Bucket.fromBucketName(scope, 'SourceBucket', bucketName), objectKey);
     }
     default:
-      throw new Error(`cdk-cicd: unsupported repository type for the CDK Pipelines engine: ${repository.repositoryType}`);
+      throw new Error(
+        `cdk-cicd: unsupported repository type for the CDK Pipelines engine: ${repository.repositoryType}`,
+      );
   }
 }
 
@@ -124,7 +126,9 @@ export class CdkPipelinesEngine extends Construct {
         },
         // Grant the synth build the CodeArtifact read permissions its `codeartifact login` needs (the
         // CodeBuildStep role has only logs/artifacts by default) -- else the login fails AccessDenied.
-        rolePolicyStatements: config.codeArtifact ? codeArtifactReadStatements(Stack.of(this), config.codeArtifact) : undefined,
+        rolePolicyStatements: config.codeArtifact
+          ? codeArtifactReadStatements(Stack.of(this), config.codeArtifact)
+          : undefined,
       }),
     });
 
@@ -139,7 +143,8 @@ export class CdkPipelinesEngine extends Construct {
         const appStage = new Stage(this, stageId, { env });
         props.stages.stacks(appStage, { stageName: stage.name, env });
         this.pipeline.addStage(appStage, {
-          pre: stage.manualApproval && i === 0 ? [new pipelines.ManualApprovalStep(`Approve-${stage.name}`)] : undefined,
+          pre:
+            stage.manualApproval && i === 0 ? [new pipelines.ManualApprovalStep(`Approve-${stage.name}`)] : undefined,
         });
       });
     }
@@ -178,17 +183,28 @@ export class CdkPipelinesEngine extends Construct {
     // The internal artifact store: transient build outputs, already KMS-encrypted/SSL-enforced/public-access
     // blocked. Access logging would provision a second bucket just to record the pipeline's own reads.
     NagSuppressions.addResourceSuppressions(pipeline.artifactBucket, [
-      { id: 'AwsSolutions-S1', reason: "The pipeline's internal artifact store, not a data bucket; already KMS-encrypted and non-public." },
+      {
+        id: 'AwsSolutions-S1',
+        reason: "The pipeline's internal artifact store, not a data bucket; already KMS-encrypted and non-public.",
+      },
     ]);
 
     // A stage in a region other than the pipeline's gets a CDK-generated cross-region *support stack* (a
     // separate stack) holding a replication bucket + its KMS key. Suppress the same S1/IAM5 there.
     for (const support of Object.values(pipeline.crossRegionSupport)) {
       NagSuppressions.addResourceSuppressions(support.replicationBucket, [
-        { id: 'AwsSolutions-S1', reason: "CDK Pipelines' cross-region artifact replication bucket; internal store, KMS-encrypted and non-public." },
+        {
+          id: 'AwsSolutions-S1',
+          reason:
+            "CDK Pipelines' cross-region artifact replication bucket; internal store, KMS-encrypted and non-public.",
+        },
       ]);
       NagSuppressions.addStackSuppressions(support.stack, [
-        { id: 'AwsSolutions-IAM5', reason: "CDK-generated KMS key policy for the cross-region replication bucket; wildcards are on the pipeline's own key." },
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            "CDK-generated KMS key policy for the cross-region replication bucket; wildcards are on the pipeline's own key.",
+        },
       ]);
     }
   }
@@ -216,37 +232,8 @@ function codeArtifactReadStatements(stack: Stack, ca: CodeArtifactConfig): iam.P
   ];
 }
 
-/**
- * Build the app's stacks for one stage into `scope`. This is what a `bin/` provides -- ordinary CDK stack
- * construction, per stage -- so the bin stays close to a plain app. `context` carries the stage name and
- * its target environment (account + primary region).
- */
-export type CdkPipelinesStages = (scope: Construct, context: CdkPipelinesStageContext) => void;
-
-/**
- * The whole CDK Pipelines (v2-compatible) pipeline app in one call -- the v3 zero-touch face for this
- * engine. `bin/` becomes a simple CDK app: read `cicd.config.ts`, hand this a factory that builds your
- * stacks, done. Everything else -- the pipeline shape, stages, approvals, source -- comes from the config.
- *
- * ```ts
- * // bin/app.ts
- * import config from '../cicd.config';
- * import { cdkPipelinesApp } from '@cdklabs/cdk-cicd-wrapper';
- * cdkPipelinesApp(config, (scope, ctx) => new MyStack(scope, 'my-app', { env: ctx.env }));
- * ```
- *
- * TS-only (a free function, invisible to jsii like `defineCICD`) because it takes a stack factory. Point
- * `cdk.json` at this bin and provision with `cdk-cicd deploy-ci`; the pipeline self-mutates from the config.
- */
-export function cdkPipelinesApp(config: ResolvedCicdConfig, stages: CdkPipelinesStages): App {
-  const app = new App();
-  const name = `${config.application ?? 'cdk-cicd'}-pipeline`;
-  const stack = new Stack(app, name, {
-    stackName: name,
-    env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
-  });
-  // Wrap the plain factory in the IStageProvider the engine consumes.
-  new CdkPipelinesEngine(stack, 'Cd', { config, pipelineName: name, stages: { stacks: stages } });
-  Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
-  return app;
-}
+// NOTE: the old `cdkPipelinesApp(config, factory)` explicit-factory entry has been RETIRED. The single
+// entry is now `cdk-cicd exec bin/app.ts` for both engines (engine chosen in cicd.config): for
+// CDK_PIPELINES it replays the plain bin per stage via runtime/pipeline-assembler, so no factory or
+// pipeline-specific bin is needed. `CdkPipelinesEngine` (above) remains the construct that renders the
+// pipeline; the assembler drives it with a replay-based IStageProvider.

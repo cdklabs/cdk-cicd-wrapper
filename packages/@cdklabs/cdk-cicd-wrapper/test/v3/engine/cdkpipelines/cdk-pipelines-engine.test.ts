@@ -5,12 +5,16 @@
 // UpdatePipeline self-mutation -> Assets -> one wave per stage, with a manual-approval gate on gated stages).
 
 import { App, Aspects, Stack, Stage } from 'aws-cdk-lib';
-import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { defineCICD } from '../../../../src/v3/config/define';
 import { Repository } from '../../../../src/v3/config/repository';
-import { CdkPipelinesEngine, CdkPipelinesStageContext, IStageProvider, cdkPipelinesApp } from '../../../../src/v3/engine/cdkpipelines/CdkPipelinesEngine';
+import {
+  CdkPipelinesEngine,
+  CdkPipelinesStageContext,
+  IStageProvider,
+} from '../../../../src/v3/engine/cdkpipelines/CdkPipelinesEngine';
 
 // A stand-in app-stack provider: puts one trivial stack (a bucket) into each stage so CDK Pipelines has
 // something to deploy -- the v2 IStackProvider role.
@@ -64,7 +68,9 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     // The Synth CodeBuild project's buildspec carries the commands.
     const projects = t.findResources('AWS::CodeBuild::Project');
     const specs = Object.values(projects).map((p: any) => JSON.stringify(p.Properties.Source.BuildSpec));
-    expect(specs.some((s) => s.includes('npm ci') && s.includes('cdk-cicd check') && s.includes('cdk synth'))).toBe(true);
+    expect(specs.some((s) => s.includes('npm ci') && s.includes('cdk-cicd check') && s.includes('cdk synth'))).toBe(
+      true,
+    );
   });
 
   test('a codeArtifact config grants the synth build CodeArtifact read + the STS bearer token', () => {
@@ -85,40 +91,15 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(policies).toContain('sts:GetServiceBearerToken');
   });
 
-  test('cdkPipelinesApp builds the whole pipeline app from a config + a simple stack factory', () => {
-    // The zero-touch face: bin/ just hands a factory that builds its stacks; config holds the rest.
-    // deploy-ci sets CDK_DEFAULT_* (the pipeline's own env); simulate that so the pipeline stack has a region.
-    const prev = { a: process.env.CDK_DEFAULT_ACCOUNT, r: process.env.CDK_DEFAULT_REGION };
-    process.env.CDK_DEFAULT_ACCOUNT = '111111111111';
-    process.env.CDK_DEFAULT_REGION = 'us-east-1';
-    try {
-      const config = defineCICD({
-        application: 'shop',
-        repository: Repository.codecommit('shop'),
-        stages: ['dev', { name: 'prod', env: { account: '111111111111', region: 'us-east-1' }, manualApproval: true }],
-      });
-      const app = cdkPipelinesApp(config, (scope, ctx) => {
-        const s = new Stack(scope, 'App');
-        new s3.Bucket(s, `Bucket-${ctx.stageName}`);
-      });
-      const pipelineStack = app.node.findChild('shop-pipeline') as Stack;
-      const t = Template.fromStack(pipelineStack);
-      t.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
-      const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
-      expect((pipeline.Properties.Stages as any[]).map((s) => s.Name)).toEqual(expect.arrayContaining(['Source', 'Build', 'dev', 'prod']));
-    } finally {
-      process.env.CDK_DEFAULT_ACCOUNT = prev.a;
-      process.env.CDK_DEFAULT_REGION = prev.r;
-    }
-  });
-
   test('a multi-region stage becomes one wave per region (not just the first)', () => {
     const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
     const engine = new CdkPipelinesEngine(stack, 'Cd', {
       config: defineCICD({
         application: 'shop',
         repository: Repository.codecommit('shop'),
-        stages: [{ name: 'prod', env: { account: '111111111111', regions: ['eu-west-1', 'us-east-1'] }, manualApproval: true }],
+        stages: [
+          { name: 'prod', env: { account: '111111111111', regions: ['eu-west-1', 'us-east-1'] }, manualApproval: true },
+        ],
       }),
       stages: new StubStages(),
     });

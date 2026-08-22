@@ -67,17 +67,15 @@ export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeli
 // twin of the CI CodePipeline; `cdk-cicd deploy-ci` provisions it from a `deploy.config.ts` with a `repository`.
 export { DeploymentPipeline, DeploymentPipelineProps } from './engine/codepipeline/DeploymentPipeline';
 // The v2-compatible engine: builds the pipeline with CDK Pipelines (`aws-cdk-lib/pipelines`), like v2 did,
-// for teams that want a pipeline shaped like their old one. Opt-in from an explicit `bin/` (it needs the
-// app's stacks in-synth via an IStageProvider), alongside the flat CodePipelineEngine default.
+// for teams that want a pipeline shaped like their old one. Activated by `cdk-cicd exec` (engine:
+// CDK_PIPELINES in cicd.config), which assembles it by replaying the plain bin per stage -- so bin/ stays
+// a plain app, no factory. The construct + IStageProvider are exported for advanced/explicit use.
 export {
   CdkPipelinesEngine,
   CdkPipelinesEngineProps,
   CdkPipelinesStageContext,
   IStageProvider,
 } from './engine/cdkpipelines/CdkPipelinesEngine';
-// `cdkPipelinesApp` is the zero-touch face: a TS-only free function (invisible to jsii, like defineCICD)
-// that builds the whole v2-compat pipeline app from the config + a stack factory, so bin/ stays simple.
-export { cdkPipelinesApp } from './engine/cdkpipelines/CdkPipelinesEngine';
 
 // The app that holds the pipeline. `cdk-cicd deploy-ci` uses it through `--app` so no user file is
 // needed; it is exported because the same class is the explicit opt-in path for a user who would
