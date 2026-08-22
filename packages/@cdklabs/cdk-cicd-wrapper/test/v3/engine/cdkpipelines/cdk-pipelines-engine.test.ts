@@ -9,7 +9,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Template } from 'aws-cdk-lib/assertions';
 import { defineCICD } from '../../../../src/v3/config/define';
 import { Repository } from '../../../../src/v3/config/repository';
-import { CdkPipelinesEngine, CdkPipelinesStageContext, IStageProvider } from '../../../../src/v3/engine/cdkpipelines/CdkPipelinesEngine';
+import { CdkPipelinesEngine, CdkPipelinesStageContext, IStageProvider, cdkPipelinesApp } from '../../../../src/v3/engine/cdkpipelines/CdkPipelinesEngine';
 
 // A stand-in app-stack provider: puts one trivial stack (a bucket) into each stage so CDK Pipelines has
 // something to deploy -- the v2 IStackProvider role.
@@ -81,6 +81,33 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(policies).toContain('codeartifact:GetAuthorizationToken');
     expect(policies).toContain('codeartifact:ReadFromRepository');
     expect(policies).toContain('sts:GetServiceBearerToken');
+  });
+
+  test('cdkPipelinesApp builds the whole pipeline app from a config + a simple stack factory', () => {
+    // The zero-touch face: bin/ just hands a factory that builds its stacks; config holds the rest.
+    // deploy-ci sets CDK_DEFAULT_* (the pipeline's own env); simulate that so the pipeline stack has a region.
+    const prev = { a: process.env.CDK_DEFAULT_ACCOUNT, r: process.env.CDK_DEFAULT_REGION };
+    process.env.CDK_DEFAULT_ACCOUNT = '111111111111';
+    process.env.CDK_DEFAULT_REGION = 'us-east-1';
+    try {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev', { name: 'prod', env: { account: '111111111111', region: 'us-east-1' }, manualApproval: true }],
+      });
+      const app = cdkPipelinesApp(config, (scope, ctx) => {
+        const s = new Stack(scope, 'App');
+        new s3.Bucket(s, `Bucket-${ctx.stageName}`);
+      });
+      const pipelineStack = app.node.findChild('shop-pipeline') as Stack;
+      const t = Template.fromStack(pipelineStack);
+      t.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
+      const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
+      expect((pipeline.Properties.Stages as any[]).map((s) => s.Name)).toEqual(expect.arrayContaining(['Source', 'Build', 'dev', 'prod']));
+    } finally {
+      process.env.CDK_DEFAULT_ACCOUNT = prev.a;
+      process.env.CDK_DEFAULT_REGION = prev.r;
+    }
   });
 
   test('a multi-region stage becomes one wave per region (not just the first)', () => {

@@ -75,6 +75,9 @@ export {
   CdkPipelinesStageContext,
   IStageProvider,
 } from './engine/cdkpipelines/CdkPipelinesEngine';
+// `cdkPipelinesApp` is the zero-touch face: a TS-only free function (invisible to jsii, like defineCICD)
+// that builds the whole v2-compat pipeline app from the config + a stack factory, so bin/ stays simple.
+export { cdkPipelinesApp } from './engine/cdkpipelines/CdkPipelinesEngine';
 
 // The app that holds the pipeline. `cdk-cicd deploy-ci` uses it through `--app` so no user file is
 // needed; it is exported because the same class is the explicit opt-in path for a user who would
