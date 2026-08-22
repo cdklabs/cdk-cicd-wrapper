@@ -4,6 +4,7 @@
 // Unit tests for deploy-ci's pure argv builder. Actually provisioning a pipeline (which spawns cdk,
 // which spawns `cdk-cicd pipeline-app`) is proven end to end by the m4-verify real-AWS gate.
 
+import { EngineType } from '@cdklabs/cdk-cicd-wrapper';
 import { deployCiArgs, pipelineAppCommand } from '../../src/cmds/v3/DeployCiCommand';
 
 describe('m4-approval-selfupdate: deployCiArgs', () => {
@@ -33,5 +34,17 @@ describe('m4-approval-selfupdate: deployCiArgs', () => {
     const args = deployCiArgs(true);
     expect(args[args.indexOf('--app') + 1]).toEqual(pipelineAppCommand(true));
     expect(args.filter((a) => a.includes('pipeline-app'))).toHaveLength(1);
+  });
+
+  test('the flat engine (default/unset) overrides --app to the pipeline-app renderer', () => {
+    expect(deployCiArgs(false, 'ci', EngineType.CODEPIPELINE)).toContain('--app');
+    expect(deployCiArgs(false, 'ci', undefined)).toContain('npx cdk-cicd pipeline-app');
+  });
+
+  test('the CDK Pipelines engine deploys the default cdk.json app (exec -> assembler), no --app override', () => {
+    // The app IS the pipeline; overriding --app to pipeline-app would render the wrong (flat) pipeline.
+    const args = deployCiArgs(false, 'ci', EngineType.CDK_PIPELINES);
+    expect(args).toEqual(['cdk', 'deploy', '--all', '--require-approval', 'never']);
+    expect(args).not.toContain('--app');
   });
 });

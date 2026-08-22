@@ -11,13 +11,14 @@
 // nothing to drift against.
 
 import { spawnSync } from 'child_process';
+import { EngineType } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, loadDeployment } from './CicdConfig';
 import { logger } from '../../utils/Logging';
 
 /**
  * The `--app` value: the CDK CLI shells this out and reads the assembly it writes. `pipeline-app` renders
- * the CI pipeline from `cicd.config.ts`; `deployment-app` renders the CD pipeline from `deploy.config.ts`.
+ * the flat CI pipeline from `cicd.config.ts`; `deployment-app` renders the CD pipeline from `deploy.config.ts`.
  */
 export function pipelineAppCommand(disposable: boolean, kind: 'ci' | 'cd' = 'ci'): string {
   const cmd = kind === 'cd' ? 'deployment-app' : 'pipeline-app';
@@ -25,9 +26,14 @@ export function pipelineAppCommand(disposable: boolean, kind: 'ci' | 'cd' = 'ci'
 }
 
 /** The `cdk` argv that deploys the pipeline stack (CI from cicd.config, or CD from deploy.config). */
-export function deployCiArgs(disposable: boolean, kind: 'ci' | 'cd' = 'ci'): string[] {
+export function deployCiArgs(disposable: boolean, kind: 'ci' | 'cd' = 'ci', engine?: EngineType): string[] {
   // `--require-approval never` because the only stack here is the pipeline and its own support
   // resources; the approval that matters to a user is the one inside the pipeline, not this one.
+  // CDK Pipelines self-mutates: the app IS the pipeline, rendered by cdk.json's `cdk-cicd exec` (the
+  // assembler). So deploy the DEFAULT app rather than overriding --app to the flat pipeline-app renderer.
+  if (kind === 'ci' && engine === EngineType.CDK_PIPELINES) {
+    return ['cdk', 'deploy', '--all', '--require-approval', 'never'];
+  }
   return ['cdk', 'deploy', '--app', pipelineAppCommand(disposable, kind), '--all', '--require-approval', 'never'];
 }
 
@@ -49,8 +55,11 @@ class Command implements yargs.CommandModule {
     // `deploy.config.ts` (Repo 2, config-only) provisions the CD pipeline. cicd.config wins if both exist.
     // Loaded here to fail fast with our own message rather than a wrapped child-process error.
     let kind: 'ci' | 'cd';
-    if (loadCicdConfig(cwd) !== undefined) {
+    let engine: EngineType | undefined;
+    const cicd = loadCicdConfig(cwd);
+    if (cicd !== undefined) {
       kind = 'ci';
+      engine = cicd.engine;
     } else if (loadDeployment(cwd) !== undefined) {
       kind = 'cd';
     } else {
@@ -59,8 +68,10 @@ class Command implements yargs.CommandModule {
     }
 
     const disposable = args.disposable as boolean;
-    logger.info(`cdk-cicd deploy-ci: provisioning the ${kind === 'cd' ? 'CD (deploy.config)' : 'CI (cicd.config)'} pipeline`);
-    const deploy = spawnSync('npx', deployCiArgs(disposable, kind), { stdio: 'inherit', cwd });
+    logger.info(
+      `cdk-cicd deploy-ci: provisioning the ${kind === 'cd' ? 'CD (deploy.config)' : `CI (cicd.config, engine=${engine})`} pipeline`,
+    );
+    const deploy = spawnSync('npx', deployCiArgs(disposable, kind, engine), { stdio: 'inherit', cwd });
     if (deploy.error) {
       logger.error(`cdk-cicd deploy-ci: could not run cdk deploy: ${deploy.error.message}`);
       process.exit(1);
