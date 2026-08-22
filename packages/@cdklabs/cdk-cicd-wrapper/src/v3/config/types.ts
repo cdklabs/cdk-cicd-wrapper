@@ -27,8 +27,17 @@ export enum SynthesizerType {
 
 /** Which CI/CD engine renders the pipeline. */
 export enum EngineType {
-  /** AWS CodePipeline -- the v3 default (and, in M4, the only one). */
+  /**
+   * The lightweight flat engine on raw `aws-cdk-lib/aws-codepipeline` -- the v3 default. Its deploy
+   * stages re-invoke the app per stage, so the user's `bin` stays a plain single-stage app.
+   */
   CODEPIPELINE = 'codepipeline',
+  /**
+   * The v2-compatible self-mutating pipeline on `aws-cdk-lib/pipelines` (Source -> Synth -> Assets ->
+   * one wave per stage). `cdk-cicd exec` assembles it by replaying the plain `bin` once per configured
+   * stage (see runtime/pipeline-assembler), so the user's `bin` still needs no wrapper code.
+   */
+  CDK_PIPELINES = 'cdk-pipelines',
 }
 
 /**

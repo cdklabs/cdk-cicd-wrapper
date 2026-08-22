@@ -4,7 +4,7 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
-import { AppConfig, ConfigErrorKind } from '@cdklabs/cdk-cicd-wrapper';
+import { AppConfig, ConfigErrorKind, EngineType } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, stageByName } from './CicdConfig';
 import { logger } from '../../utils/Logging';
@@ -180,6 +180,25 @@ export function preloadArgs(entry: string, registerPath: string): string[] {
   return args;
 }
 
+/**
+ * The node argv + optional `CDK_CICD_ENTRY` for the child, chosen by engine. The flat engine runs the
+ * entry directly under the register preload (its pipeline re-invokes the entry per stage, so a plain
+ * single-stage bin is enough). The CDK Pipelines engine self-mutates -- the app IS the pipeline -- so it
+ * runs the wrapper's assembler, which loads cicd.config and replays the entry (passed via CDK_CICD_ENTRY)
+ * once per stage; it self-manages App construction so it runs WITHOUT register, with ts-node to require a
+ * `.ts` entry / cicd.config.ts.
+ */
+export function execInvocation(
+  entry: string,
+  engine: EngineType | undefined,
+  paths: { registerPath: string; assemblerPath: string },
+): { nodeArgs: string[]; entryEnv?: string } {
+  if (engine === EngineType.CDK_PIPELINES) {
+    return { nodeArgs: ['-r', 'ts-node/register', paths.assemblerPath], entryEnv: entry };
+  }
+  return { nodeArgs: [...preloadArgs(entry, paths.registerPath), entry] };
+}
+
 class Command implements yargs.CommandModule {
   public command = 'exec <app>';
   public describe = 'Run a CDK app under the cdk-cicd-wrapper injection hook (the cdk.json `app` command)';
@@ -215,9 +234,6 @@ class Command implements yargs.CommandModule {
     const cicdStage = cicd ? stageByName(cicd, stage) : undefined;
     const target = resolveEnvTarget(process.env, config, cicdStage);
 
-    const registerPath = require.resolve('@cdklabs/cdk-cicd-wrapper/lib/v3/runtime/register.js');
-    const nodeArgs = [...preloadArgs(entry, registerPath), entry];
-
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
       ...stageEnv(stage, target),
@@ -230,7 +246,18 @@ class Command implements yargs.CommandModule {
       [EXEC_FLAG]: '1',
     };
 
-    logger.info(`cdk-cicd exec: stage='${stage}', running ${entry} under the injection hook`);
+    const invocation = execInvocation(entry, cicd?.engine, {
+      registerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/v3/runtime/register.js'),
+      assemblerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/v3/runtime/pipeline-assembler.js'),
+    });
+    const nodeArgs = invocation.nodeArgs;
+    if (invocation.entryEnv !== undefined) {
+      childEnv.CDK_CICD_ENTRY = invocation.entryEnv;
+    }
+
+    logger.info(
+      `cdk-cicd exec: stage='${stage}', engine='${cicd?.engine ?? EngineType.CODEPIPELINE}', running ${entry}`,
+    );
     const result = spawnSync(process.execPath, nodeArgs, { stdio: 'inherit', env: childEnv, cwd });
 
     if (result.error) {

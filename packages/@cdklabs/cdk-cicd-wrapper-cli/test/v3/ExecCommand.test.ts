@@ -8,7 +8,8 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { buildContextJson, forcedRoleEnv, preloadArgs, resolveEnvTarget, resolveStage, stageEnv } from '../../src/cmds/v3/ExecCommand';
+import { EngineType } from '@cdklabs/cdk-cicd-wrapper';
+import { buildContextJson, execInvocation, forcedRoleEnv, preloadArgs, resolveEnvTarget, resolveStage, stageEnv } from '../../src/cmds/v3/ExecCommand';
 
 describe('exec: resolveStage', () => {
   test('uses CDK_STAGE when set', () => {
@@ -114,6 +115,26 @@ describe('exec: preloadArgs', () => {
   });
   test('a .js entry gets only the register hook', () => {
     expect(preloadArgs('dist/app.js', '/reg.js')).toEqual(['-r', '/reg.js']);
+  });
+});
+
+describe('exec: execInvocation (engine routing)', () => {
+  const paths = { registerPath: '/reg.js', assemblerPath: '/asm.js' };
+
+  test('the flat engine (default) runs the entry directly under the register preload', () => {
+    expect(execInvocation('bin/app.ts', EngineType.CODEPIPELINE, paths)).toEqual({
+      nodeArgs: ['-r', 'ts-node/register', '-r', '/reg.js', 'bin/app.ts'],
+    });
+    // undefined engine falls back to the flat behaviour (no assembler).
+    expect(execInvocation('bin/app.ts', undefined, paths).nodeArgs).toContain('/reg.js');
+    expect(execInvocation('bin/app.ts', undefined, paths).entryEnv).toBeUndefined();
+  });
+
+  test('the CDK Pipelines engine runs the assembler (no register) and passes the entry via CDK_CICD_ENTRY', () => {
+    const inv = execInvocation('bin/app.ts', EngineType.CDK_PIPELINES, paths);
+    expect(inv.nodeArgs).toEqual(['-r', 'ts-node/register', '/asm.js']);
+    expect(inv.nodeArgs).not.toContain('/reg.js'); // the assembler self-manages App construction
+    expect(inv.entryEnv).toBe('bin/app.ts'); // assembler reads CDK_CICD_ENTRY to replay per stage
   });
 });
 
