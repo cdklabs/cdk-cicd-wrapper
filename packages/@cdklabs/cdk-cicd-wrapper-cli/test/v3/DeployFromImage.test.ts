@@ -3,7 +3,7 @@
 
 import { SpawnSyncReturns } from 'child_process';
 import { ResolvedDeploymentConfig } from '@cdklabs/cdk-cicd-wrapper';
-import { dockerRunArgs, runFromImage, targetRuns } from '../../src/cmds/v3/DeployFromImage';
+import { dockerRunArgs, resolveTargetImage, runFromImage, targetRuns } from '../../src/cmds/v3/DeployFromImage';
 
 const IMAGE = 'acct.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2';
 
@@ -109,6 +109,30 @@ describe('m6-container: targetRuns', () => {
   });
 });
 
+describe('m6-container: resolveTargetImage (version from config/<stage>.json)', () => {
+  const target = (stage: string, image?: string) =>
+    ({ stage, env: { regions: [], regionOrder: 'sequential' }, manualApproval: false, image }) as any;
+  const config = (image?: string) => ({ image, targets: [] }) as any;
+
+  test('appends the config/<stage>.json version to the base repo', () => {
+    expect(resolveTargetImage(target('dev'), config('acct.dkr.ecr.eu-west-1.amazonaws.com/app'), '/x', () => '1.5.0')).toBe(
+      'acct.dkr.ecr.eu-west-1.amazonaws.com/app:1.5.0',
+    );
+  });
+  test('replaces an existing tag on the base with the version (hash or semver)', () => {
+    expect(resolveTargetImage(target('dev'), config('repo/app:base'), '/x', () => 'abc123')).toBe('repo/app:abc123');
+  });
+  test('no version file -> the base is used as-is', () => {
+    expect(resolveTargetImage(target('dev'), config('repo/app:latest'), '/x', () => undefined)).toBe('repo/app:latest');
+  });
+  test('a target image overrides the config base repo', () => {
+    expect(resolveTargetImage(target('dev', 'repo/app'), config('other/base'), '/x', () => '2.0.0')).toBe('repo/app:2.0.0');
+  });
+  test('no base image at all -> undefined', () => {
+    expect(resolveTargetImage(target('dev'), config(undefined), '/x', () => '1.0.0')).toBeUndefined();
+  });
+});
+
 describe('m6-container: runFromImage', () => {
   const config = (targets: any[]): ResolvedDeploymentConfig => ({ image: IMAGE, targets } as unknown as ResolvedDeploymentConfig);
 
@@ -129,6 +153,21 @@ describe('m6-container: runFromImage', () => {
     // 1 (dev) + 2 (prod regions) = 3 docker runs
     expect(calls).toHaveLength(3);
     expect(calls.map((c) => c[c.indexOf('--stage') + 1])).toEqual(['dev', 'prod', 'prod']);
+  });
+
+  test('resolves each target version from config/<stage>.json at run time (base repo + version)', () => {
+    const calls: string[][] = [];
+    const spawn = (args: string[]) => {
+      calls.push(args);
+      return ok();
+    };
+    const cfg = {
+      image: 'acct.dkr.ecr.eu-west-1.amazonaws.com/app', // base repo, no tag
+      targets: [{ stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false }],
+    } as unknown as ResolvedDeploymentConfig;
+    const code = runFromImage(cfg, { yes: true, spawn, readVersion: () => '9.9.9' });
+    expect(code).toBe(0);
+    expect(calls[0]).toContain('acct.dkr.ecr.eu-west-1.amazonaws.com/app:9.9.9');
   });
 
   test('--target deploys just that one target (its own image version)', () => {

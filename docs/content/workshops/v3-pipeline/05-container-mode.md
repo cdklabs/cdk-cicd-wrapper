@@ -64,41 +64,45 @@ Repo 2 is a small, app-agnostic **config repo** (no CDK code) that says **which 
 import { defineDeployment, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineDeployment({
-  // A default image, used by any target that doesn't pin its own version.
-  image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2',
+  // The BASE deployer image repo (no tag). The per-stage version is appended at deploy time.
+  image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer',
 
-  // The config-only source repo this CD pipeline watches (only deploy.config.ts + package.json live here).
+  // The config-only source repo this CD pipeline watches (deploy.config.ts + config/<stage>.json here).
   repository: Repository.codecommit('my-app-deploy-config'),
 
-  // Each target supplies WHERE to deploy AND which image VERSION to run there. Bumping one stage's `image`
-  // tag and committing deploys only that stage — dev can run a newer version than prod.
+  // Targets say WHERE (account/region/role) + gating. The VERSION each runs comes from config/<stage>.json.
   targets: [
-    { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' },
-      image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.5.0' },   // dev on a newer version
-    {
-      stage: 'prod',
-      env: { account: '222222222222', regions: ['eu-west-1', 'us-east-1'] },
-      image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2',     // prod pinned to a stable one
-      manualApproval: true,
-      deployment: { deployRole: 'arn:aws:iam::222222222222:role/automation-deployer' },
-    },
+    { stage: 'dev',  env: { account: '111111111111', region: 'eu-west-1' } },
+    { stage: 'int',  env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
+    { stage: 'prod', env: { account: '222222222222', regions: ['eu-west-1', 'us-east-1'] },
+      manualApproval: true, deployment: { deployRole: 'arn:aws:iam::222222222222:role/automation-deployer' } },
   ],
 });
 ```
 
-Provision the CD pipeline — the deploy-side twin of `deploy-ci` for a CI pipeline:
+Each stage's **version lives in its own config file** in the CD repo (a hash or semver) — *not* baked in
+the image:
+
+```jsonc
+// config/dev.json          config/int.json           config/prod.json
+{ "version": "1.5.0" }      { "version": "1.4.2" }     { "version": "1.4.2" }
+```
+
+The deploy resolves `image = <base-repo>:<version-from-config/<stage>.json>`. Provision the CD pipeline —
+the deploy-side twin of `deploy-ci` for a CI pipeline:
 
 ```bash
 npx cdk-cicd deploy-ci     # sees deploy.config.ts (not cicd.config.ts) → provisions the CD pipeline
 ```
 
 This renders a second CodePipeline with **one Deploy action per target**. Each action runs
-`cdk-cicd deploy --from-image --target <stage>`, which reads that stage's image **version from
-`deploy.config.ts` at run time**, pulls it, and synth-and-deploys the stage. So:
+`cdk-cicd deploy --from-image --target <stage>`, which reads that stage's `version` from
+`config/<stage>.json` **at run time**, pulls `<base-repo>:<version>`, and synth-and-deploys the stage. So:
 
-- **Per-stage versions:** bump `dev`'s `image` tag, commit → only `dev` redeploys, on its new version.
-- **Parallel deploys:** ungated targets deploy in parallel; a gated target (e.g. `prod`) waits on its
-  **manual-approval** action, then runs — so `int` and `prod` can promote in parallel once approved.
+- **Per-stage versions in config:** bump `config/dev.json`'s `version`, commit → only `dev` redeploys on it.
+  `dev` can run a newer version than `prod`, and the version is plain config, reviewable in a PR.
+- **Parallel deploys:** ungated targets deploy in parallel; a gated target (e.g. `int`/`prod`) waits on its
+  **manual-approval** action, then runs — so `int` and `prod` promote in parallel once approved.
 - **Two pipelines total:** the CI pipeline (Repo 1) *pushes* the image; the CD pipeline (Repo 2) *pulls* it.
 
 <!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (per-target actions) -->

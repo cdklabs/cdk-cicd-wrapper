@@ -13,8 +13,43 @@
 // carries, so this repo -- not the image -- decides the deployment topology.
 
 import { spawnSync, SpawnSyncReturns } from 'child_process';
+import { existsSync, readFileSync } from 'fs';
+import * as path from 'path';
 import { ResolvedDeploymentConfig, ResolvedDeploymentTarget } from '@cdklabs/cdk-cicd-wrapper';
 import { logger } from '../../utils/Logging';
+
+/** Reads the deployed `version` (hash or semver) for a stage from `config/<stage>.json`. Injectable for tests. */
+export type VersionReader = (cwd: string, stage: string) => string | undefined;
+const readVersionFromConfig: VersionReader = (cwd, stage) => {
+  const file = path.join(cwd, 'config', `${stage}.json`);
+  if (!existsSync(file)) return undefined;
+  try {
+    const value = JSON.parse(readFileSync(file, 'utf-8')).version;
+    return typeof value === 'string' && value.length > 0 ? value : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * The full deployer image to run for a target. The base repo comes from the target's `image` (override) or
+ * the config-level `image`; the VERSION (tag) comes from the CD repo's `config/<stage>.json` `version`
+ * field (a hash or semver) -- so bumping a stage's version file and committing redeploys just that stage.
+ * If a version is present it replaces any tag on the base (`repo[:oldtag]` -> `repo:<version>`); with no
+ * version file the base is used as-is. Returns undefined when there is no base image at all.
+ */
+export function resolveTargetImage(
+  target: ResolvedDeploymentTarget,
+  config: ResolvedDeploymentConfig,
+  cwd: string,
+  readVersion: VersionReader = readVersionFromConfig,
+): string | undefined {
+  const base = target.image ?? config.image;
+  if (base === undefined) return undefined;
+  const version = readVersion(cwd, target.stage);
+  // Strip a trailing `:tag` (a tag has no `/`) before appending the version; leaves a bare repo untouched.
+  return version !== undefined ? `${base.replace(/:[^/]+$/, '')}:${version}` : base;
+}
 
 /** One concrete (target x region) run: the stage/account/region/role the container deploys. */
 export interface DockerTarget {
@@ -90,9 +125,10 @@ const spawnDocker: DockerSpawn = (args) => spawnSync('docker', args, { stdio: 'i
  */
 export function runFromImage(
   config: ResolvedDeploymentConfig,
-  options: { yes: boolean; network?: string; target?: string; spawn?: DockerSpawn },
+  options: { yes: boolean; network?: string; target?: string; cwd?: string; readVersion?: VersionReader; spawn?: DockerSpawn },
 ): number {
   const spawn = options.spawn ?? spawnDocker;
+  const cwd = options.cwd ?? process.cwd();
 
   // `target` deploys just that one stage (its own image version) -- how a CD pipeline runs one action per
   // target, so bumping a stage's image in deploy.config and committing deploys only that stage.
@@ -108,10 +144,11 @@ export function runFromImage(
       return 1;
     }
 
-    // Each target runs its OWN image (its pinned version), falling back to the config-level default.
-    const image = target.image ?? config.image;
+    // Each target runs its OWN version: base repo (target/config image) + the `version` from
+    // config/<stage>.json in this (CD) repo. Bump that file, commit, and only this stage redeploys.
+    const image = resolveTargetImage(target, config, cwd, options.readVersion);
     if (image === undefined) {
-      logger.error(`cdk-cicd deploy --from-image: target '${target.stage}' has no image -- set the target's image or the config-level image`);
+      logger.error(`cdk-cicd deploy --from-image: target '${target.stage}' has no image -- set the config-level (or target) image, plus a version in config/${target.stage}.json`);
       return 1;
     }
 
