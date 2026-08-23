@@ -472,21 +472,17 @@ export abstract class PluginBase implements IPlugin {
 
   abstract readonly version: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //@ts-ignore
   create(context: ResourceContext): void {
-    return;
+    void context;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //@ts-ignore
   beforeStage(scope: Construct, context: ResourceContext): void {
-    return;
+    void scope;
+    void context;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //@ts-ignore
   afterStage(scope: Construct, context: ResourceContext): void {
-    return;
+    void scope;
+    void context;
   }
 }
