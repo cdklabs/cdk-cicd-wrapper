@@ -32,5 +32,19 @@
       "Bash(git push:*)",
       "Bash(git commit:* --no-verify)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-tmp-confinement.sh\"",
+            "statusMessage": "tmp-confinement guard"
+          }
+        ]
+      }
+    ]
   }
 }
