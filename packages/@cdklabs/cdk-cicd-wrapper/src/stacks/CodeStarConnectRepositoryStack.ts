@@ -32,7 +32,7 @@ export class CodeStarConnectRepositoryStack extends cdk.Stack implements IReposi
   readonly pipelineInput: pipelines.IFileSetProducer;
 
   /**
-   * The environment variables to be used by the pipeline.
+   * Environment variables for the pipeline.
    */
   readonly pipelineEnvVars: { [key: string]: string };
 

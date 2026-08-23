@@ -11,9 +11,8 @@ import { IDeploymentHookConfigProvider } from '../../resource-providers';
 import { ParameterResolver } from '../../utils/ParameterResolver';
 
 /**
- * Abstract base class for providing stacks to a deployment pipeline.
- * This class implements the IStackProvider interface and provides default implementation
- * for providing deployment hook configurations (pre and post hooks) and accessing context properties.
+ * Base class for stack providers: supplies default deployment-hook (pre/post) configuration
+ * and convenient access to the resource context.
  */
 export abstract class BaseStackProvider implements IStackProvider {
   private _context?: ResourceContext;

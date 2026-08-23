@@ -75,7 +75,7 @@ export interface IVpcConstruct {
 }
 
 /**
- * Legacy VPC Provider that defines the VPC used by the CI/CD process
+ * Legacy provider for a pre-existing VPC.
  */
 export class VPCProvider implements IResourceProvider {
   scope? = Scope.PER_STAGE;
