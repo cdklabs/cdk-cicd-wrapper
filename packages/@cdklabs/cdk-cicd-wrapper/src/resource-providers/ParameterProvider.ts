@@ -60,7 +60,6 @@ export class ParameterProvider implements IResourceProvider {
       );
     });
 
-    // Create SSMParameterStack with the parameters
     return new SSMParameterStack(scope, `${blueprintProps.applicationName}SSMParameterStack`, {
       env: environment,
       applicationQualifier: blueprintProps.applicationQualifier,

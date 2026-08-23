@@ -31,7 +31,6 @@ class DestroyEncryptionKeysOnDeleteAspect implements IAspect {
 
   visit(node: Construct): void {
     if (node instanceof Key) {
-      // Configure KMS key removal policy based on deployment stage
       node.applyRemovalPolicy(RemovalPolicy.DESTROY);
     }
   }

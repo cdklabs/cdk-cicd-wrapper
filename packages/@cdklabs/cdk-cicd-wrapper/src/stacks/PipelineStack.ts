@@ -27,12 +27,10 @@ export class PipelineStack extends PipelineBlueprintBase {
     this.resourceContext.get(GlobalResources.VPC);
     const pipeline = this.resourceContext.get(GlobalResources.PIPELINE)!;
 
-    // Render stages based on the deployment definition
     Object.entries(config.deploymentDefinition).forEach(([deploymentStage, deploymentDefinition]) => {
       this.renderStage(pipeline, deploymentStage, deploymentDefinition);
     });
 
-    // Build the pipeline
     pipeline.buildPipeline();
   }
 }

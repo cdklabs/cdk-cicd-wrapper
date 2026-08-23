@@ -23,7 +23,6 @@ def create_bucket(bucket_name: str):
     logger.info("Create new resource")
     s3_client = boto3.client("s3")
 
-    # create the bucket
     try:
         if region == "us-east-1":
             s3_client.create_bucket(Bucket=bucket_name)

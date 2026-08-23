@@ -153,7 +153,6 @@ export abstract class DefaultStackProvider extends BaseStackProvider {
     cdk.Aspects.of(this.scope).add({
       visit(node: IConstruct): void {
         if (node instanceof cdk.Stack) {
-          // Create normalized stack name
           const normalizedName = node.node.path
             .replace(/-/g, '') // Remove hyphens
             .replace(/\//g, '-'); // Replace forward slashes with hyphens

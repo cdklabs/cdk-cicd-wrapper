@@ -26,10 +26,8 @@ export class WorkbenchStack extends PipelineBlueprintBase {
   ) {
     super(scope, id, env, config);
 
-    // Initialize the stage for the workbench stack
     this.resourceContext.initStage(config.workbench!.options!.stageToUse!);
 
-    // Render the stacks for the workbench
     this.renderStacks(this, [config.workbench?.stackProvider!]);
   }
 }

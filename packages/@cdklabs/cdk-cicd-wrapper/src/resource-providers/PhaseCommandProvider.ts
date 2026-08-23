@@ -57,7 +57,6 @@ export class ShellScriptPhaseCommand implements IPhaseCommand {
    * Returns the command to be executed for the given shell script.
    */
   get command() {
-    // Check script file exists and is executable
     if (!fs.existsSync(path.resolve(this.script))) {
       throw new Error(`Script file ${this.script} does not exist`);
     }
@@ -90,7 +89,6 @@ export class PythonPhaseCommand implements IPhaseCommand {
    * Returns the command to be executed for the given Python script.
    */
   get command() {
-    // Check script file exists and executable
     if (!fs.existsSync(path.resolve(this.script))) {
       throw new Error(`Script file ${this.script} does not exist`);
     }
