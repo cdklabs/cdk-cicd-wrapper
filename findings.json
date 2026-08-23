@@ -891,6 +891,66 @@
       "title": "The CDK Pipelines per-stage replay discards inline new cdk.App(props) (context/synthesizer); only cdk.json / CDK_CONTEXT_JSON context is honored",
       "detail": "runtime/pipeline-assembler.ts replays the plain entry per stage by patching `new cdk.App()` to RETURN the current cdk.Stage; the ReplayApp constructor ignores its props. So an entry that passes inline App props -- `new cdk.App({ context: {...}, defaultStackSynthesizer: ... })` -- loses them under the CDK Pipelines engine, whereas the flat engine's register.ts subclasses App and calls super(props), honoring them. Same plain bin can therefore synthesize differently across engines; inline feature-flag context could shift logical IDs and undermine self-mutation stability. Mitigated: cdk.json / CDK_CONTEXT_JSON context flows through the assembler's root App and is INHERITED by every stage (App context propagates down the tree), which is the documented, recommended way to pass context -- so the common path is fine. Left unfixed now because forwarding inline props onto the stage node is fiddly (context can be set post-hoc via stage.node.setContext, but a synthesizer is constructor-only on a Stack, so an inline App synthesizer cannot be reproduced onto the stage's stacks). Fix direction: forward props.context onto each stage's node, and document that an inline App synthesizer is unsupported under CDK Pipelines (use the wrapper's forced-roles env instead). Documented as a limitation in replayEntryInto's doc comment.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/pipeline-assembler.ts", "line": 62 }
+    },
+    {
+      "id": "code-review-aislop-generic-merge-double-assertions",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "wontfix",
+      "title": "aislop ai-slop/double-type-assertion flags 9 `as unknown as` casts that are load-bearing (generic deep-merge boundary and deliberate runtime App/stage replay), not slop",
+      "detail": "Surfaced by the aislop quality-gate sweep and dispositioned during a comments+easy-types fix pass. The nine ai-slop/double-type-assertion sites split into two intentional patterns. (1) The generic deep-merge boundary in appconfig: deepMerge/applyDerivedDefaults (defaults.ts:52,53,54,77,94) and ConfigLoader (loader.ts:90,94) bridge a caller's typed struct T and the internal Record<string, unknown> the recursive merge/validate operates on; TypeScript cannot relate a generic T to Record<string,unknown> without `as unknown as`, and a typed wrapper would add indirection without adding real safety. (2) Deliberate, already-documented runtime trickery in the CDK Pipelines replay: pipeline-assembler.ts:95 casts the current cdk.Stage to swap its synth() to a no-op, and :103 casts an anonymous ReplayApp class to the App constructor type so `new cdk.App()` yields the stage. Both carry explanatory comments. None has a trivially-available proper type, so all nine were left as-is under the chosen scope. Revisit only if the appconfig merge is ever refactored to carry types end-to-end.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/defaults.ts", "line": 50 }
+    },
+    {
+      "id": "code-review-aislop-cdk-internal-any-casts",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "wontfix",
+      "title": "aislop ai-slop/unsafe-type-assertion flags 3 `as any` casts that reach into CDK-internal or dynamically-shaped values with no clean public type",
+      "detail": "Three of the four ai-slop/unsafe-type-assertion sites reach past a public type on purpose (the fourth, ResourceContext.get, was a redundant no-op cast and has been removed). DefaultStackProvider.ts:163 writes the private aws-cdk-lib field `(node as any)._stackName` from a stack-name-normalization Aspect -- a known CDK-internal reach already carrying an eslint-disable for no-explicit-any. GitHubPipelinePlugin.ts:174 sets `(definition as any).manualApprovalRequired = false` on a deployment-definition value whose type does not declare that key. GitHubPipelineProvider.ts:34 reads `(buildSpec as any).spec` to pull the raw object out of an aws-cdk-lib BuildSpec whose `.spec` is not public. Each targets a value with no clean exported type, so a proper-type fix is not trivially available; forcing one would add a fragile local interface mirroring a CDK internal. Left as-is. Note DefaultStackProvider._stackName is also the shape flagged in the CDK Pipelines self-mutation literature; if aws-cdk-lib ever exposes a supported stack-name override, replace the reach.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/common/types/DefaultStackProvider.ts", "line": 163 }
+    },
+    {
+      "id": "code-review-aislop-narrative-jsdoc-false-positive",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "wontfix",
+      "title": "aislop ai-slop/narrative-comment flags 3 JSDoc blocks that are legitimate public jsii API documentation, not decorative narration",
+      "detail": "aislop's narrative-comment rule (auto-fixable = deletion) targets three JSDoc blocks that are actually the published API docs for jsii-exported symbols: the class doc on VPCProvider (VPCProvider.ts:77), the property doc on CodeStarConnectRepositoryStack.pipelineInput/pipelineEnvVars (CodeStarConnectRepositoryStack.ts:34), and the class doc on the abstract BaseStackProvider (BaseStackProvider.ts:13). Deleting these would strip the descriptions that jsii-rosetta and pacmak render into the generated Python/Java/.NET docs, degrading the published multi-language surface -- the opposite of the intent for a documented constructs library. Treated as a false positive for a jsii package and left intact. If aislop supports per-rule path scoping, exclude public-API JSDoc from narrative-comment rather than the whole engine. The only borderline case is BaseStackProvider's second/third sentences restating the implements clause -- a candidate for tightening (not deletion) if the class doc is ever revised.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/resource-providers/VPCProvider.ts", "line": 77 }
+    },
+    {
+      "id": "code-review-aislop-definecicd-thin-wrapper-intentional",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "wontfix",
+      "title": "aislop ai-slop/thin-wrapper flags defineCICD, which is the intended public Level-1 entry point and cannot be inlined without breaking the published API",
+      "detail": "aislop flags defineCICD (define.ts:155) as a thin wrapper because its body is just `return resolveCicdConfig(props)`. But defineCICD is the documented Level-1 entry point a user writes in cicd.config.ts (see its JSDoc example) -- a deliberate, stable public name that keeps resolveCicdConfig internal and gives the config surface a single obvious export. Inlining it (per the rule's suggestion to call the inner function directly) would either force users to import an internal name or remove a published symbol, violating CLAUDE.md ground rule 1 (additive-before-destructive) and tripping `npx projen compat`. Intentional public API; not slop. No change.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/config/define.ts", "line": 155 }
+    },
+    {
+      "id": "code-review-aislop-pluginbase-ts-ignore",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "PluginBase's 3 no-op default methods carry `//@ts-ignore` (aislop ai-slop/ts-directive) plus a misplaced eslint-disable that no longer suppresses the unused-param warning",
+      "detail": "PluginBase.create/beforeStage/afterStage (Types.ts:476,482,488) are no-op default implementations whose params (context/scope) are intentionally unused but must keep their names -- renaming to _-prefixed would change the jsii-visible parameter surface and could trip compat. Each is guarded by both `// eslint-disable-next-line @typescript-eslint/no-unused-vars` and `//@ts-ignore`. Two observations: (1) aislop ai-slop/ts-directive (INFO) flags the three @ts-ignore lines; keeping the public param names while satisfying noUnusedParameters is the reason they exist, so they are intentional. (2) A real minor defect: the eslint-disable-next-line sits directly above the `//@ts-ignore` comment, so it disables the rule for the comment line, not for the method signature two lines below -- which is why eslint/no-unused-vars still fires on Types.ts:477/483/489 in the current scan. Fix direction when this file is next touched: move each eslint-disable-next-line to immediately precede the method signature (and re-check whether the @ts-ignore is still needed once the disable lands on the right line). Left for a dedicated pass to avoid touching public base-class signatures under an unrelated cleanup.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/common/types/Types.ts", "line": 475 }
     }
   ]
 }
