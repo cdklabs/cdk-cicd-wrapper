@@ -93,16 +93,7 @@ interface Props extends cdk.StackProps {
   readonly roleName?: string;
 
   readonly openIdConnectProviderArn?: string;
-  /**
-   * Thumbprints of GitHub's certificates
-   *
-   * Every time GitHub rotates their certificates, this value will need to be updated.
-   *
-   * Default value is up-to-date to June 27, 2023 as per
-   * https://github.blog/changelog/2023-06-27-github-actions-update-on-oidc-integration-with-aws/
-   *
-   * @default - Use built-in keys
-   */
+  /** Thumbprints of GitHub's certificates. Defaults to built-in keys. */
   readonly thumbprints?: string[];
 
   readonly rolePolicy?: iam.PolicyStatement[];

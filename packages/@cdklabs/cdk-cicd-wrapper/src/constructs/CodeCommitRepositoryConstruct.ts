@@ -1,5 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+// aislop-ignore-file code-quality/duplicate-block -- the two cdk-nag NagSuppressions calls are
+// structurally similar boilerplate but suppress different rule ids for different reasons; a shared
+// helper would obscure intent rather than deduplicate real logic.
 
 import {
   ApprovalRuleTemplate,

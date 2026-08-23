@@ -270,6 +270,24 @@ export class PythonLicenseCollector implements LicenseCollector {
   /**
    * Generates the summary of the various license types used in the Python project
    */
+  private assertLicenseCheckOk(
+    commandResults: ReturnType<typeof spawnSync>,
+    projectInfo: ProjectInfo,
+    commandArgs: string[],
+  ): void {
+    if (commandResults.status !== 0) {
+      logger.error(`Module ${projectInfo.name} failed the license check.`);
+      // Suppressed as no user input it used to manage the path and child_process
+      // nosemgrep
+      logger.debug(
+        'CMD:',
+        path.join(this.context.workingDir, '.venv', 'bin', PYTHON_LICENSE_CHECKER_TOOL),
+        ...commandArgs,
+      );
+      throw new Error(`Module ${projectInfo.name} failed the license check.`);
+    }
+  }
+
   private generatePythonSummary(projectInfo: ProjectInfo) {
     const commandArgs = [
       // Suppressed as no user input it used to manage the path and child_process
@@ -296,17 +314,7 @@ export class PythonLicenseCollector implements LicenseCollector {
       options,
     );
 
-    if (commandResults.status !== 0) {
-      logger.error(`Module ${projectInfo.name} failed the license check.`);
-      // Suppressed as no user input it used to manage the path and child_process
-      // nosemgrep
-      logger.debug(
-        'CMD:',
-        path.join(this.context.workingDir, '.venv', 'bin', PYTHON_LICENSE_CHECKER_TOOL),
-        ...commandArgs,
-      );
-      throw new Error(`Module ${projectInfo.name} failed the license check.`);
-    }
+    this.assertLicenseCheckOk(commandResults, projectInfo, commandArgs);
 
     const csvValues = parse(readFileSync(projectInfo.summaryFile, { encoding: 'utf8' }), {
       delimiter: ',',
@@ -357,16 +365,6 @@ export class PythonLicenseCollector implements LicenseCollector {
       options,
     );
 
-    if (commandResults.status !== 0) {
-      logger.error(`Module ${projectInfo.name} failed the license check.`);
-      // Suppressed as no user input it used to manage the path and child_process
-      // nosemgrep
-      logger.debug(
-        'CMD:',
-        path.join(this.context.workingDir, '.venv', 'bin', PYTHON_LICENSE_CHECKER_TOOL),
-        ...commandArgs,
-      );
-      throw new Error(`Module ${projectInfo.name} failed the license check.`);
-    }
+    this.assertLicenseCheckOk(commandResults, projectInfo, commandArgs);
   }
 }
