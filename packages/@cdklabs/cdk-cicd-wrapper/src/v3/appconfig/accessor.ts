@@ -41,12 +41,8 @@ export interface AppConfigOptions {
  * express a generic. TypeScript callers get zero-friction typing by annotating the target:
  *
  * ```ts
- * import { AppConfig } from '@cdklabs/cdk-cicd-wrapper';
- *
- * declare const scope: Construct;
- *
  * interface MyConfig { readonly application: string }
- * const config: MyConfig = AppConfig.of(scope);
+ * const config: MyConfig = AppConfig.of(this);
  * ```
  */
 export class AppConfig {
