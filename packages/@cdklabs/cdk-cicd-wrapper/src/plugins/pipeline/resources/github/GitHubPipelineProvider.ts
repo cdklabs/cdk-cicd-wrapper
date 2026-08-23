@@ -30,8 +30,7 @@ export class GitHubPipelineProvider implements IResourceProvider {
     const commands: string[] = [];
     const env: Record<string, string> = {};
     if (buildSpec.isImmediate) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const buildSpecData = JSON.parse(JSON.stringify((buildSpec as any).spec));
+      const buildSpecData = JSON.parse(JSON.stringify(Reflect.get(buildSpec, 'spec')));
 
       Object.entries(buildSpecData.env?.variables ?? {}).forEach(([key, value]) => {
         env[key] = value as string;

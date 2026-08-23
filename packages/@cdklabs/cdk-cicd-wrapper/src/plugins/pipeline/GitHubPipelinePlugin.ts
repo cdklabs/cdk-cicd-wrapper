@@ -171,7 +171,7 @@ export class GitHubPipelinePlugin extends PluginBase {
 
     // manual approvals are not supported, needs to be configured manually
     Object.values(context.blueprintProps.deploymentDefinition).forEach(
-      (definition) => ((definition as any).manualApprovalRequired = false),
+      (definition) => ((definition as { manualApprovalRequired: boolean }).manualApprovalRequired = false),
     );
   }
 }

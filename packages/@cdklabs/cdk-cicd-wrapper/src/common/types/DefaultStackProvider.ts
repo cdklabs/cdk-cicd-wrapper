@@ -158,8 +158,7 @@ export abstract class DefaultStackProvider extends BaseStackProvider {
             .replace(/\//g, '-'); // Replace forward slashes with hyphens
 
           // Apply the normalized name
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (node as any)._stackName = normalizedName;
+          Reflect.set(node, '_stackName', normalizedName);
         }
       },
     });
