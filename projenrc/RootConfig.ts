@@ -145,6 +145,7 @@ export class RootConfig extends yarn.Monorepo {
     this.auditTask = this.configureAudit();
 
     this.configureCommitLinting();
+    this.configureAislop();
 
     this.configureHusky();
     this.configureContributors();
@@ -256,6 +257,45 @@ export class RootConfig extends yarn.Monorepo {
 
     const commitlint = this.addTask('commitlint');
     commitlint.exec('commitlint --edit', { receiveArgs: true });
+  }
+
+  /**
+   * aislop (https://github.com/scanaislop/aislop) — a deterministic scanner that catches the
+   * code-quality problems AI coding agents leave behind (narrative comments, swallowed exceptions,
+   * `as any` casts, dead stubs, ...). Wired two ways off the SAME pinned dev-dep, so local and CI
+   * run byte-identical:
+   *   - locally as a pre-commit gate on staged files, invoked from the hand-maintained
+   *     `.husky/pre-commit` as `npm run aislop` (this task) — blocks the commit on a failing score,
+   *     just like `lint`/`validate` already do;
+   *   - in CI as a quality gate on every PR and push to `main` (the workflow below), which installs
+   *     the workspace and runs the pinned binary rather than fetching `@latest`.
+   * The CI workflow is intentionally left OUT of `strengthenMergeGate` for now — it reports the score
+   * on each PR but does not yet block the merge queue, until the maintainer tunes a threshold
+   * (`.aislop/config.yml`).
+   */
+  private configureAislop() {
+    this.package.addDevDeps('aislop');
+
+    const aislop = this.addTask('aislop', {
+      description: 'Gate staged changes on the aislop code-quality score',
+      exec: 'aislop ci --staged --human',
+    });
+
+    const workflow = this.github!.addWorkflow('aislop');
+    workflow.on({ pullRequest: {}, push: { branches: ['main'] } });
+    workflow.addJob('quality-gate', {
+      runsOn: this.workflowRunsOn,
+      permissions: { contents: pj.github.workflows.JobPermission.READ },
+      steps: [
+        { uses: 'actions/checkout@v6' },
+        { uses: 'actions/setup-node@v4', with: { 'node-version': '24' } },
+        { name: 'Install dependencies', run: 'yarn install --check-files' },
+        // Runs the pinned dev-dep (not `@latest`), so a CI failure always reproduces locally.
+        { name: 'aislop quality gate', run: 'npx aislop ci --human' },
+      ],
+    });
+
+    return aislop;
   }
 
   private configureHusky() {

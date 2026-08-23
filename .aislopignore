@@ -1,0 +1,20 @@
+# Paths excluded from the aislop quality gate. Same syntax as .gitignore.
+# These are non-product or build-tooling paths whose findings are false positives for this repo.
+
+# Python MCP server helper — not part of the published npm packages; its `mcp` import is a
+# runtime dep declared elsewhere, which aislop's JS-oriented manifest check flags as hallucinated.
+mcp-servers/
+
+# projen authoring code (build tooling that generates this repo's own config). It legitimately
+# imports `projen` unqualified (a peer/devDep of a projen project) and builds CDK CLI command
+# strings — both flagged as hallucinated-import / shell-injection, neither applicable here.
+packages/@cdklabs/cdk-cicd-wrapper/src/projen/
+packages/@cdklabs/cdk-cicd-wrapper-projen/src/projen/
+
+# The deploy-driver Lambda asset `require()`s @aws-sdk/client-* clients that the Lambda runtime
+# provides (so they are intentionally undeclared, see the file header) — an unavoidable
+# hallucinated-import false positive for a runtime-provided SDK.
+packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/deploy-driver/
+
+# Docs workshop code samples are illustrative snippets, not shipped code.
+docs/

@@ -921,6 +921,16 @@ Not tasks — resolved/open design decisions that tasks reference.
     type name). No code changed -- a spike delivers the analysis; the renames are a later major-gated unit. · shared · spike
   - **desc:** `deploy-ci` vs `bootstrap-ci`; `exec` vs `synth`; `defineCICD`/`defineDeployment`.
 
+- **`aislop-codepipeline-metric`** — aislop quality score as a CodePipeline feature  ·  todo · wave 6 · wrapper · feature
+  - **desc:** Surface the aislop (https://github.com/scanaislop/aislop) code-quality score inside the
+    CodePipeline engine, mirroring what the repo's own pre-commit hook + GitHub Actions gate already do.
+    Run `aislop ci`/`scan --sarif` as a build/validation step in the generated pipeline (opt-in, with a
+    configurable `failBelow` threshold), so a user's wrapped app gets the same slop gate its CI does.
+  - **depends-on:** m4-codepipeline
+  - **notes:** Deferred by request — establish aislop as a repo hook + GHA first, add the pipeline
+    feature later. Decide: default-on vs opt-in, where it sits relative to `m4-ci-checks` (likely
+    another default-on CI check via the CLI), and whether the SARIF output feeds anything.
+
 ## Wave 7 — The v3 major (breaking)
 
 - **`m8-remove-v2`** — Remove v2 + the projen product  ·  todo · wave 7 · shared · migration · breaking

@@ -68,6 +68,7 @@ mcp-servers/debugger-mcp/.coverage
 /lib
 /dist/
 !/.eslintrc.json
+!/.github/workflows/aislop.yml
 packages/@cdklabs/cdk-cicd-wrapper/tsconfig.json
 !/.projenrc.ts
 !/.github/workflows/release.yml

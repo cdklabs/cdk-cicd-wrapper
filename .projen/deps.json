@@ -28,6 +28,10 @@
       "type": "build"
     },
     {
+      "name": "aislop",
+      "type": "build"
+    },
+    {
       "name": "all-contributors-cli",
       "type": "build"
     },

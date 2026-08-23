@@ -1,5 +1,14 @@
 {
   "tasks": {
+    "aislop": {
+      "name": "aislop",
+      "description": "Gate staged changes on the aislop code-quality score",
+      "steps": [
+        {
+          "exec": "aislop ci --staged --human"
+        }
+      ]
+    },
     "audit": {
       "name": "audit",
       "steps": [
