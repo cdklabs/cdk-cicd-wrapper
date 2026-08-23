@@ -1,6 +1,7 @@
 {
   "name": "cdk-cicd-example",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "bin": {
     "cdk-cicd-example": "bin/cdk-cicd-example.js"
   },

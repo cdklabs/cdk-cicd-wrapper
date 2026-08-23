@@ -20,6 +20,9 @@
         },
         {
           "spawn": "license"
+        },
+        {
+          "spawn": "scrub-check"
         }
       ]
     },
@@ -223,6 +226,15 @@
         {
           "exec": "yarn workspaces run",
           "receiveArgs": true
+        }
+      ]
+    },
+    "scrub-check": {
+      "name": "scrub-check",
+      "description": "Fail if Amazon-internal references or non-placeholder AWS account ids reached the public tree",
+      "steps": [
+        {
+          "exec": "node tools/scrub-check.js"
         }
       ]
     },

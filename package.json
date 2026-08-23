@@ -24,6 +24,7 @@
     "post-upgrade": "projen post-upgrade",
     "release": "projen release",
     "run": "projen run",
+    "scrub-check": "projen scrub-check",
     "security-scan": "projen security-scan",
     "test": "projen test",
     "upgrade": "projen upgrade",
@@ -58,7 +59,8 @@
     "typescript": "^5.9.3"
   },
   "resolutions": {
-    "constructs": "10.5.0"
+    "constructs": "10.5.0",
+    "micromatch/picomatch": "^2.3.2"
   },
   "keywords": [
     "aws",

@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as pj from 'projen';
 import { yarn } from 'cdklabs-projen-project-types';
 
@@ -73,6 +76,28 @@ export class RootConfig extends yarn.Monorepo {
       },
       workflowRunsOn: ['ubuntu-latest'],
       pullRequestTemplate: true,
+      pullRequestTemplateContents: [
+        '## Description',
+        '',
+        'Fixes #',
+        '',
+        '## Changes',
+        '',
+        '-',
+        '',
+        '## Testing',
+        '',
+        '- [ ] Unit tests pass (`npm run test`)',
+        '- [ ] Built locally (`npm run build`)',
+        '',
+        '## Checklist',
+        '',
+        '- [ ] Conventional-commit title (`feat:`/`fix:`/`chore:`/`refactor:`)',
+        '- [ ] Breaking changes flagged with `feat!:` or a `BREAKING CHANGE:` footer',
+        '- [ ] Docs updated if behaviour changed',
+        '',
+        'By submitting this pull request, I confirm that my contribution is made under the terms of the Apache-2.0 license.',
+      ],
       autoApproveOptions: {
         // GitHub only forbids approving your *own* PR, so `github-actions[bot]` approving a
         // maintainer's PR is allowed. Requires the `auto-approve` label per PR, and mergify still
@@ -133,7 +158,13 @@ export class RootConfig extends yarn.Monorepo {
     // yarn would otherwise install as separate copies.
     this.package.addPackageResolutions(`constructs@${CONSTRUCTS_VERSION}`);
 
+    // Force the picomatch under micromatch (globby > fast-glob > micromatch > picomatch, shipped by
+    // the CLI) off the vulnerable 2.3.1 (GHSA-c2c7-rcm5-vvqj ReDoS + GHSA-3v7f-55p6-f55p). Scoped to
+    // the micromatch edge so the unrelated picomatch@^4 line is untouched. Key '/' is escaped '~1'.
+    this.package.file.patch(pj.JsonPatch.add('/resolutions/micromatch~1picomatch', '^2.3.2'));
+
     this.strengthenMergeGate();
+    this.pinThirdPartyActions();
 
     this.configureLinting();
     this.validateTask = this.configureValidate();
@@ -163,6 +194,25 @@ export class RootConfig extends yarn.Monorepo {
       '#changes-requested-reviews-by=0',
       '#review-threads-unresolved=0',
       'status-success=dependency-review',
+    );
+  }
+
+  /**
+   * Pin third-party GitHub Actions used in privileged, token-bearing workflows to a full commit
+   * SHA (a moving @vN tag could be hijacked and run with pull_request_target / PROJEN_GITHUB_TOKEN
+   * scope). SHAs point at the current v6 / v8 tags; bump deliberately. actions/* and aws-actions/*
+   * are first-party and left on tags.
+   */
+  private pinThirdPartyActions() {
+    // amannn/action-semantic-pull-request@v6
+    this.github?.actions.set(
+      'amannn/action-semantic-pull-request@v6',
+      'amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50',
+    );
+    // peter-evans/create-pull-request@v8
+    this.github?.actions.set(
+      'peter-evans/create-pull-request@v8',
+      'peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1',
     );
   }
 
@@ -238,11 +288,17 @@ export class RootConfig extends yarn.Monorepo {
   }
 
   private configureAudit() {
+    const scrubCheck = this.addTask('scrub-check', {
+      description: 'Fail if Amazon-internal references or non-placeholder AWS account ids reached the public tree',
+      exec: 'node tools/scrub-check.js',
+    });
+
     const audit = this.addTask('audit');
 
     audit.spawn(this.checkDependenciesTask);
     audit.spawn(this.securityScanTask);
     audit.spawn(this.licenseTask);
+    audit.spawn(scrubCheck);
 
     return audit;
   }

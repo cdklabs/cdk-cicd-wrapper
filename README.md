@@ -18,6 +18,11 @@
   <a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits/main"><img src="https://img.shields.io/github/commit-activity/w/cdklabs/cdk-cicd-wrapper" alt="Commit activity"></a>
 </p>
 
+> [!WARNING]
+> **Experimental — pre-release (v3 `alpha`).** The public API is not yet frozen and may change
+> before the `1.0` release. The versions published to npm today are the stable `0.x` (v2) line;
+> the v3 developer experience described on the `v3` branch is under active development.
+
 # Welcome to the CDK CI/CD Wrapper
 
 The CDK CI/CD Wrapper gives you an easy way to deliver your CDK applications like a pro.

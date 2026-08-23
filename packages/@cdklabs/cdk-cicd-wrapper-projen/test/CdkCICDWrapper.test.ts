@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // eslint-disable-next-line  import/no-extraneous-dependencies
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 // eslint-disable-next-line  import/no-extraneous-dependencies

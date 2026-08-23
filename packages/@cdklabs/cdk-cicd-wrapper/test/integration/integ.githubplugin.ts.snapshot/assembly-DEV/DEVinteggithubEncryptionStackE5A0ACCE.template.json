@@ -10,7 +10,7 @@
        "Action": "kms:*",
        "Effect": "Allow",
        "Principal": {
-        "AWS": "arn:aws:iam::171469511505:root"
+        "AWS": "arn:aws:iam::123456789012:root"
        },
        "Resource": "*"
       },
