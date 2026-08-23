@@ -86,12 +86,11 @@ export class ConfigLoader {
         ? (parsed as Record<string, unknown>)
         : {};
 
-    const merged = deepMerge<Record<string, unknown>>(
-      getDefaultConfig() as unknown as Record<string, unknown>,
-      fileConfig,
-    );
+    const defaults: unknown = getDefaultConfig();
+    const merged = deepMerge<Record<string, unknown>>(defaults as Record<string, unknown>, fileConfig);
 
-    return validateConfig(applyDerivedDefaults(merged, env), filePath, options.schema) as unknown as T;
+    const validated: unknown = validateConfig(applyDerivedDefaults(merged, env), filePath, options.schema);
+    return validated as T;
   }
 
   private static parse(raw: string, filePath: string): unknown {

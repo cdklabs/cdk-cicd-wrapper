@@ -47,11 +47,8 @@ function mergeRecords(base: Record<string, unknown>, override: Record<string, un
  * Last-wins recursive merge of plain objects. Nested objects are merged; arrays and scalars from the
  * override replace the base value outright. Only own enumerable keys are considered.
  */
-export function deepMerge<T>(base: T, override: DeepPartial<T>): T {
-  return mergeRecords(
-    base as unknown as Record<string, unknown>,
-    override as unknown as Record<string, unknown>,
-  ) as unknown as T;
+export function deepMerge<T extends Record<string, unknown>>(base: T, override: DeepPartial<T>): T {
+  return mergeRecords(base, override as Record<string, unknown>) as T;
 }
 
 /** The wrapper's base defaults, layered underneath the application's config file. */
@@ -73,8 +70,8 @@ export function getDefaultConfig(): BaseConfig {
  * `null` counts as absent, not as an explicit value: in YAML a blank key (`accountId:`) parses to
  * `null` and means "I did not set this", so it must still be derived.
  */
-export function applyDerivedDefaults<T>(config: T, env: NodeJS.ProcessEnv): T {
-  const obj = config as unknown as Record<string, unknown>;
+export function applyDerivedDefaults<T extends Record<string, unknown>>(config: T, env: NodeJS.ProcessEnv): T {
+  const obj: Record<string, unknown> = config;
   const aws: Record<string, unknown> = isPlainObject(obj.aws) ? { ...obj.aws } : {};
 
   if (aws.accountId === undefined || aws.accountId === null) {
@@ -91,5 +88,6 @@ export function applyDerivedDefaults<T>(config: T, env: NodeJS.ProcessEnv): T {
     }
   }
 
-  return { ...obj, aws } as unknown as T;
+  const result: Record<string, unknown> = { ...obj, aws };
+  return result as T;
 }

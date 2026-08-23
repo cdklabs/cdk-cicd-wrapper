@@ -92,16 +92,15 @@ function replayEntryInto(entry: string, stage: Stage, context: CdkPipelinesStage
   // constructor with no super() (TS forbids that in a derived constructor -- TS2377), so no throwaway App
   // is built. `synth()` is stubbed to a no-op for the rare bin that calls `app.synth()` explicitly -- the
   // pipeline synthesizes the stage.
-  const scope = stage as unknown as { synth?: () => void };
-  const hadOwnSynth = Object.prototype.hasOwnProperty.call(scope, 'synth');
-  const originalSynth = scope.synth;
-  scope.synth = () => undefined;
+  const hadOwnSynth = Object.prototype.hasOwnProperty.call(stage, 'synth');
+  const originalSynth = Reflect.get(stage, 'synth');
+  Reflect.set(stage, 'synth', () => undefined);
   const ReplayApp = class {
     public constructor(_props?: AppProps) {
       return stage;
     }
-  } as unknown as new (props?: AppProps) => App;
-  for (const l of leaves) l.App = ReplayApp;
+  };
+  for (const l of leaves) Reflect.set(l, 'App', ReplayApp);
 
   try {
     delete require.cache[resolved];
@@ -109,8 +108,8 @@ function replayEntryInto(entry: string, stage: Stage, context: CdkPipelinesStage
     require(resolved);
   } finally {
     leaves.forEach((l, i) => (l.App = originals[i]));
-    if (hadOwnSynth) scope.synth = originalSynth;
-    else delete scope.synth;
+    if (hadOwnSynth) Reflect.set(stage, 'synth', originalSynth);
+    else Reflect.deleteProperty(stage, 'synth');
     restoreEnv('CDK_STAGE', prevStage);
     restoreEnv('CDK_DEFAULT_ACCOUNT', prevAccount);
     restoreEnv('CDK_DEFAULT_REGION', prevRegion);
