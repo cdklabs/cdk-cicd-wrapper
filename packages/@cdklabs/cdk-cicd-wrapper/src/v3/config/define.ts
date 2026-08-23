@@ -70,6 +70,13 @@ export interface CicdConfigProps {
   readonly deployModel?: DeployModel;
   /** Let a Lambda execute and await CloudFormation instead of paying build compute to wait. Off by default. */
   readonly asyncDeploy?: boolean;
+  /**
+   * Deploy with CloudFormation express mode (`cdk deploy --express`): CloudFormation reports completion
+   * without waiting for resource stabilization -- faster, but rollback is disabled (a failed deploy is
+   * left in a failed state). Not recommended for production (AWS guidance); targets fast iterative
+   * deployments. Off by default.
+   */
+  readonly express?: boolean;
   /** Container mode (Repo 1): build & push a deployer image to ECR instead of deploying. See `BuildImage`. */
   readonly deployerImage?: BuildImage;
 }
@@ -137,6 +144,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     codeArtifact: props.codeArtifact,
     deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,
     asyncDeploy: props.asyncDeploy ?? false,
+    express: props.express ?? false,
     deployerImage: props.deployerImage,
   };
 }
