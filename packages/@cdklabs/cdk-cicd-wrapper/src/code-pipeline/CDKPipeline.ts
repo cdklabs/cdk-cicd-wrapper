@@ -264,7 +264,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
       }),
       synthCodeBuildDefaults: props.synthCodeBuildDefaults,
       codeBuildDefaults: props.codeBuildDefaults,
-      ...(props.options ?? {}),
+      ...props.options,
     });
 
     this.codeGuruScanThreshold = props.codeGuruScanThreshold;
@@ -285,7 +285,7 @@ export class CDKPipeline extends pipelines.CodePipeline {
             return (stageOptions: codepipeline.StageOptions) => {
               return super.pipeline.addStage({
                 ...stageOptions,
-                ...(this.stages[stageOptions.stageName] ?? {}),
+                ...this.stages[stageOptions.stageName],
               });
             };
           }
@@ -380,11 +380,13 @@ export class CDKPipeline extends pipelines.CodePipeline {
    * @param threshold The severity threshold for CodeGuru security scans.
    */
   private applyCodeGuruScan(threshold: CodeGuruSeverityThreshold) {
-    const getSourceOutput = () =>
-      this.pipeline.stages
+    const getSourceOutput = () => {
+      const sourceOutput = this.pipeline.stages
         .find((stage) => 'Source' === stage.stageName)
         ?.actions.at(0)
-        ?.actionProperties.outputs?.at(0)!;
+        ?.actionProperties.outputs?.at(0);
+      return sourceOutput!;
+    };
     const getBuildStage = () => this.pipeline.stages.find((stage) => 'Build' === stage.stageName)!;
 
     const codeGuruSecurityStep = new CodeGuruSecurityStep(this, 'CodeGuruReviewStep', {
