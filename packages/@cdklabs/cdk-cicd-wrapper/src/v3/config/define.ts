@@ -152,9 +152,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
  * });
  * ```
  */
-export function defineCICD(props: CicdConfigProps): ResolvedCicdConfig {
-  return resolveCicdConfig(props);
-}
+export const defineCICD = resolveCicdConfig;
 
 /** A deployment target, as written in Repo 2's `deploy.config.ts`. `env` takes one region or many. */
 export interface DeploymentTargetInput {
