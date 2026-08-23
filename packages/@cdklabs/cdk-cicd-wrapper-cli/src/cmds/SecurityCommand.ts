@@ -130,6 +130,7 @@ class Command implements yargs.CommandModule {
     });
 
     if (exitCode !== 0) {
+      // aislop-ignore-next-line import/namespace -- yargs v17 namespace idiom (pinned to ^17)
       yargs.exit(exitCode, new Error('Security scanning has findings.'));
     }
   }

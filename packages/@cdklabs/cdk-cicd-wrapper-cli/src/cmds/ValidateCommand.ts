@@ -48,6 +48,7 @@ class Command implements yargs.CommandModule {
       );
       logger.info('This likely means dependencies have updated. You must get the changes approved before proceeding');
       logger.info('Once you get approval, update ./package-verification.json with the new hash to proceed');
+      // aislop-ignore-next-line import/namespace -- yargs v17 namespace idiom (pinned to ^17)
       yargs.exit(1, new Error('Checksums do not match'));
     }
   }
@@ -93,6 +94,7 @@ class Command implements yargs.CommandModule {
           : undefined;
 
     if (!npmLockFile) {
+      // aislop-ignore-next-line import/namespace -- yargs v17 namespace idiom (pinned to ^17)
       yargs.exit(1, new Error('Could not find package-lock.json, yarn.lock, or npm-shrinkwrap.json'));
     } else {
       if (args.fix) {

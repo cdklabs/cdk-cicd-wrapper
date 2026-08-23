@@ -18,3 +18,7 @@ packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/deploy-driver/
 
 # Docs workshop code samples are illustrative snippets, not shipped code.
 docs/
+
+# The per-package .eslintrc.js files are projen-generated build config; their unused `path`
+# binding (eslint no-unused-vars) is generator output that cannot be hand-edited.
+.eslintrc.js

@@ -49,6 +49,7 @@ async function main() {
 
   // Configure CLI options
   ya.showHelpOnFail(true); // Show help on command failure
+  // aislop-ignore-next-line import/namespace -- yargs v17 namespace idiom (pinned to ^17)
   ya.wrap(yargs.terminalWidth()); // Wrap command output to terminal width
   ya.options('debug', { type: 'boolean', default: false, desc: 'Debug logs' }); // Add a --debug option
   ya.completion(); // Enable command completion
