@@ -3,11 +3,13 @@
 
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Step } from 'aws-cdk-lib/pipelines';
-import { Construct } from 'constructs';
 import { PipelineOptions } from '../../code-pipeline';
 import { BuildOptions, RepositorySource } from '../../resource-providers';
 import { IVpcConfig } from '../../resource-providers/VPCProvider';
 import { ResourceContext } from '../spi';
+import { IPhaseCommand } from './Plugins';
+
+export * from './Plugins';
 
 /**
  * Represents a stage in the pipeline.
@@ -385,104 +387,4 @@ export interface RepositoryConfig {
    * Enforce full clone for the repository.
    */
   readonly codeBuildCloneOutput?: boolean;
-}
-
-/**
- * Represents the phases in a pipeline.
- */
-export enum PipelinePhases {
-  /**
-   * The initialize phase.
-   */
-  INITIALIZE = 'initialize',
-
-  /**
-   * The pre-build phase.
-   */
-  PRE_BUILD = 'preBuild',
-
-  /**
-   * The build phase.
-   */
-  BUILD = 'runBuild',
-
-  /**
-   * The testing phase.
-   */
-  TESTING = 'testing',
-
-  /**
-   * The pre-deploy phase.
-   */
-  PRE_DEPLOY = 'preDeploy',
-
-  /**
-   * The post-deploy phase.
-   */
-  POST_DEPLOY = 'postDeploy',
-}
-
-/**
- * The phases in an integration pipeline.
- */
-export const INTEGRATION_PHASES = [PipelinePhases.PRE_BUILD, PipelinePhases.BUILD, PipelinePhases.TESTING];
-
-/**
- * Represents a phase command.
- */
-export interface IPhaseCommand {
-  /**
-   * The command to run during the phase.
-   */
-  readonly command: string;
-}
-
-/**
- * Represents a pipeline plugin
- */
-export interface IPlugin {
-  /**
-   * The name of the plugin.
-   */
-  readonly name: string;
-
-  /**
-   * The version of the plugin.
-   */
-  readonly version: string;
-
-  /**
-   * The method called when the Pipeline configuration finalized.
-   */
-  create(context: ResourceContext): void;
-
-  /**
-   * The method called before the stage is created.
-   */
-  beforeStage(scope: Construct, context: ResourceContext): void;
-
-  /**
-   * The method called after the stage is created.
-   */
-  afterStage(scope: Construct, context: ResourceContext): void;
-}
-
-export abstract class PluginBase implements IPlugin {
-  abstract readonly name: string;
-
-  abstract readonly version: string;
-
-  create(context: ResourceContext): void {
-    void context;
-  }
-
-  beforeStage(scope: Construct, context: ResourceContext): void {
-    void scope;
-    void context;
-  }
-
-  afterStage(scope: Construct, context: ResourceContext): void {
-    void scope;
-    void context;
-  }
 }
