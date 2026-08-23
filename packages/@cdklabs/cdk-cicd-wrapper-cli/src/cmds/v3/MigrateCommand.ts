@@ -39,7 +39,6 @@ export function analyzeV2Source(source: string): MigrationPlan {
   const warnings: string[] = [];
   let foundBuilder = false;
   let stages: string[] | undefined;
-  let repository: string | undefined;
   let sawWorkbench = false;
   let sawHooksOrPhases = false;
 
@@ -97,13 +96,12 @@ export function analyzeV2Source(source: string): MigrationPlan {
     stages = [...V2_DEFAULT_STAGES];
     warnings.push(`no defineStages(...) found; used v2's default (${V2_DEFAULT_STAGES.join(', ')}) -- confirm it`);
   }
-  if (repository === undefined) {
-    warnings.push('no repository could be determined -- set `repository: Repository.*(...)` in the config');
-  }
+  // Repository extraction from the v2 source is not yet implemented, so it is always reported as unresolved.
+  warnings.push('no repository could be determined -- set `repository: Repository.*(...)` in the config');
   if (sawWorkbench) warnings.push('workbench(...) has no pipeline equivalent -- use a direct `cdk deploy` for it');
   if (sawHooksOrPhases) warnings.push('phases/hooks found -- re-express them as `ci.steps` and stage hooks');
 
-  return { stages: stages ?? [], repository, warnings, foundBuilder };
+  return { stages: stages ?? [], repository: undefined, warnings, foundBuilder };
 }
 
 /** Render the `cicd.config.ts` a plan produces. `application` seeds `defineCICD`. */
