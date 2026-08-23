@@ -462,7 +462,8 @@ export class PipelineBlueprintBuilder {
     }
 
     if (app.node.tryGetContext('workbench')) {
-      const workbenchEnv = this.props.deploymentDefinition[this.props.workbench!.options.stageToUse!];
+      const workbenchStage = this.props.workbench?.options.stageToUse;
+      const workbenchEnv = workbenchStage ? this.props.deploymentDefinition[workbenchStage] : undefined;
       if (!workbenchEnv) {
         throw new Error(`Workbench stage ${this.props.workbench?.options.stageToUse} not defined`);
       }
