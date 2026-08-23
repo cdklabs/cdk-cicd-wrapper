@@ -86,10 +86,10 @@ export class RootConfig extends yarn.Monorepo {
           paths: ['packages/*', 'package.json'],
         }),
         // Blueprint maintenance line. Its own single-branch release workflow (triggers on the
-        // `blueprint` branch), pinned to the 0.x tag line via majorVersion so it never bumps off
-        // Autopilot's 1.x tags, and staying on the `latest` dist-tag so existing installs are
+        // `legacy-blueprint` branch), pinned to the 0.x tag line via majorVersion so it never bumps
+        // off Autopilot's 1.x tags, and staying on the `latest` dist-tag so existing installs are
         // unchanged until Autopilot reaches 1.0.0.
-        branchName: 'blueprint',
+        branchName: 'legacy-blueprint',
         majorVersion: 0,
         npmDistTag: 'latest',
       },
