@@ -133,50 +133,53 @@ class Command implements yargs.CommandModule {
   public describe = 'Synth, drift-check and deploy a stage across its regions';
 
   public builder(args: yargs.Argv) {
-    return args
-      // Not demanded: `--from-image` reads deploy.config's targets instead of a single --stage. The
-      // handler enforces that --stage is required in every other mode.
-      .option('stage', { type: 'string', describe: 'The stage to deploy (required unless --from-image)' })
-      .option('yes', {
-        type: 'boolean',
-        default: false,
-        describe: 'Proceed even when the stage requires manual approval',
-      })
-      .option('region', {
-        type: 'string',
-        describe: 'Deploy only this one region, ignoring the stage config region list (used by container mode)',
-      })
-      .option('deploy-role', {
-        type: 'string',
-        describe: 'Deploy role that overrides the stage config deployRole for every region of this run (used by container mode)',
-      })
-      .option('from-image', {
-        type: 'boolean',
-        default: false,
-        describe: 'Run the pinned image in deploy.config against each target (container mode, Repo 2)',
-      })
-      .option('docker-network', {
-        type: 'string',
-        describe: 'Docker network for the deployer container (e.g. host) -- for constrained/air-gapped runners',
-      })
-      .option('target', {
-        type: 'string',
-        describe: 'With --from-image: deploy only this one deploy.config target (its own image version)',
-      })
-      .option('from-assembly', {
-        type: 'boolean',
-        default: false,
-        describe: 'Deploy the already-synthesized cdk.out/<stage>/<region> instead of synthesizing now',
-      })
-      .option('prepare-only', {
-        type: 'boolean',
-        default: false,
-        describe: 'Create change sets without executing them, and record a plan for the deploy driver',
-      })
-      .option('plan-parameter', {
-        type: 'string',
-        describe: 'SSM parameter to write the deploy plan to (required with --prepare-only)',
-      });
+    return (
+      args
+        // Not demanded: `--from-image` reads deploy.config's targets instead of a single --stage. The
+        // handler enforces that --stage is required in every other mode.
+        .option('stage', { type: 'string', describe: 'The stage to deploy (required unless --from-image)' })
+        .option('yes', {
+          type: 'boolean',
+          default: false,
+          describe: 'Proceed even when the stage requires manual approval',
+        })
+        .option('region', {
+          type: 'string',
+          describe: 'Deploy only this one region, ignoring the stage config region list (used by container mode)',
+        })
+        .option('deploy-role', {
+          type: 'string',
+          describe:
+            'Deploy role that overrides the stage config deployRole for every region of this run (used by container mode)',
+        })
+        .option('from-image', {
+          type: 'boolean',
+          default: false,
+          describe: 'Run the pinned image in deploy.config against each target (container mode, Repo 2)',
+        })
+        .option('docker-network', {
+          type: 'string',
+          describe: 'Docker network for the deployer container (e.g. host) -- for constrained/air-gapped runners',
+        })
+        .option('target', {
+          type: 'string',
+          describe: 'With --from-image: deploy only this one deploy.config target (its own image version)',
+        })
+        .option('from-assembly', {
+          type: 'boolean',
+          default: false,
+          describe: 'Deploy the already-synthesized cdk.out/<stage>/<region> instead of synthesizing now',
+        })
+        .option('prepare-only', {
+          type: 'boolean',
+          default: false,
+          describe: 'Create change sets without executing them, and record a plan for the deploy driver',
+        })
+        .option('plan-parameter', {
+          type: 'string',
+          describe: 'SSM parameter to write the deploy plan to (required with --prepare-only)',
+        })
+    );
   }
 
   public async handler(args: yargs.Arguments) {
@@ -287,15 +290,11 @@ class Command implements yargs.CommandModule {
 
       // A --deploy-role flag (container mode) overrides the stage config's forced role.
       const deployRole = (args.deployRole as string | undefined) ?? stage.deployment?.deployRole;
-      const deploy = spawnSync(
-        'npx',
-        deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined),
-        {
-          stdio: 'inherit',
-          cwd,
-          env: { ...process.env, ...target.env },
-        },
-      );
+      const deploy = spawnSync('npx', deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined), {
+        stdio: 'inherit',
+        cwd,
+        env: { ...process.env, ...target.env },
+      });
       if (deploy.error) {
         logger.error(
           `cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`,

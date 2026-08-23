@@ -10,19 +10,23 @@ const CONFIG = {
   repository: {} as any,
   synthesizer: { type: 'default' as any },
   stages: [
-    { name: 'dev', env: { account: '111111111111', regions: ['us-west-2'], regionOrder: 'sequential' as any }, manualApproval: false },
-    { name: 'prod', env: { account: '222222222222', regions: ['us-west-1', 'eu-west-1'], regionOrder: 'sequential' as any }, manualApproval: true },
+    {
+      name: 'dev',
+      env: { account: '111111111111', regions: ['us-west-2'], regionOrder: 'sequential' as any },
+      manualApproval: false,
+    },
+    {
+      name: 'prod',
+      env: { account: '222222222222', regions: ['us-west-1', 'eu-west-1'], regionOrder: 'sequential' as any },
+      manualApproval: true,
+    },
   ],
 } as unknown as ResolvedCicdConfig;
 
 describe('m3-synth: synthTargets', () => {
   test('--all enumerates every stage x region, in config order', () => {
     const targets = synthTargets(CONFIG);
-    expect(targets.map((t) => `${t.stage}/${t.region}`)).toEqual([
-      'dev/us-west-2',
-      'prod/us-west-1',
-      'prod/eu-west-1',
-    ]);
+    expect(targets.map((t) => `${t.stage}/${t.region}`)).toEqual(['dev/us-west-2', 'prod/us-west-1', 'prod/eu-west-1']);
   });
 
   test('a single stage yields only that stage regions', () => {
@@ -45,7 +49,13 @@ describe('m3-synth: synthTargets', () => {
   test('a region override yields one target even for an env-agnostic stage with no regions', () => {
     const agnostic = {
       ...CONFIG,
-      stages: [{ name: 'dev', env: { account: undefined, regions: [], regionOrder: 'sequential' as any }, manualApproval: false }],
+      stages: [
+        {
+          name: 'dev',
+          env: { account: undefined, regions: [], regionOrder: 'sequential' as any },
+          manualApproval: false,
+        },
+      ],
     } as unknown as ResolvedCicdConfig;
     expect(synthTargets(agnostic, 'dev', 'us-west-2').map((t) => t.region)).toEqual(['us-west-2']);
     // Without the override the same stage produces nothing.

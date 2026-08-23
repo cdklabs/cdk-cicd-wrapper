@@ -22,7 +22,11 @@ const cfg = () =>
     repository: Repository.codecommit('my-deploy-config'),
     targets: [
       { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } },
-      { stage: 'prod', env: { account: '222222222222', region: 'eu-west-1' }, deployment: { deployRole: 'arn:aws:iam::222222222222:role/deployer' } },
+      {
+        stage: 'prod',
+        env: { account: '222222222222', region: 'eu-west-1' },
+        deployment: { deployRole: 'arn:aws:iam::222222222222:role/deployer' },
+      },
     ],
   });
 
@@ -31,7 +35,10 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const t = render(cfg()); // cfg: dev (ungated) + prod (gated)
     const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
     expect((pipeline.Properties.Stages as any[]).map((s) => s.Name)).toEqual(['Source', 'Deploy', 'DeployGated']);
-    t.hasResourceProperties('AWS::CodeBuild::Project', Match.objectLike({ Environment: Match.objectLike({ PrivilegedMode: true }) }));
+    t.hasResourceProperties(
+      'AWS::CodeBuild::Project',
+      Match.objectLike({ Environment: Match.objectLike({ PrivilegedMode: true }) }),
+    );
   });
 
   test('the deploy buildspec logs in to ECR, materializes creds, and runs cdk-cicd deploy --from-image', () => {
@@ -127,8 +134,16 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const perTarget = defineDeployment({
       repository: Repository.codecommit('cfg'),
       targets: [
-        { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' }, image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/app:dev-42' },
-        { stage: 'prod', env: { account: '222222222222', region: 'us-east-1' }, image: '222222222222.dkr.ecr.us-east-2.amazonaws.com/app:prod-7' },
+        {
+          stage: 'dev',
+          env: { account: '111111111111', region: 'eu-west-1' },
+          image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/app:dev-42',
+        },
+        {
+          stage: 'prod',
+          env: { account: '222222222222', region: 'us-east-1' },
+          image: '222222222222.dkr.ecr.us-east-2.amazonaws.com/app:prod-7',
+        },
       ],
     });
     const project = Object.values(render(perTarget).findResources('AWS::CodeBuild::Project'))[0] as any;

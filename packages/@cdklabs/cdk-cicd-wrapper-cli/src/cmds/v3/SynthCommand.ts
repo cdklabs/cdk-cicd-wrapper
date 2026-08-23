@@ -91,7 +91,9 @@ class Command implements yargs.CommandModule {
     const targets = synthTargets(config, stageName);
     if (targets.length === 0) {
       // A stage with no regions (env-agnostic) selects nothing -- say so rather than exiting 0 silently.
-      logger.warn(`cdk-cicd synth: nothing to synthesize (${stageName ?? 'all stages'} produced no stage x region targets)`);
+      logger.warn(
+        `cdk-cicd synth: nothing to synthesize (${stageName ?? 'all stages'} produced no stage x region targets)`,
+      );
       return;
     }
     for (const target of targets) {

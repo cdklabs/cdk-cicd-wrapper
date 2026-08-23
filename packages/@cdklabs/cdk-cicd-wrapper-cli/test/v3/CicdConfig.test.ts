@@ -107,7 +107,10 @@ describe('m6-container: loadDeployment (Repo 2 deploy.config discovery)', () => 
 
   test('prefers deploy.config.ts over deploy.config.js', () => {
     const dir = tempDir();
-    fs.writeFileSync(path.join(dir, 'deploy.config.ts'), "export default { image: 'from-ts:1', targets: [] } as any;\n");
+    fs.writeFileSync(
+      path.join(dir, 'deploy.config.ts'),
+      "export default { image: 'from-ts:1', targets: [] } as any;\n",
+    );
     fs.writeFileSync(path.join(dir, 'deploy.config.js'), `module.exports.default = ${JSON.stringify(DEPLOYMENT)};`);
     expect(loadDeployment(dir)?.image).toBe('from-ts:1');
   });

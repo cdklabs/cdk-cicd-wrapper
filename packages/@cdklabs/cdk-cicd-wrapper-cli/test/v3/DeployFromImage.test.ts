@@ -8,7 +8,14 @@ import { dockerRunArgs, resolveTargetImage, runFromImage, targetRuns } from '../
 const IMAGE = 'acct.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2';
 
 /** A fake successful docker spawn result. */
-const ok = (): SpawnSyncReturns<Buffer> => ({ status: 0, signal: null, output: [], pid: 1, stdout: Buffer.from(''), stderr: Buffer.from('') });
+const ok = (): SpawnSyncReturns<Buffer> => ({
+  status: 0,
+  signal: null,
+  output: [],
+  pid: 1,
+  stdout: Buffer.from(''),
+  stderr: Buffer.from(''),
+});
 
 describe('m6-container: dockerRunArgs', () => {
   test('a full target renders env pins, creds-by-name, image and the inner single-region deploy', () => {
@@ -38,7 +45,9 @@ describe('m6-container: dockerRunArgs', () => {
       ]),
     );
     // credentials are passed by NAME only (inherited), never as name=value -- no secrets in argv
-    expect(envPart).toEqual(expect.arrayContaining(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']));
+    expect(envPart).toEqual(
+      expect.arrayContaining(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']),
+    );
     expect(envPart.some((e) => e.startsWith('AWS_ACCESS_KEY_ID='))).toBe(false);
 
     // inner command deploys the one stage, one region, with the forced role, non-interactively
@@ -60,7 +69,15 @@ describe('m6-container: dockerRunArgs', () => {
     expect(args.slice(0, 4)).toEqual(['run', '--rm', '--network', 'host']);
     // still a valid single deploy after the image
     const imageIdx = args.indexOf(IMAGE);
-    expect(args.slice(imageIdx + 1)).toEqual(['cdk-cicd', 'deploy', '--stage', 'dev', '--yes', '--region', 'us-west-2']);
+    expect(args.slice(imageIdx + 1)).toEqual([
+      'cdk-cicd',
+      'deploy',
+      '--stage',
+      'dev',
+      '--yes',
+      '--region',
+      'us-west-2',
+    ]);
   });
 
   test('no network option means no --network flag (default docker bridge)', () => {
@@ -115,9 +132,9 @@ describe('m6-container: resolveTargetImage (version from config/<stage>.json)', 
   const config = (image?: string) => ({ image, targets: [] }) as any;
 
   test('appends the config/<stage>.json version to the base repo', () => {
-    expect(resolveTargetImage(target('dev'), config('acct.dkr.ecr.eu-west-1.amazonaws.com/app'), '/x', () => '1.5.0')).toBe(
-      'acct.dkr.ecr.eu-west-1.amazonaws.com/app:1.5.0',
-    );
+    expect(
+      resolveTargetImage(target('dev'), config('acct.dkr.ecr.eu-west-1.amazonaws.com/app'), '/x', () => '1.5.0'),
+    ).toBe('acct.dkr.ecr.eu-west-1.amazonaws.com/app:1.5.0');
   });
   test('replaces an existing tag on the base with the version (hash or semver)', () => {
     expect(resolveTargetImage(target('dev'), config('repo/app:base'), '/x', () => 'abc123')).toBe('repo/app:abc123');
@@ -126,7 +143,9 @@ describe('m6-container: resolveTargetImage (version from config/<stage>.json)', 
     expect(resolveTargetImage(target('dev'), config('repo/app:latest'), '/x', () => undefined)).toBe('repo/app:latest');
   });
   test('a target image overrides the config base repo', () => {
-    expect(resolveTargetImage(target('dev', 'repo/app'), config('other/base'), '/x', () => '2.0.0')).toBe('repo/app:2.0.0');
+    expect(resolveTargetImage(target('dev', 'repo/app'), config('other/base'), '/x', () => '2.0.0')).toBe(
+      'repo/app:2.0.0',
+    );
   });
   test('no base image at all -> undefined', () => {
     expect(resolveTargetImage(target('dev'), config(undefined), '/x', () => '1.0.0')).toBeUndefined();
@@ -134,7 +153,8 @@ describe('m6-container: resolveTargetImage (version from config/<stage>.json)', 
 });
 
 describe('m6-container: runFromImage', () => {
-  const config = (targets: any[]): ResolvedDeploymentConfig => ({ image: IMAGE, targets } as unknown as ResolvedDeploymentConfig);
+  const config = (targets: any[]): ResolvedDeploymentConfig =>
+    ({ image: IMAGE, targets }) as unknown as ResolvedDeploymentConfig;
 
   test('runs the image once per target x region and returns 0 on success', () => {
     const calls: string[][] = [];
@@ -145,7 +165,11 @@ describe('m6-container: runFromImage', () => {
     const code = runFromImage(
       config([
         { stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false },
-        { stage: 'prod', env: { account: '333333333333', regions: ['eu-west-1', 'us-east-1'], regionOrder: 'sequential' }, manualApproval: true },
+        {
+          stage: 'prod',
+          env: { account: '333333333333', regions: ['eu-west-1', 'us-east-1'], regionOrder: 'sequential' },
+          manualApproval: true,
+        },
       ]),
       { yes: true, spawn },
     );
@@ -179,7 +203,12 @@ describe('m6-container: runFromImage', () => {
     const cfg = {
       image: IMAGE,
       targets: [
-        { stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false, image: 'acct.dkr.ecr.us-west-2.amazonaws.com/app:dev-42' },
+        {
+          stage: 'dev',
+          env: { regions: ['us-west-2'], regionOrder: 'sequential' },
+          manualApproval: false,
+          image: 'acct.dkr.ecr.us-west-2.amazonaws.com/app:dev-42',
+        },
         { stage: 'prod', env: { regions: ['eu-west-1'], regionOrder: 'sequential' }, manualApproval: true },
       ],
     } as unknown as ResolvedDeploymentConfig;
@@ -192,16 +221,21 @@ describe('m6-container: runFromImage', () => {
   });
 
   test('--target with an unknown stage errors', () => {
-    const code = runFromImage(config([{ stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false }]), {
-      yes: true,
-      target: 'nope',
-      spawn: () => ok(),
-    });
+    const code = runFromImage(
+      config([{ stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false }]),
+      {
+        yes: true,
+        target: 'nope',
+        spawn: () => ok(),
+      },
+    );
     expect(code).toBe(1);
   });
 
   test('a target with no image (and no config default) errors', () => {
-    const cfg = { targets: [{ stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false }] } as unknown as ResolvedDeploymentConfig;
+    const cfg = {
+      targets: [{ stage: 'dev', env: { regions: ['us-west-2'], regionOrder: 'sequential' }, manualApproval: false }],
+    } as unknown as ResolvedDeploymentConfig;
     const code = runFromImage(cfg, { yes: true, spawn: () => ok() });
     expect(code).toBe(1);
   });
@@ -212,10 +246,13 @@ describe('m6-container: runFromImage', () => {
       calls.push(args);
       return ok();
     };
-    const code = runFromImage(config([{ stage: 'prod', env: { regions: ['eu-west-1'], regionOrder: 'sequential' }, manualApproval: true }]), {
-      yes: false,
-      spawn,
-    });
+    const code = runFromImage(
+      config([{ stage: 'prod', env: { regions: ['eu-west-1'], regionOrder: 'sequential' }, manualApproval: true }]),
+      {
+        yes: false,
+        spawn,
+      },
+    );
     expect(code).toBe(1);
     expect(calls).toHaveLength(0);
   });
@@ -227,7 +264,13 @@ describe('m6-container: runFromImage', () => {
       return { ...ok(), status: n === 1 ? 0 : 2 } as SpawnSyncReturns<Buffer>;
     };
     const code = runFromImage(
-      config([{ stage: 'prod', env: { regions: ['eu-west-1', 'us-east-1'], regionOrder: 'sequential' }, manualApproval: false }]),
+      config([
+        {
+          stage: 'prod',
+          env: { regions: ['eu-west-1', 'us-east-1'], regionOrder: 'sequential' },
+          manualApproval: false,
+        },
+      ]),
       { yes: true, spawn },
     );
     expect(code).toBe(2);
@@ -235,11 +278,14 @@ describe('m6-container: runFromImage', () => {
   });
 
   test('a spawn error returns 1', () => {
-    const spawn = () => ({ ...ok(), error: new Error('docker not found') } as SpawnSyncReturns<Buffer>);
-    const code = runFromImage(config([{ stage: 'dev', env: { regions: [], regionOrder: 'sequential' }, manualApproval: false }]), {
-      yes: true,
-      spawn,
-    });
+    const spawn = () => ({ ...ok(), error: new Error('docker not found') }) as SpawnSyncReturns<Buffer>;
+    const code = runFromImage(
+      config([{ stage: 'dev', env: { regions: [], regionOrder: 'sequential' }, manualApproval: false }]),
+      {
+        yes: true,
+        spawn,
+      },
+    );
     expect(code).toBe(1);
   });
 });

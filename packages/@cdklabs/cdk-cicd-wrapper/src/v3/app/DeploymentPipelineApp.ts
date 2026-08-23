@@ -22,7 +22,11 @@ export interface DeploymentPipelineAppProps {
 /** A CloudFormation-safe stack name derived from the source repo (the deployment config has no `application`). */
 function pipelineName(config: ResolvedDeploymentConfig): string {
   const base = config.repository?.name ?? 'cdk-cicd';
-  const sanitized = base.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const sanitized = base
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
   return `${sanitized || 'cdk-cicd'}-cd-pipeline`;
 }
 

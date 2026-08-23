@@ -9,7 +9,15 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { EngineType } from '@cdklabs/cdk-cicd-wrapper';
-import { buildContextJson, execInvocation, forcedRoleEnv, preloadArgs, resolveEnvTarget, resolveStage, stageEnv } from '../../src/cmds/v3/ExecCommand';
+import {
+  buildContextJson,
+  execInvocation,
+  forcedRoleEnv,
+  preloadArgs,
+  resolveEnvTarget,
+  resolveStage,
+  stageEnv,
+} from '../../src/cmds/v3/ExecCommand';
 
 describe('exec: resolveStage', () => {
   test('uses CDK_STAGE when set', () => {
@@ -50,9 +58,9 @@ describe('exec: resolveEnvTarget precedence', () => {
   const cicdStage = { env: { account: 'cicd-acct', regions: ['cicd-region', 'other'] } };
 
   test('an already-set CDK_DEFAULT_* wins (so synth/deploy pin the per-region target)', () => {
-    expect(resolveEnvTarget({ CDK_DEFAULT_ACCOUNT: 'env-acct', CDK_DEFAULT_REGION: 'env-region' }, appConfig, cicdStage)).toEqual(
-      { account: 'env-acct', region: 'env-region' },
-    );
+    expect(
+      resolveEnvTarget({ CDK_DEFAULT_ACCOUNT: 'env-acct', CDK_DEFAULT_REGION: 'env-region' }, appConfig, cicdStage),
+    ).toEqual({ account: 'env-acct', region: 'env-region' });
   });
 
   test('the cicd.config stage is next, then the app-config aws.*', () => {
@@ -147,7 +155,9 @@ describe('exec: forcedRoleEnv', () => {
   });
 
   test('exports only what the stage configured; nothing for a stage with no deployment', () => {
-    expect(forcedRoleEnv({ deployment: { deployRole: 'arn:deploy' } })).toEqual({ CDK_CICD_DEPLOY_ROLE_ARN: 'arn:deploy' });
+    expect(forcedRoleEnv({ deployment: { deployRole: 'arn:deploy' } })).toEqual({
+      CDK_CICD_DEPLOY_ROLE_ARN: 'arn:deploy',
+    });
     expect(forcedRoleEnv({})).toEqual({});
     expect(forcedRoleEnv(undefined)).toEqual({});
   });

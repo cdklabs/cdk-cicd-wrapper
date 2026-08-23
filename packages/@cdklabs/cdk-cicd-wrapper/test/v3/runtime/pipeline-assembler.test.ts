@@ -13,8 +13,8 @@ import { execFileSync } from 'child_process';
 import { existsSync } from 'fs';
 import * as path from 'path';
 import { Stack, Stage } from 'aws-cdk-lib';
-import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Template } from 'aws-cdk-lib/assertions';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { defineCICD } from '../../../src/v3/config/define';
 import { Repository } from '../../../src/v3/config/repository';
 import { CdkPipelinesStageContext, IStageProvider } from '../../../src/v3/engine/cdkpipelines/CdkPipelinesEngine';
@@ -48,7 +48,9 @@ describe('CDK Pipelines assembler: pipeline structure (stub provider)', () => {
   });
 
   test('assembles one self-mutating pipeline with a wave per stage, in promotion order', () => {
-    const t = Template.fromStack(buildPipelineApp(config(), new StubProvider()).node.findChild('shop-pipeline') as Stack);
+    const t = Template.fromStack(
+      buildPipelineApp(config(), new StubProvider()).node.findChild('shop-pipeline') as Stack,
+    );
     t.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
     const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
     const names = (pipeline.Properties.Stages as any[]).map((s) => s.Name);
@@ -57,7 +59,9 @@ describe('CDK Pipelines assembler: pipeline structure (stub provider)', () => {
   });
 
   test('the gated stage gets a manual-approval action; the auto stage does not', () => {
-    const t = Template.fromStack(buildPipelineApp(config(), new StubProvider()).node.findChild('shop-pipeline') as Stack);
+    const t = Template.fromStack(
+      buildPipelineApp(config(), new StubProvider()).node.findChild('shop-pipeline') as Stack,
+    );
     const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
     const byName = (n: string) => (pipeline.Properties.Stages as any[]).find((s) => s.Name === n);
     const categories = (n: string) => (byName(n).Actions as any[]).map((a) => a.ActionTypeId.Category);

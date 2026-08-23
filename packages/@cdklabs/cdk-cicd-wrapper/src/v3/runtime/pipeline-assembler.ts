@@ -17,8 +17,12 @@ import * as path from 'path';
 import { App, Aspects, AppProps, Environment, Stack, Stage } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { assertAppModuleLayout } from './inject';
-import { CdkPipelinesEngine, CdkPipelinesStageContext, IStageProvider } from '../engine/cdkpipelines/CdkPipelinesEngine';
 import { ResolvedCicdConfig } from '../config/types';
+import {
+  CdkPipelinesEngine,
+  CdkPipelinesStageContext,
+  IStageProvider,
+} from '../engine/cdkpipelines/CdkPipelinesEngine';
 
 /** Name used when the config names no application (mirrors PipelineApp). */
 const DEFAULT_APPLICATION = 'cdk-cicd';
@@ -172,7 +176,9 @@ export function assemblePipelineApp(config: ResolvedCicdConfig, entry: string): 
 export function main(): void {
   const entry = process.env.CDK_CICD_ENTRY;
   if (entry === undefined || entry.length === 0) {
-    throw new Error('cdk-cicd: the CDK Pipelines assembler needs CDK_CICD_ENTRY set to the app entry (set by `cdk-cicd exec`).');
+    throw new Error(
+      'cdk-cicd: the CDK Pipelines assembler needs CDK_CICD_ENTRY set to the app entry (set by `cdk-cicd exec`).',
+    );
   }
   // Load the resolved pipeline config from the user's cicd.config in the cwd (defineCICD default export).
   // eslint-disable-next-line @typescript-eslint/no-require-imports

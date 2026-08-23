@@ -71,7 +71,8 @@ export class DeploymentPipeline extends Construct {
     const images = config.targets.map((t) => t.image ?? config.image).filter((i): i is string => i !== undefined);
     const ecrHosts = new Set(images.map((i) => i.split('/')[0]).filter((h) => h.includes('.dkr.ecr.')));
     const ecrLoginCommands = [...ecrHosts].map(
-      (h) => `aws ecr get-login-password --region ${h.split('.')[3]} | docker login --username AWS --password-stdin ${h}`,
+      (h) =>
+        `aws ecr get-login-password --region ${h.split('.')[3]} | docker login --username AWS --password-stdin ${h}`,
     );
 
     // Optional CodeArtifact login so `npm ci` can install a pre-release wrapper CLI.
@@ -133,9 +134,13 @@ export class DeploymentPipeline extends Construct {
       if (account !== undefined) {
         for (const region of target.env.regions) {
           for (const kind of BOOTSTRAP_ROLE_KINDS) {
-            roleArns.add(`arn:${stack.partition}:iam::${account}:role/cdk-${qualifier}-${kind}-role-${account}-${region}`);
+            roleArns.add(
+              `arn:${stack.partition}:iam::${account}:role/cdk-${qualifier}-${kind}-role-${account}-${region}`,
+            );
           }
-          versionParams.add(`arn:${stack.partition}:ssm:${region}:${account}:parameter/cdk-bootstrap/${qualifier}/version`);
+          versionParams.add(
+            `arn:${stack.partition}:ssm:${region}:${account}:parameter/cdk-bootstrap/${qualifier}/version`,
+          );
         }
       }
       // A stage's `deployRole` is a CloudFormation SERVICE role (passed as --role-arn); granting the
@@ -147,7 +152,9 @@ export class DeploymentPipeline extends Construct {
       project.addToRolePolicy(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: [...roleArns] }));
     }
     if (versionParams.size > 0) {
-      project.addToRolePolicy(new iam.PolicyStatement({ actions: ['ssm:GetParameter'], resources: [...versionParams] }));
+      project.addToRolePolicy(
+        new iam.PolicyStatement({ actions: ['ssm:GetParameter'], resources: [...versionParams] }),
+      );
     }
     // CodeArtifact read for the build's `npm ci` (pre-release CLI install).
     if (ca) {
@@ -162,7 +169,9 @@ export class DeploymentPipeline extends Construct {
       project.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ['codeartifact:GetRepositoryEndpoint', 'codeartifact:ReadFromRepository'],
-          resources: [`arn:${stack.partition}:codeartifact:${caRegion}:${caAccount}:repository/${ca.domain}/${ca.repository}`],
+          resources: [
+            `arn:${stack.partition}:codeartifact:${caRegion}:${caAccount}:repository/${ca.domain}/${ca.repository}`,
+          ],
         }),
       );
       project.addToRolePolicy(
@@ -213,8 +222,15 @@ export class DeploymentPipeline extends Construct {
     NagSuppressions.addResourceSuppressions(
       project,
       [
-        { id: 'AwsSolutions-IAM5', reason: 'CodeBuild default log/report/artifact wildcards, plus scoped sts:AssumeRole on the CDK bootstrap roles.' },
-        { id: 'AwsSolutions-CB3', reason: 'Privileged mode is required to run the deployer image (docker) inside CodeBuild.' },
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            'CodeBuild default log/report/artifact wildcards, plus scoped sts:AssumeRole on the CDK bootstrap roles.',
+        },
+        {
+          id: 'AwsSolutions-CB3',
+          reason: 'Privileged mode is required to run the deployer image (docker) inside CodeBuild.',
+        },
       ],
       true,
     );
@@ -223,7 +239,12 @@ export class DeploymentPipeline extends Construct {
     ]);
     NagSuppressions.addResourceSuppressions(
       pipeline,
-      [{ id: 'AwsSolutions-IAM5', reason: 'CodePipeline and its source/action roles use CDK-generated wildcard permissions.' }],
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason: 'CodePipeline and its source/action roles use CDK-generated wildcard permissions.',
+        },
+      ],
       true,
     );
 

@@ -125,14 +125,22 @@ const spawnDocker: DockerSpawn = (args) => spawnSync('docker', args, { stdio: 'i
  */
 export function runFromImage(
   config: ResolvedDeploymentConfig,
-  options: { yes: boolean; network?: string; target?: string; cwd?: string; readVersion?: VersionReader; spawn?: DockerSpawn },
+  options: {
+    yes: boolean;
+    network?: string;
+    target?: string;
+    cwd?: string;
+    readVersion?: VersionReader;
+    spawn?: DockerSpawn;
+  },
 ): number {
   const spawn = options.spawn ?? spawnDocker;
   const cwd = options.cwd ?? process.cwd();
 
   // `target` deploys just that one stage (its own image version) -- how a CD pipeline runs one action per
   // target, so bumping a stage's image in deploy.config and committing deploys only that stage.
-  const targets = options.target !== undefined ? config.targets.filter((t) => t.stage === options.target) : config.targets;
+  const targets =
+    options.target !== undefined ? config.targets.filter((t) => t.stage === options.target) : config.targets;
   if (options.target !== undefined && targets.length === 0) {
     logger.error(`cdk-cicd deploy --from-image: no target '${options.target}' in deploy.config`);
     return 1;
@@ -140,7 +148,9 @@ export function runFromImage(
 
   for (const target of targets) {
     if (target.manualApproval && !options.yes) {
-      logger.error(`cdk-cicd deploy --from-image: target '${target.stage}' requires manual approval -- re-run with --yes`);
+      logger.error(
+        `cdk-cicd deploy --from-image: target '${target.stage}' requires manual approval -- re-run with --yes`,
+      );
       return 1;
     }
 
@@ -148,7 +158,9 @@ export function runFromImage(
     // config/<stage>.json in this (CD) repo. Bump that file, commit, and only this stage redeploys.
     const image = resolveTargetImage(target, config, cwd, options.readVersion);
     if (image === undefined) {
-      logger.error(`cdk-cicd deploy --from-image: target '${target.stage}' has no image -- set the config-level (or target) image, plus a version in config/${target.stage}.json`);
+      logger.error(
+        `cdk-cicd deploy --from-image: target '${target.stage}' has no image -- set the config-level (or target) image, plus a version in config/${target.stage}.json`,
+      );
       return 1;
     }
 

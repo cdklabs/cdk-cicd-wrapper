@@ -14,7 +14,8 @@ const CFN_ARN = 'arn:aws:iam::111111111111:role/ForcedCfnExec';
 /** Synthesize a stack whose synthesizer is resolveSynthesizer() under the given role env, return its roles. */
 function synthWithRoleEnv(env: { deploy?: string; cfn?: string }): { assumeRoleArn?: string; cfnRoleArn?: string } {
   const prev = { d: process.env[DEPLOY_ROLE_FLAG], c: process.env[CFN_EXEC_ROLE_FLAG] };
-  const set = (key: string, value?: string) => (value === undefined ? delete process.env[key] : (process.env[key] = value));
+  const set = (key: string, value?: string) =>
+    value === undefined ? delete process.env[key] : (process.env[key] = value);
   set(DEPLOY_ROLE_FLAG, env.deploy);
   set(CFN_EXEC_ROLE_FLAG, env.cfn);
   try {
