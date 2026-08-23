@@ -25,11 +25,11 @@
       "Bash(aws codeartifact describe-repository:*)",
       "Bash(aws codebuild list-projects:*)",
       "Bash(aws codepipeline list-pipelines:*)",
-      "Bash(aws codepipeline get-pipeline-state:*)"
+      "Bash(aws codepipeline get-pipeline-state:*)",
+      "Bash(npm publish:*)"
     ],
     "deny": [
       "Bash(git push:*)",
-      "Bash(npm publish:*)",
       "Bash(git commit:* --no-verify)"
     ]
   }
