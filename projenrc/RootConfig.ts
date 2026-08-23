@@ -41,8 +41,7 @@ export class RootConfig extends yarn.Monorepo {
       homepage: 'https://github.com/cdklabs/cdk-cicd-wrapper.git',
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
       projenrcTs: true,
-      defaultReleaseBranch: 'main',
-      majorVersion: 1,
+      defaultReleaseBranch: 'blueprint',
       // Floor required by cdklabs-projen-project-types 0.5.x
       projenVersion: '^0.99.68',
       devDeps: [
@@ -86,6 +85,13 @@ export class RootConfig extends yarn.Monorepo {
         releaseTrigger: pj.release.ReleaseTrigger.continuous({
           paths: ['packages/*', 'package.json'],
         }),
+        // Blueprint maintenance line. Its own single-branch release workflow (triggers on the
+        // `blueprint` branch), pinned to the 0.x tag line via majorVersion so it never bumps off
+        // Autopilot's 1.x tags, and staying on the `latest` dist-tag so existing installs are
+        // unchanged until Autopilot reaches 1.0.0.
+        branchName: 'blueprint',
+        majorVersion: 0,
+        npmDistTag: 'latest',
       },
       githubOptions: {
         dependencyReview: true,
@@ -100,7 +106,6 @@ export class RootConfig extends yarn.Monorepo {
           },
         },
       },
-      prerelease: 'alpha',
       stability: 'experimental',
       gitignore: [
         'docs/build',

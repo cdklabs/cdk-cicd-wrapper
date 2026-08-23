@@ -7,7 +7,7 @@
     ".github/workflows/build.yml",
     ".github/workflows/dependency-review.yml",
     ".github/workflows/pull-request-lint.yml",
-    ".github/workflows/release.yml",
+    ".github/workflows/release-blueprint.yml",
     ".github/workflows/upgrade.yml",
     ".gitignore",
     ".mergify.yml",
