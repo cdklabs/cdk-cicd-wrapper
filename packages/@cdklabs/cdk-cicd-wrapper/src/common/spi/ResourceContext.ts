@@ -87,7 +87,7 @@ class ScopedStorage {
    * @returns The resource, or undefined if it doesn't exist.
    */
   public get(name: string): any | undefined {
-    const resource = this.resources.get(name) as any | undefined;
+    const resource = this.resources.get(name);
 
     if (resource) {
       return resource;
