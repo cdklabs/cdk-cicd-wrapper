@@ -106,7 +106,7 @@ jobs:
       - name: "@cdklabs/cdk-cicd-wrapper: Check publish"
         run: |-
           should_publish="${{ needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper }}"
-          package_filter="${{ (!github.event.inputs.package || github.event.inputs.package == '*all packages*' || contains(fromJSON('["@cdklabs/cdk-cicd-wrapper"]'), github.event.inputs.package)) }}"
+          package_filter="${{ (!github.event.inputs.package || github.event.inputs.package == '*all packages*' || contains(fromJSON('["@cdklabs/cdk-cicd-wrapper","@cdklabs/cdk-cicd-wrapper-cli"]'), github.event.inputs.package)) }}"
           if [[ "$should_publish" != "true" ]]; then
             echo "⏭️ Skipping @cdklabs/cdk-cicd-wrapper: release tag already exists"
           elif [[ "$package_filter" != "true" ]]; then
@@ -419,7 +419,9 @@ jobs:
         run: errout=$(mktemp); gh release create $(cat dist/releasetag.txt) -R $GITHUB_REPOSITORY -F dist/changelog.md -t $(cat dist/releasetag.txt) --target $GITHUB_SHA 2> $errout && true; exitcode=$?; if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" $errout; then cat $errout; exit $exitcode; fi
   cdklabs-cdk-cicd-wrapper-cli_release_npm:
     name: "@cdklabs/cdk-cicd-wrapper-cli: Publish to npm"
-    needs: cdklabs-cdk-cicd-wrapper-cli_release
+    needs:
+      - cdklabs-cdk-cicd-wrapper-cli_release
+      - cdklabs-cdk-cicd-wrapper_release_done
     runs-on: ubuntu-latest
     permissions:
       id-token: write
