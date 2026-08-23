@@ -2,6 +2,7 @@
   "name": "cdk-v3-example",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "v3 sample: a plain CDK app turned into a pipeline by one cicd.config.ts (no wrapper code in the app)",
   "dependencies": {
     "@cdklabs/cdk-cicd-wrapper": "0.0.0",

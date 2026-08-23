@@ -38,7 +38,7 @@ usage() {
   cat <<'EOF'
 usage: harness.sh <subcommand>
 
-  creds                          refresh via ada, assert sts identity == CDK_CICD_TEST_ACCOUNT
+  creds                          assert AWS credentials resolve to CDK_CICD_TEST_ACCOUNT
   check-bootstrap                assert the CDK bootstrap SSM parameter exists in both regions
   deploy  <fixture> [region]     synth+deploy a fixture, tagged with a run id
   assert  <fixture> [region]     query AWS to prove the stack and its resource really exist
@@ -233,13 +233,12 @@ destroy_stack() {
 cmd_creds() {
   load_env
   log 'creds'
-  command -v ada >/dev/null 2>&1 || die 'ada is not on PATH'
-  ada credentials update \
-    --account "$CDK_CICD_TEST_ACCOUNT" --role Admin --provider isengard --once 2>&1 | redact \
-    || die 'ada credentials update failed'
-
+  # Credential-agnostic: obtain AWS credentials for CDK_CICD_TEST_ACCOUNT by whatever mechanism you
+  # use (env vars, a shared-config/SSO profile, or your org's credential tool), then run this to
+  # assert the resolved identity is the intended test account.
   local actual
-  actual="$(caller_account)" || die 'aws sts get-caller-identity failed'
+  actual="$(caller_account)" \
+    || die 'aws sts get-caller-identity failed -- configure AWS credentials for CDK_CICD_TEST_ACCOUNT first'
   [ "$actual" = "$CDK_CICD_TEST_ACCOUNT" ] \
     || die 'sts get-caller-identity returned a DIFFERENT account than CDK_CICD_TEST_ACCOUNT'
   aws_masked sts get-caller-identity --query Arn --output text | redact

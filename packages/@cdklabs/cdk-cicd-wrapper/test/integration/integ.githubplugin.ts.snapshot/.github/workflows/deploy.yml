@@ -87,7 +87,7 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 1800
           role-skip-session-tagging: true
-          role-to-assume: arn:aws:iam::218461131457:role/integ-github-github-role
+          role-to-assume: arn:aws:iam::234567890123:role/integ-github-github-role
           role-session-name: optional-role-session-name
       - id: Publish
         name: Publish Assets-FileAsset1
@@ -116,7 +116,7 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 1800
           role-skip-session-tagging: true
-          role-to-assume: arn:aws:iam::218461131457:role/integ-github-github-role
+          role-to-assume: arn:aws:iam::234567890123:role/integ-github-github-role
           role-session-name: optional-role-session-name
       - id: Publish
         name: Publish Assets-FileAsset2
@@ -145,7 +145,7 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 1800
           role-skip-session-tagging: true
-          role-to-assume: arn:aws:iam::218461131457:role/integ-github-github-role
+          role-to-assume: arn:aws:iam::234567890123:role/integ-github-github-role
           role-session-name: optional-role-session-name
       - id: Publish
         name: Publish Assets-FileAsset3
@@ -174,7 +174,7 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 1800
           role-skip-session-tagging: true
-          role-to-assume: arn:aws:iam::218461131457:role/integ-github-github-role
+          role-to-assume: arn:aws:iam::234567890123:role/integ-github-github-role
           role-session-name: optional-role-session-name
       - id: Publish
         name: Publish Assets-FileAsset4
@@ -203,7 +203,7 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 1800
           role-skip-session-tagging: true
-          role-to-assume: arn:aws:iam::218461131457:role/integ-github-github-role
+          role-to-assume: arn:aws:iam::234567890123:role/integ-github-github-role
           role-session-name: optional-role-session-name
       - id: Publish
         name: Publish Assets-FileAsset5
@@ -227,7 +227,7 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 1800
           role-skip-session-tagging: true
-          role-to-assume: arn:aws:iam::218461131457:role/integ-github-github-role
+          role-to-assume: arn:aws:iam::234567890123:role/integ-github-github-role
           role-session-name: optional-role-session-name
       - name: Assume CDK Deploy Role
         uses: aws-actions/configure-aws-credentials@v4
@@ -238,16 +238,16 @@ jobs:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
-          role-to-assume: arn:aws:iam::171469511505:role/cdk-hnb659fds-deploy-role-171469511505-us-east-1
+          role-to-assume: arn:aws:iam::123456789012:role/cdk-hnb659fds-deploy-role-123456789012-us-east-1
           role-external-id: Pipeline
       - id: Deploy
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: DEV-integ-githubComplianceLogBucketStack
-          template: https://cdk-hnb659fds-assets-171469511505-us-east-1.s3.us-east-1.amazonaws.com/${{
+          template: https://cdk-hnb659fds-assets-123456789012-us-east-1.s3.us-east-1.amazonaws.com/${{
             needs.Assets-FileAsset1.outputs.asset-hash }}.json
           no-fail-on-empty-changeset: "1"
-          role-arn: arn:aws:iam::171469511505:role/cdk-hnb659fds-cfn-exec-role-171469511505-us-east-1
+          role-arn: arn:aws:iam::123456789012:role/cdk-hnb659fds-cfn-exec-role-123456789012-us-east-1
   DEV-integ-githubEncryptionStack-Deploy:
     name: Deploy DEVinteggithubEncryptionStackE5A0ACCE
     permissions:
@@ -265,7 +265,7 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 1800
           role-skip-session-tagging: true
-          role-to-assume: arn:aws:iam::218461131457:role/integ-github-github-role
+          role-to-assume: arn:aws:iam::234567890123:role/integ-github-github-role
           role-session-name: optional-role-session-name
       - name: Assume CDK Deploy Role
         uses: aws-actions/configure-aws-credentials@v4
@@ -276,16 +276,16 @@ jobs:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
-          role-to-assume: arn:aws:iam::171469511505:role/cdk-hnb659fds-deploy-role-171469511505-us-east-1
+          role-to-assume: arn:aws:iam::123456789012:role/cdk-hnb659fds-deploy-role-123456789012-us-east-1
           role-external-id: Pipeline
       - id: Deploy
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: DEV-integ-githubEncryptionStack
-          template: https://cdk-hnb659fds-assets-171469511505-us-east-1.s3.us-east-1.amazonaws.com/${{
+          template: https://cdk-hnb659fds-assets-123456789012-us-east-1.s3.us-east-1.amazonaws.com/${{
             needs.Assets-FileAsset4.outputs.asset-hash }}.json
           no-fail-on-empty-changeset: "1"
-          role-arn: arn:aws:iam::171469511505:role/cdk-hnb659fds-cfn-exec-role-171469511505-us-east-1
+          role-arn: arn:aws:iam::123456789012:role/cdk-hnb659fds-cfn-exec-role-123456789012-us-east-1
   DEV-test-stack-Deploy:
     name: Deploy DEVteststack293BC6DC
     permissions:
@@ -303,7 +303,7 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 1800
           role-skip-session-tagging: true
-          role-to-assume: arn:aws:iam::218461131457:role/integ-github-github-role
+          role-to-assume: arn:aws:iam::234567890123:role/integ-github-github-role
           role-session-name: optional-role-session-name
       - name: Assume CDK Deploy Role
         uses: aws-actions/configure-aws-credentials@v4
@@ -314,13 +314,13 @@ jobs:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
-          role-to-assume: arn:aws:iam::171469511505:role/cdk-hnb659fds-deploy-role-171469511505-us-east-1
+          role-to-assume: arn:aws:iam::123456789012:role/cdk-hnb659fds-deploy-role-123456789012-us-east-1
           role-external-id: Pipeline
       - id: Deploy
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: DEV-test-stack
-          template: https://cdk-hnb659fds-assets-171469511505-us-east-1.s3.us-east-1.amazonaws.com/${{
+          template: https://cdk-hnb659fds-assets-123456789012-us-east-1.s3.us-east-1.amazonaws.com/${{
             needs.Assets-FileAsset5.outputs.asset-hash }}.json
           no-fail-on-empty-changeset: "1"
-          role-arn: arn:aws:iam::171469511505:role/cdk-hnb659fds-cfn-exec-role-171469511505-us-east-1
+          role-arn: arn:aws:iam::123456789012:role/cdk-hnb659fds-cfn-exec-role-123456789012-us-east-1

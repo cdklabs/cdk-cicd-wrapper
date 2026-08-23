@@ -260,7 +260,7 @@
                       "Application": "integ-github"
                     },
                     "type": "String",
-                    "value": "218461131457"
+                    "value": "234567890123"
                   }
                 },
                 "constructInfo": {
@@ -289,7 +289,7 @@
                       "Application": "integ-github"
                     },
                     "type": "String",
-                    "value": "171469511505"
+                    "value": "123456789012"
                   }
                 },
                 "constructInfo": {
@@ -318,7 +318,7 @@
                       "Application": "integ-github"
                     },
                     "type": "String",
-                    "value": "218461131457"
+                    "value": "234567890123"
                   }
                 },
                 "constructInfo": {
@@ -347,7 +347,7 @@
                       "Application": "integ-github"
                     },
                     "type": "String",
-                    "value": "171469511505"
+                    "value": "123456789012"
                   }
                 },
                 "constructInfo": {
@@ -462,7 +462,7 @@
                           "Action": "kms:*",
                           "Effect": "Allow",
                           "Principal": {
-                            "AWS": "arn:aws:iam::218461131457:root"
+                            "AWS": "arn:aws:iam::234567890123:root"
                           },
                           "Resource": "*"
                         },
@@ -645,7 +645,7 @@
                                     "s3:PutBucketPolicy"
                                   ],
                                   "Effect": "Allow",
-                                  "Resource": "arn:aws:s3:::compliance-log-218461131457-us-east-1"
+                                  "Resource": "arn:aws:s3:::compliance-log-234567890123-us-east-1"
                                 }
                               ],
                               "Version": "2012-10-17"
@@ -708,7 +708,7 @@
                   "aws:cdk:cloudformation:type": "AWS::Lambda::Function",
                   "aws:cdk:cloudformation:props": {
                     "code": {
-                      "s3Bucket": "cdk-hnb659fds-assets-218461131457-us-east-1",
+                      "s3Bucket": "cdk-hnb659fds-assets-234567890123-us-east-1",
                       "s3Key": "e06cb68a43bde3d15e34d50b15f5aed7b6b2f450860a9e8fb9a9d8c6977e871e.zip"
                     },
                     "handler": "make-compliance-log-bucket.handler",
@@ -903,7 +903,7 @@
                       "aws:cdk:cloudformation:type": "AWS::Lambda::Function",
                       "aws:cdk:cloudformation:props": {
                         "code": {
-                          "s3Bucket": "cdk-hnb659fds-assets-218461131457-us-east-1",
+                          "s3Bucket": "cdk-hnb659fds-assets-234567890123-us-east-1",
                           "s3Key": "3542be390685e0c8353d92ccb5796d343cd93ca946b6b0de798004206a199adc.zip"
                         },
                         "description": "AWS CDK resource provider framework - onEvent (integ-githubComplianceLogBucketStack/Provider)",
@@ -1107,7 +1107,7 @@
                                         "s3:PutBucketPolicy"
                                       ],
                                       "Effect": "Allow",
-                                      "Resource": "arn:aws:s3:::compliance-log-171469511505-us-east-1"
+                                      "Resource": "arn:aws:s3:::compliance-log-123456789012-us-east-1"
                                     }
                                   ],
                                   "Version": "2012-10-17"
@@ -1170,7 +1170,7 @@
                       "aws:cdk:cloudformation:type": "AWS::Lambda::Function",
                       "aws:cdk:cloudformation:props": {
                         "code": {
-                          "s3Bucket": "cdk-hnb659fds-assets-171469511505-us-east-1",
+                          "s3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
                           "s3Key": "e06cb68a43bde3d15e34d50b15f5aed7b6b2f450860a9e8fb9a9d8c6977e871e.zip"
                         },
                         "handler": "make-compliance-log-bucket.handler",
@@ -1353,7 +1353,7 @@
                           "aws:cdk:cloudformation:type": "AWS::Lambda::Function",
                           "aws:cdk:cloudformation:props": {
                             "code": {
-                              "s3Bucket": "cdk-hnb659fds-assets-171469511505-us-east-1",
+                              "s3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
                               "s3Key": "3542be390685e0c8353d92ccb5796d343cd93ca946b6b0de798004206a199adc.zip"
                             },
                             "description": "AWS CDK resource provider framework - onEvent (DEV/integ-githubComplianceLogBucketStack/Provider)",
@@ -1456,7 +1456,7 @@
                               "Action": "kms:*",
                               "Effect": "Allow",
                               "Principal": {
-                                "AWS": "arn:aws:iam::171469511505:root"
+                                "AWS": "arn:aws:iam::123456789012:root"
                               },
                               "Resource": "*"
                             },

@@ -92,7 +92,7 @@
         "s3:PutBucketPolicy"
        ],
        "Effect": "Allow",
-       "Resource": "arn:aws:s3:::compliance-log-218461131457-us-east-1"
+       "Resource": "arn:aws:s3:::compliance-log-234567890123-us-east-1"
       }
      ],
      "Version": "2012-10-17"
@@ -133,7 +133,7 @@
    "Type": "AWS::Lambda::Function",
    "Properties": {
     "Code": {
-     "S3Bucket": "cdk-hnb659fds-assets-218461131457-us-east-1",
+     "S3Bucket": "cdk-hnb659fds-assets-234567890123-us-east-1",
      "S3Key": "e06cb68a43bde3d15e34d50b15f5aed7b6b2f450860a9e8fb9a9d8c6977e871e.zip"
     },
     "Handler": "make-compliance-log-bucket.handler",
@@ -288,7 +288,7 @@
    "Type": "AWS::Lambda::Function",
    "Properties": {
     "Code": {
-     "S3Bucket": "cdk-hnb659fds-assets-218461131457-us-east-1",
+     "S3Bucket": "cdk-hnb659fds-assets-234567890123-us-east-1",
      "S3Key": "3542be390685e0c8353d92ccb5796d343cd93ca946b6b0de798004206a199adc.zip"
     },
     "Description": "AWS CDK resource provider framework - onEvent (integ-githubComplianceLogBucketStack/Provider)",
@@ -332,7 +332,7 @@
       "Arn"
      ]
     },
-    "BucketName": "compliance-log-218461131457-us-east-1"
+    "BucketName": "compliance-log-234567890123-us-east-1"
    },
    "UpdateReplacePolicy": "Delete",
    "DeletionPolicy": "Delete"

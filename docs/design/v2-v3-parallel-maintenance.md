@@ -1,12 +1,28 @@
-# Maintaining v2 and v3 in parallel
+# Maintaining Blueprint and Autopilot in parallel
 
-**Question:** can the current projen setup easily support keeping **v2** (deprecated but
-patchable at any time) and **v3** (actively developed) published in parallel for the ~2–3 month
-deprecation window?
+**Question:** how do we keep **Blueprint** (the current `PipelineBlueprint.builder()` line, semver
+`0.x` — patchable/releasable on demand) and **Autopilot** (the new zero-touch `cdk-cicd exec` line,
+semver `1.x` — actively developed) in the repo in parallel, with **Autopilot on `main`** and
+Blueprint patchable whenever a fix is needed?
 
-**Answer:** **not via the obvious `releaseBranches` knob** — this monorepo's project type ignores
-it — but yes with a small, well-defined config change per branch, once two pre-existing blockers are
-fixed. **v2 is already patchable today.**
+**Answer:** **not via the obvious `releaseBranches` knob** — this monorepo's project type ignores it
+— but yes with a small, well-defined `releaseOptions` change per branch, once the blockers below are
+fixed.
+
+## Decision (2026-08 — supersedes the earlier "keep v2 on main" recommendation)
+
+- **Naming.** The two generations are **Blueprint** (formerly "v2": the explicit `PipelineBlueprint`
+  builder API, semver `0.x`) and **Autopilot** (formerly "v3": zero-touch injection + `cdk-cicd
+  exec`, semver `1.x`). The semver numbers are unchanged; the names are how we refer to the lines in
+  docs, branches, and dist-tags. (Where the analysis below still says "v2"/"v3", read
+  Blueprint/Autopilot.)
+- **Branches.** `main` = **Autopilot** (active development). `blueprint` = **Blueprint**
+  (maintenance).
+- **dist-tags.** `latest` stays **Blueprint** (`0.x`) so an existing `npm install` is unchanged;
+  **Autopilot** alpha publishes to `next`. When Autopilot reaches `1.0.0` stable, flip `latest` →
+  Autopilot and move Blueprint to the `blueprint` dist-tag.
+- **Mechanism.** Per-branch `.projenrc.ts` `releaseOptions` (below), because `MonorepoRelease` is
+  single-branch.
 
 ---
 
@@ -22,100 +38,113 @@ The repo is built on `cdklabs-projen-project-types` `yarn.Monorepo`. Its release
 - `yarn.Monorepo` forwards only `...options.releaseOptions` into that component
   (`.../monorepo.js:150,179`).
 
-So adding `releaseBranches: { v2: {...} }` to `RootConfig` is a **silent no-op**. Parallel publishing
-is instead achieved by letting the two branches carry **different `releaseOptions`** — each branch
+So adding `releaseBranches: { ... }` to `RootConfig` is a **silent no-op**. Parallel publishing is
+instead achieved by letting the two branches carry **different `releaseOptions`** — each branch
 synthesizes its own single-branch release workflow.
 
 ## Current state (confirmed)
 
-- **Published line is 0.x** — tags `@cdklabs/cdk-cicd-wrapper@v0.2.2 … v0.3.9`; no `1.x`, no `-alpha`.
-- **Branches:** `main` (the published 0.x / v2-era line) and `v3` (the rewrite under `src/v3`, **never
-  released** — no workflow targets it).
+- **Published line is `0.x`** (Blueprint) — tags `@cdklabs/cdk-cicd-wrapper@v0.2.2 … v0.3.9`; no
+  `1.x`, no `-alpha`.
+- **Branches:** `main` (the published `0.x`/Blueprint line) and the Autopilot rewrite branch (under
+  `src/v3`, **never released** — no workflow targets it). `main` is a strict ancestor of the
+  Autopilot branch, so the flip below is a clean fast-forward.
 - `.github/workflows/release.yml` triggers **only** on push to `main` and runs `npx projen release`,
   publishing to the npm default dist-tag `latest` (no `npmDistTag` configured anywhere).
-- `projenrc/RootConfig.ts`: `majorVersion: 1` (line 37) and `prerelease: 'alpha'` (line 80) are set at
-  the **top level of `MonorepoOptions`**, which the project type **does not forward** to the release
-  component. Proof: the generated `bump` task has **no `MAJOR` env**, so the bumper tracks the global
-  latest tag → 0.x forever. Both settings are inert as written (this is the mechanical root cause of
-  finding `planning-projen-majorversion-mismatch`).
+- `projenrc/RootConfig.ts`: `majorVersion` and `prerelease` are set at the **top level of
+  `MonorepoOptions`**, which the project type **does not forward** to the release component. Proof:
+  the generated `bump` task has **no `MAJOR` env**, so the bumper tracks the global latest tag
+  forever. Both settings are inert as written (the mechanical root cause of finding
+  `planning-projen-majorversion-mismatch`).
 
-## Recommended setup
+## Per-branch configuration (the flip)
 
-Keep v2 on `main` (least churn — the existing workflow already targets it); give v3 its own branch and
-dist-tag. Because `.projenrc.ts` is maintained per branch, the two lines diverge in `releaseOptions`:
+Because `main` is a strict ancestor of the Autopilot branch, `main` fast-forwards to it with no
+conflicts:
 
-**`main` (v2 maintenance line)** — move the version knobs *into* `releaseOptions` so `MAJOR` is emitted:
-```ts
-// RootConfig.ts on main — remove top-level majorVersion/prerelease; put them here:
-releaseOptions: {
-  publishToNpm: true,
-  releaseTrigger: pj.release.ReleaseTrigger.continuous({ paths: ['packages/*', 'package.json'] }),
-  majorVersion: 0,        // emits MAJOR=0 → bump pinned to the 0.x tag line
-  npmDistTag: 'latest',   // v2 stays the default `npm install`
-  // branchName defaults to 'main' → release.yml keeps triggering on main
-},
+```
+git branch blueprint origin/main                     # preserve the 0.x line as `blueprint`
+git checkout main && git merge --ff-only <autopilot> # main becomes Autopilot
 ```
 
-**`v3` (active line)** — its own copy of `.projenrc.ts`:
+**`main` (Autopilot)** — move the version knobs *into* `releaseOptions` so `MAJOR` is emitted (they
+are inert at the top level today):
 ```ts
 releaseOptions: {
   publishToNpm: true,
   releaseTrigger: pj.release.ReleaseTrigger.continuous({ paths: ['packages/*', 'package.json'] }),
-  branchName: 'v3',       // → generates a `release-v3` workflow, triggers on push to v3
-  majorVersion: 1,        // emits MAJOR=1 → bump tracks only 1.x tags
-  prerelease: 'alpha',    // 1.0.0-alpha.N (decision D6)
-  npmDistTag: 'next',     // CRITICAL: keep alpha OFF `latest` so it never clobbers v2
+  // branchName defaults to 'main'
+  majorVersion: 1,          // MAJOR=1 → bump tracks only the 1.x line → 1.0.0-alpha.0
+  prerelease: 'alpha',      // drop at 1.0.0 stable
+  npmDistTag: 'next',       // keep alpha OFF 'latest' until 1.0.0
 },
 ```
 
-**Patching v2 on demand:** checkout `main` → commit a `fix:`/`feat:` → push. The existing workflow runs
-`npx projen release`, computes the next `0.x.(z+1)` from the latest `@cdklabs/cdk-cicd-wrapper@0.*` tag
-(now correctly filtered by `MAJOR=0`), and publishes to `latest`. Continuous-on-push, so "patch
-whenever needed" == "merge the fix." Enabling v3 changes nothing about main's workflow.
+**`blueprint` (Blueprint maintenance)** — its own `.projenrc.ts`:
+```ts
+releaseOptions: {
+  publishToNpm: true,
+  releaseTrigger: pj.release.ReleaseTrigger.continuous({ paths: ['packages/*', 'package.json'] }),
+  branchName: 'blueprint',  // → generates a release-blueprint workflow, triggers on push to blueprint
+  majorVersion: 0,          // MAJOR=0 → next is 0.3.10 from 0.3.9
+  npmDistTag: 'latest',     // Blueprint stays the default install until Autopilot is stable
+},
+```
 
-**Publishing v3 in parallel:** push to `v3` runs the separate `release-v3` workflow → `1.0.0-alpha.N`
-→ dist-tag `next`. Two fully independent single-branch pipelines; no dependence on the unwired
-`releaseBranches`.
+Run `npx projen` **on each branch**: `main` regenerates `release.yml` (Autopilot → `next`), the
+`blueprint` branch generates `release-blueprint.yml` (Blueprint → `latest`). The `MAJOR` env isolates
+the two lines that share the `@cdklabs/cdk-cicd-wrapper@v*` tag prefix.
+
+**Patching Blueprint on demand:** commit a `fix:`/`feat:` to `blueprint` → its workflow computes the
+next `0.x.(z+1)` (correctly filtered by `MAJOR=0`) and publishes to `latest`. Continuous-on-push.
+
+**Publishing Autopilot:** push to `main` → `release.yml` publishes `1.0.0-alpha.N` to `next`. Two
+fully independent single-branch pipelines; no dependence on the unwired `releaseBranches`.
+
+**At Autopilot `1.0.0` stable:** drop `prerelease`, set `main`'s `npmDistTag: 'latest'`, and change
+`blueprint`'s `npmDistTag` to `'blueprint'`; announce in MIGRATION.md / README.
 
 ## Blockers to fix first
 
-1. **`majorVersion` at the wrong level (correctness, not cosmetics).** As shipped it is dropped, so the
-   bumper has no `MAJOR` filter. With v2=0.x and v3=1.x-alpha sharing the **same git tag prefix**, an
-   unfiltered bump computes each line's next version from the *other* line's tags. Moving `majorVersion`
-   into `releaseOptions` (or per-workspace) is what makes `MAJOR` appear and isolates the two tag lines.
-2. **dist-tag collision.** No `npmDistTag` today → everything goes to `latest`. v3 alpha **must**
-   publish to a non-`latest` tag (`next`), or `npm install` starts resolving to `1.0.0-alpha`.
+1. **`majorVersion` at the wrong level (correctness, not cosmetics).** As shipped it is dropped, so
+   the bumper has no `MAJOR` filter. With Blueprint=`0.x` and Autopilot=`1.x-alpha` sharing the
+   **same git tag prefix**, an unfiltered bump computes each line's next version from the *other*
+   line's tags. Moving `majorVersion` into `releaseOptions` is what makes `MAJOR` appear and isolates
+   the two tag lines.
+2. **dist-tag collision.** No `npmDistTag` today → everything goes to `latest`. Autopilot alpha
+   **must** publish to a non-`latest` tag (`next`), or `npm install` starts resolving to
+   `1.0.0-alpha`.
 3. **Red compat gate (`qa-compat-gate-already-red`).** `npx projen compat` already exits 1 with ~64
-   pre-existing `aws-cdk-lib`-inherited removals (caret-vs-lockfile version skew). Until fixed (align the
-   resolved `aws-cdk-lib`, then a curated `.compatignore`, which does not yet exist), the API tripwire is
-   effectively down on both lines.
+   pre-existing `aws-cdk-lib`-inherited removals (caret-vs-lockfile version skew). Until fixed (align
+   the resolved `aws-cdk-lib`, then a curated `.compatignore`, which does not yet exist), the API
+   tripwire is effectively down on both lines.
 
 ## Backporting & drift
 
-Because there is no single-source `releaseBranches`, the two lines diverge in `.projenrc.ts` **and** in
-generated files (`release.yml` vs `release-v3.yml`, versions, …). Every regen must run on the branch it
-belongs to, and a straight `git merge` between the lines will conflict on generated artifacts.
-**Backport by cherry-picking the source `fix:` commit** (main→v3 or v3→main) and re-running `npx projen`
-on the target branch — never merge the generated files.
+Because there is no single-source `releaseBranches`, the two lines diverge in `.projenrc.ts` **and**
+in generated files (`release.yml` vs `release-blueprint.yml`, versions, …). Every regen must run on
+the branch it belongs to, and a straight `git merge` between the lines will conflict on generated
+artifacts. **Backport by cherry-picking the source `fix:` commit** (main↔blueprint) and re-running
+`npx projen` on the target branch — never merge the generated files.
 
 ## Step-by-step
 
-1. Fix the compat gate first (unblocks the API tripwire for both lines).
-2. On `main`: delete top-level `majorVersion: 1` / `prerelease: 'alpha'`; add `majorVersion: 0` +
-   `npmDistTag: 'latest'` to `releaseOptions`. `npx projen`; confirm the bump task now shows
-   `MAJOR: '0'` and `release.yml`'s trigger is unchanged.
-3. Dry-run main's release (`workflow_dispatch`, `dry_run: true`): confirm it computes `0.3.10` from
-   `0.3.9` and targets `latest`.
-4. On `v3`: set `releaseOptions` to `{ branchName: 'v3', majorVersion: 1, prerelease: 'alpha',
-   npmDistTag: 'next', … }`. `npx projen`; verify a `release-v3` workflow is generated and the bump
-   computes `1.0.0-alpha.0`.
-5. First v3 publish: push `v3`; confirm `1.0.0-alpha.0` lands under `next` and `latest` still points at
-   the v2 `0.3.x`.
-6. Convention: patch v2 by committing `fix:` to `main`; cherry-pick the source commit to `v3` and re-run
-   `npx projen` when it also applies.
+1. Create `blueprint` from the current `main` (`0.x` tip); fast-forward `main` to the Autopilot
+   branch.
+2. On `main`: delete the top-level `majorVersion`/`prerelease`; add `releaseOptions` `{ majorVersion:
+   1, prerelease: 'alpha', npmDistTag: 'next' }`. `npx projen`; confirm the bump task shows
+   `MAJOR: '1'` and `release.yml` triggers on `main`.
+3. On `blueprint`: set `releaseOptions` `{ branchName: 'blueprint', majorVersion: 0, npmDistTag:
+   'latest' }`. `npx projen`; verify a `release-blueprint` workflow is generated and the bump computes
+   `0.3.10`.
+4. Dry-run each release (`workflow_dispatch`, `dry_run: true`): Blueprint computes `0.3.10` → `latest`,
+   Autopilot computes `1.0.0-alpha.0` → `next`.
+5. Fix the compat gate before relying on the API tripwire on either line.
+6. Convention: patch Blueprint on `blueprint`; cherry-pick source `fix:` commits across lines and
+   re-run `npx projen` on the target — never merge generated files.
 
-**Key files:** `projenrc/RootConfig.ts` (36–37, 66–72, 80), `.github/workflows/release.yml`, and the
-project-type internals proving the single-branch limitation:
+**Key files:** `projenrc/RootConfig.ts`, `.github/workflows/release.yml`, and the project-type
+internals proving the single-branch limitation:
 `node_modules/cdklabs-projen-project-types/lib/yarn/monorepo.js:150,179`,
 `.../monorepo-release.js:31,266,321`, `.../monorepo-release-options.d.ts:10`,
 `.../typescript-workspace.js:80–97`.

@@ -168,8 +168,9 @@ cd packages/@cdklabs/cdk-cicd-wrapper && npx projen compile   # or: npx projen t
 Deployment testing uses a dev/sandbox account, role `Admin`, regions `us-west-2` (primary) and
 `us-west-1` (multi-region cases). **Account ids never go in committed source** — they live in the
 gitignored `.env` as `CDK_CICD_TEST_ACCOUNT` (+ `CDK_CICD_TEST_REGION_PRIMARY`/`_SECONDARY`).
-Credentials: `ada credentials update --account "$CDK_CICD_TEST_ACCOUNT" --role Admin --provider
-isengard --once`.
+Credentials: obtain AWS credentials for `$CDK_CICD_TEST_ACCOUNT` (role `Admin`) via your preferred
+mechanism — environment variables, a shared-config/SSO profile, or your org's credential tool — then
+`test/proof/harness.sh creds` asserts the resolved identity matches.
 
 Test fixtures are tagged `cdk-cicd-wrapper-test` + a run id, and **only** tagged stacks may ever
 be destroyed. CodeArtifact publish/test-install loop already exists: `task codeartifact:login`,
