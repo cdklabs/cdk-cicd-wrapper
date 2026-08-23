@@ -4,7 +4,7 @@ import {
   Stack,
 } from 'aws-cdk-lib';
 import { BuildSpec } from 'aws-cdk-lib/aws-codebuild';
-import { PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+import { PipelineBlueprint, AppConfig } from '@cdklabs/cdk-cicd-wrapper';
 
 class Fixture extends Stack {
   constructor(scope: Construct, id: string) {
