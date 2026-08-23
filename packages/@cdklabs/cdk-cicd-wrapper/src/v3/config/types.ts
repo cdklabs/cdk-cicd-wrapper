@@ -167,6 +167,16 @@ export interface ResolvedCicdConfig {
    * minutes for the (usually dominant) stretch where CloudFormation is working.
    */
   readonly asyncDeploy: boolean;
+  /**
+   * Deploy with **CloudFormation express mode** (`cdk deploy --express`). CloudFormation reports each
+   * stack operation complete as soon as it applies the resource configuration, *without* waiting for
+   * resources to stabilize -- materially faster for stacks whose resources are slow to stabilize.
+   * Express runs with **rollback disabled** (a failed deploy is left in a failed state for inspection);
+   * forcing `--rollback` conflicts with the change-set path for nested stacks, so the CLI does not add
+   * it. AWS does **not** recommend express mode for production -- it targets fast iterative
+   * deployments. Off by default.
+   */
+  readonly express?: boolean;
 }
 
 /**

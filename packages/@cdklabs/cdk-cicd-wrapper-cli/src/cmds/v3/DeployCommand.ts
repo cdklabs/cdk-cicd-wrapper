@@ -23,10 +23,22 @@ import { logger } from '../../utils/Logging';
  * the change sets, then returns immediately. That is what lets the Lambda deploy driver own the
  * CloudFormation wait -- the expensive part -- rather than a build container (D-deploy-wait).
  */
-export function deployArgs(outDir: string, deployRole?: string, changeSetName?: string): string[] {
+export function deployArgs(
+  outDir: string,
+  deployRole?: string,
+  changeSetName?: string,
+  express = false,
+): string[] {
   const args = ['cdk', 'deploy', '--app', outDir, '--all', '--require-approval', 'never'];
   if (changeSetName !== undefined) {
     args.push('--no-execute', '--change-set-name', changeSetName);
+  } else if (express) {
+    // CloudFormation express mode: report completion without waiting for resource stabilization.
+    // NOTE: express runs with rollback DISABLED, and pairing it with `--rollback` conflicts with the
+    // change-set path for nested stacks ("DisableRollback ... conflicts with the value the ChangeSet was
+    // created with"), so we do NOT force `--rollback`. A failed express deploy is left in a failed state
+    // for inspection -- which is why express is for fast iterative dev deploys, not production.
+    args.push('--express');
   }
   if (deployRole !== undefined && deployRole.length > 0) {
     // cdk assumes this role to perform the deployment (the forced deployer role).
@@ -290,7 +302,7 @@ class Command implements yargs.CommandModule {
 
       // A --deploy-role flag (container mode) overrides the stage config's forced role.
       const deployRole = (args.deployRole as string | undefined) ?? stage.deployment?.deployRole;
-      const deploy = spawnSync('npx', deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined), {
+      const deploy = spawnSync('npx', deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined, config.express), {
         stdio: 'inherit',
         cwd,
         env: { ...process.env, ...target.env },

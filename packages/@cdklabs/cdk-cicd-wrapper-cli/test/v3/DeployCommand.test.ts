@@ -28,6 +28,22 @@ describe('m3-deploy: deployArgs', () => {
   test('an empty role string is treated as no role', () => {
     expect(deployArgs('cdk.out/dev/us-west-2', '')).not.toContain('--role-arn');
   });
+
+  test('express mode adds --express (rollback stays disabled -- --rollback conflicts with express + nested stacks)', () => {
+    const args = deployArgs('cdk.out/dev/us-west-2', undefined, undefined, true);
+    expect(args).toContain('--express');
+    expect(args).not.toContain('--rollback');
+  });
+
+  test('express is off by default (proven path unchanged)', () => {
+    expect(deployArgs('cdk.out/dev/us-west-2')).not.toContain('--express');
+  });
+
+  test('prepare mode (change set) takes precedence over express -- no --express with --no-execute', () => {
+    const args = deployArgs('cdk.out/dev/us-west-2', undefined, 'cdk-cicd-9', true);
+    expect(args).toContain('--no-execute');
+    expect(args).not.toContain('--express');
+  });
 });
 
 describe('m4-deploy-observer: deployArgs prepare mode', () => {
