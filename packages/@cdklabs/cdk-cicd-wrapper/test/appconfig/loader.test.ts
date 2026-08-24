@@ -141,6 +141,7 @@ describe('appconfig-load', () => {
         dynamoDBTable: RemovalPolicyValue.RETAIN,
         s3Bucket: RemovalPolicyValue.DESTROY,
       },
+      logRetentionInDays: 365,
     });
   });
 
@@ -293,6 +294,7 @@ describe('appconfig-load', () => {
         dynamoDBTable: RemovalPolicyValue.RETAIN,
         s3Bucket: RemovalPolicyValue.RETAIN,
       },
+      logRetentionInDays: 365,
     });
   });
 });

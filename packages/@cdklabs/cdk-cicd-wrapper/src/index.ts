@@ -89,3 +89,22 @@ export { DeploymentPipelineApp, DeploymentPipelineAppProps } from './app/Deploym
 // only pays for what it references. This is v2's resource-provider concept with the singleton and the
 // untyped registry removed.
 export { SupportResources, SupportResourcesProps } from './support/SupportResources';
+// Default CloudWatch log-retention (m9-migrate-log-retention), applied tree-wide by the runtime
+// injection hook; exported for a narrower, explicit `Aspects.of(scope).add(...)` use.
+export { LogRetentionAspect, LogRetentionAspectProps } from './support/LogRetentionAspect';
+// v2's other default-on security-hardening plugins (m9-migrate-security-plugins). The four with no
+// extra config/resource dependency are, like log retention above, applied tree-wide by the runtime
+// injection hook; exported here too for a narrower, explicit use.
+export { EncryptBucketOnTransitAspect } from './support/EncryptBucketOnTransitAspect';
+export { EncryptSNSTopicOnTransitAspect } from './support/EncryptSNSTopicOnTransitAspect';
+export { RotateEncryptionKeysAspect } from './support/RotateEncryptionKeysAspect';
+export { DisablePublicIPAssignmentForEC2Aspect } from './support/DisablePublicIPAssignmentForEC2Aspect';
+// Opt-in only (not wired into the runtime injection hook): each needs a dependency v3 does not
+// provision by default yet -- a compliance-log bucket, a KMS key, or a caller-owned dead-letter queue.
+export { DestroyEncryptionKeysOnDeleteAspect } from './support/DestroyEncryptionKeysOnDeleteAspect';
+export {
+  EncryptCloudWatchLogGroupsAspect,
+  EncryptCloudWatchLogGroupsAspectProps,
+} from './support/EncryptCloudWatchLogGroupsAspect';
+export { AccessLogsForBucketAspect, AccessLogsForBucketAspectProps } from './support/AccessLogsForBucketAspect';
+export { LambdaDLQAspect, LambdaDLQAspectProps } from './support/LambdaDLQAspect';

@@ -6,10 +6,12 @@
 
 import { App, Aspects, Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { AppConfig, CdkCicd } from '../../src';
 import { appsConstructed } from '../../src/runtime/inject';
+import { DEFAULT_LOG_RETENTION_DAYS } from '../../src/support/LogRetentionAspect';
 
 describe('m2-attach: CdkCicd.attach', () => {
   test('applies cdk-nag to a stock (unwrapped) App', () => {
@@ -59,5 +61,25 @@ describe('m2-attach: CdkCicd.attach', () => {
     const before = appsConstructed();
     CdkCicd.attach(new App());
     expect(appsConstructed()).toBe(before + 1);
+  });
+
+  test('forces the default log retention when no cicd:config is present', () => {
+    const app = new App();
+    CdkCicd.attach(app);
+    const stack = new Stack(app, 'NoConfigRetentionStack');
+    new logs.CfnLogGroup(stack, 'Logs');
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Logs::LogGroup', {
+      RetentionInDays: DEFAULT_LOG_RETENTION_DAYS,
+    });
+  });
+
+  test('applies a log retention from the injected cicd:config', () => {
+    const app = new App({ context: { [AppConfig.CONTEXT_KEY]: { logRetentionInDays: 30 } } });
+    CdkCicd.attach(app);
+    const stack = new Stack(app, 'ConfiguredRetentionStack');
+    new logs.CfnLogGroup(stack, 'Logs');
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
   });
 });

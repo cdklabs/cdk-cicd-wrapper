@@ -46,4 +46,11 @@ export interface BaseConfig {
 
   /** Stateful-resource retention. */
   readonly removalPolicies: RemovalPolicies;
+
+  /**
+   * CloudWatch Logs retention, in days, the wrapper forces on any log group that does not already set
+   * one explicitly (applied tree-wide as an Aspect by the runtime injection hook). Defaults to 365,
+   * matching v2's `PipelineBlueprint.logRetentionInDays`.
+   */
+  readonly logRetentionInDays: number;
 }

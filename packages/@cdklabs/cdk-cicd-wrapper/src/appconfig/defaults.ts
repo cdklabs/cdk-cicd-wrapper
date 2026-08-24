@@ -3,6 +3,11 @@
 
 import { BaseConfig, RemovalPolicyValue } from './schema';
 
+// Matches `LogRetentionAspect`'s own default (../support/LogRetentionAspect) -- kept as a literal
+// rather than an import so appconfig stays free of CDK-construct dependencies, same as the rest of
+// this module.
+const DEFAULT_LOG_RETENTION_DAYS = 365;
+
 /**
  * Standard recursive partial. TypeScript-only helper describing the shape of a config *file* (every
  * level optional) — it is never part of an exported jsii signature.
@@ -60,6 +65,7 @@ export function getDefaultConfig(): BaseConfig {
       dynamoDBTable: RemovalPolicyValue.RETAIN,
       s3Bucket: RemovalPolicyValue.RETAIN,
     },
+    logRetentionInDays: DEFAULT_LOG_RETENTION_DAYS,
   };
 }
 

@@ -16,6 +16,11 @@ import * as path from 'path';
 import { App, Aspects, DefaultStackSynthesizer, IReusableStackSynthesizer, Tags } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { AppConfig } from '../appconfig/accessor';
+import { DisablePublicIPAssignmentForEC2Aspect } from '../support/DisablePublicIPAssignmentForEC2Aspect';
+import { EncryptBucketOnTransitAspect } from '../support/EncryptBucketOnTransitAspect';
+import { EncryptSNSTopicOnTransitAspect } from '../support/EncryptSNSTopicOnTransitAspect';
+import { DEFAULT_LOG_RETENTION_DAYS, LogRetentionAspect } from '../support/LogRetentionAspect';
+import { RotateEncryptionKeysAspect } from '../support/RotateEncryptionKeysAspect';
 
 /**
  * Environment flag that `cdk-cicd exec` (m2-exec) sets to arm the bundled-app diagnostic. It is a
@@ -91,6 +96,23 @@ export function applyWrapper(app: App, config: Record<string, unknown>): void {
   // cdk-nag across the whole tree. Aspects visit before template emission, so this is the
   // right hook -- no need to monkeypatch synth().
   Aspects.of(app).add(new AwsSolutionsChecks());
+
+  // v2's default CloudWatch log-retention (m9-migrate-log-retention), tree-wide, same as cdk-nag
+  // above. Falls back to the wrapper's own default rather than relying solely on the app-config
+  // default: a stage with no config file at all is injected with `{}` (m2-exec's `loadConfig`), which
+  // must still get the default retention -- "un-configured" is not "un-wrapped".
+  const retentionInDays =
+    typeof config.logRetentionInDays === 'number' ? config.logRetentionInDays : DEFAULT_LOG_RETENTION_DAYS;
+  Aspects.of(app).add(new LogRetentionAspect({ retentionInDays }));
+
+  // v2's other default-on security-hardening plugins (m9-migrate-security-plugins), tree-wide, same
+  // as cdk-nag and log retention above. Each needs no extra config or resource, unlike the
+  // compliance-bucket-gated `AccessLogsForBucketAspect` or the key-requiring
+  // `EncryptCloudWatchLogGroupsAspect` -- those stay opt-in until their dependencies land.
+  Aspects.of(app).add(new EncryptBucketOnTransitAspect());
+  Aspects.of(app).add(new EncryptSNSTopicOnTransitAspect());
+  Aspects.of(app).add(new RotateEncryptionKeysAspect());
+  Aspects.of(app).add(new DisablePublicIPAssignmentForEC2Aspect());
 
   const tags = config.tags;
   if (tags !== null && typeof tags === 'object' && !Array.isArray(tags)) {

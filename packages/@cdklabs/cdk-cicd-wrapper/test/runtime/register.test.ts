@@ -8,11 +8,13 @@
 
 import { App, Aspects, DefaultStackSynthesizer, IReusableStackSynthesizer, Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { AppConfig } from '../../src/appconfig';
 import * as inject from '../../src/runtime/inject';
 import { appsConstructed, assertAppModuleLayout } from '../../src/runtime/inject';
+import { DEFAULT_LOG_RETENTION_DAYS } from '../../src/support/LogRetentionAspect';
 // Side-effecting import: patches App. Must come after the other imports so the assertions
 // below observe the patched module.
 import '../../src/runtime/register';
@@ -105,6 +107,23 @@ describe('m2-register: the App patch', () => {
         process.env.CDK_CONTEXT_JSON = previous;
       }
     }
+  });
+
+  test('a wrapped App forces the default log retention with no injected config', () => {
+    const stack = new Stack(new App(), 'DefaultRetentionStack');
+    new logs.CfnLogGroup(stack, 'Logs');
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Logs::LogGroup', {
+      RetentionInDays: DEFAULT_LOG_RETENTION_DAYS,
+    });
+  });
+
+  test('logRetentionInDays from injected cicd:config overrides the default', () => {
+    const app = new App({ context: { [AppConfig.CONTEXT_KEY]: { logRetentionInDays: 14 } } });
+    const stack = new Stack(app, 'ConfiguredRetentionStack');
+    new logs.CfnLogGroup(stack, 'Logs');
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Logs::LogGroup', { RetentionInDays: 14 });
   });
 
   test('each construction is counted (for the bundled-app diagnostic)', () => {

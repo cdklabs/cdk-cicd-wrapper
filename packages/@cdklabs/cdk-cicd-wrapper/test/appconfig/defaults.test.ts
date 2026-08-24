@@ -79,6 +79,7 @@ describe('appconfig-base-defaults', () => {
         dynamoDBTable: RemovalPolicyValue.RETAIN,
         s3Bucket: RemovalPolicyValue.RETAIN,
       },
+      logRetentionInDays: 365,
     });
   });
 });
