@@ -199,6 +199,12 @@ export interface ResolvedCicdConfig {
   /** HTTP(S) proxy every build project routes through, if any. */
   readonly proxy?: ProxyConfig;
   /**
+   * The name of the compliance/access-log destination bucket, if configured (v2
+   * `ComplianceBucketProvider`/`ComplianceLogBucketStack`, migrated). Threaded into
+   * `SupportResources.complianceLogBucket`; see there for the bucket's shape.
+   */
+  readonly complianceLogBucketName?: string;
+  /**
    * CodeBuild environment overrides -- privileged mode, compute type, environment variables -- applied
    * to every CodeBuild project the pipeline creates (v2 `codeBuildEnvSettings`, migrated from
    * `CodeBuildFactoryProvider`/`PipelineBlueprint.codeBuildEnvSettings(...)`). Reuses CDK's own

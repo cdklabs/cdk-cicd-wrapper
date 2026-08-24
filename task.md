@@ -1048,7 +1048,7 @@ not this branch reaching `main`.
     until a session scoped to fix them lands. `MIGRATION.md`'s row for these aspects (line ~69)
     already describes the port at the design level with no mechanism detail, so it needed no edit.
 
-- **`m9-migrate-compliance-bucket`** — port the v2 compliance/access-log bucket  ·  todo · wave 8 ·
+- **`m9-migrate-compliance-bucket`** — port the v2 compliance/access-log bucket  ·  in-progress · wave 8 ·
   wrapper · migration
   - **desc:** v2 source: `src/resource-providers/ComplianceBucketProvider.ts`,
     `src/stacks/compliance-bucket/ComplianceBucketStack.ts`. **Fold in** the skipped Stage-1 fix
@@ -1057,6 +1057,32 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 2
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row; TLS/SSE policy correctness
     verified (the thing `0b7ae02` fixed).
+  - **notes:** v3 equivalent is `SupportResources.complianceLogBucket` -- a plain CDK-managed `Bucket`
+    (not v2's custom-resource Lambda; the "bucket already exists" tolerance that Lambda existed for
+    doesn't arise, since this construct's own stack owns the bucket for the pipeline's lifetime),
+    provisioned lazily on first read from `SupportResourcesProps.complianceLogBucketName`. Added the
+    missing config surface: `complianceLogBucketName` on `CicdConfigProps`/`ResolvedCicdConfig`
+    (`defineCICD`), threaded into `CodePipelineEngine.render()`'s `SupportResources` construction; the
+    engine force-reads the lazy getter whenever the field is set, so configuring the name alone is
+    enough to get the bucket in the synthesized template -- matching v2's default-on-when-configured
+    `ComplianceBucketProvider`, not left as dead plumbing nobody reads. `0b7ae02`'s TLS/SSE fix: the
+    `DenyUnencryptedTraffic` half is `enforceSSL: true` (a plain `Bool` on `aws:SecureTransport` works
+    there because that key is always present); the `EnforceEncryptionAtRest` half denies `s3:PutObject`
+    with a `Null` condition on `s3:x-amz-server-side-encryption` (checking the header's *absence*) --
+    the bug `0b7ae02` fixed was a `Bool` check against literal "false", which never matches a request
+    that omits the header entirely, silently letting unencrypted uploads through. Deliberately did
+    **not** wire `AccessLogsForBucketAspect` into `applyWrapper` even though its own doc comment ties
+    that to this task landing: it still carries the unfixed `instanceof CfnBucket` check task.md's
+    `m9-migrate-security-plugins` note already flagged as the same cross-`aws-cdk-lib`-module-copy
+    failure class that made two other aspects silently inert on a real deploy; wiring it tree-wide now
+    would ship that exact bug again. Stays opt-in until a session scoped to the structural-check fix
+    lands. `npx projen compile`/`test` green (31 suites, 286 tests, 1 skipped); `npx projen compat`
+    fails, but on a pre-existing, unrelated `changed-stability` finding on
+    `PipelineApp.policyValidationBeta1`/`DeploymentPipelineApp.policyValidationBeta1` from a concurrent
+    task's `aws-cdk-lib` bump (neither file touched here) -- not a regression from this change.
+    Real-AWS deploy-verify not run: the acceptance criterion for this task is unit-test-level
+    (`MIGRATION.md` row + TLS/SSE correctness), and the one thing that would need a real deploy to
+    validate for real (`AccessLogsForBucketAspect`) is exactly what stayed unwired above.
 
 - **`m9-migrate-vpc`** — port v2 VPC support  ·  todo · wave 8 · wrapper · migration
   - **desc:** v2 source: `src/resource-providers/VPCProvider.ts`, `src/stacks/vpc/ManagedVPCStack.ts`,

@@ -362,6 +362,33 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     }
   });
 
+  describe('m9-migrate-compliance-bucket: complianceLogBucketName', () => {
+    test('a configured name provisions the compliance bucket, even though nothing reads it yet', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        complianceLogBucketName: 'shop-compliance-log-bucket',
+      });
+      const t = render(config);
+
+      t.hasResourceProperties('AWS::S3::Bucket', { BucketName: 'shop-compliance-log-bucket' });
+    });
+
+    test('without complianceLogBucketName no compliance bucket is created', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+      });
+      const t = render(config);
+
+      const buckets = Object.values(t.findResources('AWS::S3::Bucket'));
+      // Only the pipeline's own artifact bucket -- no second bucket for compliance logs.
+      expect(buckets).toHaveLength(1);
+    });
+  });
+
   test('every build project pins a Node runtime new enough for aws-cdk-lib', () => {
     const config = defineCICD({
       application: 'shop',

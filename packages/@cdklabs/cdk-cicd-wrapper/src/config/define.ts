@@ -82,6 +82,8 @@ export interface CicdConfigProps {
   readonly npmRegistry?: NpmRegistryConfig;
   /** HTTP(S) proxy every build project routes through. See `ResolvedCicdConfig.proxy`. */
   readonly proxy?: ProxyConfigInput;
+  /** Compliance/access-log destination bucket name. See `ResolvedCicdConfig.complianceLogBucketName`. */
+  readonly complianceLogBucketName?: string;
   /**
    * CodeBuild environment overrides (privileged mode, compute type, environment variables) applied to
    * every CodeBuild project. See `ResolvedCicdConfig.codeBuildEnvSettings`.
@@ -176,6 +178,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     codeArtifact: props.codeArtifact,
     npmRegistry: props.npmRegistry,
     proxy: normalizeProxy(props.proxy),
+    complianceLogBucketName: props.complianceLogBucketName,
     codeBuildEnvSettings: props.codeBuildEnvSettings,
     deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,
     asyncDeploy: props.asyncDeploy ?? false,

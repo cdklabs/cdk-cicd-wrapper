@@ -110,6 +110,14 @@ describe('m3-config: defineCICD top-level defaults', () => {
     );
   });
 
+  test('m9-migrate-compliance-bucket: complianceLogBucketName defaults to undefined and passes through unchanged', () => {
+    expect(defineCICD({ repository: REPO, stages: [] }).complianceLogBucketName).toBeUndefined();
+    expect(
+      defineCICD({ repository: REPO, stages: [], complianceLogBucketName: 'my-compliance-bucket' })
+        .complianceLogBucketName,
+    ).toEqual('my-compliance-bucket');
+  });
+
   test('resolveCicdConfig (the YAML path) produces the same result as defineCICD', () => {
     const props = { application: 'shop', repository: REPO, stages: ['dev', 'prod'] };
     expect(resolveCicdConfig(props)).toEqual(defineCICD(props));

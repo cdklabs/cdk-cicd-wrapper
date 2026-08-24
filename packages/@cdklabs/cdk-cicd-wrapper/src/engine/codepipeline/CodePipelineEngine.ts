@@ -93,7 +93,16 @@ export class CodePipelineEngine implements IEngine {
   public render(scope: Construct, props: EngineRenderProps): void {
     const config = props.config;
     const sourceOutput = new codepipeline.Artifact();
-    const support = new SupportResources(scope, 'Support', { removalPolicy: this.removalPolicy });
+    const support = new SupportResources(scope, 'Support', {
+      removalPolicy: this.removalPolicy,
+      complianceLogBucketName: config.complianceLogBucketName,
+    });
+    // v2 `ComplianceBucketProvider` provisioned this bucket eagerly whenever a name was configured
+    // (default-on, not gated behind a separate opt-in); force the same here by reading the lazy
+    // getter, so setting `complianceLogBucketName` alone is enough to get the bucket.
+    if (config.complianceLogBucketName !== undefined) {
+      void support.complianceLogBucket;
+    }
 
     const pipeline = new codepipeline.Pipeline(scope, 'Pipeline', {
       pipelineName: props.pipelineName,

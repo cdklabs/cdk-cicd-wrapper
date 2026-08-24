@@ -84,4 +84,104 @@ describe('m4-support-resources: SupportResources', () => {
     t.hasResource('AWS::KMS::Key', { DeletionPolicy: 'Delete' });
     t.resourceCountIs('Custom::S3AutoDeleteObjects', 1);
   });
+
+  describe('m9-migrate-compliance-bucket: complianceLogBucket', () => {
+    test('reading complianceLogBucket without complianceLogBucketName throws', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support');
+      expect(() => support.complianceLogBucket).toThrow(/complianceLogBucketName/);
+    });
+
+    test('reading complianceLogBucket provisions a bucket with the configured name', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+      expect(support.complianceLogBucket).toBeDefined();
+
+      const t = Template.fromStack(s);
+      t.resourceCountIs('AWS::S3::Bucket', 1);
+      t.hasResourceProperties('AWS::S3::Bucket', {
+        BucketName: 'my-compliance-bucket',
+        PublicAccessBlockConfiguration: {
+          BlockPublicAcls: true,
+          BlockPublicPolicy: true,
+          IgnorePublicAcls: true,
+          RestrictPublicBuckets: true,
+        },
+      });
+    });
+
+    test('grants the S3 log-delivery service principal write access', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+      expect(support.complianceLogBucket).toBeDefined();
+
+      Template.fromStack(s).hasResourceProperties('AWS::S3::BucketPolicy', {
+        PolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Sid: 'S3ServerAccessLogsPolicy',
+              Effect: 'Allow',
+              Principal: { Service: 'logging.s3.amazonaws.com' },
+              Action: 's3:PutObject',
+            }),
+          ]),
+        }),
+      });
+    });
+
+    test('denies non-TLS access -- the TLS half of the 0b7ae02 fix', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+      expect(support.complianceLogBucket).toBeDefined();
+
+      Template.fromStack(s).hasResourceProperties('AWS::S3::BucketPolicy', {
+        PolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Effect: 'Deny',
+              Principal: { AWS: '*' },
+              Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+            }),
+          ]),
+        }),
+      });
+    });
+
+    test(
+      'denies PutObject with no encryption header at all -- the SSE correctness the 0b7ae02 fix made ' +
+        '(a Bool condition on a header that is absent from the request context never matches, so it must ' +
+        'use Null instead)',
+      () => {
+        const s = stack();
+        const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+        expect(support.complianceLogBucket).toBeDefined();
+
+        Template.fromStack(s).hasResourceProperties('AWS::S3::BucketPolicy', {
+          PolicyDocument: Match.objectLike({
+            Statement: Match.arrayWith([
+              Match.objectLike({
+                Sid: 'EnforceEncryptionAtRest',
+                Effect: 'Deny',
+                Action: 's3:PutObject',
+                Condition: { Null: { 's3:x-amz-server-side-encryption': 'true' } },
+              }),
+            ]),
+          }),
+        });
+      },
+    );
+
+    test('repeated reads return the same bucket rather than a second one', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+      expect(support.complianceLogBucket).toBe(support.complianceLogBucket);
+      Template.fromStack(s).resourceCountIs('AWS::S3::Bucket', 1);
+    });
+
+    test('provisions NOTHING when complianceLogBucket is never read', () => {
+      const s = stack();
+      new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+      Template.fromStack(s).resourceCountIs('AWS::S3::Bucket', 0);
+    });
+  });
 });
