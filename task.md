@@ -1209,7 +1209,11 @@ not this branch reaching `main`.
     `CiConfig.partialBuildSpec` in `config/types.ts`/`define.ts`, which a separate uncommitted edit had
     dropped from those two files while other files still referenced them (the package would not
     compile) — recovered verbatim from dangling git blobs plus task.md's own `m9-migrate-custom-buildspec`
-    note, not reconstructed from memory.
+    note, not reconstructed from memory. **Correction:** the container-mode (Repo 2) half of "all three
+    pipeline-rendering engines" above -- `DeploymentPipeline.ts`'s `npmRegistryLoginCommands` +
+    secret-read grant, and its own unit test -- was real-AWS deploy-verified as claimed but had never
+    actually been committed; committed for real in a follow-up pass, along with the `MIGRATION.md` row
+    this task's own acceptance line required and which had also never landed.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 6
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 

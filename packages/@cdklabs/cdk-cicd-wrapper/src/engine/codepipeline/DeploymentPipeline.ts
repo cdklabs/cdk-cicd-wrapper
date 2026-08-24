@@ -19,7 +19,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { buildSourceAction } from './source';
-import { ResolvedDeploymentConfig } from '../../config/types';
+import { NpmRegistryConfig, ResolvedDeploymentConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
 
 /** Node runtime for the CD build image's install phase (kept in step with the CI engine). */
@@ -85,6 +85,10 @@ export class DeploymentPipeline extends Construct {
         ]
       : [];
 
+    // Optional generic private-registry login, same shape and provenance as the CI engine's.
+    const npmRegistry = config.npmRegistry;
+    const npmRegistryLogin = npmRegistry ? npmRegistryLoginCommands(npmRegistry) : [];
+
     // ONE deploy build, run once per target as a separate pipeline action that sets TARGET_STAGE. It
     // deploys just that target from ITS OWN image version (read from deploy.config at run time), so bumping
     // a stage's image tag and committing deploys only that stage. Privileged for docker; creds materialized
@@ -93,6 +97,7 @@ export class DeploymentPipeline extends Construct {
     const commands = [
       ...ecrLoginCommands,
       ...codeArtifactLogin,
+      ...npmRegistryLogin,
       'npm ci',
       'eval "$(aws configure export-credentials --format env 2>/dev/null)" || { ' +
         'CREDS=$(curl -s "http://169.254.170.2${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI}"); ' +
@@ -115,6 +120,9 @@ export class DeploymentPipeline extends Construct {
             : {}),
           build: { commands },
         },
+        // The bearer token `npmRegistryLoginCommands` writes into .npmrc; resolved by CodeBuild at
+        // container start, not read via a shell `aws secretsmanager` call.
+        ...(npmRegistry ? { env: { 'secrets-manager': { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } } } : {}),
       }),
     });
 
@@ -179,6 +187,15 @@ export class DeploymentPipeline extends Construct {
           actions: ['sts:GetServiceBearerToken'],
           resources: ['*'],
           conditions: { StringEquals: { 'sts:AWSServiceName': 'codeartifact.amazonaws.com' } },
+        }),
+      );
+    }
+    // The private-registry bearer token `npmRegistryLoginCommands` resolves via Secrets Manager.
+    if (npmRegistry) {
+      project.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'],
+          resources: [npmRegistry.basicAuthSecretArn],
         }),
       );
     }
@@ -250,4 +267,18 @@ export class DeploymentPipeline extends Construct {
 
     this.pipeline = pipeline;
   }
+}
+
+/**
+ * Writes a `.npmrc` authenticating npm against a generic private registry (mirrors the CI engine's
+ * `npmRegistryLogin`; see there for the v2 `npm-login.sh` provenance).
+ */
+function npmRegistryLoginCommands(npm: NpmRegistryConfig): string[] {
+  const host = npm.url.replace(/^https?:\/\//, '');
+  const scope = npm.scope !== undefined && npm.scope.length > 0 ? npm.scope : undefined;
+  const scopePrefix = scope !== undefined ? `${scope.startsWith('@') ? scope : `@${scope}`}:` : '';
+  return [
+    `echo "${scopePrefix}registry=${npm.url}" > ./.npmrc`,
+    `echo "//${host}:_authToken=$NPM_AUTH_TOKEN" >> ./.npmrc`,
+  ];
 }

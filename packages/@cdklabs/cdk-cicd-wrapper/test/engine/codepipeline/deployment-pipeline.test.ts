@@ -155,6 +155,23 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(spec).toContain('--region us-east-2');
   });
 
+  test('a npmRegistry config writes a scoped .npmrc before npm ci and grants secret read', () => {
+    const withRegistry = defineDeployment({
+      image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.2.3',
+      repository: Repository.codecommit('my-deploy-config'),
+      npmRegistry: { url: 'https://npm.example.com/', basicAuthSecretArn: 'arn:npm-secret', scope: 'cdklabs' },
+      targets: [{ stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } }],
+    });
+    const t = render(withRegistry);
+    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const spec = JSON.stringify(project.Properties.Source.BuildSpec);
+    expect(spec).toContain('@cdklabs:registry=https://npm.example.com/');
+    expect(spec).toContain('//npm.example.com/:_authToken=$NPM_AUTH_TOKEN');
+    const policies = JSON.stringify(t.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('secretsmanager:GetSecretValue');
+    expect(policies).toContain('arn:npm-secret');
+  });
+
   test('rejects duplicate target stage names (they would collide on action names)', () => {
     const dup = defineDeployment({
       image: 'i:1',
