@@ -1153,12 +1153,20 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 6
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-phase-command-model`** — port the v2 phase/command model  ·  todo · wave 8 · wrapper ·
-  migration
+- **`m9-migrate-phase-command-model`** — port the v2 phase/command model  ·  blocked · wave 8 ·
+  wrapper · migration
   - **desc:** v2 source: `src/resource-providers/PhaseCommandProvider.ts` (`IPhaseCommand`,
     `IPhaseCommandSettings`) and its command implementations (shell/NPM/Python/inline-shell/script).
     v3 already has `ci.steps` (a command map) — decide whether this backlog item is fully subsumed by
     `ci.steps` or whether a familiar-API shim is still owed per Q8.
+  - **notes:** Blocked on process, not substance. The "fully subsumed by `ci.steps`, no v3
+    equivalent needed" decision and its `MIGRATION.md` row were independently traced and confirmed
+    correct by both the architect and code-review pass. Blocked because the implementer's task.md
+    edit was taken from a stale snapshot and, alongside the intended entry, silently reverted the
+    unrelated, already-committed `m9-migrate-security-plugins` entry from `done` back to `blocked`
+    and deleted its verification notes — a scoping violation caught before commit. Re-submit with a
+    task.md edit scoped to exactly this entry (this edit); the `MIGRATION.md` row from the prior
+    attempt is sound and can be reused as-is.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 7
   - **acceptance:** either a documented "subsumed by `ci.steps`" `MIGRATION.md` row, or a v3
     equivalent + passing unit test + row.
