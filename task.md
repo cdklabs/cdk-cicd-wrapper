@@ -1064,30 +1064,60 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 3
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-http-proxy`** — port v2 HTTP proxy support  ·  blocked · wave 8 · wrapper · migration
+- **`m9-migrate-http-proxy`** — port v2 HTTP proxy support  ·  done · wave 8 · wrapper · migration
   - **desc:** v2 source: `src/resource-providers/ProxyProvider.ts` (`IProxyConfig`/`ProxyProps`).
-  - **notes:** `ProxyConfig`/`ProxyConfigInput` were ported into `src/config/types.ts`/`define.ts` and
-    wired into `CodePipelineEngine.project()` (build/self-update/per-stage-deploy CodeBuild projects)
-    and `CdkPipelinesEngine`'s synth step, but `CodePipelineEngine.renderImageBuild()`'s
-    container/express-deploy-mode `BuildImage` CodeBuild project never references `config.proxy` — no
-    proxy install commands, env vars, secrets-manager mapping, or secret-read/KMS grant — unlike v2's
-    `CodeBuildFactoryProvider`, which applied proxy uniformly to every CodeBuild project. Architect's
-    real-AWS deploy-verify attempt against `test/fixtures/pipeline-app` also failed to produce a
-    deployed pipeline (wrong fixture-invocation path; the fixture needs `test/proof/m4-verify.sh`'s
-    bespoke bundling, not a generic `harness.sh run`), so the acceptance criterion is unverified end to
-    end. Fix: wire `config.proxy` into `renderImageBuild`'s `BuildImage` project the same way it's
-    wired into `project()`, add a test covering `deployerImage` + `proxy` together, and correct the
-    MIGRATION.md row's "every CodeBuild project" claim if any project remains uncovered.
+  - **notes:** ✅ `ProxyConfig` ported into `src/config/types.ts`/`define.ts` and wired into
+    `CodePipelineEngine.project()` (build/self-update/per-stage-deploy CodeBuild projects) and
+    `CdkPipelinesEngine`'s synth step. The gap this task was blocked on —
+    `CodePipelineEngine.renderImageBuild()`'s container/express-deploy-mode `BuildImage` project never
+    referencing `config.proxy` — is fixed (commit `97bbab7`): the same install-phase exports, env
+    vars, secrets-manager mapping and secret-read/KMS grant `project()` already applied now also apply
+    to `renderImageBuild`'s `BuildImage` project, plus a `container-mode.test.ts` case covering
+    `deployerImage` + `proxy` together. `npx projen compile`/`test`/`compat` all green (30 suites, 254
+    tests). **Real AWS deploy-verify, this time via the correct invocation** (the previous attempt's
+    blocker: `test/fixtures/pipeline-app` only deploys through bespoke bundling, not a generic
+    `harness.sh run`) — reused `test/proof/container-verify.sh`'s technique (`deployerImage:
+    BuildImage.docker(...)`, which is what actually routes `render()` into `renderImageBuild`) with a
+    `proxy` block added against a throwaway Secrets Manager secret and a deliberately unresolvable
+    `proxyTestUrl`. `cdk-cicd deploy-ci --disposable` provisioned the image-build pipeline, and a
+    static assertion (`aws cloudformation describe-stack-resources` + `aws codebuild
+    batch-get-projects`, the same technique `m9-migrate-private-registry-auth`'s `M4_NPM_REGISTRY` knob
+    uses — proving the deployed project *definition* without needing to run a build against a fake
+    proxy) confirmed the deployed `BuildImage` CodeBuild project's buildspec carries the
+    `PROXY_SECRET_ARN`/`NO_PROXY` env vars, the `secrets-manager` username/password mapping, the
+    `HTTP_PROXY`/`HTTPS_PROXY` export commands and the `proxyTestUrl` curl check. Pipeline stack, ECR
+    repo, source bucket and the throwaway secret were all torn down and confirmed gone (`describe-stacks`/
+    `describe-repositories`/`describe-secret` all 404 after). MIGRATION.md's proxy row already states
+    the coverage precisely (every `CodePipelineEngine` project incl. `BuildImage` + `CdkPipelinesEngine`'s
+    Synth step; CDK Pipelines' own self-mutation/asset-publishing projects have no per-step hook and stay
+    uncovered) — no further doc correction needed.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 4
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
 
-- **`m9-migrate-codebuild-customization`** — port v2 CodeBuild env customization  ·  todo · wave 8 ·
+- **`m9-migrate-codebuild-customization`** — port v2 CodeBuild env customization  ·  done · wave 8 ·
   wrapper · migration
   - **desc:** Privileged mode, compute type, env vars. v2 source:
     `src/resource-providers/CodeBuildFactoryProvider.ts` (`ICodeBuildFactory`/`BuildOptions`),
     `src/code-pipeline/CDKPipeline.ts`.
+  - **notes:** ✅ Ported as `codeBuildEnvSettings?: codebuild.BuildEnvironment` on
+    `ResolvedCicdConfig`/`CicdConfigProps` — v2's exact field name, reusing CDK's own `BuildEnvironment`
+    type verbatim rather than a bespoke wrapper (Q8 keep-API-familiar), so no new export was needed.
+    Applied uniformly to every CodeBuild project in both engines: `CodePipelineEngine`'s `buildEnvironment()`
+    helper (Build, UpdatePipeline, each Deploy-`<stage>`, and the container-mode `BuildImage` project,
+    where `privileged` stays force-true for Docker but `computeType`/`environmentVariables` still flow
+    through) and `CdkPipelinesEngine`'s `codeBuildDefaults` passthrough to `pipelines.CodePipeline`, which
+    fans it out to synth/self-mutation/asset-publishing projects — matching v2's uniform-application
+    semantics. `npx projen compile`/`test`/`compat` all green; unit tests cover both engines plus the
+    `define.ts` pass-through/default case, including the container-mode path. **Architect real-AWS
+    deploy-verify** (fresh run, this reconciliation pass): a disposable single-stage pipeline deployed
+    via `cdk-cicd deploy-ci --disposable` with `codeBuildEnvSettings` set (`privileged: true`,
+    `computeType: ComputeType.LARGE`, one custom env var) — `aws cloudformation describe-stack-resources`
+    + `aws codebuild batch-get-projects` confirmed all three deployed CodeBuild projects (BuildProject,
+    UpdatePipeline, Deploy-dev) carry `privilegedMode: true`, `computeType: BUILD_GENERAL1_LARGE` and the
+    custom env var; pipeline stack + source bucket torn down and confirmed deleted (`describe-stacks`
+    404 after), no orphans left in the test account.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 5
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
 
 - **`m9-migrate-private-registry-auth`** — port v2 private-npm-registry basic-auth  ·  done · wave 8 ·
   shared · migration
@@ -1133,13 +1163,29 @@ not this branch reaching `main`.
   - **acceptance:** either a documented "subsumed by `ci.steps`" `MIGRATION.md` row, or a v3
     equivalent + passing unit test + row.
 
-- **`m9-migrate-custom-buildspec`** — port the v2 custom BuildSpec escape hatch  ·  todo · wave 8 ·
+- **`m9-migrate-custom-buildspec`** — port the v2 custom BuildSpec escape hatch  ·  done · wave 8 ·
   wrapper · migration
   - **desc:** v2 source: `src/code-pipeline/CDKPipeline.ts` /
     `src/resource-providers/CodeBuildFactoryProvider.ts` — pin down the exact escape-hatch surface
     during migration (not a single dedicated v2 file).
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 8
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **notes:** ✅ v2's escape hatch was `CDKPipelineProps.ciBuildSpec`, merged only into the Synth
+    `CodeBuildStep`'s `partialBuildSpec` (not `CodeBuildFactoryProvider`'s pipeline-wide
+    `codeBuildEnvSettings`, which is a separate migration item). Ported as `CiConfig.partialBuildSpec` /
+    `CiConfigInput.partialBuildSpec` (`codebuild.BuildSpec`), deep-merged via `codebuild.mergeBuildSpecs`
+    into the CI build project's generated spec in `CodePipelineEngine.project()` — scoped the same way
+    v2 scoped it (CI build only, not self-update or per-stage deploy projects). `npx projen
+    compile`/`test`/`compat` all green; 3 new unit tests in `CodePipelineEngine.test.ts` cover the merge
+    augmenting rather than replacing the engine's own phases, the CI-only scope, and the unchanged
+    default (no `partialBuildSpec`) case. **Architect real-AWS deploy-verify** (fresh run, this
+    reconciliation pass, same disposable pipeline as `m9-migrate-codebuild-customization` above with
+    `ci.partialBuildSpec` also set to a build-phase command containing a marker string): `aws
+    cloudformation describe-stack-resources` + `aws codebuild batch-get-projects` confirmed the marker
+    is present in the deployed BuildProject's (the CI project's) buildspec **and absent** from
+    UpdatePipeline's and Deploy-dev's — proving both that the merge really lands on a deployed project
+    and that the CI-only scope holds on real AWS, not just in the unit tests. Same run, same teardown
+    (see above) — nothing orphaned.
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
 
 - **`m9-migrate-log-retention`** — port v2 CloudWatch log-retention control  ·  done · wave 8 ·
   wrapper · migration
