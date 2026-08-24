@@ -1,40 +1,63 @@
 # GitHub Integration - AWS CodeStar Connection
 
-To be able to use GitHub repositories in AWS CodePipeline with {{ project_name }}, an AWS CodeStar Connection needs to be established. For more details go to the [GitHub connection](https://docs.aws.amazon.com/codepipeline/latest/userguide/connections-github.html) page.
+To use a GitHub repository as your pipeline's source, an AWS CodeStar (CodeConnections) connection needs to be established first. For more details see the [GitHub connection](https://docs.aws.amazon.com/codepipeline/latest/userguide/connections-github.html) page.
 
 ## Quick Setup
 
-To create the AWS CodeStar Connection go to the desired AWS account where the AWS CodePipeline is planned to be placed and execute the following command.
+Create the connection in the account where the pipeline will run:
 
 ```bash
-aws codestar-connections create-connection --provider-type GitHub --profile $RES_ACCOUNT_AWS_PROFILE --region ${AWS_REGION} --connection-name MyConnection
+aws codestar-connections create-connection --provider-type GitHub --region ${AWS_REGION} --connection-name MyConnection
 ```
 
-This will initialize the connection from the AWS side. As a follow up go to the AWS CodeStar Connection on the [Console](https://console.aws.amazon.com/codesuite/settings/connections) and follow up the installation steps through the browser.
+This initializes the connection from the AWS side. Go to the AWS CodeStar Connections [console](https://console.aws.amazon.com/codesuite/settings/connections) and finish the installation through the browser.
 
-**Note:** The user needs to have the following permission to establish the connection.
+**Note:** The user completing this needs:
 
 - Ownership permission on the GitHub Organization / Account
-- IAM Permissions on the account
-  - codestar-connections:ListConnections
-  - codestar-connections:CreateConnection
-  - codestar-connections:UpdateConnectionInstallation
+- IAM permissions on the account:
+  - `codestar-connections:ListConnections`
+  - `codestar-connections:CreateConnection`
+  - `codestar-connections:UpdateConnectionInstallation`
 
-## Configuration 
+## Configuration
 
-Configure your pipeline to use GitHub:
+For the default (`CODEPIPELINE`) and `CDK_PIPELINES` engines, configure your pipeline with `Repository.codestarConnection`, passing the connection ARN from the step above — this is the one that actually works for those two engines. Plain `Repository.github(name, branch)` has **no** `connectionArn`, so the pipeline's source action fails to synthesize with `a CodeStar connection ARN is required for a github source` if you use it with either of these two engines:
 
 ```typescript
-import { RepositorySource, PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
-const pipeline = PipelineBlueprint.builder()
-  .repository(RepositorySource.github({
-    repositoryName: 'owner/my-repo',
-    branch: 'main',
-    codeStarConnectionArn: 'arn:aws:codestar-connections:region:account:connection/uuid'
-  }))
-  .synth(app);
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.codestarConnection('owner/my-repo', 'arn:aws:codestar-connections:region:account:connection/uuid', 'main'),
+  stages: ['dev', 'prod'],
+});
 ```
+
+`Repository.github(name, branch?)` (no connection ARN) is only meaningful with the `GITHUB_ACTIONS` engine below — GitHub Actions checks out the source itself, so there is no CodeStar-connection source action to build.
+
+## GitHub Actions instead of an AWS-hosted pipeline
+
+If you would rather render a `.github/workflows/deploy.yml` and let GitHub Actions run your pipeline (instead of AWS CodePipeline/CodeBuild), set `engine: EngineType.GITHUB_ACTIONS` — this requires `repository` to be `Repository.github(...)` (the workflow runs where GitHub already checked the source out):
+
+```typescript
+import { defineCICD, EngineType, Repository } from '@cdklabs/cdk-cicd-wrapper';
+
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.github('owner/my-repo'),
+  engine: EngineType.GITHUB_ACTIONS,
+  stages: ['dev', 'prod'],
+  githubActions: {
+    // roleName defaults to '<application>-github-role'; subjectClaims defaults to every
+    // ref/environment of 'owner/my-repo' when omitted.
+  },
+});
+```
+
+`cdk-cicd deploy-ci` only deploys the OIDC role (`GitHubActionRole`) the generated workflow assumes — the workflow itself is what runs the pipeline once you push it. See the [`v3 pipelines` workshop](../workshops/v3-pipeline/index.md) for a walkthrough.
+
+**Current limitation:** `codeArtifact`/`proxy` are not yet wired for the GitHub Actions engine — the generated workflow includes the same login/proxy-export commands the other engines use, but not the IAM grants or environment variables that make them work at runtime (tracked in `findings.json` as `migration-github-actions-engine-missing-codeartifact-proxy-plumbing`). Don't rely on `codeArtifact`/`proxy` with this engine yet.
 
 ### Known Issues
 
