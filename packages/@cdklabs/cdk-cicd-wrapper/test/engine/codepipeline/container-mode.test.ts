@@ -6,6 +6,7 @@
 
 import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { BuildImage, ImageTagStrategy } from '../../../src/config/build-image';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
@@ -89,6 +90,29 @@ describe('m6-container: image-build pipeline', () => {
     t.hasResource('AWS::ECR::Repository', {
       DeletionPolicy: 'Delete',
       Properties: Match.objectLike({ EmptyOnDelete: true }),
+    });
+  });
+
+  test('codeBuildEnvSettings computeType/env vars flow through to the BuildImage project, but privileged stays forced', () => {
+    const t = render(
+      defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        deployerImage: BuildImage.docker(),
+        codeBuildEnvSettings: {
+          privileged: false, // ignored -- Docker forces this true regardless of the config
+          computeType: codebuild.ComputeType.LARGE,
+          environmentVariables: { FOO: { value: 'bar' } },
+        },
+      }),
+    );
+    t.hasResourceProperties('AWS::CodeBuild::Project', {
+      Environment: Match.objectLike({
+        PrivilegedMode: true,
+        ComputeType: 'BUILD_GENERAL1_LARGE',
+        EnvironmentVariables: Match.arrayWith([Match.objectLike({ Name: 'FOO', Value: 'bar' })]),
+      }),
     });
   });
 });

@@ -6,6 +6,7 @@
 
 import { App, Aspects, Stack, Stage } from 'aws-cdk-lib';
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { defineCICD } from '../../../src/config/define';
@@ -89,6 +90,48 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(policies).toContain('codeartifact:GetAuthorizationToken');
     expect(policies).toContain('codeartifact:ReadFromRepository');
     expect(policies).toContain('sts:GetServiceBearerToken');
+  });
+
+  test('codeBuildEnvSettings applies to every CodeBuild project CDK Pipelines creates (synth + self-mutation)', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    const engine = new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        codeBuildEnvSettings: {
+          privileged: true,
+          computeType: codebuild.ComputeType.LARGE,
+          environmentVariables: { FOO: { value: 'bar' } },
+        },
+      }),
+      stages: new StubStages(),
+    });
+    void engine;
+
+    const projects = Object.values(Template.fromStack(stack).findResources('AWS::CodeBuild::Project'));
+    // Synth + self-mutation: v2's uniform-application semantics, achieved here via CDK Pipelines' own
+    // `codeBuildDefaults` (not a per-step wire-up), so it reaches projects this engine does not build itself.
+    expect(projects).toHaveLength(2);
+    for (const p of projects as any[]) {
+      expect(p.Properties.Environment).toEqual(
+        expect.objectContaining({
+          PrivilegedMode: true,
+          ComputeType: 'BUILD_GENERAL1_LARGE',
+          EnvironmentVariables: expect.arrayContaining([expect.objectContaining({ Name: 'FOO', Value: 'bar' })]),
+        }),
+      );
+    }
+  });
+
+  test('without codeBuildEnvSettings every CodeBuild project keeps the CDK-managed environment default', () => {
+    const t = render();
+    for (const p of Object.values(t.findResources('AWS::CodeBuild::Project')) as any[]) {
+      expect(p.Properties.Environment.PrivilegedMode).toBe(false);
+      expect(p.Properties.Environment.EnvironmentVariables ?? []).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ Name: 'FOO' })]),
+      );
+    }
   });
 
   test('a multi-region stage becomes one wave per region (not just the first)', () => {

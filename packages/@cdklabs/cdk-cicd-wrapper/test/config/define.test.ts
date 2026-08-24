@@ -102,6 +102,14 @@ describe('m3-config: defineCICD top-level defaults', () => {
     expect(defineCICD({ repository: REPO, stages: [], codeArtifact }).codeArtifact).toEqual(codeArtifact);
   });
 
+  test('codeBuildEnvSettings defaults to undefined (opt-in) and an explicit config passes through unchanged', () => {
+    expect(defineCICD({ repository: REPO, stages: [] }).codeBuildEnvSettings).toBeUndefined();
+    const codeBuildEnvSettings = { privileged: true, environmentVariables: { FOO: { value: 'bar' } } };
+    expect(defineCICD({ repository: REPO, stages: [], codeBuildEnvSettings }).codeBuildEnvSettings).toEqual(
+      codeBuildEnvSettings,
+    );
+  });
+
   test('resolveCicdConfig (the YAML path) produces the same result as defineCICD', () => {
     const props = { application: 'shop', repository: REPO, stages: ['dev', 'prod'] };
     expect(resolveCicdConfig(props)).toEqual(defineCICD(props));

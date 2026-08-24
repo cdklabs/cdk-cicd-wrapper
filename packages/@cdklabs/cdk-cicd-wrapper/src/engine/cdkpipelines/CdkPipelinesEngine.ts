@@ -115,6 +115,10 @@ export class CdkPipelinesEngine extends Construct {
       pipelineName: name,
       crossAccountKeys: true,
       enableKeyRotation: true,
+      // v2 `codeBuildEnvSettings` (privileged mode, compute type, environment variables --
+      // `CodeBuildFactoryProvider` parity), applied by CDK Pipelines itself to EVERY CodeBuild project it
+      // creates (synth, self-mutation, asset publishing) -- the uniform application v2 had.
+      codeBuildDefaults: config.codeBuildEnvSettings ? { buildEnvironment: config.codeBuildEnvSettings } : undefined,
       synth: new pipelines.CodeBuildStep('Synth', {
         input: sourceFor(this, config.repository),
         installCommands,

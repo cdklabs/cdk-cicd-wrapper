@@ -151,6 +151,7 @@ export class CodePipelineEngine implements IEngine {
             'BuildProject',
             this.ciCommands(config, synthed, promote),
             config.codeArtifact,
+            config.codeBuildEnvSettings,
             assembly !== undefined,
           ),
           input: sourceOutput,
@@ -170,7 +171,13 @@ export class CodePipelineEngine implements IEngine {
     // bucket and key on the first run -- so thread the flag through, keyed off the removal policy in hand.
     const deployCi =
       this.removalPolicy === RemovalPolicy.DESTROY ? 'npx cdk-cicd deploy-ci --disposable' : 'npx cdk-cicd deploy-ci';
-    const selfUpdate = this.project(scope, 'UpdatePipeline', ['npm ci', deployCi], config.codeArtifact);
+    const selfUpdate = this.project(
+      scope,
+      'UpdatePipeline',
+      ['npm ci', deployCi],
+      config.codeArtifact,
+      config.codeBuildEnvSettings,
+    );
     this.grantDeployPermissions(selfUpdate, stack.account, [stack.region]);
     pipeline.addStage({
       stageName: 'UpdatePipeline',
@@ -210,7 +217,13 @@ export class CodePipelineEngine implements IEngine {
       const stageCmd =
         planParam !== undefined ? `${deployCmd} --prepare-only --plan-parameter ${planParam}` : deployCmd;
 
-      const project = this.project(scope, `Deploy-${stage.name}`, ['npm ci', stageCmd], config.codeArtifact);
+      const project = this.project(
+        scope,
+        `Deploy-${stage.name}`,
+        ['npm ci', stageCmd],
+        config.codeArtifact,
+        config.codeBuildEnvSettings,
+      );
       this.grantDeployPermissions(project, account, regions, stage.deployment?.deployRole);
       if (planParam !== undefined) {
         project.addToRolePolicy(
@@ -376,11 +389,9 @@ export class CodePipelineEngine implements IEngine {
 
     const project = new codebuild.PipelineProject(scope, 'BuildImage', {
       // Docker builds need a privileged environment; runtime pinned like the deploy projects.
-      environment: {
-        buildImage:
-          this.buildImage !== undefined ? codebuild.LinuxBuildImage.fromDockerRegistry(this.buildImage) : undefined,
-        privileged: true,
-      },
+      // `codeBuildEnvSettings` still contributes computeType/environmentVariables here -- only
+      // `privileged` is forced (Docker requires it regardless of what the config says).
+      environment: { ...this.buildEnvironment(config.codeBuildEnvSettings), privileged: true },
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
@@ -517,6 +528,7 @@ export class CodePipelineEngine implements IEngine {
     id: string,
     commands: string[],
     codeArtifact?: CodeArtifactConfig,
+    codeBuildEnvSettings?: codebuild.BuildEnvironment,
     publishAssembly = false,
   ): codebuild.PipelineProject {
     const stack = Stack.of(scope);
@@ -537,10 +549,7 @@ export class CodePipelineEngine implements IEngine {
       : { ...install, build: { commands } };
 
     const project = new codebuild.PipelineProject(scope, id, {
-      environment:
-        this.buildImage !== undefined
-          ? { buildImage: codebuild.LinuxBuildImage.fromDockerRegistry(this.buildImage) }
-          : undefined,
+      environment: this.buildEnvironment(codeBuildEnvSettings),
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases,
@@ -578,6 +587,22 @@ export class CodePipelineEngine implements IEngine {
       true,
     );
     return project;
+  }
+
+  /**
+   * Merge v2 `codeBuildEnvSettings` (privileged mode, compute type, environment variables --
+   * `CodeBuildFactoryProvider` parity) into a project's `environment`, applied uniformly to every
+   * CodeBuild project like v2 did. The engine's own `buildImage` ctor prop (a Docker-registry image
+   * string) wins over `codeBuildEnvSettings.buildImage` (a full `IBuildImage`) when both are set -- it
+   * is the more specific, code-level choice.
+   */
+  private buildEnvironment(settings?: codebuild.BuildEnvironment): codebuild.BuildEnvironment | undefined {
+    const buildImage =
+      this.buildImage !== undefined
+        ? codebuild.LinuxBuildImage.fromDockerRegistry(this.buildImage)
+        : settings?.buildImage;
+    if (settings === undefined && buildImage === undefined) return undefined;
+    return { ...settings, ...(buildImage !== undefined ? { buildImage } : {}) };
   }
 }
 

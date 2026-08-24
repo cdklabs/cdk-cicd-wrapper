@@ -3,6 +3,7 @@
 
 import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Runtime, RuntimeFamily } from 'aws-cdk-lib/aws-lambda';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
@@ -225,6 +226,64 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       JSON.stringify(p.Properties.PolicyDocument).includes('codeartifact:GetAuthorizationToken'),
     );
     expect(grantsCodeArtifact).toBe(false);
+  });
+
+  test('codeBuildEnvSettings (privileged, compute type, env vars) applies to every build project', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      codeBuildEnvSettings: {
+        privileged: true,
+        computeType: codebuild.ComputeType.LARGE,
+        environmentVariables: { FOO: { value: 'bar' } },
+      },
+    });
+    const t = render(config);
+
+    // Build, self-update, and the one deploy project -- v2's uniform application to every project.
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    expect(projects).toHaveLength(3);
+    for (const p of projects) {
+      expect(p.Properties.Environment).toEqual(
+        expect.objectContaining({
+          PrivilegedMode: true,
+          ComputeType: 'BUILD_GENERAL1_LARGE',
+          EnvironmentVariables: expect.arrayContaining([expect.objectContaining({ Name: 'FOO', Value: 'bar' })]),
+        }),
+      );
+    }
+  });
+
+  test('a Docker-registry buildImage on the engine still wins over codeBuildEnvSettings.buildImage', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    new CodePipelineEngine({ buildImage: 'public.ecr.aws/example/node:22' }).render(stack, {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        codeBuildEnvSettings: { computeType: codebuild.ComputeType.MEDIUM },
+      }),
+      pipelineName: 'shop-pipeline',
+    });
+
+    const t = Template.fromStack(stack);
+    for (const p of Object.values(t.findResources('AWS::CodeBuild::Project'))) {
+      // The ctor's Docker image is used, not overridden by the (unset) codeBuildEnvSettings.buildImage.
+      expect(p.Properties.Environment.Image).toBe('public.ecr.aws/example/node:22');
+      // But the config's other settings still apply alongside it.
+      expect(p.Properties.Environment.ComputeType).toBe('BUILD_GENERAL1_MEDIUM');
+    }
+  });
+
+  test('without codeBuildEnvSettings every build project keeps the CDK-managed environment default', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+    const t = render(config);
+
+    for (const p of Object.values(t.findResources('AWS::CodeBuild::Project'))) {
+      expect(p.Properties.Environment.PrivilegedMode).toBe(false);
+      expect(p.Properties.Environment.EnvironmentVariables).toBeUndefined();
+    }
   });
 
   test('every build project pins a Node runtime new enough for aws-cdk-lib', () => {
