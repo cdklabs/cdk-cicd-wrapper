@@ -877,4 +877,61 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       }),
     });
   });
+
+  describe('m9-migrate-custom-buildspec: ci.partialBuildSpec escape hatch', () => {
+    test('a ci.partialBuildSpec is deep-merged into the CI build project, augmenting rather than replacing it', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        ci: {
+          partialBuildSpec: codebuild.BuildSpec.fromObject({
+            version: '0.2',
+            env: { variables: { CUSTOM_VAR: 'custom-value' } },
+            phases: { install: { commands: ['echo custom-install'] } },
+          }),
+        },
+      });
+      const build = specContaining(render(config), 'cdk-cicd check');
+
+      // The user's fragment lands on the CI build project's spec...
+      expect(build.env.variables.CUSTOM_VAR).toBe('custom-value');
+      expect(build.phases.install.commands).toContain('echo custom-install');
+      // ...WITHOUT dropping the engine's own generated content -- a naive `replace` here would drop the
+      // Node runtime pin and the default CI commands, and a real pipeline would break silently.
+      expect(build.phases.install['runtime-versions'].nodejs).toBeGreaterThanOrEqual(20);
+      expect(build.phases.build.commands).toEqual(expect.arrayContaining(['npm ci', 'npx cdk-cicd check']));
+    });
+
+    test('the merge is scoped to the CI build project; self-update and stage deploys are untouched', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        ci: {
+          partialBuildSpec: codebuild.BuildSpec.fromObject({
+            version: '0.2',
+            env: { variables: { CUSTOM_VAR: 'custom-value' } },
+          }),
+        },
+      });
+      const projects = Object.values(render(config).findResources('AWS::CodeBuild::Project'));
+      const withCustomVar = projects.filter((p) =>
+        JSON.stringify(p.Properties.Source.BuildSpec).includes('CUSTOM_VAR'),
+      );
+      // Exactly the CI build project -- v2's `ciBuildSpec` scoped the same way (Synth only), not the
+      // self-update or per-stage deploy projects.
+      expect(withCustomVar).toHaveLength(1);
+    });
+
+    test('without ci.partialBuildSpec the CI build project renders exactly as before (no env block)', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+      });
+      const build = specContaining(render(config), 'cdk-cicd check');
+      expect(build.env).toBeUndefined();
+    });
+  });
 });

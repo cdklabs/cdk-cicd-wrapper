@@ -23,11 +23,11 @@ import {
 } from 'aws-cdk-lib';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
+import { buildSourceAction } from './source';
 import { BuildImage, BuildImageKind, ImageTagStrategy } from '../../config/build-image';
 import { CodeArtifactConfig, DeployModel, ResolvedCicdConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
 import { EngineRenderProps, IEngine } from '../types';
-import { buildSourceAction } from './source';
 
 /**
  * Default CI commands when the config sets none. The engine, not the config layer, owns these.
@@ -153,6 +153,7 @@ export class CodePipelineEngine implements IEngine {
             config.codeArtifact,
             config.codeBuildEnvSettings,
             assembly !== undefined,
+            config.ci.partialBuildSpec,
           ),
           input: sourceOutput,
           outputs: assembly !== undefined ? [assembly] : undefined,
@@ -530,6 +531,7 @@ export class CodePipelineEngine implements IEngine {
     codeArtifact?: CodeArtifactConfig,
     codeBuildEnvSettings?: codebuild.BuildEnvironment,
     publishAssembly = false,
+    partialBuildSpec?: codebuild.BuildSpec,
   ): codebuild.PipelineProject {
     const stack = Stack.of(scope);
     // Pin the Node runtime, but ONLY on the default (CodeBuild-managed) image. Without
@@ -548,19 +550,26 @@ export class CodePipelineEngine implements IEngine {
       ? { ...install, pre_build: { commands: [codeArtifactLogin(stack, codeArtifact)] }, build: { commands } }
       : { ...install, build: { commands } };
 
+    const generatedBuildSpec = codebuild.BuildSpec.fromObject({
+      version: '0.2',
+      phases,
+      // Publish the WHOLE source tree plus the synthesized assembly, excluding only node_modules (the
+      // deploy re-runs `npm ci`). A hardcoded file allowlist was wrong: `cdk-cicd deploy --from-assembly`
+      // still loads `cicd.config.ts` under ts-node, so a config that imports another file, a tsconfig it
+      // compiles against, or a package.json `postinstall`/`prepare` that reads `scripts/`/`patches/` --
+      // all ordinary layouts -- would be missing from the artifact and fail at the deploy stage, after
+      // Build had already gone green. Excluding node_modules keeps the artifact from ballooning.
+      ...(publishAssembly ? { artifacts: { files: ['**/*'], 'exclude-paths': ['node_modules/**/*'] } } : {}),
+    });
+
     const project = new codebuild.PipelineProject(scope, id, {
       environment: this.buildEnvironment(codeBuildEnvSettings),
-      buildSpec: codebuild.BuildSpec.fromObject({
-        version: '0.2',
-        phases,
-        // Publish the WHOLE source tree plus the synthesized assembly, excluding only node_modules (the
-        // deploy re-runs `npm ci`). A hardcoded file allowlist was wrong: `cdk-cicd deploy --from-assembly`
-        // still loads `cicd.config.ts` under ts-node, so a config that imports another file, a tsconfig it
-        // compiles against, or a package.json `postinstall`/`prepare` that reads `scripts/`/`patches/` --
-        // all ordinary layouts -- would be missing from the artifact and fail at the deploy stage, after
-        // Build had already gone green. Excluding node_modules keeps the artifact from ballooning.
-        ...(publishAssembly ? { artifacts: { files: ['**/*'], 'exclude-paths': ['node_modules/**/*'] } } : {}),
-      }),
+      // The escape hatch (v2 `ciBuildSpec`, migrated): deep-merged, not replaced, so a user-supplied
+      // fragment augments the engine's own phases/env instead of silently dropping them.
+      buildSpec:
+        partialBuildSpec !== undefined
+          ? codebuild.mergeBuildSpecs(generatedBuildSpec, partialBuildSpec)
+          : generatedBuildSpec,
     });
     if (codeArtifact) {
       grantCodeArtifactRead(project, codeArtifact);

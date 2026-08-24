@@ -41,6 +41,8 @@ export {
   DeployModel,
   DeploymentConfig,
   EngineType,
+  NpmRegistryConfig,
+  ProxyConfig,
   RegionOrder,
   ResolvedCicdConfig,
   ResolvedDeploymentConfig,
