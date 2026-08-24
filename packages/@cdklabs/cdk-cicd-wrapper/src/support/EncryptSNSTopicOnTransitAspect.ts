@@ -22,7 +22,7 @@ const TOPIC_RESOURCE_TYPE = 'AWS::SNS::Topic';
  * node itself still has every real `Topic` method at runtime; only its class identity differs from
  * this module's own `Topic` class.
  */
-function isL2ResourceOfType(node: IConstruct, cfnResourceType: string): boolean {
+function isL2ResourceOfType(node: IConstruct, cfnResourceType: string): node is ITopic {
   const defaultChild = Resource.isResource(node) ? node.node.defaultChild : undefined;
   return CfnResource.isCfnResource(defaultChild) && defaultChild.cfnResourceType === cfnResourceType;
 }
@@ -34,7 +34,7 @@ function isL2ResourceOfType(node: IConstruct, cfnResourceType: string): boolean 
 export class EncryptSNSTopicOnTransitAspect implements IAspect {
   public visit(node: IConstruct): void {
     if (isL2ResourceOfType(node, TOPIC_RESOURCE_TYPE)) {
-      const topic = node as unknown as ITopic;
+      const topic = node;
       topic.addToResourcePolicy(
         new PolicyStatement({
           sid: 'NoHTTPSubscriptions',

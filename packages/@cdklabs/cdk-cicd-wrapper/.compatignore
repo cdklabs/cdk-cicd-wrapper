@@ -124,3 +124,8 @@ removed:@cdklabs/cdk-cicd-wrapper.VPCProvider
 removed:@cdklabs/cdk-cicd-wrapper.VpcProps
 removed:@cdklabs/cdk-cicd-wrapper.WorkbenchConfig
 removed:@cdklabs/cdk-cicd-wrapper.WorkbenchOptions
+
+# Inherited from aws-cdk-lib.App (2.195.0, unchanged this session), not declared by us --
+# jsii-diff flags the inherited member's own stability metadata, not an API change we made.
+changed-stability:@cdklabs/cdk-cicd-wrapper.DeploymentPipelineApp.policyValidationBeta1
+changed-stability:@cdklabs/cdk-cicd-wrapper.PipelineApp.policyValidationBeta1

@@ -22,7 +22,7 @@ const BUCKET_RESOURCE_TYPE = 'AWS::S3::Bucket';
  * node itself still has every real `Bucket` method at runtime; only its class identity differs from
  * this module's own `Bucket` class.
  */
-function isL2ResourceOfType(node: IConstruct, cfnResourceType: string): boolean {
+function isL2ResourceOfType(node: IConstruct, cfnResourceType: string): node is IBucket {
   const defaultChild = Resource.isResource(node) ? node.node.defaultChild : undefined;
   return CfnResource.isCfnResource(defaultChild) && defaultChild.cfnResourceType === cfnResourceType;
 }
@@ -35,7 +35,7 @@ function isL2ResourceOfType(node: IConstruct, cfnResourceType: string): boolean 
 export class EncryptBucketOnTransitAspect implements IAspect {
   public visit(node: IConstruct): void {
     if (isL2ResourceOfType(node, BUCKET_RESOURCE_TYPE)) {
-      const bucket = node as unknown as IBucket;
+      const bucket = node;
       bucket.addToResourcePolicy(
         new PolicyStatement({
           sid: 'DenyHTTP',
