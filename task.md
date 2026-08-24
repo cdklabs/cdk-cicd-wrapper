@@ -1277,7 +1277,7 @@ not this branch reaching `main`.
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
 - **`m9-migrate-github-actions-engine`** — port GitHub Actions pipeline rendering to a v3 engine  ·
-  todo · wave 8 · wrapper · migration
+  blocked · wave 8 · wrapper · migration
   - **desc:** v3 today only has GitHub-as-*source* (`Repository.github()`); the *render* capability
     (emit a GitHub Actions workflow instead of a CodePipeline) would otherwise be lost entirely. v2
     source: `src/plugins/pipeline/GitHubPipelinePlugin.ts`,
@@ -1285,6 +1285,27 @@ not this branch reaching `main`.
     `GitHubRepositoryProvider.ts`. Implement as a new `IEngine` (alongside `CdkPipelinesEngine`/
     `CodePipelineEngine` in `src/engine/**`), not a bolt-on — D4 already keeps `IEngine` honest for
     exactly this.
+  - **notes:** Real deploy-verify (`harness.sh run` against a new fixture at
+    `test/fixtures/github-actions-app/`, untracked) hit a hard, reproducible synth-time crash:
+    `GitHubActionsEngine.ts` imports `CodeBuildStep` from `aws-cdk-lib/pipelines`, which resolves to
+    the wrapper package's own nested `node_modules/aws-cdk-lib` copy, while vendored
+    `cdk-pipelines-github` (hoisted to repo root, no nested `aws-cdk-lib`) resolves the root copy;
+    `cdk-pipelines-github`'s `node.data.step instanceof ShellStep` check in `jobForNode` then fails
+    across that boundary and throws `unsupported step type: CodeBuildStep` before any CloudFormation
+    call. Unlike the `LogRetentionAspect`/security-aspect fixes elsewhere in this wave, the failing
+    `instanceof` check lives inside vendored third-party code, not wrapper source, so it needs a
+    build/dependency-layout fix (single shared `aws-cdk-lib`) or an engine-side workaround, not a
+    like-for-like structural-check swap. Jest's `moduleNameMapper` forces all `aws-cdk-lib` imports
+    (including inside `cdk-pipelines-github`) onto one copy inside the test process, so the existing
+    unit suite (13/13 green) cannot see this and gave false confidence. Second, independently
+    confirmed defect: `GitHubActionsEngine.ts` copies `CdkPipelinesEngine`'s `codeArtifact`/`proxy`
+    command strings verbatim but not the IAM grants (`codeArtifactReadStatements`/
+    `proxySecretReadStatements` equivalents) or the `PROXY_*` env population that make them work on
+    CodeBuild — a rendered workflow with either configured would fail at runtime. Both block the
+    acceptance criterion. Next session: fix the dual-`aws-cdk-lib`-copy resolution, reconcile the jest
+    mapper so this class of bug can't hide again, and either port the missing IAM/secrets plumbing or
+    explicitly document `codeArtifact`/`proxy` as unsupported for this engine, then redo the
+    deploy-verify (fixture left at `test/fixtures/github-actions-app/` for reuse).
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog (GitHub Actions); D4
   - **acceptance:** a `cicd.config.ts` selecting the GitHub engine renders a working Actions
     workflow, proven by at least one real GitHub Actions run + a `MIGRATION.md` row.
