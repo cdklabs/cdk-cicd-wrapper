@@ -1089,23 +1089,37 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 5
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-private-registry-auth`** — port v2 private-npm-registry basic-auth  ·  blocked · wave 8 ·
+- **`m9-migrate-private-registry-auth`** — port v2 private-npm-registry basic-auth  ·  done · wave 8 ·
   shared · migration
   - **desc:** Not CodeArtifact (that's already in v3 — `m4-private-registry`, done): generic private
     npm registry basic-auth. v2 source: `src/plugins/utils/CodeArtifactPlugin.ts` and the
     `NPMRegistryConfig` interface (`src/common/types/Types.ts`) — confirm during migration which of
     the two actually carried the basic-auth path, since CodeArtifact itself has its own v3 story.
-  - **notes:** Implementation + static review are sound (`NpmRegistryConfig` ported additively into
-    `src/config/types.ts` with v2's field names, wired through `define.ts` and all three
-    pipeline-rendering engines; `npx projen compile`/`test`/`compat` all green). Blocked because the
-    architect's real-AWS deploy-verify pass against `test/fixtures/pipeline-app` failed: the fixture
-    is only ever deployable via `test/proof/m4-verify.sh`'s bespoke bundling, not a generic
-    `harness.sh run`, and no fixture in the repo configures `npmRegistry` at all — so Ground rule 2's
-    "real AWS deploy" gate is unmet for this feature, even though the task's own acceptance line (v3
-    equivalent + unit test + `MIGRATION.md` row) is met. Per review routing, architect verdict
-    `deploy-failed` mandates blocking without a code-quality pass. Fix: extend `m4-verify.sh` (or a
-    sibling script) to configure `npmRegistry` against a real reachable npm-compatible registry and
-    prove it end to end before re-submitting.
+  - **notes:** ✅ `NpmRegistryConfig` ported additively into `src/config/types.ts` with v2's field
+    names, wired through `define.ts` and all three pipeline-rendering engines; `npx projen
+    compile`/`test`/`compat` all green (30 suites, 260 tests). Ground rule 2's real-AWS deploy gate
+    (previously unmet — no fixture configured `npmRegistry`): added an opt-in `M4_NPM_REGISTRY=true`
+    knob to `test/proof/m4-verify.sh` (same pattern as `M4_DEPLOY_MODEL`/`M4_ASYNC_DEPLOY`) that
+    provisions a throwaway Secrets Manager secret and wires `npmRegistry` into the generated
+    `cicd.config.ts`. Ran for real against the test account: `cdk-cicd deploy-ci --disposable`
+    deployed the pipeline stack, and `assert_npm_registry_wiring` confirmed via `aws cloudformation
+    describe-stack-resources` + `aws codebuild batch-get-projects` that **4/4** deployed CodeBuild
+    projects (BuildProject, UpdatePipeline, Deploy-dev, Deploy-prod) carry the registry URL in a
+    pre_build login command and the secret's ARN in the buildspec's `secrets-manager` env mapping —
+    the "at minimum" bar. Beyond that: a real CodeBuild build's log for the CI Build action shows the
+    login commands actually executing (`echo "@m9privatereg:registry=https://npm-registry.m9-verify
+    .invalid/" > ./.npmrc` and the matching `_authToken` line), satisfying the "ideally" bar too — the
+    bearer token never appears in the log since CodeBuild resolves `$NPM_AUTH_TOKEN` from Secrets
+    Manager only at exec time, not at the point the command text is echoed. That same Build action's
+    later `npx cdk-cicd synth --all` step failed for an unrelated reason (see finding
+    `qa-cdk-cicd-exec-synth-fails-codepipeline-dev-stage` — a `cdk-cicd exec bin/app.ts` failure with
+    no captured error detail, downstream of and unaffected by the npmRegistry login, which had already
+    succeeded); the pipeline stack, its CodeBuild projects and the throwaway secret were still torn
+    down cleanly and confirmed gone. Along the way, restored `NpmRegistryConfig`/`ProxyConfig`/
+    `CiConfig.partialBuildSpec` in `config/types.ts`/`define.ts`, which a separate uncommitted edit had
+    dropped from those two files while other files still referenced them (the package would not
+    compile) — recovered verbatim from dangling git blobs plus task.md's own `m9-migrate-custom-buildspec`
+    note, not reconstructed from memory.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 6
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
