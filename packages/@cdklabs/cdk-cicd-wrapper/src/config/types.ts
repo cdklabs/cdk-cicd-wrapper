@@ -6,6 +6,7 @@
 // many, a stage as a bare name or an object) use TS unions and live in ./define.ts; they are never
 // part of the jsii surface. Only the resolved structs here cross the language boundary.
 
+import { aws_codebuild as codebuild } from 'aws-cdk-lib';
 import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
@@ -75,6 +76,13 @@ export interface CiConfig {
   readonly synthStages: string[];
   /** Optional CodeBuild image override. */
   readonly image?: string;
+  /**
+   * Escape hatch (v2 `CDKPipelineProps.ciBuildSpec`, migrated): deep-merged into the CI build project's
+   * generated buildspec via `codebuild.mergeBuildSpecs`, augmenting rather than replacing the engine's
+   * own phases. Scoped the same way v2 scoped it -- the CI build project only, not self-update or
+   * per-stage deploy projects.
+   */
+  readonly partialBuildSpec?: codebuild.BuildSpec;
 }
 
 /**
@@ -94,6 +102,42 @@ export interface CodeArtifactConfig {
   readonly region?: string;
   /** npm scope to bind to the repository, e.g. `cdklabs` for `@cdklabs/*`. Omit for the default scope. */
   readonly npmScope?: string;
+}
+
+/**
+ * HTTP(S) proxy configuration for the pipeline's CodeBuild projects (v2 `IProxyConfig`, migrated).
+ * When set, every build project reads proxy credentials from Secrets Manager, exports
+ * `HTTP(S)_PROXY` before running its install commands, and curls `proxyTestUrl` to prove the tunnel
+ * works before the real install runs.
+ */
+export interface ProxyConfig {
+  /**
+   * ARN of the Secrets Manager secret holding the proxy credentials, as the keys `username`,
+   * `password`, `http_proxy_port`, `https_proxy_port` and `proxy_domain`.
+   */
+  readonly proxySecretArn: string;
+  /**
+   * Hosts that bypass the proxy. Empty means the engine adds its own region's `amazonaws.com`
+   * endpoint, so calls to AWS APIs (e.g. a private-registry `codeartifact login`) skip the proxy.
+   */
+  readonly noProxy: string[];
+  /** URL curl'd (through the proxy) to confirm it works before the install phase's real commands run. */
+  readonly proxyTestUrl: string;
+}
+
+/**
+ * A generic private npm registry the pipeline's builds authenticate against with a bearer token (v2
+ * `NPMRegistryConfig`, migrated). Unlike `CodeArtifactConfig` (an `aws codeartifact login`), this covers
+ * any npm-compatible registry: when set, every build project writes a `.npmrc` -- scoped to `scope` when
+ * given, otherwise overriding the default registry -- with an auth token read from Secrets Manager.
+ */
+export interface NpmRegistryConfig {
+  /** The registry URL, e.g. `https://npm.example.com/`. */
+  readonly url: string;
+  /** ARN of the Secrets Manager secret holding the bearer token (the secret's plain `SecretString`). */
+  readonly basicAuthSecretArn: string;
+  /** npm scope to bind to the registry, e.g. `cdklabs` for `@cdklabs/*`. Omit to override the default registry. */
+  readonly scope?: string;
 }
 
 /** A resolved stage's target environment. `regions` is always a list, even for a single region. */
@@ -150,6 +194,20 @@ export interface ResolvedCicdConfig {
   readonly ci: CiConfig;
   /** Private CodeArtifact npm repository the builds authenticate against, if any. */
   readonly codeArtifact?: CodeArtifactConfig;
+  /** Generic private npm registry the builds authenticate against with a bearer token, if any. */
+  readonly npmRegistry?: NpmRegistryConfig;
+  /** HTTP(S) proxy every build project routes through, if any. */
+  readonly proxy?: ProxyConfig;
+  /**
+   * CodeBuild environment overrides -- privileged mode, compute type, environment variables -- applied
+   * to every CodeBuild project the pipeline creates (v2 `codeBuildEnvSettings`, migrated from
+   * `CodeBuildFactoryProvider`/`PipelineBlueprint.codeBuildEnvSettings(...)`). Reuses CDK's own
+   * `BuildEnvironment` rather than a bespoke type, so it stays a drop-in for v2 callers. `buildImage`
+   * here is a full `IBuildImage` (e.g. an ARM or GPU managed image); it is distinct from the engines'
+   * own `buildImage` constructor prop, which takes a Docker-registry image string -- that prop wins
+   * when both are set.
+   */
+  readonly codeBuildEnvSettings?: codebuild.BuildEnvironment;
   /** How the deployed cloud assembly is produced. Defaults to `ASSEMBLY_PROMOTION`. */
   readonly deployModel: DeployModel;
   /**
@@ -228,4 +286,9 @@ export interface ResolvedDeploymentConfig {
    * CLI when it is pre-release / not on public npm). Same shape as the pipeline-config `codeArtifact`.
    */
   readonly codeArtifact?: CodeArtifactConfig;
+  /**
+   * Generic private npm registry the CD build authenticates against before `npm ci`. Same shape as the
+   * pipeline-config `npmRegistry`.
+   */
+  readonly npmRegistry?: NpmRegistryConfig;
 }
