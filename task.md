@@ -984,8 +984,20 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 3
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-http-proxy`** — port v2 HTTP proxy support  ·  todo · wave 8 · wrapper · migration
+- **`m9-migrate-http-proxy`** — port v2 HTTP proxy support  ·  blocked · wave 8 · wrapper · migration
   - **desc:** v2 source: `src/resource-providers/ProxyProvider.ts` (`IProxyConfig`/`ProxyProps`).
+  - **notes:** `ProxyConfig`/`ProxyConfigInput` were ported into `src/config/types.ts`/`define.ts` and
+    wired into `CodePipelineEngine.project()` (build/self-update/per-stage-deploy CodeBuild projects)
+    and `CdkPipelinesEngine`'s synth step, but `CodePipelineEngine.renderImageBuild()`'s
+    container/express-deploy-mode `BuildImage` CodeBuild project never references `config.proxy` — no
+    proxy install commands, env vars, secrets-manager mapping, or secret-read/KMS grant — unlike v2's
+    `CodeBuildFactoryProvider`, which applied proxy uniformly to every CodeBuild project. Architect's
+    real-AWS deploy-verify attempt against `test/fixtures/pipeline-app` also failed to produce a
+    deployed pipeline (wrong fixture-invocation path; the fixture needs `test/proof/m4-verify.sh`'s
+    bespoke bundling, not a generic `harness.sh run`), so the acceptance criterion is unverified end to
+    end. Fix: wire `config.proxy` into `renderImageBuild`'s `BuildImage` project the same way it's
+    wired into `project()`, add a test covering `deployerImage` + `proxy` together, and correct the
+    MIGRATION.md row's "every CodeBuild project" claim if any project remains uncovered.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 4
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
