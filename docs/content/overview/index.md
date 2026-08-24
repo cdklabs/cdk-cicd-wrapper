@@ -2,9 +2,9 @@
 
 ## Introduction
 
-The {{ project_name }} is a comprehensive CI/CD platform for AWS CDK-based applications and solutions. It provides a standardized and easy-to-use Continuous Integration solution leveraging AWS CodeBuild. The process ensures that the codebase follows code style guidelines, can be successfully compiled, runs supplied tests, and performs various quality checks related to security.
+The {{ project_name }} is a comprehensive CI/CD platform for AWS CDK-based applications and solutions. It is config-driven and zero-touch: you describe your pipeline in one `cicd.config.ts` file, and the `cdk-cicd` CLI wraps it around your **unmodified** CDK app. It provides a standardized and easy-to-use Continuous Integration solution leveraging AWS CodeBuild — the process ensures that the codebase follows code style guidelines, can be successfully compiled, runs supplied tests, and performs various quality checks related to security.
 
-Once the codebase successfully passes the quality gates, the {{ project_name }} enables Continuous Deployment of the solution across multiple stages, such as DEV, INT, and PROD. For each stage, you can configure pre and post deployment steps to hook in various activities like integration and end-to-end testing. Additionally, you can have post-deployment steps to finalize the deployment activities.
+Once the codebase successfully passes the quality gates, the {{ project_name }} enables Continuous Deployment of the solution across the stages you define — for example `dev`, `int`, and `prod` — gating every stage that isn't an inner-loop stage behind a manual approval by default.
 
 ## Why use the {{ project_name }}?
 
@@ -16,42 +16,54 @@ The {{ project_name }} can address these issues and drastically reduce the effor
 
 Here are some key features provided by the {{ project_name }}:
 
-- :white_check_mark: [Customizable CI](../developer_guides/ci.md) steps to meet project requirements
-- :white_check_mark: Integration of various [security scanning tools](../developer_guides/security.md)
-- :white_check_mark: Multi-staged Continuous Deployment process
-- :white_check_mark: Flexible definition of stages, with the ability to extend the default (DEV/INT/PROD) stages with custom stages like EXP
-- :white_check_mark: Separate stack deployment specification for each stage
-- :white_check_mark: Pre/Post deploy hooks during the deployment in each stage (DEV/INT/PROD)
-  - :white_check_mark: PRE -> Unit Tests
-  - :white_check_mark: POST -> Functional Tests, Load Testing
+- :white_check_mark: **Zero wrapper code in your app** — your `bin/` stays exactly what `cdk init` produced; the pipeline lives in a separate `cicd.config.ts`
+- :white_check_mark: [Customizable CI](../developer_guides/ci.md) steps to meet project requirements, run behind one `cdk-cicd check` command
+- :white_check_mark: Integration of various [security scanning tools](../developer_guides/security.md) (cdk-nag, Bandit, Semgrep, ShellCheck, dependency-vulnerability scanning)
+- :white_check_mark: Multi-staged Continuous Deployment process with manual-approval gating on by default for anything past your inner development loop
+- :white_check_mark: Flexible definition of stages, including multi-region stages and per-stage AWS accounts
+- :white_check_mark: A choice of pipeline engines — a lightweight [CodePipeline](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_codepipeline-readme.html) by default, a [CDK Pipelines](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.pipelines-readme.html)-based engine, or a GitHub Actions engine that renders a workflow file instead of an AWS-hosted pipeline
 - :white_check_mark: Automated Open Source License checking (with a provided list of licenses that should not be present in your PRODUCTION workloads)
-- :white_check_mark: Centralized storage of compliance logs in S3 buckets pre-configured on a per-stage/environment basis
-- :white_check_mark: Build Lambda Layers for Python and scan dependencies in the CI/CD (in case of CVE findings, block the pipeline)
+- :white_check_mark: Optional centralized compliance/access-log bucket, VPC, and HTTP proxy support for every CodeBuild project the pipeline creates
+- :white_check_mark: Dependency vulnerability scanning in the CI/CD for Node.js and Python dependencies (in case of CVE findings, block the pipeline)
 
-These features can be used independently in any project as part of the {{ project_name }} CLI, even if your project is not based on AWS CDK.
+Most of these features can be used independently of the CDK constructs, directly through the {{ project_name }} CLI.
 
 ## CI/CD Process Overview
 
 ![Process Flow](../assets/diagrams/deployment-flow.png)
 
+!!! note
+
+    This diagram predates Autopilot (1.x) and still shows Blueprint (0.x) specifics — a CodeCommit-only
+    source, Amazon CodeGuru code review, and fixed `RES`/`DEV`/`INT`/`PROD` accounts. The pipeline shape
+    (source → build/synth → self-update → one deploy action per stage, gated by manual approval) still
+    holds; the account names, the CodeCommit-only source, and CodeGuru do not — see the stage list below.
+    Redrawing this diagram for Autopilot is tracked separately.
+
 The CI/CD process in the {{ project_name }} establishes the following:
 
-1. Changes are committed to the Git repository in a branch, and a Pull Request (PR) is created for the `main` branch.
-2. The PR is reviewed, approved, and merged into the `main` branch.
-   - For AWS CodeCommit repositories, the {{ project_name }} provides out-of-the-box [automatic PR checks](../developer_guides/vcs_codecommit.md).
-3. Once the codebase is merged into `main`, an AWS CodePipeline is triggered to execute the CI/CD process:
-   - **Build**: This is the Continuous Integration step, which executes the build, test, lint, and audit actions to ensure code quality and security before deployment to any stages.
-   - **Synthesize**: This step executes `cdk synth` and runs the CDK Nag to promote infrastructure best practices.
-   - **Update RES**: This step updates the infrastructure elements in the RES account with the AWS CloudFormation Service.
-   - **Update DEV**: This step updates the infrastructure elements in the DEV account with the AWS CloudFormation Service.
-   - **Update INT**: This step updates the infrastructure elements in the INT account with the AWS CloudFormation Service.
-   - **Update PROD**: This step updates the infrastructure elements in the PROD account with the AWS CloudFormation Service.
+1. Changes are committed to the Git repository in a branch, and a Pull Request (PR) is created for the tracked branch (`main` by default).
+2. The PR is reviewed, approved, and merged.
+3. Once the codebase is merged, the pipeline is triggered to execute the CI/CD process:
+   - **Build**: This is the Continuous Integration step, which runs your configured `ci.steps` plus the default-on `cdk-cicd check` (validate, audit, license, security) to ensure code quality and security before deployment to any stage.
+   - **Synthesize**: This step executes `cdk synth` and runs CDK Nag to promote infrastructure best practices.
+   - **Self-update**: The pipeline updates its own definition from the latest `cicd.config.ts`.
+   - **Deploy `<stage>`** (one action per configured stage): Updates the infrastructure elements in that stage's account/region with AWS CloudFormation. Stages other than your inner-loop stages (e.g. `dev`/`res`) are gated by a manual approval by default.
 
 ## Infrastructure Elements
 
 The {{ project_name }} architecture is based on using DevOps services provided by AWS to deliver the CI/CD solution.
 
 ![Deployment Architecture](../assets/diagrams/architecture.png)
+
+!!! note
+
+    Like the process-flow diagram above, this one predates Autopilot (1.x): it shows a CodeCommit-only
+    source with Amazon CodeGuru code review and a per-account compliance bucket/KMS key created
+    unconditionally. In Autopilot the source is a choice (CodeCommit, GitHub, S3, or any CodeStar
+    connection), there is no CodeGuru integration, and the compliance bucket/KMS encryption are opt-in
+    (`complianceLogBucketName` in `cicd.config.ts`). Redrawing this diagram for Autopilot is tracked
+    separately.
 
 You can read more about these elements in the [Developer Guide](../developer_guides/index.md).
 
