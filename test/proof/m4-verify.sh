@@ -20,6 +20,13 @@
 # Uses the gitignored .env + ambient credentials, same as harness.sh. Every AWS call
 # is redacted, so no account id is printed. Requires the wrapper + CLI to be published
 # to the CodeArtifact repo `cdk-cicd-wrapper/cdk-cicd-wrapper` (see Taskfile.codeartifact.yml).
+#
+# m9 exit gate (`m9-migrate-private-registry-auth`): M4_NPM_REGISTRY=true additionally configures
+# `npmRegistry` (a generic private-npm-registry basic-auth, distinct from CodeArtifact) against a
+# throwaway Secrets Manager secret, then asserts every deployed CodeBuild project's buildspec really
+# carries the login command + secrets-manager mapping, and best-effort-confirms a real build ran it:
+#
+#   M4_NPM_REGISTRY=true bash test/proof/m4-verify.sh
 # =============================================================================
 set -euo pipefail
 
@@ -33,6 +40,16 @@ readonly FIXTURE='pipeline-app'
 readonly DEV_REGION='us-west-2'   # dev stage (also the pipeline's own region)
 readonly PROD_REGION='us-west-1'  # prod stage -- distinct region so the two stage stacks are distinct
 
+# --- m9 `npmRegistry` (generic private-npm-registry basic-auth) knob --------------------------------
+# Opt-in via M4_NPM_REGISTRY=true (see build_bundle). The URL is deliberately unresolvable and the scope
+# matches none of the fixture's real dependencies, so the extra `.npmrc` entry `npmRegistryLogin` writes
+# never affects what `npm ci` actually installs -- this proves the CONFIG WIRING, not a live third-party
+# registry, per the task's own framing (no real npm-compatible registry is required to authenticate
+# against; the CodeBuild project being correctly wired is the gate).
+readonly NPM_REGISTRY_URL='https://npm-registry.m9-verify.invalid/'
+readonly NPM_REGISTRY_SCOPE='m9privatereg'
+npm_registry_secret_name() { printf 'cdkcicdtest-%s-npmreg\n' "$CDK_CICD_TEST_RUN_ID"; }
+
 # Poll bounds: a cold pipeline run (5 CodeBuild stages, npm ci each) is minutes, not seconds.
 readonly POLL_INTERVAL=20
 readonly POLL_MAX=90   # 90 * 20s = 30 min ceiling
@@ -42,6 +59,40 @@ pipeline_stack() { printf 'cdkcicdtest-%s-pipeline\n' "$CDK_CICD_TEST_RUN_ID"; }
 pipeline_name()  { printf 'cdkcicdtest-%s-pipeline\n' "$CDK_CICD_TEST_RUN_ID"; }  # PipelineApp names it <application>-pipeline
 app_stack()      { printf 'cdkcicdtest-%s-app\n' "$CDK_CICD_TEST_RUN_ID"; }
 src_bucket()     { printf 'cdkcicdtest-%s-m4src\n' "$CDK_CICD_TEST_RUN_ID"; }
+
+# --- m9 npmRegistry secret: a throwaway Secrets Manager secret holding a dummy bearer token ---------
+# Same region as the pipeline stack (DEV_REGION) -- CodeBuild's `secrets-manager` env mapping resolves
+# same-region ARNs without extra `region:` qualification, and every CodeBuild project this pipeline
+# creates lives in the pipeline stack's own region regardless of which stage/region it deploys into.
+ensure_npm_registry_secret() {
+  local name arn
+  name="$(npm_registry_secret_name)"
+  arn="$(aws secretsmanager create-secret --name "$name" --region "$DEV_REGION" \
+           --secret-string 'm9-verify-dummy-token' \
+           --tags "Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID" \
+           --query 'ARN' --output text 2>/dev/null)" \
+    || die 'could not create the npm-registry secret -- refusing to continue without it'
+  # >&2 deliberately, same reason as build_bundle's own log call: this function's stdout IS its return
+  # value (the ARN), so an unredirected `info` here would prepend itself to the ARN the caller captures.
+  info "created npm-registry secret $name" >&2
+  printf '%s\n' "$arn"
+}
+
+# Guarded the same way destroy_src_bucket is: name prefix + our tag, so this can only ever delete a
+# secret this run created. Best-effort beyond that -- a missing secret is not a teardown failure.
+destroy_npm_registry_secret() {
+  local name tag
+  name="$(npm_registry_secret_name)"
+  case "$name" in "$STACK_PREFIX"-*) ;; *) die "guard: refusing to delete secret '$name' -- not a cdkcicdtest secret" ;; esac
+  tag="$(aws secretsmanager describe-secret --secret-id "$name" --region "$DEV_REGION" \
+           --query "Tags[?Key=='${TAG_KEY}']|[0].Value" --output text 2>/dev/null)" \
+    || { log "npm-registry secret '$name' not found -- nothing to delete"; return 0; }
+  [ -n "$tag" ] && [ "$tag" != 'None' ] || { log "secret '$name' lacks our tag -- leaving it"; return 1; }
+  aws secretsmanager delete-secret --secret-id "$name" --region "$DEV_REGION" \
+      --force-delete-without-recovery >/dev/null 2>&1 \
+    && info "deleted npm-registry secret $name" \
+    || { log "could not delete secret $name -- check the console"; return 1; }
+}
 
 # --- CodeArtifact login into a throwaway npmrc (never touches the user's ~/.npmrc) -----------------
 ca_login() {
@@ -68,13 +119,21 @@ build_bundle() {
   # pipelines, and the only way to know a mode works is to run it.
   #   M4_DEPLOY_MODEL=ASSEMBLY_PROMOTION (default) | DEPLOY_TIME_SYNTH
   #   M4_ASYNC_DEPLOY=true                         -- hand the CloudFormation wait to the Lambda driver
-  local modelLine='' asyncLine=''
+  #   M4_NPM_REGISTRY=true                         -- m9: also configure `npmRegistry` (see the top of
+  #                                                    this file); the caller must have already created
+  #                                                    the secret via ensure_npm_registry_secret and
+  #                                                    exported its ARN as npm_secret_arn
+  local modelLine='' asyncLine='' npmRegistryLine=''
   case "${M4_DEPLOY_MODEL:-ASSEMBLY_PROMOTION}" in
     ASSEMBLY_PROMOTION) modelLine='  deployModel: DeployModel.ASSEMBLY_PROMOTION,' ;;
     DEPLOY_TIME_SYNTH)  modelLine='  deployModel: DeployModel.DEPLOY_TIME_SYNTH,' ;;
     *) die "M4_DEPLOY_MODEL must be ASSEMBLY_PROMOTION or DEPLOY_TIME_SYNTH (got '${M4_DEPLOY_MODEL}')" ;;
   esac
   [ "${M4_ASYNC_DEPLOY:-false}" = 'true' ] && asyncLine='  asyncDeploy: true,'
+  if [ "${M4_NPM_REGISTRY:-false}" = 'true' ]; then
+    [ -n "${npm_secret_arn:-}" ] || die 'M4_NPM_REGISTRY=true but no secret ARN was created (see ensure_npm_registry_secret)'
+    npmRegistryLine="  npmRegistry: { url: '${NPM_REGISTRY_URL}', basicAuthSecretArn: '${npm_secret_arn}', scope: '${NPM_REGISTRY_SCOPE}' },"
+  fi
 
   cat >"$bundle/cicd.config.ts" <<EOF
 import { defineCICD, DeployModel, Repository } from '@cdklabs/cdk-cicd-wrapper';
@@ -85,6 +144,7 @@ export default defineCICD({
   codeArtifact: { domain: '${CA_DOMAIN}', repository: '${CA_REPO}', npmScope: 'cdklabs' },
 ${modelLine}
 ${asyncLine}
+${npmRegistryLine}
   stages: [
     { name: 'dev', env: { region: '${DEV_REGION}' } },
     { name: 'prod', env: { region: '${PROD_REGION}' }, manualApproval: true },
@@ -93,7 +153,7 @@ ${asyncLine}
 EOF
   # >&2 deliberately: this function's stdout IS its return value (the bundle dir), and `log`/`info` print
   # to stdout, so anything logged here without redirection ends up prepended to the path the caller uses.
-  log "deploy model: ${M4_DEPLOY_MODEL:-ASSEMBLY_PROMOTION}, asyncDeploy: ${M4_ASYNC_DEPLOY:-false}" >&2
+  log "deploy model: ${M4_DEPLOY_MODEL:-ASSEMBLY_PROMOTION}, asyncDeploy: ${M4_ASYNC_DEPLOY:-false}, npmRegistry: ${M4_NPM_REGISTRY:-false}" >&2
 
   # The run id has to travel INSIDE the bundle: the app is synthesized in the pipeline's CodeBuild,
   # which never sees CDK_CICD_TEST_RUN_ID. Without this the fixture fell back to `local` and deployed
@@ -290,6 +350,64 @@ assert_app_stack() {
   info "$region: $stack $status, marker names stage '$stage'"
 }
 
+# m9: assert every deployed CodeBuild project's buildspec really carries the npmRegistry wiring --
+# the registry URL in a pre_build login command and the bearer-token secret ARN in the buildspec's
+# `secrets-manager` env mapping. Queried straight off the deployed stack's resources, not off the
+# synthesized template in the repo, so this is evidence about what actually landed in the account.
+assert_npm_registry_wiring() {
+  local pstack="$1" secret_arn="$2" names name buildspec count=0
+  names="$(aws_masked cloudformation describe-stack-resources --stack-name "$pstack" --region "$DEV_REGION" \
+             --query "StackResources[?ResourceType=='AWS::CodeBuild::Project'].PhysicalResourceId" --output text)" \
+    || die "assert: could not list $pstack's CodeBuild projects"
+  [ -n "$names" ] && [ "$names" != 'None' ] || die 'assert: no CodeBuild projects found on the pipeline stack'
+
+  for name in $names; do
+    buildspec="$(aws_masked codebuild batch-get-projects --names "$name" --region "$DEV_REGION" \
+                   --query 'projects[0].source.buildspec' --output text)" \
+      || die "assert: batch-get-projects failed for $name"
+    case "$buildspec" in
+      *"$NPM_REGISTRY_URL"*) ;;
+      *) die "assert: $name's buildspec does not reference the npmRegistry URL -- login command missing" ;;
+    esac
+    case "$buildspec" in
+      *"$secret_arn"*) ;;
+      *) die "assert: $name's buildspec does not map NPM_AUTH_TOKEN to the secret ARN -- secrets-manager env missing" ;;
+    esac
+    count=$((count + 1))
+  done
+  # 1 CI + 1 self-update + 1 per stage, same shape the footprint assertion above already pins.
+  [ "$count" -ge 3 ] || die "assert: expected npmRegistry wiring on >=3 CodeBuild projects, confirmed $count"
+  info "$count/$count deployed CodeBuild project(s) reference the npmRegistry URL and its secrets-manager mapping"
+}
+
+# m9, best-effort: confirm a REAL CodeBuild run executed the login command, not just that the buildspec
+# contains it. The Build (CI) action runs first and needs no approval, so its log is available early --
+# poll briefly rather than blocking the whole gate on it. Never fails the caller: the static assertion
+# above is the real gate, this is corroborating evidence when the timing lines up.
+assert_npm_registry_login_ran() {
+  local pname="$1" i=0 build grp stream
+  for (( i=0; i<18; i++ )); do
+    build="$(aws_masked codepipeline list-action-executions --pipeline-name "$pname" --region "$DEV_REGION" \
+      --query "actionExecutionDetails[?actionName=='Build' && status=='Succeeded'].output.executionResult.externalExecutionId | [0]" \
+      --output text 2>/dev/null)" || true
+    [ -n "$build" ] && [ "$build" != 'None' ] && break
+    sleep 10
+  done
+  if [ -z "${build:-}" ] || [ "$build" = 'None' ]; then
+    log 'npmRegistry: Build action did not succeed within the poll window -- skipping the log corroboration (non-fatal)'
+    return 0
+  fi
+  read -r grp stream < <(aws_masked codebuild batch-get-builds --ids "$build" --region "$DEV_REGION" \
+    --query 'builds[0].logs.[groupName,streamName]' --output text 2>/dev/null) || return 0
+  [ -n "$grp" ] && [ "$grp" != 'None' ] || return 0
+  if aws_masked logs get-log-events --log-group-name "$grp" --log-stream-name "$stream" --region "$DEV_REGION" \
+       --limit 200 --query 'events[].message' --output text 2>/dev/null | redact | grep -Fq "registry=${NPM_REGISTRY_URL}"; then
+    info 'npmRegistry: confirmed the login command really ran in a real CodeBuild build (Build action log)'
+  else
+    log 'npmRegistry: login command not found in the Build action log (non-fatal -- static wiring already confirmed)'
+  fi
+}
+
 main_m4() {
   load_env
   ensure_run_id
@@ -299,8 +417,14 @@ main_m4() {
   actual="$(caller_account)" || die 'could not resolve caller identity'
   [ "$actual" = "$CDK_CICD_TEST_ACCOUNT" ] || die 'caller identity is not CDK_CICD_TEST_ACCOUNT -- refusing to deploy'
 
-  local pstack pname bucket bundle rc=0
+  local pstack pname bucket bundle rc=0 npm_secret_arn=''
   pstack="$(pipeline_stack)"; pname="$(pipeline_name)"; bucket="$(src_bucket)"
+
+  # m9: the secret has to exist before build_bundle renders cicd.config.ts, since the ARN goes straight
+  # into the generated npmRegistry block.
+  if [ "${M4_NPM_REGISTRY:-false}" = 'true' ]; then
+    npm_secret_arn="$(ensure_npm_registry_secret)"
+  fi
 
   # --- provision source ---------------------------------------------------------------------------
   log 'leg 1: build the bundle + upload it as the S3 source'
@@ -342,6 +466,13 @@ main_m4() {
       rc=1
     fi
 
+    # --- m9: assert the npmRegistry wiring landed on every deployed CodeBuild project -------------
+    if [ "${M4_NPM_REGISTRY:-false}" = 'true' ]; then
+      log 'leg 2.5: assert the deployed CodeBuild projects really carry the npmRegistry wiring'
+      ( assert_npm_registry_wiring "$pstack" "$npm_secret_arn" ) || rc=1
+      [ "$rc" = 0 ] && assert_npm_registry_login_ran "$pname"
+    fi
+
     # --- drive the run through the approval ------------------------------------------------------
     log 'leg 3: drive the pipeline run dev -> prod through the manual approval'
     if drive_pipeline "$pname"; then
@@ -376,6 +507,7 @@ main_m4() {
   done
   destroy_src_bucket "$bucket" || rc=1
   destroy_plan_parameters
+  [ "${M4_NPM_REGISTRY:-false}" = 'true' ] && { destroy_npm_registry_secret || rc=1; }
   rm -rf "$bundle" /tmp/m4-app.zip
 
   if [ "$rc" = 0 ]; then
