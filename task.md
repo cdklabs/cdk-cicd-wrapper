@@ -1096,25 +1096,23 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 8
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-log-retention`** — port v2 CloudWatch log-retention control  ·  blocked · wave 8 ·
+- **`m9-migrate-log-retention`** — port v2 CloudWatch log-retention control  ·  done · wave 8 ·
   wrapper · migration
   - **desc:** v2 source: `src/resource-providers/LoggingProvider.ts` (`ILogger`) and
     `EncryptCloudWatchLogGroupsPlugin.ts` — this item is retention specifically, distinct from the
     encryption plugin already covered by `m9-migrate-security-plugins`.
-  - **notes:** Implementation (`LogRetentionAspect` in `src/support/LogRetentionAspect.ts`) and static
-    review are sound — `npx projen compile`/`test`/`compat` all green, 100% coverage on the new file.
-    Blocked because the architect's real-AWS deploy-verify pass (fixture `level1-app`, `harness.sh
-    deploy`/`assert`/`destroy` against the test account) found the feature silently inert: on a real
-    deploy the log group's retention was never set, because this repo's dev tree resolves two distinct
-    physical copies of `aws-cdk-lib` (root `node_modules` vs. the wrapper package's own nested
-    `node_modules`), so `LogRetentionAspect.visit()`'s `node instanceof CfnLogGroup` check is false
-    across that module-identity boundary — with no error, and no test-suite visibility since jest's
-    single module registry can't reproduce a cross-copy check. Teardown was verified clean (no
-    orphaned AWS resources). Per review routing, architect verdict `deploy-failed` mandates blocking
-    without a code-quality pass. Fix: replace the `instanceof` check with a structural one
-    (`CfnResource.isCfnResource(node) && node.cfnResourceType === 'AWS::Logs::LogGroup'`, confirmed to
-    work across the module boundary in the architect's repro script) and add a regression check that
-    spans two `aws-cdk-lib` copies before re-submitting.
+  - **notes:** Was blocked because `LogRetentionAspect.visit()`'s `node instanceof CfnLogGroup` check
+    was false across this dev tree's two physical copies of `aws-cdk-lib` (root `node_modules` vs. the
+    wrapper package's own nested `node_modules`), so the aspect silently never set retention on a real
+    deploy. Fixed by replacing the `instanceof` check with a structural one
+    (`CfnResource.isCfnResource(node) && node.cfnResourceType === 'AWS::Logs::LogGroup'`, matching the
+    pattern already used by `RotateEncryptionKeysAspect`), plus a regression test that builds a
+    `CfnLogGroup` via `jest.isolateModules` (a second, independently-loaded `aws-cdk-lib` module
+    registry) so the check is proven structural, not nominal — `npx projen compile`/`test`/`compat` all
+    green, 100% coverage on the changed file. Re-verified against a real deploy: `harness.sh deploy
+    level1-app` (a temporary unset-retention `CfnLogGroup` added to the fixture, reverted after) showed
+    `RetentionInDays: 365` via `aws logs describe-log-groups`, then `harness.sh destroy level1-app`
+    tore down clean (no orphaned resources).
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 11
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
