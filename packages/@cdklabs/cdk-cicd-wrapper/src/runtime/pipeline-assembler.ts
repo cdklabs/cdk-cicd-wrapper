@@ -156,9 +156,19 @@ export function replayStageProvider(entry: string): IStageProvider {
 export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStageProvider): App {
   const app = new App();
   const name = `${config.application ?? DEFAULT_APPLICATION}-pipeline`;
+  // Ambient credentials win when present (a real `deploy-ci` run, or any locally-authenticated synth).
+  // Falling back to the first stage's env keeps the pipeline stack's account/region reproducible when
+  // no credentials are active -- e.g. the GitHub Actions engine's own self-mutation "Synthesize" job,
+  // which runs `cdk synth` before assuming any role, and must render the SAME literal account each time
+  // to pass cdk-pipelines-github's "commit the updated workflow file" check (a token there is never
+  // stable across runs).
+  const firstStage = config.stages[0];
   const stack = new Stack(app, name, {
     stackName: name,
-    env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION } as Environment,
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT ?? firstStage?.env.account,
+      region: process.env.CDK_DEFAULT_REGION ?? firstStage?.env.regions[0],
+    } as Environment,
   });
   if (config.engine === EngineType.GITHUB_ACTIONS) {
     new GitHubActionsEngine(stack, 'Cd', { config, pipelineName: name, stages: provider });
