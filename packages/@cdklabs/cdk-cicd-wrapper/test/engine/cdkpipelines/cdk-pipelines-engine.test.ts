@@ -92,6 +92,36 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(policies).toContain('sts:GetServiceBearerToken');
   });
 
+  test('a proxy config exports HTTP(S)_PROXY ahead of the synth build and grants secret read', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    const engine = new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        proxy: { proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123' },
+      }),
+      stages: new StubStages(),
+    });
+    void engine;
+    const t = Template.fromStack(stack);
+    const projects = t.findResources('AWS::CodeBuild::Project');
+    const spec = JSON.parse(Object.values(projects)[0].Properties.Source.BuildSpec);
+    expect(spec.phases.install.commands).toEqual(
+      expect.arrayContaining([
+        'export HTTP_PROXY="http://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTP_PROXY_PORT"',
+        'curl -Is --connect-timeout 5 https://aws.amazon.com | grep "HTTP/"',
+      ]),
+    );
+    expect(spec.env['secrets-manager']).toEqual(
+      expect.objectContaining({
+        PROXY_USERNAME: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123:username',
+      }),
+    );
+    const policies = JSON.stringify(t.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('secretsmanager:GetSecretValue');
+  });
+
   test('codeBuildEnvSettings applies to every CodeBuild project CDK Pipelines creates (synth + self-mutation)', () => {
     const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
     const engine = new CdkPipelinesEngine(stack, 'Cd', {

@@ -10,6 +10,8 @@
 
 import * as path from 'path';
 import {
+  Arn,
+  ArnFormat,
   DefaultStackSynthesizer,
   Duration,
   RemovalPolicy,
@@ -25,7 +27,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { buildSourceAction } from './source';
 import { BuildImage, BuildImageKind, ImageTagStrategy } from '../../config/build-image';
-import { CodeArtifactConfig, DeployModel, ResolvedCicdConfig } from '../../config/types';
+import { CodeArtifactConfig, DeployModel, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
 import { EngineRenderProps, IEngine } from '../types';
 
@@ -151,6 +153,7 @@ export class CodePipelineEngine implements IEngine {
             'BuildProject',
             this.ciCommands(config, synthed, promote),
             config.codeArtifact,
+            config.proxy,
             config.codeBuildEnvSettings,
             assembly !== undefined,
             config.ci.partialBuildSpec,
@@ -177,6 +180,7 @@ export class CodePipelineEngine implements IEngine {
       'UpdatePipeline',
       ['npm ci', deployCi],
       config.codeArtifact,
+      config.proxy,
       config.codeBuildEnvSettings,
     );
     this.grantDeployPermissions(selfUpdate, stack.account, [stack.region]);
@@ -223,6 +227,7 @@ export class CodePipelineEngine implements IEngine {
         `Deploy-${stage.name}`,
         ['npm ci', stageCmd],
         config.codeArtifact,
+        config.proxy,
         config.codeBuildEnvSettings,
       );
       this.grantDeployPermissions(project, account, regions, stage.deployment?.deployRole);
@@ -388,6 +393,14 @@ export class CodePipelineEngine implements IEngine {
       `docker push ${uri}:${tag}`,
     ];
 
+    // The proxy's exports run first, in `install` -- ahead of the codeArtifact login and `npm ci`, same
+    // ordering as `project()` (NO_PROXY is what lets the AWS-API-bound `codeartifact login` skip the
+    // proxy while `npm ci` against public npm goes through it).
+    const install = {
+      ...(this.buildImage === undefined ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } : {}),
+      ...(config.proxy ? { commands: proxyInstallCommands(config.proxy) } : {}),
+    };
+
     const project = new codebuild.PipelineProject(scope, 'BuildImage', {
       // Docker builds need a privileged environment; runtime pinned like the deploy projects.
       // `codeBuildEnvSettings` still contributes computeType/environmentVariables here -- only
@@ -396,15 +409,23 @@ export class CodePipelineEngine implements IEngine {
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
-          ...(this.buildImage === undefined
-            ? { install: { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } }
-            : {}),
+          ...(Object.keys(install).length > 0 ? { install } : {}),
           build: { commands },
         },
+        // The proxy credentials/ports live in Secrets Manager, not in plain env vars.
+        ...(config.proxy
+          ? {
+              env: {
+                variables: proxyEnvVariables(stack, config.proxy),
+                'secrets-manager': proxySecretsManagerVars(config.proxy),
+              },
+            }
+          : {}),
       }),
     });
     repository.grantPullPush(project);
     if (config.codeArtifact) grantCodeArtifactRead(project, config.codeArtifact);
+    if (config.proxy) grantProxySecretRead(project, config.proxy);
     // Provisioned repos derive the URI from the pipeline account; a referenced repo may be elsewhere, but
     // grantPullPush + ECR's token endpoint cover same-account. (Cross-account push is a later slice.)
 
@@ -529,6 +550,7 @@ export class CodePipelineEngine implements IEngine {
     id: string,
     commands: string[],
     codeArtifact?: CodeArtifactConfig,
+    proxy?: ProxyConfig,
     codeBuildEnvSettings?: codebuild.BuildEnvironment,
     publishAssembly = false,
     partialBuildSpec?: codebuild.BuildSpec,
@@ -542,17 +564,29 @@ export class CodePipelineEngine implements IEngine {
     // user-supplied `buildImage` (a custom registry image, or standard:5.0/6.0 where nodejs 22 does not
     // exist) turns a working pipeline into a hard YAML_FILE_ERROR in the install phase. A user who brings
     // their own image owns its Node version.
-    const install =
-      this.buildImage === undefined ? { install: { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } } : {};
+    // The proxy's exports run first, in `install` -- ahead of the codeArtifact login and `npm ci`, both
+    // of which need HTTP(S)_PROXY/NO_PROXY already set (NO_PROXY is what lets the AWS-API-bound
+    // `codeartifact login` skip the proxy while `npm ci` against public npm goes through it).
+    const install = {
+      ...(this.buildImage === undefined ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } : {}),
+      ...(proxy ? { commands: proxyInstallCommands(proxy) } : {}),
+    };
     // Every project runs `npm ci`; a private-registry login has to come first, or the install resolves
     // against public npm and fails on the private packages (the wrapper's own, before it is published).
-    const phases = codeArtifact
-      ? { ...install, pre_build: { commands: [codeArtifactLogin(stack, codeArtifact)] }, build: { commands } }
-      : { ...install, build: { commands } };
+    const preBuildCommands = [...(codeArtifact ? [codeArtifactLogin(stack, codeArtifact)] : [])];
+    const phases = {
+      ...(Object.keys(install).length > 0 ? { install } : {}),
+      ...(preBuildCommands.length > 0 ? { pre_build: { commands: preBuildCommands } } : {}),
+      build: { commands },
+    };
 
     const generatedBuildSpec = codebuild.BuildSpec.fromObject({
       version: '0.2',
       phases,
+      // The proxy credentials/ports live in Secrets Manager, not in plain env vars.
+      ...(proxy
+        ? { env: { variables: proxyEnvVariables(stack, proxy), 'secrets-manager': proxySecretsManagerVars(proxy) } }
+        : {}),
       // Publish the WHOLE source tree plus the synthesized assembly, excluding only node_modules (the
       // deploy re-runs `npm ci`). A hardcoded file allowlist was wrong: `cdk-cicd deploy --from-assembly`
       // still loads `cicd.config.ts` under ts-node, so a config that imports another file, a tsconfig it
@@ -574,6 +608,9 @@ export class CodePipelineEngine implements IEngine {
     if (codeArtifact) {
       grantCodeArtifactRead(project, codeArtifact);
     }
+    if (proxy) {
+      grantProxySecretRead(project, proxy);
+    }
     // CDK gives every CodeBuild project wildcard grants to its own CloudWatch log group/stream and
     // CodeBuild report group, plus read/write on the pipeline's KMS-encrypted artifact bucket. All are
     // scoped to the project's own logs and the pipeline's own artifact store -- no user data -- so the
@@ -590,7 +627,9 @@ export class CodePipelineEngine implements IEngine {
             'When codeArtifact is configured this also covers the one genuinely unscoped grant, ' +
             'sts:GetServiceBearerToken on Resource "*", which CodeArtifact requires and which IAM ' +
             'cannot express at resource level; it is constrained instead by a condition on ' +
-            "sts:AWSServiceName = codeartifact.amazonaws.com, which cdk-nag's IAM5 rule does not read.",
+            "sts:AWSServiceName = codeartifact.amazonaws.com, which cdk-nag's IAM5 rule does not read. " +
+            'When a proxy is configured this also covers the cross-account KMS grant on key/* under the ' +
+            "secret's own account/region -- Secrets Manager does not expose a per-key ARN to scope to.",
         },
       ],
       true,
@@ -688,4 +727,61 @@ function grantCodeArtifactRead(project: codebuild.PipelineProject, ca: CodeArtif
       conditions: { StringEquals: { 'sts:AWSServiceName': 'codeartifact.amazonaws.com' } },
     }),
   );
+}
+
+/**
+ * Plain (non-secret) proxy env vars every build project needs (v2 `CodeBuildFactoryProvider` parity).
+ * An empty `noProxy` defaults to the project's own region's AWS endpoint, so AWS API calls (like
+ * `codeartifact login`) bypass the proxy while everything else -- `npm ci` against public npm -- goes
+ * through it.
+ */
+function proxyEnvVariables(stack: Stack, proxy: ProxyConfig): Record<string, string> {
+  const noProxy = proxy.noProxy.length > 0 ? proxy.noProxy : [`${stack.region}.amazonaws.com`];
+  return {
+    AWS_STS_REGIONAL_ENDPOINTS: 'regional',
+    NO_PROXY: noProxy.join(','),
+    PROXY_SECRET_ARN: proxy.proxySecretArn,
+  };
+}
+
+/** The secret's fields, referenced by `<arn>:<jsonKey>` so CodeBuild resolves them at container start. */
+function proxySecretsManagerVars(proxy: ProxyConfig): Record<string, string> {
+  return {
+    PROXY_USERNAME: `${proxy.proxySecretArn}:username`,
+    PROXY_PASSWORD: `${proxy.proxySecretArn}:password`,
+    HTTP_PROXY_PORT: `${proxy.proxySecretArn}:http_proxy_port`,
+    HTTPS_PROXY_PORT: `${proxy.proxySecretArn}:https_proxy_port`,
+    PROXY_DOMAIN: `${proxy.proxySecretArn}:proxy_domain`,
+  };
+}
+
+/** Export the proxy for every later shell command, then prove the tunnel works before install runs. */
+function proxyInstallCommands(proxy: ProxyConfig): string[] {
+  return [
+    'export HTTP_PROXY="http://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTP_PROXY_PORT"',
+    'export HTTPS_PROXY="https://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTPS_PROXY_PORT"',
+    'echo "--- Proxy Test ---"',
+    `curl -Is --connect-timeout 5 ${proxy.proxyTestUrl} | grep "HTTP/"`,
+  ];
+}
+
+/** The read grant the proxy secret needs, plus cross-account KMS decrypt when the secret lives elsewhere. */
+function grantProxySecretRead(project: codebuild.PipelineProject, proxy: ProxyConfig): void {
+  const stack = Stack.of(project);
+  project.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: [proxy.proxySecretArn],
+    }),
+  );
+  const secretAccount = Arn.split(proxy.proxySecretArn, ArnFormat.SLASH_RESOURCE_NAME).account;
+  if (secretAccount !== undefined && secretAccount !== stack.account) {
+    const secretRegion = Arn.split(proxy.proxySecretArn, ArnFormat.SLASH_RESOURCE_NAME).region;
+    project.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['kms:Decrypt', 'kms:DescribeKey', 'kms:Encrypt', 'kms:GenerateDataKey*', 'kms:ReEncrypt*'],
+        resources: [`arn:${stack.partition}:kms:${secretRegion}:${secretAccount}:key/*`],
+      }),
+    );
+  }
 }

@@ -115,4 +115,36 @@ describe('m6-container: image-build pipeline', () => {
       }),
     });
   });
+
+  test('a proxy config exports HTTP(S)_PROXY and curls the test URL before the BuildImage project runs', () => {
+    const t = render(
+      defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        deployerImage: BuildImage.docker(),
+        proxy: { proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123' },
+      }),
+    );
+    // The account/region tokens embedded in the docker build/push commands make CDK render the whole
+    // BuildSpec as an Fn::Join object rather than a plain JSON string (same reason `buildCommands`
+    // above stringifies instead of parsing), so assert on the stringified spec.
+    const spec = buildCommands(t);
+    expect(spec).toContain('export HTTP_PROXY=');
+    expect(spec).toContain('PROXY_DOMAIN:$HTTP_PROXY_PORT');
+    expect(spec).toContain('curl -Is --connect-timeout 5 https://aws.amazon.com');
+    expect(spec).toContain('NO_PROXY');
+    expect(spec).toContain('us-west-2.amazonaws.com');
+    expect(spec).toContain('proxy-abc123:username');
+    t.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'secretsmanager:GetSecretValue',
+            Resource: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123',
+          }),
+        ]),
+      }),
+    });
+  });
 });

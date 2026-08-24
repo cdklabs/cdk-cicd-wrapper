@@ -228,6 +228,82 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     expect(grantsCodeArtifact).toBe(false);
   });
 
+  test('a proxy config exports HTTP(S)_PROXY and curls the test URL before every build runs', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      proxy: { proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123' },
+    });
+    const t = render(config);
+
+    // Every project (build, self-update, deploy) must set up the tunnel before its own commands run.
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    expect(projects).toHaveLength(3);
+    for (const p of projects) {
+      const spec = JSON.parse(p.Properties.Source.BuildSpec);
+      expect(spec.phases.install.commands).toEqual([
+        'export HTTP_PROXY="http://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTP_PROXY_PORT"',
+        'export HTTPS_PROXY="https://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTPS_PROXY_PORT"',
+        'echo "--- Proxy Test ---"',
+        'curl -Is --connect-timeout 5 https://aws.amazon.com | grep "HTTP/"',
+      ]);
+      // The plain env vars and the Secrets Manager-backed ones both land on every project's buildspec.
+      expect(spec.env.variables).toEqual(
+        expect.objectContaining({
+          NO_PROXY: 'us-west-2.amazonaws.com',
+          PROXY_SECRET_ARN: expect.stringContaining('proxy-abc123'),
+        }),
+      );
+      expect(spec.env['secrets-manager']).toEqual({
+        PROXY_USERNAME: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123:username',
+        PROXY_PASSWORD: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123:password',
+        HTTP_PROXY_PORT: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123:http_proxy_port',
+        HTTPS_PROXY_PORT: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123:https_proxy_port',
+        PROXY_DOMAIN: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123:proxy_domain',
+      });
+    }
+    // And each project's role can actually read the secret.
+    t.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'secretsmanager:GetSecretValue',
+            Resource: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123',
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('an explicit noProxy is used as-is, without the default region endpoint added', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      proxy: {
+        proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123',
+        noProxy: ['internal.example.com'],
+      },
+    });
+    const build = Object.values(render(config).findResources('AWS::CodeBuild::Project'))[0];
+    const spec = JSON.parse(build.Properties.Source.BuildSpec);
+    expect(spec.env.variables.NO_PROXY).toBe('internal.example.com');
+  });
+
+  test('without a proxy config no project sets up a tunnel and no secret grant is made', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+    const t = render(config);
+
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    for (const p of projects) {
+      const spec = JSON.parse(p.Properties.Source.BuildSpec);
+      expect(spec.env).toBeUndefined();
+    }
+    const policies = Object.values(t.findResources('AWS::IAM::Policy'));
+    expect(policies.some((p) => JSON.stringify(p.Properties.PolicyDocument).includes('secretsmanager'))).toBe(false);
+  });
+
   test('codeBuildEnvSettings (privileged, compute type, env vars) applies to every build project', () => {
     const config = defineCICD({
       application: 'shop',
