@@ -1308,6 +1308,24 @@ not this branch reaching `main`.
     mapper so this class of bug can't hide again, and either port the missing IAM/secrets plumbing or
     explicitly document `codeArtifact`/`proxy` as unsupported for this engine, then redo the
     deploy-verify (fixture left at `test/fixtures/github-actions-app/` for reuse).
+  - **ruled out:** tried resolving `aws-cdk-lib/pipelines` through `cdk-pipelines-github`'s own module
+    location (`require.resolve(..., { paths: [require.resolve('cdk-pipelines-github')] })`), so the
+    `CodeBuildStep` this engine builds is the SAME class reference `cdk-pipelines-github`'s internal
+    `instanceof ShellStep` check sees. Confirmed the two paths genuinely differ
+    (`node -e` printed the wrapper's nested copy vs. the hoisted root copy). Reverted: it broke the
+    previously-green unit suite (13/13 → 1/13) with the SAME "unsupported step type" error, because
+    jest's `moduleNameMapper` (`^aws-cdk-lib$`/`^aws-cdk-lib/(.*)$` → the wrapper's nested copy, see
+    `projenrc/PipelineConfig.ts`) only intercepts bare-specifier requires -- a pre-resolved absolute
+    path bypasses it entirely, so under jest this fix desyncs from whatever `cdk-pipelines-github`'s
+    OWN (jest-redirected) internal require resolves to, while under real Node it's the resolution that
+    matches production. No single call site can satisfy both without detecting "am I running under
+    jest", which is not a legitimate thing for production code to do. This means the jest mapper isn't
+    just failing to CATCH the real bug (as already known) -- it's actively incompatible with the most
+    direct per-callsite fix, which is why the note above calls for reconciling the mapper itself, not
+    just patching this one file. The structural fix (making `aws-cdk-lib` genuinely resolve to one copy
+    in every environment, e.g. by dropping the wrapper's own exact-version devDependency pin in favor
+    of relying purely on the peerDependency range) is unattempted -- bigger blast radius (affects the
+    whole package's build, not just this engine), needs its own dedicated pass.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog (GitHub Actions); D4
   - **acceptance:** a `cicd.config.ts` selecting the GitHub engine renders a working Actions
     workflow, proven by at least one real GitHub Actions run + a `MIGRATION.md` row.
