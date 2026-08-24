@@ -1,2 +1,0 @@
-Rule ID,Resource ID,Compliance,Exception Reason,Rule Level,Rule Info
-"AwsSolutions-KMS5","DEV/integ-githubEncryptionStack/Key/Resource","Compliant","N/A","Error","The KMS Symmetric key does not have automatic key rotation enabled."

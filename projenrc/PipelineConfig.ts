@@ -102,11 +102,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
 
     root.addGitIgnore(this.workspaceDirectory + '/tsconfig.json');
 
-    this.addDevDeps('copyfiles');
     this.addDevDeps(...root.eslintDeps);
-    this.tasks
-      .tryFind('post-compile')!
-      .exec('copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock src/projen/Taskfile.yaml lib');
 
     this.addTask('integ', {
       description: 'Run integration snapshot tests',

@@ -48,10 +48,6 @@
       "type": "build"
     },
     {
-      "name": "copyfiles",
-      "type": "build"
-    },
-    {
       "name": "eslint-config-prettier",
       "type": "build"
     },

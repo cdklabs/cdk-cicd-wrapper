@@ -247,8 +247,8 @@ class Command implements yargs.CommandModule {
     };
 
     const invocation = execInvocation(entry, cicd?.engine, {
-      registerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/v3/runtime/register.js'),
-      assemblerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/v3/runtime/pipeline-assembler.js'),
+      registerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/runtime/register.js'),
+      assemblerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/runtime/pipeline-assembler.js'),
     });
     const nodeArgs = invocation.nodeArgs;
     if (invocation.entryEnv !== undefined) {

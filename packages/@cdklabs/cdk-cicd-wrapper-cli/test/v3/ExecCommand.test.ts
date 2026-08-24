@@ -166,7 +166,7 @@ describe('exec: forcedRoleEnv', () => {
 describe('exec: cross-package env-flag literals match the constructs package', () => {
   test('EXEC_FLAG and the forced-role flags equal the wrapper preload constants', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const inject = require('@cdklabs/cdk-cicd-wrapper/lib/v3/runtime/inject');
+    const inject = require('@cdklabs/cdk-cicd-wrapper/lib/runtime/inject');
     // Read the literals out of the compiled ExecCommand to prove both ends agree.
     const src = fs.readFileSync(path.join(__dirname, '../../src/cmds/v3/ExecCommand.ts'), 'utf-8');
     expect(src).toContain(`const EXEC_FLAG = '${inject.EXEC_FLAG}'`);
