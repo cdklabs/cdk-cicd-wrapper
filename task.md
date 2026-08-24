@@ -1048,7 +1048,7 @@ not this branch reaching `main`.
     until a session scoped to fix them lands. `MIGRATION.md`'s row for these aspects (line ~69)
     already describes the port at the design level with no mechanism detail, so it needed no edit.
 
-- **`m9-migrate-compliance-bucket`** — port the v2 compliance/access-log bucket  ·  in-progress · wave 8 ·
+- **`m9-migrate-compliance-bucket`** — port the v2 compliance/access-log bucket  ·  done · wave 8 ·
   wrapper · migration
   - **desc:** v2 source: `src/resource-providers/ComplianceBucketProvider.ts`,
     `src/stacks/compliance-bucket/ComplianceBucketStack.ts`. **Fold in** the skipped Stage-1 fix
@@ -1069,7 +1069,7 @@ not this branch reaching `main`.
     `DenyUnencryptedTraffic` half is `enforceSSL: true` (a plain `Bool` on `aws:SecureTransport` works
     there because that key is always present); the `EnforceEncryptionAtRest` half denies `s3:PutObject`
     with a `Null` condition on `s3:x-amz-server-side-encryption` (checking the header's *absence*) --
-    the bug `0b7ae02` fixed was a `Bool` check against literal "false", which never matches a request
+    the bug `0b7ae02` fixed was a `Bool` check against literal `"false"`, which never matches a request
     that omits the header entirely, silently letting unencrypted uploads through. Deliberately did
     **not** wire `AccessLogsForBucketAspect` into `applyWrapper` even though its own doc comment ties
     that to this task landing: it still carries the unfixed `instanceof CfnBucket` check task.md's
