@@ -962,6 +962,17 @@
       "title": "samples/cdk-python-example still imports PipelineBlueprint, which m8-remove-v2 deleted from the wrapper source",
       "detail": "The Blueprint/v2 API surface (PipelineBlueprint and the rest) was deleted from packages/@cdklabs/cdk-cicd-wrapper/src as part of the flatten (src/v3 -> src) that landed the Autopilot line on v3/main. samples/cdk-ts-example, the TS analogue, was migrated to a sibling samples/cdk-v3-example (m5-sample-migrate) and the original then deleted outright alongside the projen product (m8-remove-v2). samples/cdk-python-example never got the same treatment -- app.py still does `from aws_cdk_cicd_wrapper import PipelineBlueprint`, a class that no longer exists in this tree. It will fail at import the next time anything runs/installs it against the local source (it currently still resolves against an already-published 0.x PyPI wheel, so nothing has failed yet, but that masks the drift). Needs its own migration to a cicd.config.ts-shaped Python equivalent (or deletion + signposting to legacy-blueprint, mirroring the TS sample) as a dedicated task -- out of scope for the projen-decommission work that surfaced it.",
       "location": { "path": "samples/cdk-python-example/app.py" }
+    },
+    {
+      "id": "migration-encryptbuckettransit-s10-action-scope",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "EncryptBucketOnTransitAspect denies only s3:PutObject over non-TLS, which structurally can never satisfy cdk-nag AwsSolutions-S10",
+      "detail": "While real-AWS deploy-verifying the m9-migrate-security-plugins identity-check fix (EncryptBucketOnTransitAspect/EncryptSNSTopicOnTransitAspect switched from instanceof to a structural Resource.isResource + cfnResourceType check, mirroring m9-migrate-log-retention), a probe bucket/topic/key added to level1-app and reverted after the run showed the fix genuinely works -- the DenyHTTP bucket-policy statement and NoHTTPSubscriptions/HttpsOnly topic-policy statements now land in the synthesized template and in the real deployed AWS::S3::BucketPolicy/AWS::SNS::TopicPolicy (confirmed via aws s3api get-bucket-policy / aws sns get-topic-attributes). But cdk-nag AwsSolutions-S10 still flags the bucket even with the identity fix in place, independent of module-copy identity: cdk-nag/lib/rules/s3/S3BucketSSLRequestsOnly.js requires the Deny statement's Action to be exactly s3:* or * (checkMatchingAction), while EncryptBucketOnTransitAspect (matching v2's EncryptBucketOnTransitPlugin exactly, per its own docstring) denies only s3:PutObject. So this aspect can never make a bucket AwsSolutions-S10-compliant, in any environment, single- or dual-aws-cdk-lib-copy alike -- a pre-existing gap in the ported v2 policy scope, not something the identity-check fix touches or introduces. By contrast EncryptSNSTopicOnTransitAspect's HttpsOnly statement already includes SNS:Publish, which does satisfy cdk-nag's AwsSolutions-SNS3 (SNSTopicSSLPublishOnly.js requires only sns:publish) -- confirmed clean on the same probe. Fix direction if S10 compliance is wanted: widen EncryptBucketOnTransitAspect's Deny action from s3:PutObject to s3:* (or add a second statement), which is a deliberate behavior change from v2's scope, not an identity-check fix, and needs its own decision.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/support/EncryptBucketOnTransitAspect.ts", "line": 24 }
     }
   ]
 }
