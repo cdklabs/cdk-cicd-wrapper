@@ -1280,6 +1280,26 @@ not this branch reaching `main`.
 
 - **`m9-migrate-github-actions-engine`** — port GitHub Actions pipeline rendering to a v3 engine  ·
   blocked · wave 8 · wrapper · migration
+  - **breakthrough:** the synth-time crash below is **specific to this monorepo's own dev
+    environment**, not a real bug real consumers would hit. Root cause: the wrapper's own
+    `package.json` pins `aws-cdk-lib` as an exact-version devDependency (for controlled local
+    build/test), which yarn nests inside `packages/@cdklabs/cdk-cicd-wrapper/node_modules/` --
+    `cdk-pipelines-github` has no such nested copy and resolves the hoisted root one, so its internal
+    `instanceof` check sees a different class reference. devDependencies are stripped from what
+    `npm publish` ships, so a real consumer installing the published package would get exactly ONE
+    `aws-cdk-lib` (their own). Proved this directly: packed both the wrapper and CLI
+    (`npx projen package:js`/`package`) into real tarballs and installed them into a genuinely
+    standalone project (`.tmp/github-actions-standalone-test/`, plain `npm install`, no yarn
+    workspace) alongside `aws-cdk-lib`/`cdk-pipelines-github`/`constructs` as ordinary top-level
+    deps -- confirmed via `find` only one `aws-cdk-lib` copy exists there. `npx cdk synth` (with real
+    AWS credentials so `stack.account` resolves to a literal, matching how a real user or a real
+    GitHub Actions run would have credentials) succeeded outright: a real `.github/workflows/deploy.yml`
+    rendered, with a correctly-literal (not an unresolved CDK token) OIDC role ARN in every job. The
+    remaining known gap (missing `codeArtifact`/`proxy` IAM/secrets plumbing) is real but narrower --
+    it wasn't exercised by this minimal config and needs its own check. Still blocked pending an
+    actual real GitHub Actions run (the acceptance criterion) -- not yet attempted, since it requires
+    deploying the `GitHubActionRole` for real and pushing to an external repo, both held for explicit
+    confirmation.
   - **desc:** v3 today only has GitHub-as-*source* (`Repository.github()`); the *render* capability
     (emit a GitHub Actions workflow instead of a CodePipeline) would otherwise be lost entirely. v2
     source: `src/plugins/pipeline/GitHubPipelinePlugin.ts`,
