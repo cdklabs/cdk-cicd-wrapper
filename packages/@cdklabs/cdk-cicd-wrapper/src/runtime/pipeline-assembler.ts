@@ -1,13 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Assembles the v2-compatible CDK Pipelines (self-mutating) pipeline from a PLAIN user entry, with no
-// wrapper code in that entry. This is the CDK Pipelines half of the single-entry principle: `cdk-cicd
-// exec bin/app.ts` reads `engine` from cicd.config and, when it is CDK_PIPELINES, runs THIS module
-// instead of the entry directly. The same run happens at `deploy-ci` provision time and inside the
-// pipeline's own self-mutation `cdk synth`, so the pipeline reproduces itself.
+// Assembles the self-mutating pipeline (CDK Pipelines, or its GitHub Actions sibling) from a PLAIN user
+// entry, with no wrapper code in that entry. This is the self-mutating half of the single-entry
+// principle: `cdk-cicd exec bin/app.ts` reads `engine` from cicd.config and, when it is CDK_PIPELINES or
+// GITHUB_ACTIONS, runs THIS module instead of the entry directly. The same run happens at `deploy-ci`
+// provision time and inside the pipeline's own self-mutation `cdk synth`, so the pipeline reproduces itself.
 //
-// The mechanism: CDK Pipelines needs every stage built as a `cdk.Stage` inside one synth, but a plain
+// The mechanism: both engines need every stage built as a `cdk.Stage` inside one synth, but a plain
 // `cdk init` bin builds only the ambient stage. So we REPLAY that bin once per configured stage --
 // patch `new cdk.App()` to return the current `cdk.Stage`, pin the stage's env, bust the module cache,
 // re-`require` the entry -- the same App-construction seam register.ts owns for the flat engine. Not
@@ -16,30 +16,30 @@
 import * as path from 'path';
 import { App, Aspects, AppProps, Environment, Stack, Stage } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
-import { assertAppModuleLayout } from './inject';
-import { ResolvedCicdConfig } from '../config/types';
+import { appExportTargets, assertAppModuleLayout, patchAppExports, restoreAppExports } from './inject';
+import { EngineType, ResolvedCicdConfig } from '../config/types';
 import {
   CdkPipelinesEngine,
   CdkPipelinesStageContext,
   IStageProvider,
 } from '../engine/cdkpipelines/CdkPipelinesEngine';
+import { GitHubActionsEngine } from '../engine/github/GitHubActionsEngine';
 
 /** Name used when the config names no application (mirrors PipelineApp). */
 const DEFAULT_APPLICATION = 'cdk-cicd';
 
-type AppLeaf = { App: new (props?: AppProps) => App };
-
 /**
- * Every distinct aws-cdk-lib `App` leaf module reachable from the ENTRY, this module, and the cwd. We
- * must patch the copy the ENTRY actually loads -- a monorepo/workspace can have a nested aws-cdk-lib next
- * to the entry AND one next to the wrapper, and Node caches by resolved path, so patching only one would
+ * Every place `App` is exported from every distinct aws-cdk-lib copy reachable from the ENTRY, this
+ * module, and the cwd (leaf module + every re-export -- see `appExportTargets`). We must patch the
+ * copy the ENTRY actually loads -- a monorepo/workspace can have a nested aws-cdk-lib next to the
+ * entry AND one next to the wrapper, and Node caches by resolved path, so patching only one would
  * silently miss the entry's copy (its `new cdk.App()` would build a throwaway App and leave the stage
  * empty). Same strategy as register.ts's distinctCdkCopies. Direct file path bypasses the package
  * `exports` map (ERR_PACKAGE_PATH_NOT_EXPORTED).
  */
-function appLeafModules(entryResolved: string): AppLeaf[] {
+function appLeafModules(entryResolved: string): object[] {
   const seen = new Set<string>();
-  const leaves: AppLeaf[] = [];
+  const targets: object[] = [];
   for (const from of [path.dirname(entryResolved), __dirname, process.cwd()]) {
     let pkgJson: string;
     try {
@@ -51,12 +51,14 @@ function appLeafModules(entryResolved: string): AppLeaf[] {
     if (seen.has(root)) continue;
     seen.add(root);
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require(path.join(root, 'core', 'lib', 'app.js')) as AppLeaf;
+    const mod = require(path.join(root, 'core', 'lib', 'app.js')) as { App: new (props?: AppProps) => App };
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     assertAppModuleLayout(mod, require(pkgJson).version);
-    leaves.push(mod);
+    for (const target of appExportTargets(root, mod)) {
+      if (!targets.includes(target)) targets.push(target);
+    }
   }
-  return leaves;
+  return targets;
 }
 
 /**
@@ -75,11 +77,10 @@ function appLeafModules(entryResolved: string): AppLeaf[] {
  */
 function replayEntryInto(entry: string, stage: Stage, context: CdkPipelinesStageContext): void {
   const resolved = require.resolve(entry);
-  const leaves = appLeafModules(resolved);
-  if (leaves.length === 0) {
+  const targets = appLeafModules(resolved);
+  if (targets.length === 0) {
     throw new Error(`cdk-cicd: cannot resolve aws-cdk-lib from '${entry}' to replay it into the pipeline stage.`);
   }
-  const originals = leaves.map((l) => l.App);
 
   const prevStage = process.env.CDK_STAGE;
   const prevAccount = process.env.CDK_DEFAULT_ACCOUNT;
@@ -100,14 +101,18 @@ function replayEntryInto(entry: string, stage: Stage, context: CdkPipelinesStage
       return stage;
     }
   };
-  for (const l of leaves) Reflect.set(l, 'App', ReplayApp);
+  // Object.defineProperty, not a plain assignment: on newer aws-cdk-lib, the `aws-cdk-lib`/
+  // `aws-cdk-lib/core` re-exports self-memoize into a non-writable value on first read (see
+  // appExportTargets), and a plain assignment silently no-ops against that -- the entry's
+  // `new cdk.App()` would then build a real, unpatched App instead of landing in `stage`.
+  const originals = patchAppExports(targets, ReplayApp);
 
   try {
     delete require.cache[resolved];
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require(resolved);
   } finally {
-    leaves.forEach((l, i) => (l.App = originals[i]));
+    restoreAppExports(originals);
     if (hadOwnSynth) Reflect.set(stage, 'synth', originalSynth);
     else Reflect.deleteProperty(stage, 'synth');
     restoreEnv('CDK_STAGE', prevStage);
@@ -142,9 +147,11 @@ export function replayStageProvider(entry: string): IStageProvider {
 }
 
 /**
- * Build the CDK Pipelines app: one pipeline stack whose stages are filled by `provider`. Split from
+ * Build the self-mutating app: one pipeline stack whose stages are filled by `provider`. Split from
  * `assemblePipelineApp` so the pipeline structure is unit-testable with a stub provider (the replay
  * itself is a subprocess/real-node concern -- jest's module registry does not honour `require.cache`).
+ * Both self-mutating engines share this replay mechanism (every stage needs its stacks built as a
+ * `cdk.Stage` inside one synth); `config.engine` picks which one renders the stages `provider` builds.
  */
 export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStageProvider): App {
   const app = new App();
@@ -153,15 +160,19 @@ export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStagePro
     stackName: name,
     env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION } as Environment,
   });
-  new CdkPipelinesEngine(stack, 'Cd', { config, pipelineName: name, stages: provider });
+  if (config.engine === EngineType.GITHUB_ACTIONS) {
+    new GitHubActionsEngine(stack, 'Cd', { config, pipelineName: name, stages: provider });
+  } else {
+    new CdkPipelinesEngine(stack, 'Cd', { config, pipelineName: name, stages: provider });
+  }
   Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
   return app;
 }
 
 /**
- * Assemble the whole CDK Pipelines app: one pipeline stack whose stages are the user's plain entry
- * replayed per configured stage. Run by `cdk-cicd exec` when engine === CDK_PIPELINES; the entry path
- * comes from the `CDK_CICD_ENTRY` env var the CLI sets.
+ * Assemble the whole self-mutating app: one pipeline stack whose stages are the user's plain entry
+ * replayed per configured stage. Run by `cdk-cicd exec` when engine === CDK_PIPELINES or
+ * GITHUB_ACTIONS; the entry path comes from the `CDK_CICD_ENTRY` env var the CLI sets.
  */
 export function assemblePipelineApp(config: ResolvedCicdConfig, entry: string): App {
   return buildPipelineApp(config, replayStageProvider(entry));

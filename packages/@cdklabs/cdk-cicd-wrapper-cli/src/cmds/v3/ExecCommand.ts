@@ -180,20 +180,24 @@ export function preloadArgs(entry: string, registerPath: string): string[] {
   return args;
 }
 
+/** Engines whose app IS the pipeline (self-mutating), routed through the wrapper's replay assembler. */
+const SELF_MUTATING_ENGINES: EngineType[] = [EngineType.CDK_PIPELINES, EngineType.GITHUB_ACTIONS];
+
 /**
  * The node argv + optional `CDK_CICD_ENTRY` for the child, chosen by engine. The flat engine runs the
  * entry directly under the register preload (its pipeline re-invokes the entry per stage, so a plain
- * single-stage bin is enough). The CDK Pipelines engine self-mutates -- the app IS the pipeline -- so it
- * runs the wrapper's assembler, which loads cicd.config and replays the entry (passed via CDK_CICD_ENTRY)
- * once per stage; it self-manages App construction so it runs WITHOUT register, with ts-node to require a
- * `.ts` entry / cicd.config.ts.
+ * single-stage bin is enough). The self-mutating engines (CDK Pipelines, GitHub Actions) need the app's
+ * stacks IN the pipeline's own synth -- the app IS the pipeline -- so they run the wrapper's assembler,
+ * which loads cicd.config and replays the entry (passed via CDK_CICD_ENTRY) once per stage; it
+ * self-manages App construction so it runs WITHOUT register, with ts-node to require a `.ts` entry /
+ * cicd.config.ts.
  */
 export function execInvocation(
   entry: string,
   engine: EngineType | undefined,
   paths: { registerPath: string; assemblerPath: string },
 ): { nodeArgs: string[]; entryEnv?: string } {
-  if (engine === EngineType.CDK_PIPELINES) {
+  if (engine !== undefined && SELF_MUTATING_ENGINES.includes(engine)) {
     return { nodeArgs: ['-r', 'ts-node/register', paths.assemblerPath], entryEnv: entry };
   }
   return { nodeArgs: [...preloadArgs(entry, paths.registerPath), entry] };

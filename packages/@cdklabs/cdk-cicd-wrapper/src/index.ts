@@ -41,6 +41,7 @@ export {
   DeployModel,
   DeploymentConfig,
   EngineType,
+  GitHubActionsConfig,
   ManagedVpcConfig,
   NpmRegistryConfig,
   ProxyConfig,
@@ -63,8 +64,7 @@ export { defineDeployment } from './config/define';
 export { stageStackName, StageStackNameOptions } from './config/naming';
 
 // The engine abstraction (m4-iengine). `IEngine`/`EngineRenderProps` are the seam CodePipeline (M4)
-// and later GitHub Actions / container engines implement; concrete engines will be exported here as
-// they land.
+// and later container engines implement; concrete engines will be exported here as they land.
 export { EngineRenderProps, IEngine } from './engine/types';
 export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeline/CodePipelineEngine';
 // Container mode (Repo 2) CD pipeline: consumes the pushed image and deploys each target. The deploy-side
@@ -80,6 +80,11 @@ export {
   CdkPipelinesStageContext,
   IStageProvider,
 } from './engine/cdkpipelines/CdkPipelinesEngine';
+// The GitHub Actions engine (m9-migrate-github-actions-engine): renders a `.github/workflows/deploy.yml`
+// instead of an AWS-hosted pipeline (v2 `GitHubPipelinePlugin`, migrated). Same self-mutating shape as
+// `CdkPipelinesEngine` -- activated by `engine: GITHUB_ACTIONS` in `cicd.config.ts`, assembled the same
+// way (replaying the plain bin per stage).
+export { GitHubActionsEngine, GitHubActionsEngineProps } from './engine/github/GitHubActionsEngine';
 
 // The app that holds the pipeline. `cdk-cicd deploy-ci` uses it through `--app` so no user file is
 // needed; it is exported because the same class is the explicit opt-in path for a user who would

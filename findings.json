@@ -1028,6 +1028,17 @@
       "title": "AccessLogsForBucketAspect's file header says to attach it once the compliance bucket and config field land -- they now have, but it deliberately stays unwired, and the comment was not updated",
       "detail": "AccessLogsForBucketAspect.ts's top-of-file comment (written under m9-migrate-security-plugins, before the compliance bucket existed) says: 'not wired into the runtime injection hook until the compliance bucket and its config field land; attach it directly once they do.' m9-migrate-compliance-bucket has now landed both (SupportResources.complianceLogBucket + complianceLogBucketName config field), but its own notes explicitly chose NOT to wire this aspect into applyWrapper, because it still uses an unfixed `instanceof CfnBucket` check -- the same cross-aws-cdk-lib-module-copy failure class already found to silently no-op EncryptBucketOnTransitAspect/EncryptSNSTopicOnTransitAspect on a real deploy. The decision not to wire is correct and well-documented in task.md, but the aspect's own doc comment still tells a future reader the opposite (that landing the dependency is sufficient to attach it), which could lead someone to wire it in without first applying the structural-check fix. Not fixed inline because the file belongs to the already-committed-pending m9-migrate-security-plugins unit, not this task's diff -- editing it here would be an out-of-scope touch. Fix direction: once the structural-check fix lands for this aspect (tracked as part of the still-latent instanceof CfnBucket/Key/LambdaFunction gap noted under m9-migrate-security-plugins), update or remove this header comment as part of that same change.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/support/AccessLogsForBucketAspect.ts", "line": 9 }
+    },
+    {
+      "id": "migration-github-actions-engine-missing-codeartifact-proxy-plumbing",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "GitHubActionsEngine copies CdkPipelinesEngine's codeArtifact/proxy command strings but not the IAM grants or PROXY_* env that make them work",
+      "detail": "GitHubActionsEngine.ts's Synth job install commands include the same codeArtifact-login and proxy-export command strings CdkPipelinesEngine/CodePipelineEngine use, but a CodeBuild project gets those commands working via IAM grants (codeArtifactReadStatements-equivalent) and injected PROXY_* environment variables that the other two engines wire up explicitly -- GitHubActionsEngine does not. A rendered workflow with codeArtifact or proxy configured would run the login/export commands but fail at runtime (no credentials to read the secret, no env to export). Not exercised by the end-to-end real-deploy verification performed for m9-migrate-github-actions-engine (a minimal config with neither codeArtifact nor proxy set), so this did not block that task's own acceptance criterion. Fix direction: either port the missing IAM-role-policy grants + env population (mirroring CdkPipelinesEngine's approach, adapted for a GitHub Actions job's own credential model -- likely a Secrets Manager read granted to the GitHubActionRole plus explicit env in the generated workflow step), or explicitly document codeArtifact/proxy as unsupported for this engine until that lands.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/github/GitHubActionsEngine.ts" }
     }
   ]
 }

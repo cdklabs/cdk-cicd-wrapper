@@ -47,4 +47,11 @@ describe('m4-approval-selfupdate: deployCiArgs', () => {
     expect(args).toEqual(['cdk', 'deploy', '--all', '--require-approval', 'never']);
     expect(args).not.toContain('--app');
   });
+
+  test('the GitHub Actions engine also deploys the default cdk.json app, no --app override', () => {
+    // Same self-mutating shape as CDK Pipelines: no AWS-hosted pipeline stack to point --app at.
+    const args = deployCiArgs(false, 'ci', EngineType.GITHUB_ACTIONS);
+    expect(args).toEqual(['cdk', 'deploy', '--all', '--require-approval', 'never']);
+    expect(args).not.toContain('--app');
+  });
 });

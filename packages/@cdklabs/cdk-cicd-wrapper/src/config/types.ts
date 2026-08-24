@@ -7,6 +7,7 @@
 // part of the jsii surface. Only the resolved structs here cross the language boundary.
 
 import { aws_codebuild as codebuild, aws_ec2 as ec2 } from 'aws-cdk-lib';
+import { WorkflowTriggers } from 'cdk-pipelines-github';
 import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
@@ -39,6 +40,48 @@ export enum EngineType {
    * stage (see runtime/pipeline-assembler), so the user's `bin` still needs no wrapper code.
    */
   CDK_PIPELINES = 'cdk-pipelines',
+  /**
+   * Renders a GitHub Actions workflow (`cdk-pipelines-github`) instead of an AWS-hosted pipeline (v2
+   * `GitHubPipelinePlugin`, migrated). Like `CDK_PIPELINES`, it needs every stage built as a `cdk.Stage`
+   * inside one synth, so `cdk-cicd exec` assembles it the same way -- replaying the plain `bin` once per
+   * configured stage.
+   */
+  GITHUB_ACTIONS = 'github-actions',
+}
+
+/**
+ * GitHub Actions engine configuration: the OIDC role the workflow assumes plus the workflow file's own
+ * identity (v2 `GitHubPipelinePluginOptions`, migrated). Only read when `engine` is `GITHUB_ACTIONS`;
+ * `repository` must be `Repository.github(...)` in that case (the workflow runs where GitHub already
+ * checked the source out, so there is no CodeStar-connection source action to build).
+ */
+export interface GitHubActionsConfig {
+  /**
+   * Name of the OIDC role the workflow assumes to deploy. Must be a literal (not CDK-generated): the
+   * workflow YAML embeds its ARN as plain text, which only works for a name known before synth.
+   * @default `<application>-github-role`
+   */
+  readonly roleName?: string;
+  /**
+   * Subject claims allowed to assume the role, e.g. `['repo:owner/repo:ref:refs/heads/main']`. Defaults
+   * to every ref/environment of `repository`'s `owner/repo` when omitted.
+   */
+  readonly subjectClaims?: string[];
+  /** An existing GitHub OIDC provider's ARN. Omit to have one created (one per account/provider URL). */
+  readonly openIdConnectProviderArn?: string;
+  /** GitHub certificate thumbprints. @default - the built-in, currently-valid set */
+  readonly thumbprints?: string[];
+  /** File path for the generated workflow. @default ".github/workflows/deploy.yml" */
+  readonly workflowPath?: string;
+  /** Name of the generated workflow. @default "deploy" */
+  readonly workflowName?: string;
+  /** GitHub workflow triggers. @default - push to the tracked branch, plus manual dispatch */
+  readonly workflowTriggers?: WorkflowTriggers;
+  /**
+   * Region the workflow assumes the OIDC role in when publishing assets (NOT the region assets publish
+   * to). @default "us-west-2"
+   */
+  readonly publishAssetsAuthRegion?: string;
 }
 
 /**
@@ -242,6 +285,8 @@ export interface ResolvedCicdConfig {
   readonly synthesizer: SynthesizerConfig;
   /** Which engine renders the pipeline. Defaults to CodePipeline. */
   readonly engine: EngineType;
+  /** GitHub Actions engine configuration. Only read when `engine` is `EngineType.GITHUB_ACTIONS`. */
+  readonly githubActions?: GitHubActionsConfig;
   /** Resolved CI configuration. */
   readonly ci: CiConfig;
   /** Private CodeArtifact npm repository the builds authenticate against, if any. */

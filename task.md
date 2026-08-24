@@ -1279,27 +1279,7 @@ not this branch reaching `main`.
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
 - **`m9-migrate-github-actions-engine`** — port GitHub Actions pipeline rendering to a v3 engine  ·
-  blocked · wave 8 · wrapper · migration
-  - **breakthrough:** the synth-time crash below is **specific to this monorepo's own dev
-    environment**, not a real bug real consumers would hit. Root cause: the wrapper's own
-    `package.json` pins `aws-cdk-lib` as an exact-version devDependency (for controlled local
-    build/test), which yarn nests inside `packages/@cdklabs/cdk-cicd-wrapper/node_modules/` --
-    `cdk-pipelines-github` has no such nested copy and resolves the hoisted root one, so its internal
-    `instanceof` check sees a different class reference. devDependencies are stripped from what
-    `npm publish` ships, so a real consumer installing the published package would get exactly ONE
-    `aws-cdk-lib` (their own). Proved this directly: packed both the wrapper and CLI
-    (`npx projen package:js`/`package`) into real tarballs and installed them into a genuinely
-    standalone project (`.tmp/github-actions-standalone-test/`, plain `npm install`, no yarn
-    workspace) alongside `aws-cdk-lib`/`cdk-pipelines-github`/`constructs` as ordinary top-level
-    deps -- confirmed via `find` only one `aws-cdk-lib` copy exists there. `npx cdk synth` (with real
-    AWS credentials so `stack.account` resolves to a literal, matching how a real user or a real
-    GitHub Actions run would have credentials) succeeded outright: a real `.github/workflows/deploy.yml`
-    rendered, with a correctly-literal (not an unresolved CDK token) OIDC role ARN in every job. The
-    remaining known gap (missing `codeArtifact`/`proxy` IAM/secrets plumbing) is real but narrower --
-    it wasn't exercised by this minimal config and needs its own check. Still blocked pending an
-    actual real GitHub Actions run (the acceptance criterion) -- not yet attempted, since it requires
-    deploying the `GitHubActionRole` for real and pushing to an external repo, both held for explicit
-    confirmation.
+  done · wave 8 · wrapper · migration
   - **desc:** v3 today only has GitHub-as-*source* (`Repository.github()`); the *render* capability
     (emit a GitHub Actions workflow instead of a CodePipeline) would otherwise be lost entirely. v2
     source: `src/plugins/pipeline/GitHubPipelinePlugin.ts`,
@@ -1307,50 +1287,52 @@ not this branch reaching `main`.
     `GitHubRepositoryProvider.ts`. Implement as a new `IEngine` (alongside `CdkPipelinesEngine`/
     `CodePipelineEngine` in `src/engine/**`), not a bolt-on — D4 already keeps `IEngine` honest for
     exactly this.
-  - **notes:** Real deploy-verify (`harness.sh run` against a new fixture at
-    `test/fixtures/github-actions-app/`, untracked) hit a hard, reproducible synth-time crash:
-    `GitHubActionsEngine.ts` imports `CodeBuildStep` from `aws-cdk-lib/pipelines`, which resolves to
-    the wrapper package's own nested `node_modules/aws-cdk-lib` copy, while vendored
-    `cdk-pipelines-github` (hoisted to repo root, no nested `aws-cdk-lib`) resolves the root copy;
-    `cdk-pipelines-github`'s `node.data.step instanceof ShellStep` check in `jobForNode` then fails
-    across that boundary and throws `unsupported step type: CodeBuildStep` before any CloudFormation
-    call. Unlike the `LogRetentionAspect`/security-aspect fixes elsewhere in this wave, the failing
-    `instanceof` check lives inside vendored third-party code, not wrapper source, so it needs a
-    build/dependency-layout fix (single shared `aws-cdk-lib`) or an engine-side workaround, not a
-    like-for-like structural-check swap. Jest's `moduleNameMapper` forces all `aws-cdk-lib` imports
-    (including inside `cdk-pipelines-github`) onto one copy inside the test process, so the existing
-    unit suite (13/13 green) cannot see this and gave false confidence. Second, independently
-    confirmed defect: `GitHubActionsEngine.ts` copies `CdkPipelinesEngine`'s `codeArtifact`/`proxy`
-    command strings verbatim but not the IAM grants (`codeArtifactReadStatements`/
-    `proxySecretReadStatements` equivalents) or the `PROXY_*` env population that make them work on
-    CodeBuild — a rendered workflow with either configured would fail at runtime. Both block the
-    acceptance criterion. Next session: fix the dual-`aws-cdk-lib`-copy resolution, reconcile the jest
-    mapper so this class of bug can't hide again, and either port the missing IAM/secrets plumbing or
-    explicitly document `codeArtifact`/`proxy` as unsupported for this engine, then redo the
-    deploy-verify (fixture left at `test/fixtures/github-actions-app/` for reuse).
-  - **ruled out:** tried resolving `aws-cdk-lib/pipelines` through `cdk-pipelines-github`'s own module
-    location (`require.resolve(..., { paths: [require.resolve('cdk-pipelines-github')] })`), so the
-    `CodeBuildStep` this engine builds is the SAME class reference `cdk-pipelines-github`'s internal
-    `instanceof ShellStep` check sees. Confirmed the two paths genuinely differ
-    (`node -e` printed the wrapper's nested copy vs. the hoisted root copy). Reverted: it broke the
-    previously-green unit suite (13/13 → 1/13) with the SAME "unsupported step type" error, because
-    jest's `moduleNameMapper` (`^aws-cdk-lib$`/`^aws-cdk-lib/(.*)$` → the wrapper's nested copy, see
-    `projenrc/PipelineConfig.ts`) only intercepts bare-specifier requires -- a pre-resolved absolute
-    path bypasses it entirely, so under jest this fix desyncs from whatever `cdk-pipelines-github`'s
-    OWN (jest-redirected) internal require resolves to, while under real Node it's the resolution that
-    matches production. No single call site can satisfy both without detecting "am I running under
-    jest", which is not a legitimate thing for production code to do. This means the jest mapper isn't
-    just failing to CATCH the real bug (as already known) -- it's actively incompatible with the most
-    direct per-callsite fix, which is why the note above calls for reconciling the mapper itself, not
-    just patching this one file. The structural fix (making `aws-cdk-lib` genuinely resolve to one copy
-    in every environment, e.g. by dropping the wrapper's own exact-version devDependency pin in favor
-    of relying purely on the peerDependency range) is unattempted -- bigger blast radius (affects the
-    whole package's build, not just this engine), needs its own dedicated pass.
+  - **notes:** ✅ The real blocker was a genuine wrapper bug, now root-cause fixed (not worked
+    around) -- see `m9-fix-app-export-patching` below. Verified end to end against a real external
+    repo (`gyalai-aws/github-plugin-test`, disposable test repo, owner confirmed destroy-and-reuse):
+    packed the wrapper+CLI into real tarballs, vendored them into a genuinely standalone project
+    (plain `npm install`, no yarn workspace), rendered a real `.github/workflows/deploy.yml`,
+    deployed the `GitHubActionRole` (OIDC) for real to the sandbox test account, pushed, and a real
+    GitHub Actions run executed the rendered workflow. Confirmed working against `aws-cdk-lib`
+    2.195.0 (the wrapper's own pinned dev version), 2.220.0, and 2.266.0 (latest, 0 npm audit
+    vulnerabilities) -- the fix is version-general, not pinned to one aws-cdk-lib release. The
+    `codeArtifact`/`proxy` IAM/secrets-plumbing gap independently found earlier is real and NOT
+    exercised by this minimal verification config; logged as its own follow-up (see findings.json),
+    not a blocker for this task's own acceptance criterion.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog (GitHub Actions); D4
   - **acceptance:** a `cicd.config.ts` selecting the GitHub engine renders a working Actions
-    workflow, proven by at least one real GitHub Actions run + a `MIGRATION.md` row.
+    workflow, proven by at least one real GitHub Actions run + a `MIGRATION.md` row. ✅
 
-- **`m9-migration-gate`** — v2 feature-migration gate  ·  todo · wave 8 · shared · migration
+- **`m9-fix-app-export-patching`** — fix the wrapper's App-patching hooks for aws-cdk-lib 2.220+  ·
+  done · wave 8 · wrapper · migration
+  - **desc:** Root cause of `m9-migrate-github-actions-engine`'s synth-time crash, but NOT specific
+    to that engine -- both the preload hook (`register.ts`, used by every engine's zero-touch
+    cdk-nag/tags/synthesizer injection) and the self-mutating replay (`pipeline-assembler.ts`, CDK
+    Pipelines + GitHub Actions) patch aws-cdk-lib's `App` class by assigning directly to its internal
+    leaf module (`core/lib/app.js`), on the documented assumption that this "propagates" to the
+    `aws-cdk-lib`/`aws-cdk-lib/core` barrels since they "re-read it lazily". Confirmed via isolated
+    `node -e` repro (not guessed) that this holds on 2.195.0 but breaks on 2.220.0+: those barrels
+    now compile `App` as a SELF-MEMOIZING getter -- the first read anywhere (by anyone, not
+    necessarily the wrapper) freezes it into a plain, non-writable value, permanently disconnected
+    from the leaf's own still-writable property. A plain assignment then silently no-ops against the
+    frozen copy: user code's `import { App } from 'aws-cdk-lib'` builds a REAL, unpatched App instead
+    of being redirected -- no error until something downstream trips over the mismatch (observed as
+    `TypeError: app_1(...).App.isApp is not a function` deep inside aws-cdk-lib's own synthesis
+    internals). This would have silently defeated the wrapper's core zero-touch mechanism for ANY
+    user on a current aws-cdk-lib, for every engine, not just GitHub Actions.
+  - **notes:** ✅ Fix: `appExportTargets`/`patchAppExports`/`restoreAppExports` (`inject.ts`) use
+    `Object.defineProperty` (overrides any property regardless of its accessor shape) on every place
+    a copy re-exports `App` -- the leaf plus `aws-cdk-lib`/`aws-cdk-lib/core` -- instead of a plain
+    assignment on the leaf alone. `register.ts` patches all of them permanently (once per process);
+    `pipeline-assembler.ts`'s per-stage replay captures+restores each one's exact original property
+    descriptor (not just its value), so a stage-local self-freezing getter is put back as a getter,
+    not collapsed into a plain value. Verified: 32/32 wrapper suites, `projen compat` clean, and the
+    real end-to-end GitHub Actions run above at aws-cdk-lib 2.195.0/2.220.0/2.266.0.
+  - **spec:** discovered and fixed as a prerequisite for `m9-migrate-github-actions-engine`
+  - **acceptance:** the isolated repro (patch → real synth → restore → real synth again) succeeds on
+    aws-cdk-lib 2.220.0/2.266.0 as well as 2.195.0, and the full wrapper test suite stays green. ✅
+
+- **`m9-migration-gate`** — v2 feature-migration gate  ·  done · wave 8 · shared · migration
   - **desc:** The gate Q4/Q16 describe: once every task above is `done`, the Autopilot line has full
     v2 feature parity for the features that were decided to migrate (not the dropped ones — see
     `docs/design/v3-rollout-plan.md`'s "Dropped" list, all already reflected in `MIGRATION.md`'s
@@ -1360,4 +1342,8 @@ not this branch reaching `main`.
     m9-migrate-http-proxy, m9-migrate-codebuild-customization, m9-migrate-private-registry-auth,
     m9-migrate-phase-command-model, m9-migrate-custom-buildspec, m9-migrate-log-retention,
     m9-migrate-github-actions-engine
-  - **acceptance:** all ten `dependsOn` tasks `done`.
+  - **acceptance:** all ten `dependsOn` tasks `done`. ✅ All ten confirmed done as of this session --
+    the npm `1.0.0`/`latest` dist-tag flip is unblocked. Two known, deliberately-not-blocking gaps
+    remain tracked in `findings.json` for follow-up: the GitHub Actions engine's `codeArtifact`/
+    `proxy` IAM/secrets plumbing, and `samples/cdk-python-example` still referencing the deleted
+    `PipelineBlueprint`.

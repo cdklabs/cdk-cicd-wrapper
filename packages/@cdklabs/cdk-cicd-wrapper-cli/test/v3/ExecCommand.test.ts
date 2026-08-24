@@ -144,6 +144,13 @@ describe('exec: execInvocation (engine routing)', () => {
     expect(inv.nodeArgs).not.toContain('/reg.js'); // the assembler self-manages App construction
     expect(inv.entryEnv).toBe('bin/app.ts'); // assembler reads CDK_CICD_ENTRY to replay per stage
   });
+
+  test('the GitHub Actions engine also self-mutates -- routed through the same assembler as CDK Pipelines', () => {
+    const inv = execInvocation('bin/app.ts', EngineType.GITHUB_ACTIONS, paths);
+    expect(inv.nodeArgs).toEqual(['-r', 'ts-node/register', '/asm.js']);
+    expect(inv.nodeArgs).not.toContain('/reg.js');
+    expect(inv.entryEnv).toBe('bin/app.ts');
+  });
 });
 
 describe('exec: forcedRoleEnv', () => {

@@ -21,6 +21,7 @@ import {
   DeployModel,
   DeploymentConfig,
   EngineType,
+  GitHubActionsConfig,
   NpmRegistryConfig,
   ProxyConfig,
   RegionOrder,
@@ -77,6 +78,8 @@ export interface CicdConfigProps {
   readonly stages: Array<string | StageInput>;
   readonly synthesizer?: { readonly type?: SynthesizerType };
   readonly engine?: EngineType;
+  /** GitHub Actions engine configuration. Only read when `engine` is `EngineType.GITHUB_ACTIONS`. */
+  readonly githubActions?: GitHubActionsConfig;
   readonly ci?: CiConfigInput;
   readonly codeArtifact?: CodeArtifactConfig;
   /** Generic private npm registry the builds authenticate against. See `ResolvedCicdConfig.npmRegistry`. */
@@ -174,6 +177,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     stages,
     synthesizer: { type: props.synthesizer?.type ?? SynthesizerType.DEFAULT },
     engine: props.engine ?? EngineType.CODEPIPELINE,
+    githubActions: props.githubActions,
     ci: normalizeCi(
       props.ci,
       stages.map((s) => s.name),

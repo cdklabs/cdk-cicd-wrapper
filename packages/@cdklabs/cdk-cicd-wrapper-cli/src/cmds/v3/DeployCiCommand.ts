@@ -29,9 +29,10 @@ export function pipelineAppCommand(disposable: boolean, kind: 'ci' | 'cd' = 'ci'
 export function deployCiArgs(disposable: boolean, kind: 'ci' | 'cd' = 'ci', engine?: EngineType): string[] {
   // `--require-approval never` because the only stack here is the pipeline and its own support
   // resources; the approval that matters to a user is the one inside the pipeline, not this one.
-  // CDK Pipelines self-mutates: the app IS the pipeline, rendered by cdk.json's `cdk-cicd exec` (the
-  // assembler). So deploy the DEFAULT app rather than overriding --app to the flat pipeline-app renderer.
-  if (kind === 'ci' && engine === EngineType.CDK_PIPELINES) {
+  // The self-mutating engines (CDK Pipelines, GitHub Actions) self-mutate: the app IS the pipeline,
+  // rendered by cdk.json's `cdk-cicd exec` (the assembler). So deploy the DEFAULT app rather than
+  // overriding --app to the flat pipeline-app renderer.
+  if (kind === 'ci' && (engine === EngineType.CDK_PIPELINES || engine === EngineType.GITHUB_ACTIONS)) {
     return ['cdk', 'deploy', '--all', '--require-approval', 'never'];
   }
   return ['cdk', 'deploy', '--app', pipelineAppCommand(disposable, kind), '--all', '--require-approval', 'never'];
