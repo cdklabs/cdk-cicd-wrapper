@@ -111,9 +111,18 @@ directly on `v3`):
   `PipelineBlueprint` — never got the TS sample's migration treatment.
 
 Remaining:
-- **Stage 4** — write the migration backlog (table above) into `task.md` as new tasks; **rebuild
-  `findings.json`** (mark the OSS-readiness findings resolved + add the backlog). Add the "local
-  `cdk deploy` w/o pipeline" docs note (from dropped #13).
+- **Stage 4** — ~~done, mostly~~. Migration backlog is now in `task.md` as Wave 8 (10 per-feature
+  tasks + `m9-migration-gate`), each citing its v2 source path and the Q8 keep-API-familiar
+  constraint. The "local `cdk deploy` w/o pipeline" docs note (dropped #13) and the `addStack`→`bin/`
+  note (dropped #14) turned out to **already exist** in `MIGRATION.md`'s mapping table (rows for
+  `workbench(...)` and `PipelineBlueprint...addStack(...)` respectively) — nothing to add. **Could
+  not do:** "mark the OSS-readiness findings resolved" — `review/v3-oss-readiness` (the branch whose
+  own `findings.json` presumably tracked them) no longer exists anywhere in this repo's git history,
+  and a targeted grep of `v3`'s current `findings.json` for the 12 reconciled fixes (picomatch, SPDX,
+  SECURITY.md, Action SHA pins, etc.) found none of them tracked there either — `fa43b85` explicitly
+  kept `v3`'s `findings.json` over the branch's own copy, so those findings' resolved-state was never
+  carried over and can't be reconstructed. There is nothing left to mark; treat this sub-step as moot
+  rather than pending.
 - **Stage 5** — full Autopilot docs rewrite + Blueprint docs → `legacy/` with banner + redirects.
   Inventory: only `docs/content/workshops/v3-pipeline/**` is Autopilot today; README + landing are
   100% v2; ~18 `developer_guides/*` + 2 workshops are Blueprint → relocate. `cli/`, `mcp/`, `faqs`,
@@ -133,5 +142,7 @@ Branch `legacy-blueprint` is configured + committed (`8e29f16`): `releaseOptions
 review = GO). Push cmd: `git push -u origin legacy-blueprint`.
 
 ## Continue from here
-Read this doc + `docs/design/v2-v3-parallel-maintenance.md`. Execute **Stage 4** (migration backlog →
-`task.md`, `findings.json` rebuild), committing per stage and verifying build/test each time.
+Read this doc + `docs/design/v2-v3-parallel-maintenance.md`. Stage 4 is done (see above). Next is
+**Stage 5** — the full Autopilot docs rewrite + relocating Blueprint docs to `legacy/`. This is a
+much bigger, more subjective effort than Stages 2–4 (narrative rewrite, not mechanical deletion) —
+worth scoping/checking in on before diving in, rather than assuming the same "just execute" mode.

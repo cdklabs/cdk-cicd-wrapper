@@ -947,3 +947,112 @@ Not tasks — resolved/open design decisions that tasks reference.
     `@cdklabs/cdk-cicd-wrapper-projen` package itself deleted (workspaces/jest/tsconfig refs
     regenerated via `npx projen`), plus its v2-exclusive `samples/cdk-ts-example` (superseded by
     `samples/cdk-v3-example`, m5-sample-migrate).
+  - **v2 source note:** the v2 tree this wave's tasks cite by path was last present at commit
+    `58d312a~1`; it no longer exists on `v3`/`main` but is untouched on `legacy-blueprint`.
+
+## Wave 8 — v2 feature migration backlog (gates 1.0.0/`latest`, NOT the `main`-branch flip — Q4/Q15/Q16)
+
+Each task ports one v2 feature into the v3 shape, keeping the v3 API **familiar** (similar
+types/props) per Q8, plus a `MIGRATION.md` mapping-table row. Independent of each other (same wave);
+all gate `m9-migration-gate` below, which is what blocks flipping the `1.0.0`/`latest` npm dist-tag —
+not this branch reaching `main`.
+
+- **`m9-migrate-security-plugins`** — port the v2 security-hardening plugins  ·  todo · wave 8 ·
+  wrapper · migration
+  - **desc:** Bucket SSL/encryption, CloudWatch-log & SNS encryption, KMS key rotation, Lambda DLQ,
+    EC2 public-IP block. v2 source (see Wave 7 note): `src/plugins/security/AccessLogsForBucketPlugin.ts`,
+    `EncryptBucketOnTransitPlugin.ts`, `EncryptCloudWatchLogGroupsPlugin.ts`,
+    `EncryptSNSTopicOnTransitPlugin.ts`, `RotateEncryptionKeysPlugin.ts`,
+    `DisablePublicIPAssignmentForEC2Plugin.ts`, `src/plugins/optimization/DestroyEncryptionKeysOnDeletePlugin.ts`.
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 1
+  - **acceptance:** each plugin has a v3 equivalent (aspect or engine hook) + a passing unit test +
+    a `MIGRATION.md` row.
+
+- **`m9-migrate-compliance-bucket`** — port the v2 compliance/access-log bucket  ·  todo · wave 8 ·
+  wrapper · migration
+  - **desc:** v2 source: `src/resource-providers/ComplianceBucketProvider.ts`,
+    `src/stacks/compliance-bucket/ComplianceBucketStack.ts`. **Fold in** the skipped Stage-1 fix
+    `0b7ae02` (v2 compliance-bucket TLS/SSE policy correctness) while porting — don't reintroduce
+    that bug in the v3 shape.
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 2
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row; TLS/SSE policy correctness
+    verified (the thing `0b7ae02` fixed).
+
+- **`m9-migrate-vpc`** — port v2 VPC support  ·  todo · wave 8 · wrapper · migration
+  - **desc:** v2 source: `src/resource-providers/VPCProvider.ts`, `src/stacks/vpc/ManagedVPCStack.ts`,
+    `NoVPCStack.ts`, `VPCFromLookUpStack.ts`.
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 3
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+
+- **`m9-migrate-http-proxy`** — port v2 HTTP proxy support  ·  todo · wave 8 · wrapper · migration
+  - **desc:** v2 source: `src/resource-providers/ProxyProvider.ts` (`IProxyConfig`/`ProxyProps`).
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 4
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+
+- **`m9-migrate-codebuild-customization`** — port v2 CodeBuild env customization  ·  todo · wave 8 ·
+  wrapper · migration
+  - **desc:** Privileged mode, compute type, env vars. v2 source:
+    `src/resource-providers/CodeBuildFactoryProvider.ts` (`ICodeBuildFactory`/`BuildOptions`),
+    `src/code-pipeline/CDKPipeline.ts`.
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 5
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+
+- **`m9-migrate-private-registry-auth`** — port v2 private-npm-registry basic-auth  ·  todo · wave 8 ·
+  shared · migration
+  - **desc:** Not CodeArtifact (that's already in v3 — `m4-private-registry`, done): generic private
+    npm registry basic-auth. v2 source: `src/plugins/utils/CodeArtifactPlugin.ts` and the
+    `NPMRegistryConfig` interface (`src/common/types/Types.ts`) — confirm during migration which of
+    the two actually carried the basic-auth path, since CodeArtifact itself has its own v3 story.
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 6
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+
+- **`m9-migrate-phase-command-model`** — port the v2 phase/command model  ·  todo · wave 8 · wrapper ·
+  migration
+  - **desc:** v2 source: `src/resource-providers/PhaseCommandProvider.ts` (`IPhaseCommand`,
+    `IPhaseCommandSettings`) and its command implementations (shell/NPM/Python/inline-shell/script).
+    v3 already has `ci.steps` (a command map) — decide whether this backlog item is fully subsumed by
+    `ci.steps` or whether a familiar-API shim is still owed per Q8.
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 7
+  - **acceptance:** either a documented "subsumed by `ci.steps`" `MIGRATION.md` row, or a v3
+    equivalent + passing unit test + row.
+
+- **`m9-migrate-custom-buildspec`** — port the v2 custom BuildSpec escape hatch  ·  todo · wave 8 ·
+  wrapper · migration
+  - **desc:** v2 source: `src/code-pipeline/CDKPipeline.ts` /
+    `src/resource-providers/CodeBuildFactoryProvider.ts` — pin down the exact escape-hatch surface
+    during migration (not a single dedicated v2 file).
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 8
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+
+- **`m9-migrate-log-retention`** — port v2 CloudWatch log-retention control  ·  todo · wave 8 ·
+  wrapper · migration
+  - **desc:** v2 source: `src/resource-providers/LoggingProvider.ts` (`ILogger`) and
+    `EncryptCloudWatchLogGroupsPlugin.ts` — this item is retention specifically, distinct from the
+    encryption plugin already covered by `m9-migrate-security-plugins`.
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 11
+  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+
+- **`m9-migrate-github-actions-engine`** — port GitHub Actions pipeline rendering to a v3 engine  ·
+  todo · wave 8 · wrapper · migration
+  - **desc:** v3 today only has GitHub-as-*source* (`Repository.github()`); the *render* capability
+    (emit a GitHub Actions workflow instead of a CodePipeline) would otherwise be lost entirely. v2
+    source: `src/plugins/pipeline/GitHubPipelinePlugin.ts`,
+    `src/plugins/pipeline/resources/github/GitHubPipelineProvider.ts`,
+    `GitHubRepositoryProvider.ts`. Implement as a new `IEngine` (alongside `CdkPipelinesEngine`/
+    `CodePipelineEngine` in `src/engine/**`), not a bolt-on — D4 already keeps `IEngine` honest for
+    exactly this.
+  - **spec:** docs/design/v3-rollout-plan.md #Migration backlog (GitHub Actions); D4
+  - **acceptance:** a `cicd.config.ts` selecting the GitHub engine renders a working Actions
+    workflow, proven by at least one real GitHub Actions run + a `MIGRATION.md` row.
+
+- **`m9-migration-gate`** — v2 feature-migration gate  ·  todo · wave 8 · shared · migration
+  - **desc:** The gate Q4/Q16 describe: once every task above is `done`, the Autopilot line has full
+    v2 feature parity for the features that were decided to migrate (not the dropped ones — see
+    `docs/design/v3-rollout-plan.md`'s "Dropped" list, all already reflected in `MIGRATION.md`'s
+    mapping table). This is what unblocks flipping the npm `1.0.0`/`latest` dist-tag — it does **not**
+    block `v3`→`main` (that's `m8-remove-v2`, already done) or the docs/review stages (5–7).
+  - **depends-on:** m9-migrate-security-plugins, m9-migrate-compliance-bucket, m9-migrate-vpc,
+    m9-migrate-http-proxy, m9-migrate-codebuild-customization, m9-migrate-private-registry-auth,
+    m9-migrate-phase-command-model, m9-migrate-custom-buildspec, m9-migrate-log-retention,
+    m9-migrate-github-actions-engine
+  - **acceptance:** all ten `dependsOn` tasks `done`.
