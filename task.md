@@ -1047,18 +1047,25 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 8
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-log-retention`** — port v2 CloudWatch log-retention control  ·  done · wave 8 ·
+- **`m9-migrate-log-retention`** — port v2 CloudWatch log-retention control  ·  blocked · wave 8 ·
   wrapper · migration
   - **desc:** v2 source: `src/resource-providers/LoggingProvider.ts` (`ILogger`) and
     `EncryptCloudWatchLogGroupsPlugin.ts` — this item is retention specifically, distinct from the
     encryption plugin already covered by `m9-migrate-security-plugins`.
-  - **notes:** delivered as `LogRetentionAspect` (`src/support/LogRetentionAspect.ts`), an `IAspect`
-    that forces a default retention on any `CfnLogGroup` that does not already set one, mirroring v2's
-    aspect minus the KMS-encryption half. Wired into the SAME tree-wide runtime injection hook
-    (`applyWrapper` in `src/runtime/inject.ts`) that already carries cdk-nag/tags, driven by a new
-    `BaseConfig.logRetentionInDays` (a `number`, default 365 — v2 used a `string`, a deliberate small
-    type cleanup; see the MIGRATION.md row). Falls back to the same default even with no `cicd:config`
-    injected at all, so an un-configured app is still wrapped.
+  - **notes:** Implementation (`LogRetentionAspect` in `src/support/LogRetentionAspect.ts`) and static
+    review are sound — `npx projen compile`/`test`/`compat` all green, 100% coverage on the new file.
+    Blocked because the architect's real-AWS deploy-verify pass (fixture `level1-app`, `harness.sh
+    deploy`/`assert`/`destroy` against the test account) found the feature silently inert: on a real
+    deploy the log group's retention was never set, because this repo's dev tree resolves two distinct
+    physical copies of `aws-cdk-lib` (root `node_modules` vs. the wrapper package's own nested
+    `node_modules`), so `LogRetentionAspect.visit()`'s `node instanceof CfnLogGroup` check is false
+    across that module-identity boundary — with no error, and no test-suite visibility since jest's
+    single module registry can't reproduce a cross-copy check. Teardown was verified clean (no
+    orphaned AWS resources). Per review routing, architect verdict `deploy-failed` mandates blocking
+    without a code-quality pass. Fix: replace the `instanceof` check with a structural one
+    (`CfnResource.isCfnResource(node) && node.cfnResourceType === 'AWS::Logs::LogGroup'`, confirmed to
+    work across the module boundary in the architect's repro script) and add a regression check that
+    spans two `aws-cdk-lib` copies before re-submitting.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 11
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
