@@ -42,7 +42,7 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-project',
-  repository: Repository.codecommit('my-project'), // or Repository.github('org/my-project'), Repository.s3('bucket/key'), ...
+  repository: Repository.codecommit('my-project'), // or Repository.s3('bucket/key'), or Repository.codestarConnection('org/my-project', connectionArn) for GitHub
   // 'dev' auto-approves (inner loop); 'prod' is gated by a manual approval by default.
   stages: ['dev', { name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }],
 });
@@ -139,7 +139,7 @@ git remote add origin "codecommit::${AWS_REGION}://${GIT_REPOSITORY}"
 git push -u origin "${CURRENT_BRANCH}:main"
 ```
 
-For GitHub, add the remote the normal way and push — the CodeStar connection you referenced in `Repository.github(...)`/`Repository.codestarConnection(...)` is what lets the pipeline read it.
+For GitHub, add the remote the normal way and push — the CodeStar connection ARN you passed to `Repository.codestarConnection(...)` is what lets the pipeline read it. See [GitHub Integration](../developer_guides/vcs_github.md) for the connection setup and why `Repository.github(...)` alone is not enough outside the GitHub Actions engine.
 
 ## Migrating an existing v2 (Blueprint) project
 
