@@ -362,6 +362,36 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     }
   });
 
+  test('a managed vpc config attaches every build project to it (build, self-update, deploy)', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      vpc: { managedVpc: { cidrBlock: '10.0.0.0/16' } },
+    });
+    const t = render(config);
+
+    t.resourceCountIs('AWS::EC2::VPC', 1);
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    expect(projects).toHaveLength(3);
+    for (const p of projects) {
+      expect(p.Properties.VpcConfig).toBeDefined();
+      expect(p.Properties.VpcConfig.VpcId).toBeDefined();
+      expect(p.Properties.VpcConfig.Subnets.length).toBeGreaterThan(0);
+      expect(p.Properties.VpcConfig.SecurityGroupIds.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('without a vpc config no build project gets a VpcConfig and no VPC is created', () => {
+    const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
+    const t = render(config);
+
+    t.resourceCountIs('AWS::EC2::VPC', 0);
+    for (const p of Object.values(t.findResources('AWS::CodeBuild::Project'))) {
+      expect(p.Properties.VpcConfig).toBeUndefined();
+    }
+  });
+
   describe('m9-migrate-compliance-bucket: complianceLogBucketName', () => {
     test('a configured name provisions the compliance bucket, even though nothing reads it yet', () => {
       const config = defineCICD({

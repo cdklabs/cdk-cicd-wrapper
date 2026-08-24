@@ -30,6 +30,7 @@ import {
   ResolvedStage,
   StageEnvironment,
   SynthesizerType,
+  VpcConfig,
 } from './types';
 
 /** Stage names that default to no manual approval (inner-loop / research stages). */
@@ -82,6 +83,8 @@ export interface CicdConfigProps {
   readonly npmRegistry?: NpmRegistryConfig;
   /** HTTP(S) proxy every build project routes through. See `ResolvedCicdConfig.proxy`. */
   readonly proxy?: ProxyConfigInput;
+  /** VPC every CodeBuild project runs in. See `ResolvedCicdConfig.vpc`. */
+  readonly vpc?: VpcConfig;
   /** Compliance/access-log destination bucket name. See `ResolvedCicdConfig.complianceLogBucketName`. */
   readonly complianceLogBucketName?: string;
   /**
@@ -178,6 +181,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     codeArtifact: props.codeArtifact,
     npmRegistry: props.npmRegistry,
     proxy: normalizeProxy(props.proxy),
+    vpc: props.vpc,
     complianceLogBucketName: props.complianceLogBucketName,
     codeBuildEnvSettings: props.codeBuildEnvSettings,
     deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,

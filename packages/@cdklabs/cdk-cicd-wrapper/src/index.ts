@@ -41,6 +41,7 @@ export {
   DeployModel,
   DeploymentConfig,
   EngineType,
+  ManagedVpcConfig,
   NpmRegistryConfig,
   ProxyConfig,
   RegionOrder,
@@ -51,6 +52,7 @@ export {
   StageEnvironment,
   SynthesizerConfig,
   SynthesizerType,
+  VpcConfig,
 } from './config/types';
 export { defineCICD } from './config/define';
 // Container mode (Repo 2): `defineDeployment` authors the `deploy.config.ts` that drives
@@ -89,6 +91,9 @@ export { DeploymentPipelineApp, DeploymentPipelineAppProps } from './app/Deploym
 // only pays for what it references. This is v2's resource-provider concept with the singleton and the
 // untyped registry removed.
 export { SupportResources, SupportResourcesProps } from './support/SupportResources';
+// VPC networking for the pipeline's own CodeBuild projects (m9-migrate-vpc); `VpcNetworking` is
+// exported because it is the public return type of `SupportResources.vpcNetworking`.
+export { VpcNetworking } from './support/Vpc';
 // Default CloudWatch log-retention (m9-migrate-log-retention), applied tree-wide by the runtime
 // injection hook; exported for a narrower, explicit `Aspects.of(scope).add(...)` use.
 export { LogRetentionAspect, LogRetentionAspectProps } from './support/LogRetentionAspect';

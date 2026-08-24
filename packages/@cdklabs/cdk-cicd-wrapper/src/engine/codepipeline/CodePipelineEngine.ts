@@ -29,6 +29,7 @@ import { buildSourceAction } from './source';
 import { BuildImage, BuildImageKind, ImageTagStrategy } from '../../config/build-image';
 import { CodeArtifactConfig, DeployModel, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
+import { VpcNetworking } from '../../support/Vpc';
 import { EngineRenderProps, IEngine } from '../types';
 
 /**
@@ -95,8 +96,11 @@ export class CodePipelineEngine implements IEngine {
     const sourceOutput = new codepipeline.Artifact();
     const support = new SupportResources(scope, 'Support', {
       removalPolicy: this.removalPolicy,
+      vpc: config.vpc,
+      useProxy: config.proxy !== undefined,
       complianceLogBucketName: config.complianceLogBucketName,
     });
+    const vpcNetworking = support.vpcNetworking;
     // v2 `ComplianceBucketProvider` provisioned this bucket eagerly whenever a name was configured
     // (default-on, not gated behind a separate opt-in); force the same here by reading the lazy
     // getter, so setting `complianceLogBucketName` alone is enough to get the bucket.
@@ -116,7 +120,7 @@ export class CodePipelineEngine implements IEngine {
     // to ECR -- it deploys nothing (Repo 2 deploys from the image). Distinct enough from the deploy
     // pipeline to be its own render path rather than bolted onto the stage loop.
     if (config.deployerImage !== undefined && config.deployerImage.kind === BuildImageKind.DOCKER) {
-      this.renderImageBuild(scope, pipeline, support, sourceOutput, config, config.deployerImage);
+      this.renderImageBuild(scope, pipeline, support, sourceOutput, config, config.deployerImage, vpcNetworking);
       return;
     }
 
@@ -166,6 +170,7 @@ export class CodePipelineEngine implements IEngine {
             config.codeBuildEnvSettings,
             assembly !== undefined,
             config.ci.partialBuildSpec,
+            vpcNetworking,
           ),
           input: sourceOutput,
           outputs: assembly !== undefined ? [assembly] : undefined,
@@ -191,6 +196,9 @@ export class CodePipelineEngine implements IEngine {
       config.codeArtifact,
       config.proxy,
       config.codeBuildEnvSettings,
+      false,
+      undefined,
+      vpcNetworking,
     );
     this.grantDeployPermissions(selfUpdate, stack.account, [stack.region]);
     pipeline.addStage({
@@ -238,6 +246,9 @@ export class CodePipelineEngine implements IEngine {
         config.codeArtifact,
         config.proxy,
         config.codeBuildEnvSettings,
+        false,
+        undefined,
+        vpcNetworking,
       );
       this.grantDeployPermissions(project, account, regions, stage.deployment?.deployRole);
       if (planParam !== undefined) {
@@ -367,6 +378,7 @@ export class CodePipelineEngine implements IEngine {
     sourceOutput: codepipeline.Artifact,
     config: ResolvedCicdConfig,
     build: BuildImage,
+    vpcNetworking?: VpcNetworking,
   ): void {
     const stack = Stack.of(scope);
     const appName = config.application ?? 'cdk-cicd';
@@ -415,6 +427,9 @@ export class CodePipelineEngine implements IEngine {
       // `codeBuildEnvSettings` still contributes computeType/environmentVariables here -- only
       // `privileged` is forced (Docker requires it regardless of what the config says).
       environment: { ...this.buildEnvironment(config.codeBuildEnvSettings), privileged: true },
+      vpc: vpcNetworking?.vpc,
+      securityGroups: vpcNetworking?.securityGroups,
+      subnetSelection: vpcNetworking?.subnetSelection,
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
@@ -460,7 +475,7 @@ export class CodePipelineEngine implements IEngine {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'ECR grantPullPush issues ecr:GetAuthorizationToken on "*" (the token endpoint is not resource-scopable) plus repo-scoped push actions; the CodeBuild log/report and artifact-bucket wildcards are the project\'s own, as in the deploy pipeline.',
+            'ECR grantPullPush issues ecr:GetAuthorizationToken on "*" (the token endpoint is not resource-scopable) plus repo-scoped push actions; the CodeBuild log/report and artifact-bucket wildcards are the project\'s own, as in the deploy pipeline. When a VPC is configured this also covers the CodeBuild-managed network-interface permissions, as in the deploy pipeline\'s project() suppression.',
         },
       ],
       true,
@@ -563,6 +578,7 @@ export class CodePipelineEngine implements IEngine {
     codeBuildEnvSettings?: codebuild.BuildEnvironment,
     publishAssembly = false,
     partialBuildSpec?: codebuild.BuildSpec,
+    vpcNetworking?: VpcNetworking,
   ): codebuild.PipelineProject {
     const stack = Stack.of(scope);
     // Pin the Node runtime, but ONLY on the default (CodeBuild-managed) image. Without
@@ -582,7 +598,7 @@ export class CodePipelineEngine implements IEngine {
     };
     // Every project runs `npm ci`; a private-registry login has to come first, or the install resolves
     // against public npm and fails on the private packages (the wrapper's own, before it is published).
-    const preBuildCommands = [...(codeArtifact ? [codeArtifactLogin(stack, codeArtifact)] : [])];
+    const preBuildCommands = codeArtifact ? [codeArtifactLogin(stack, codeArtifact)] : [];
     const phases = {
       ...(Object.keys(install).length > 0 ? { install } : {}),
       ...(preBuildCommands.length > 0 ? { pre_build: { commands: preBuildCommands } } : {}),
@@ -607,6 +623,9 @@ export class CodePipelineEngine implements IEngine {
 
     const project = new codebuild.PipelineProject(scope, id, {
       environment: this.buildEnvironment(codeBuildEnvSettings),
+      vpc: vpcNetworking?.vpc,
+      securityGroups: vpcNetworking?.securityGroups,
+      subnetSelection: vpcNetworking?.subnetSelection,
       // The escape hatch (v2 `ciBuildSpec`, migrated): deep-merged, not replaced, so a user-supplied
       // fragment augments the engine's own phases/env instead of silently dropping them.
       buildSpec:
@@ -638,7 +657,12 @@ export class CodePipelineEngine implements IEngine {
             'cannot express at resource level; it is constrained instead by a condition on ' +
             "sts:AWSServiceName = codeartifact.amazonaws.com, which cdk-nag's IAM5 rule does not read. " +
             'When a proxy is configured this also covers the cross-account KMS grant on key/* under the ' +
-            "secret's own account/region -- Secrets Manager does not expose a per-key ARN to scope to.",
+            "secret's own account/region -- Secrets Manager does not expose a per-key ARN to scope to. " +
+            'When a VPC is configured this also covers the CodeBuild-managed network-interface permissions ' +
+            '(ec2:CreateNetworkInterface/DescribeNetworkInterfaces/DeleteNetworkInterface/DescribeSubnets/' +
+            'DescribeSecurityGroups/DescribeDhcpOptions/DescribeVpcs on Resource "*"), which CDK generates ' +
+            "for every VPC-attached CodeBuild project and which EC2 cannot scope to an ENI that doesn't " +
+            'exist yet.',
         },
       ],
       true,

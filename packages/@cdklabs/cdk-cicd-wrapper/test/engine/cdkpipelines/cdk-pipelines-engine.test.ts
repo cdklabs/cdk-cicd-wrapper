@@ -164,6 +164,39 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     }
   });
 
+  test('a managed vpc config attaches the synth + self-mutation projects to it', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    const engine = new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        vpc: { managedVpc: { cidrBlock: '10.0.0.0/16' } },
+      }),
+      stages: new StubStages(),
+    });
+    void engine;
+
+    const t = Template.fromStack(stack);
+    t.resourceCountIs('AWS::EC2::VPC', 1);
+    // Synth + self-mutation: CDK Pipelines' own `codeBuildDefaults`, same uniform application as
+    // codeBuildEnvSettings above.
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    expect(projects).toHaveLength(2);
+    for (const p of projects as any[]) {
+      expect(p.Properties.VpcConfig).toBeDefined();
+      expect(p.Properties.VpcConfig.VpcId).toBeDefined();
+    }
+  });
+
+  test('without a vpc config no CodeBuild project gets a VpcConfig', () => {
+    const t = render();
+    t.resourceCountIs('AWS::EC2::VPC', 0);
+    for (const p of Object.values(t.findResources('AWS::CodeBuild::Project')) as any[]) {
+      expect(p.Properties.VpcConfig).toBeUndefined();
+    }
+  });
+
   test('a multi-region stage becomes one wave per region (not just the first)', () => {
     const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
     const engine = new CdkPipelinesEngine(stack, 'Cd', {

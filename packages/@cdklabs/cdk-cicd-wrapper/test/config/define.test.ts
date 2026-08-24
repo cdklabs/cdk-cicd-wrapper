@@ -110,6 +110,12 @@ describe('m3-config: defineCICD top-level defaults', () => {
     );
   });
 
+  test('vpc defaults to undefined (opt-in) and an explicit config passes through unchanged', () => {
+    expect(defineCICD({ repository: REPO, stages: [] }).vpc).toBeUndefined();
+    const vpc = { managedVpc: { cidrBlock: '10.0.0.0/16' } };
+    expect(defineCICD({ repository: REPO, stages: [], vpc }).vpc).toEqual(vpc);
+  });
+
   test('m9-migrate-compliance-bucket: complianceLogBucketName defaults to undefined and passes through unchanged', () => {
     expect(defineCICD({ repository: REPO, stages: [] }).complianceLogBucketName).toBeUndefined();
     expect(

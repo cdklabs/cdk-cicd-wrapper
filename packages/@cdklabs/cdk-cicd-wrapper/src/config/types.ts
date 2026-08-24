@@ -6,7 +6,7 @@
 // many, a stage as a bare name or an object) use TS unions and live in ./define.ts; they are never
 // part of the jsii surface. Only the resolved structs here cross the language boundary.
 
-import { aws_codebuild as codebuild } from 'aws-cdk-lib';
+import { aws_codebuild as codebuild, aws_ec2 as ec2 } from 'aws-cdk-lib';
 import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
@@ -140,6 +140,58 @@ export interface NpmRegistryConfig {
   readonly scope?: string;
 }
 
+/**
+ * VPC configuration for a wrapper-managed VPC (v2 `IManagedVpcConfig`, migrated from `VPCProvider`).
+ * Every field is optional; an unset field takes v2's original default.
+ */
+export interface ManagedVpcConfig {
+  /** CIDR block for the VPC. @default '172.31.0.0/20' */
+  readonly cidrBlock?: string;
+  /** Subnet CIDR mask. @default 24 */
+  readonly subnetCidrMask?: number;
+  /** Max AZs. @default 2 */
+  readonly maxAzs?: number;
+  /**
+   * The subnets the VPC's CodeBuild projects run in. Defaults to `PRIVATE_ISOLATED` when a `proxy`
+   * is configured (no NAT egress; the CodeBuild VPC endpoints below cover AWS API calls instead) and
+   * `PRIVATE_WITH_EGRESS` otherwise -- the rule v2's `VPCProvider` applied.
+   */
+  readonly subnetType?: ec2.SubnetType;
+  /**
+   * Remove the default inbound/outbound rules from the VPC's default security group.
+   * @default true
+   */
+  readonly restrictDefaultSecurityGroup?: boolean;
+  /** Allow all outbound traffic by default from the security group the wrapper creates. @default true */
+  readonly allowAllOutbound?: boolean;
+  /**
+   * S3 bucket to send VPC flow logs to. v2 always used the RES stage's compliance-log bucket
+   * implicitly; v3 has not migrated that bucket yet (`m9-migrate-compliance-bucket`), so this is an
+   * explicit prop instead -- omit to skip flow logs.
+   */
+  readonly flowLogsBucketName?: string;
+  /**
+   * Extra CodeBuild VPC interface endpoints beyond the default set (SSM, STS, CloudWatch Logs,
+   * CloudFormation, Secrets Manager, KMS). Only used for the isolated-subnet case (see `subnetType`).
+   */
+  readonly codeBuildVpcInterfaces?: ec2.InterfaceVpcEndpointAwsService[];
+}
+
+/**
+ * VPC configuration for the pipeline's own CodeBuild projects (v2 `IVpcConfig`, migrated from
+ * `VPCProvider`). Set `managedVpc` to have the wrapper create a VPC, or `vpcId` to look up an
+ * existing one; setting neither -- the default -- runs every CodeBuild project without a VPC.
+ */
+export interface VpcConfig {
+  /** Create a new VPC with these settings. */
+  readonly managedVpc?: ManagedVpcConfig;
+  /**
+   * Look up an existing VPC by id. A value starting with `resolve:ssm:` is resolved from the named
+   * SSM parameter at synth time instead of being used literally (v2 `VPCFromLookUpStack` parity).
+   */
+  readonly vpcId?: string;
+}
+
 /** A resolved stage's target environment. `regions` is always a list, even for a single region. */
 export interface StageEnvironment {
   /** Target account. Omitted means environment-agnostic (resolved from ambient creds at deploy). */
@@ -198,6 +250,8 @@ export interface ResolvedCicdConfig {
   readonly npmRegistry?: NpmRegistryConfig;
   /** HTTP(S) proxy every build project routes through, if any. */
   readonly proxy?: ProxyConfig;
+  /** VPC every CodeBuild project the pipeline creates runs in, if configured (v2 `VPCProvider`, migrated). */
+  readonly vpc?: VpcConfig;
   /**
    * The name of the compliance/access-log destination bucket, if configured (v2
    * `ComplianceBucketProvider`/`ComplianceLogBucketStack`, migrated). Threaded into

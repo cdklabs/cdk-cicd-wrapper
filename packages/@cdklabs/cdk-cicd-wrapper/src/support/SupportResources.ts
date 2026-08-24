@@ -15,6 +15,8 @@
 import { RemovalPolicy, aws_kms as kms, aws_s3 as s3 } from 'aws-cdk-lib';
 import { AnyPrincipal, Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+import { resolveVpcNetworking, VpcNetworking } from './Vpc';
+import { VpcConfig } from '../config/types';
 
 /** Options for the wrapper's support resources. */
 export interface SupportResourcesProps {
@@ -24,6 +26,13 @@ export interface SupportResourcesProps {
    * ephemeral environments) sets `DESTROY` so a stack delete leaves nothing behind.
    */
   readonly removalPolicy?: RemovalPolicy;
+  /** VPC every CodeBuild project the pipeline creates runs in, if configured. See `vpcNetworking`. */
+  readonly vpc?: VpcConfig;
+  /**
+   * Whether an HTTP(S) proxy is configured (`ResolvedCicdConfig.proxy`). A managed VPC uses isolated
+   * subnets when true, matching v2's `VPCProvider`.
+   */
+  readonly useProxy?: boolean;
   /**
    * The name of the compliance/access-log bucket -- v2's `IComplianceBucket.bucketName`
    * (`ComplianceBucketProvider`). Required only if `complianceLogBucket` is read; an explicit,
@@ -40,14 +49,20 @@ export interface SupportResourcesProps {
  */
 export class SupportResources extends Construct {
   private readonly removalPolicy: RemovalPolicy;
+  private readonly vpcConfig?: VpcConfig;
+  private readonly useProxy: boolean;
   private readonly complianceLogBucketName?: string;
   private _encryptionKey?: kms.Key;
   private _artifactBucket?: s3.Bucket;
+  private _vpcNetworking?: VpcNetworking;
+  private vpcResolved = false;
   private _complianceLogBucket?: s3.Bucket;
 
   public constructor(scope: Construct, id: string, props: SupportResourcesProps = {}) {
     super(scope, id);
     this.removalPolicy = props.removalPolicy ?? RemovalPolicy.RETAIN;
+    this.vpcConfig = props.vpc;
+    this.useProxy = props.useProxy ?? false;
     this.complianceLogBucketName = props.complianceLogBucketName;
   }
 
@@ -79,6 +94,19 @@ export class SupportResources extends Construct {
       });
     }
     return this._artifactBucket;
+  }
+
+  /**
+   * VPC + security groups + subnet selection for the pipeline's own CodeBuild projects, if `vpc` was
+   * configured (v2 `VPCProvider`, migrated). `undefined` when not configured. Resolved on first read,
+   * same as every other property here -- a pipeline that never reads this creates no VPC.
+   */
+  public get vpcNetworking(): VpcNetworking | undefined {
+    if (!this.vpcResolved) {
+      this._vpcNetworking = resolveVpcNetworking(this, this.vpcConfig, this.useProxy);
+      this.vpcResolved = true;
+    }
+    return this._vpcNetworking;
   }
 
   /**

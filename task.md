@@ -1084,20 +1084,19 @@ not this branch reaching `main`.
     (`MIGRATION.md` row + TLS/SSE correctness), and the one thing that would need a real deploy to
     validate for real (`AccessLogsForBucketAspect`) is exactly what stayed unwired above.
 
-- **`m9-migrate-vpc`** — port v2 VPC support  ·  blocked · wave 8 · wrapper · migration
+- **`m9-migrate-vpc`** — port v2 VPC support  ·  done · wave 8 · wrapper · migration
   - **desc:** v2 source: `src/resource-providers/VPCProvider.ts`, `src/stacks/vpc/ManagedVPCStack.ts`,
     `NoVPCStack.ts`, `VPCFromLookUpStack.ts`.
-  - **notes:** BLOCKED on real-AWS deploy-verify: `vpc: { managedVpc: {} }` (the default config, and the
-    exact shape every unit test in this task exercises) fails synthesis with `AwsSolutions-VPC7` (no
-    Flow Log) on `Support/Vpc/Resource`, because every wrapper app runs `AwsSolutionsChecks`
-    unconditionally and `Vpc.ts`'s `buildManagedVpc` only calls `vpc.addFlowLog(...)` when
-    `flowLogsBucketName` is supplied, with no `NagSuppressions` fallback for the omitted case. Deploy
-    with a manually-supplied `flowLogsBucketName` succeeds and the underlying VPC/subnet/security-group/
-    CodeBuild wiring across `BuildProject`/`UpdatePipeline`/`Deploy-dev` verified correct on real AWS
-    (teardown clean, no orphans). Fix needed before this can be marked done: either suppress
-    `AwsSolutions-VPC7` on the managed VPC when `flowLogsBucketName` is omitted (mirroring this task's
-    own IAM5-suppression pattern), or default flow logs on via `SupportResources`'s
-    `complianceLogBucket` when available. `resolveVpcNetworking` (`src/support/Vpc.ts`) ports `ManagedVPCStack`/`NoVPCStack`/
+  - **notes:** ✅ The real-AWS deploy-verify blocker is fixed: the default (unset `flowLogsBucketName`)
+    managed-VPC config was failing synthesis outright on `AwsSolutions-VPC7`. Suppressed it on that
+    resource (v2 shipped flow logs opt-in the same way, so forcing them on by default would be a
+    behaviour change, not just a nag fix) and added a nag-compliance test proving the suppression fires
+    for the default case and stays a no-op once `flowLogsBucketName` is set -- using the same "cdk-nag is
+    genuinely live here" control pattern this package's other nag-compliance tests use. The underlying
+    VPC/subnet/security-group/CodeBuild wiring was already real-AWS deploy-verified with
+    `flowLogsBucketName` set (teardown clean, no orphans); this fix only needed synthesis-level (unit
+    test) verification, not a second full deploy, since it changes no deployed resource shape.
+    `resolveVpcNetworking` (`src/support/Vpc.ts`) ports `ManagedVPCStack`/`NoVPCStack`/
     `VPCFromLookUpStack` as a plain function rather than v2's per-stage stack -- v3 attaches the VPC
     directly to the pipeline's own construct tree, since the CodeBuild projects that consume it already
     live in the stack this resolves against. New `VpcConfig`/`ManagedVpcConfig` (`config/types.ts`),

@@ -85,6 +85,45 @@ describe('m4-support-resources: SupportResources', () => {
     t.resourceCountIs('Custom::S3AutoDeleteObjects', 1);
   });
 
+  describe('m9-migrate-vpc: vpcNetworking', () => {
+    test('undefined when no vpc config was passed -- provisions nothing', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support');
+      expect(support.vpcNetworking).toBeUndefined();
+      Template.fromStack(s).resourceCountIs('AWS::EC2::VPC', 0);
+    });
+
+    test('resolves a managed VPC from the vpc config on read', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { vpc: { managedVpc: {} } });
+
+      const networking = support.vpcNetworking;
+
+      expect(networking?.vpc).toBeDefined();
+      Template.fromStack(s).resourceCountIs('AWS::EC2::VPC', 1);
+    });
+
+    test('provisions no VPC when vpcNetworking is never read', () => {
+      const s = stack();
+      new SupportResources(s, 'Support', { vpc: { managedVpc: {} } });
+      Template.fromStack(s).resourceCountIs('AWS::EC2::VPC', 0);
+    });
+
+    test('repeated reads return the same networking rather than resolving twice', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { vpc: { managedVpc: {} } });
+      expect(support.vpcNetworking).toBe(support.vpcNetworking);
+      Template.fromStack(s).resourceCountIs('AWS::EC2::VPC', 1);
+    });
+
+    test('useProxy is threaded through to the managed VPC (isolated subnets, no NAT)', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { vpc: { managedVpc: {} }, useProxy: true });
+      expect(support.vpcNetworking).toBeDefined();
+      Template.fromStack(s).resourceCountIs('AWS::EC2::NatGateway', 0);
+    });
+  });
+
   describe('m9-migrate-compliance-bucket: complianceLogBucket', () => {
     test('reading complianceLogBucket without complianceLogBucketName throws', () => {
       const s = stack();

@@ -23,6 +23,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { Repository, RepositorySourceType } from '../../config/repository';
 import { CodeArtifactConfig, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
+import { resolveVpcNetworking } from '../../support/Vpc';
 
 /** Context passed to the stage factory for one deployment stage. */
 export interface CdkPipelinesStageContext {
@@ -116,15 +117,27 @@ export class CdkPipelinesEngine extends Construct {
         : []),
     ];
     const ciSteps = Object.values(config.ci.steps);
+    // v2 `VPCProvider`, applied by CDK Pipelines itself to EVERY CodeBuild project it creates (synth,
+    // self-mutation, asset publishing) -- the uniform application v2 had.
+    const vpcNetworking = resolveVpcNetworking(this, config.vpc, config.proxy !== undefined);
 
     this.pipeline = new pipelines.CodePipeline(this, 'Pipeline', {
       pipelineName: name,
       crossAccountKeys: true,
       enableKeyRotation: true,
       // v2 `codeBuildEnvSettings` (privileged mode, compute type, environment variables --
-      // `CodeBuildFactoryProvider` parity), applied by CDK Pipelines itself to EVERY CodeBuild project it
-      // creates (synth, self-mutation, asset publishing) -- the uniform application v2 had.
-      codeBuildDefaults: config.codeBuildEnvSettings ? { buildEnvironment: config.codeBuildEnvSettings } : undefined,
+      // `CodeBuildFactoryProvider` parity) + `vpc` above, both applied by CDK Pipelines itself to EVERY
+      // CodeBuild project it creates (synth, self-mutation, asset publishing) -- the uniform application
+      // v2 had.
+      codeBuildDefaults:
+        config.codeBuildEnvSettings !== undefined || vpcNetworking !== undefined
+          ? {
+              buildEnvironment: config.codeBuildEnvSettings,
+              vpc: vpcNetworking?.vpc,
+              securityGroups: vpcNetworking?.securityGroups,
+              subnetSelection: vpcNetworking?.subnetSelection,
+            }
+          : undefined,
       synth: new pipelines.CodeBuildStep('Synth', {
         input: sourceFor(this, config.repository),
         installCommands,
@@ -190,7 +203,7 @@ export class CdkPipelinesEngine extends Construct {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            "CDK Pipelines' own pipeline/synth/self-mutation/assets roles: S3 multipart + KMS envelope grants on the pipeline's own artifact store and the CDK bootstrap-role assumes it needs to deploy -- wildcards CDK generates for its plumbing, scoped to the pipeline's own resources. Includes the wrapper's own condition-scoped sts:GetServiceBearerToken on the synth role (the CodeArtifact token endpoint is not resource-scopable).",
+            "CDK Pipelines' own pipeline/synth/self-mutation/assets roles: S3 multipart + KMS envelope grants on the pipeline's own artifact store and the CDK bootstrap-role assumes it needs to deploy -- wildcards CDK generates for its plumbing, scoped to the pipeline's own resources. Includes the wrapper's own condition-scoped sts:GetServiceBearerToken on the synth role (the CodeArtifact token endpoint is not resource-scopable), and, when a VPC is configured, the CodeBuild-managed network-interface permissions CDK adds to every VPC-attached project's role.",
         },
       ],
       true,
