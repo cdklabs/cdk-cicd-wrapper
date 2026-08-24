@@ -1,40 +1,33 @@
-# Using CodeArtifact
+# Using AWS CodeArtifact
 
-AWS CodeArtifact is a fully managed artifact repository service that makes it easy for organizations of any size to securely store, publish, and share software packages used in their development process. AWS CodeArtifact supports popular package formats and works with commonly used build tools and package managers.
+AWS CodeArtifact is a fully managed artifact repository service that makes it easy for organizations of any size to securely store, publish, and share software packages used in their development process.
 
 ## Prerequisites
-- If you do not have an existing AWS CodeArtifact repository please create one using the AWS Management Console or AWS CLI. For more information, see [Creating a repository](https://docs.aws.amazon.com/codeartifact/latest/ug/getting-started.html#get-started-create-repo). Ensure the repository is configured to upstream the desired package sources, you must be able to fetch 'aws-cdk-lib' and 'cdklabs' packages from the repository.
+
+If you do not have an existing AWS CodeArtifact repository, create one using the AWS Management Console or AWS CLI — see [Creating a repository](https://docs.aws.amazon.com/codeartifact/latest/ug/getting-started.html#get-started-create-repo). Ensure the repository is configured to upstream the desired package sources; it must be able to fetch `aws-cdk-lib` and `@cdklabs/*` packages.
 
 ## Configuring the CI/CD pipeline
 
-To use AWS CodeArtifact in your pipeline, you need to configure the `CodeArtifactPlugin` plugin. This plugin is responsible for setting up the necessary commands to authenticate with the AWS CodeArtifact repository and manage the required IAM permissions for the pipeline.
+Set the `codeArtifact` field in `cicd.config.ts`:
 
-```typeScript
-import { PipelineBlueprint, CodeArtifactPlugin } from '@cdklabs/cdk-cicd-wrapper';
+```typescript
+import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
-const pipeline = PipelineBlueprint.builder()
-  .plugin(new CodeArtifactPlugin({
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.codecommit('my-repo'),
+  stages: ['dev', 'prod'],
+  codeArtifact: {
     domain: 'my-domain',
-    repositoryName: 'my-repo',
-  }))
-  .synth(app);
+    repository: 'my-repo',
+    // account/region default to the pipeline's own account/region
+    npmScope: 'cdklabs', // omit for the default (unscoped) npm registry
+  },
+});
 ```
 
-The above snippet configures the pipeline to authenticate with the AWS CodeArtifact repository `my-domain/my-repo`. The plugin will automatically set up the necessary IAM permissions for the pipeline to access the repository.
+When set, every build project the pipeline creates runs `aws codeartifact login` before `npm ci` and is granted read access to the repository — this is also how a pipeline installs the wrapper itself before it is published to the public npm registry (e.g. while running against an alpha/`next` build).
 
-## Using AWS CodeArtifact for Python/Swift/dotnet packages
+**Note**: `codeArtifact` covers npm only. Unlike Blueprint (0.x)'s `CodeArtifactPlugin`, v3 has no `repositoryTypes` option for Python/Swift/.NET package formats through CodeArtifact — `CodeArtifactConfig` (`domain`/`repository`/`account`/`region`/`npmScope`) is npm-scoped only.
 
-To use AWS CodeArtifact for Python, Swift, or dotnet packages, you need to configure the plugin for those package types. The `CodeArtifactPlugin` accepts an optional `repositoryTypes` parameter that allows you to specify the package types you want to use with AWS CodeArtifact.
-
-```typeScript
-import { PipelineBlueprint, CodeArtifactPlugin, CodeArtifactRepositoryTypes} from '@cdklabs/cdk-cicd-wrapper';
-
-const pipeline = PipelineBlueprint.builder()
-  .plugin(new CodeArtifactPlugin({
-    domain: 'my-domain',
-    repositoryName: 'my-repo',
-    repositoryTypes: [CodeArtifactRepositoryTypes.NPM, CodeArtifactRepositoryTypes.PIP, CodeArtifactRepositoryTypes.SWIFT, CodeArtifactRepositoryTypes.NUGET],
-  }))
-  .addStack(new MyStack())
-  .synth(app);
-```
+**Current limitation:** the `GITHUB_ACTIONS` engine does not yet wire `codeArtifact` up with working IAM grants (see the note in the [GitHub Integration guide](./vcs_github.md)) — this option is confirmed to work with the default `CODEPIPELINE` engine and `CDK_PIPELINES`.
