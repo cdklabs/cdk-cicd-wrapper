@@ -1,27 +1,25 @@
 # Audit project dependencies
 
-From the package.json you get the following commands which you can run via the cli like this:
+`cdk-cicd check` runs the `audit` check by default (alongside `validate`/`license`/`security` — see the [Security guide](./security.md)), so a CI build gets dependency auditing without any `package.json` script setup. `audit` runs `cdk-cicd check-dependencies` with `--npm` when an npm lock file is present and `--python` when a `Pipfile` is present; if neither is present, the check is skipped rather than failed.
+
+You can also run the underlying commands directly:
 
 ```bash
-npm run audit ### check below the list of sub-scripts
+npx cdk-cicd check-dependencies --npm      # better-npm-audit against package-lock.json/npm-shrinkwrap.json
+npx cdk-cicd check-dependencies --python   # pip-audit against Pipfile
 ```
 
-```json
-{
-    ...
-    "scripts":
-    {
-        ...
-        "audit": "npx concurrently 'npm:audit:*(!fix)'",
-        "audit:deps:nodejs": "npx {{ npm_cli }} check-dependencies --npm",
-        "audit:deps:python": "npx {{ npm_cli }} check-dependencies --python",
-        "audit:scan:security": "npx {{ npm_cli }} security-scan --bandit --semgrep --shellcheck --ci",
-        "audit:license": "npm run license",
-        "audit:fix:license": "npm run license:fix",
-        "license": "npx {{ npm_cli }} license",
-        "license:fix": "npx {{ npm_cli }} license --fix",
-        ...
+If you set your own `ci.steps` in `cicd.config.ts` (which **replaces** the default `cdk-cicd check` step rather than adding to it — see the [CI guide](./ci.md)), include the commands above explicitly to keep dependency auditing in your CI build:
+
+```typescript
+export default defineCICD({
+  // ...
+  ci: {
+    steps: {
+      audit: 'npx cdk-cicd check-dependencies --npm --python',
+      build: 'npm run build',
+      test: 'npm run test',
     },
-    ...
-}
+  },
+});
 ```
