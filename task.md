@@ -1214,20 +1214,19 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 6
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-phase-command-model`** — port the v2 phase/command model  ·  blocked · wave 8 ·
+- **`m9-migrate-phase-command-model`** — port the v2 phase/command model  ·  done · wave 8 ·
   wrapper · migration
   - **desc:** v2 source: `src/resource-providers/PhaseCommandProvider.ts` (`IPhaseCommand`,
     `IPhaseCommandSettings`) and its command implementations (shell/NPM/Python/inline-shell/script).
     v3 already has `ci.steps` (a command map) — decide whether this backlog item is fully subsumed by
     `ci.steps` or whether a familiar-API shim is still owed per Q8.
-  - **notes:** Blocked on process, not substance. The "fully subsumed by `ci.steps`, no v3
-    equivalent needed" decision and its `MIGRATION.md` row were independently traced and confirmed
-    correct by both the architect and code-review pass. Blocked because the implementer's task.md
-    edit was taken from a stale snapshot and, alongside the intended entry, silently reverted the
-    unrelated, already-committed `m9-migrate-security-plugins` entry from `done` back to `blocked`
-    and deleted its verification notes — a scoping violation caught before commit. Re-submit with a
-    task.md edit scoped to exactly this entry (this edit); the `MIGRATION.md` row from the prior
-    attempt is sound and can be reused as-is.
+  - **notes:** ✅ Resolved as "fully subsumed by `ci.steps`, no v3 equivalent needed" — a plain string
+    is strictly more general than v2's typed command-builder classes, so no shim is owed per Q8. Decision
+    independently traced and confirmed correct by both the architect and a code-review pass. The prior
+    submission was blocked on process, not substance: its task.md edit was taken from a stale snapshot
+    and, alongside the intended entry, silently reverted the unrelated `m9-migrate-security-plugins`
+    entry — caught before commit. This edit is scoped to exactly this entry. `MIGRATION.md`'s
+    `definePhase`/`PhaseCommand` row records the full v2→v3 phase-wiring mapping.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 7
   - **acceptance:** either a documented "subsumed by `ci.steps`" `MIGRATION.md` row, or a v3
     equivalent + passing unit test + row.
