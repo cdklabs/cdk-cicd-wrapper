@@ -1,13 +1,53 @@
 # Networking
 
-## Determine VPC and Proxy settings for your pipeline
+## VPC
 
-By default, the Pipeline is configured to run **without** a VPC. To have it run inside a VPC, there are two options: `VPC` and `VPC_FROM_LOOK_UP`. These options are configured using `npx {{ npm_cli }} configure` described in the next section.
+By default, every CodeBuild project the pipeline creates runs **without** a VPC. Set `vpc` in `cicd.config.ts` to change that — either have the wrapper manage a VPC for you, or look up an existing one:
 
-Use `VPC` if you want a single, self-contained pipeline running in a VPC. This is not recommended for use with multiple code pipelines in the same account. The VPC is created using defaulted settings.
+```typescript
+import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
-Use `VPC_FROM_LOOK_UP` to look up an existing VPC based on its vpc ID. It is recommended to create this VPC prior to deploying the pipeline. Multiple deployments of the pipeline can share the same VPC.
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.codecommit('my-repo'),
+  stages: ['dev', 'prod'],
+  vpc: {
+    managedVpc: {
+      cidrBlock: '172.31.0.0/20', // default
+      subnetCidrMask: 24, // default
+      maxAzs: 2, // default
+    },
+  },
+});
+```
 
-Note: Switching between VPC options may require a complete tear down and redeploy of the pipeline
+Use `managedVpc` for a single, self-contained VPC created and managed by the wrapper — not recommended if you deploy multiple pipelines into the same account and want them to share a VPC. Use `vpcId` to look up an existing VPC instead:
 
-Proxy Configuration requires proxy information to be stored in Secrets manager. Make note of the secret arn is needed in the next step.
+```typescript
+vpc: { vpcId: 'vpc-088aaa9cdf4563515' },
+// or, resolved from an SSM parameter at synth time:
+vpc: { vpcId: 'resolve:ssm:/path/to/parameter' },
+```
+
+Switching between `managedVpc` and `vpcId` (or removing `vpc` entirely) changes the CodeBuild projects' network configuration and may require a full teardown/redeploy of the pipeline.
+
+`managedVpc` also accepts `subnetType`, `restrictDefaultSecurityGroup`, `allowAllOutbound`, `flowLogsBucketName`, and `codeBuildVpcInterfaces` — see `ManagedVpcConfig` in the package's type reference for the full list and defaults.
+
+## Proxy
+
+If your CodeBuild projects need to reach the internet through an HTTP(S) proxy, store the proxy credentials in Secrets Manager (keys `username`, `password`, `http_proxy_port`, `https_proxy_port`, `proxy_domain`) and reference the secret's ARN:
+
+```typescript
+export default defineCICD({
+  // ...
+  proxy: {
+    proxySecretArn: 'arn:aws:secretsmanager:region:account:secret:my-proxy-secret',
+    // noProxy defaults to the region's own amazonaws.com endpoint (so AWS API calls skip the proxy);
+    // proxyTestUrl defaults to https://aws.amazon.com
+  },
+});
+```
+
+Every build project the pipeline creates exports `HTTP(S)_PROXY` from the secret and curls `proxyTestUrl` through the proxy before running its real install commands, to fail fast if the tunnel doesn't work.
+
+When both `vpc.managedVpc` and `proxy` are configured together, the managed VPC's CodeBuild projects default to `PRIVATE_ISOLATED` subnets (no NAT egress) plus the CodeBuild VPC interface endpoints, instead of `PRIVATE_WITH_EGRESS`.
