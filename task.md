@@ -957,7 +957,7 @@ types/props) per Q8, plus a `MIGRATION.md` mapping-table row. Independent of eac
 all gate `m9-migration-gate` below, which is what blocks flipping the `1.0.0`/`latest` npm dist-tag —
 not this branch reaching `main`.
 
-- **`m9-migrate-security-plugins`** — port the v2 security-hardening plugins  ·  todo · wave 8 ·
+- **`m9-migrate-security-plugins`** — port the v2 security-hardening plugins  ·  blocked · wave 8 ·
   wrapper · migration
   - **desc:** Bucket SSL/encryption, CloudWatch-log & SNS encryption, KMS key rotation, Lambda DLQ,
     EC2 public-IP block. v2 source (see Wave 7 note): `src/plugins/security/AccessLogsForBucketPlugin.ts`,
@@ -967,6 +967,55 @@ not this branch reaching `main`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 1
   - **acceptance:** each plugin has a v3 equivalent (aspect or engine hook) + a passing unit test +
     a `MIGRATION.md` row.
+  - **notes:** the v2 source list above is missing one file the desc line still names --
+    `src/plugins/security/LambdaDLQPlugin.ts` -- ported too (`LambdaDLQAspect`), same as the seven
+    listed. Each v2 plugin is now a standalone `IAspect` under `src/support/`: the four with no extra
+    config/resource dependency (bucket/SNS transit encryption, KMS key rotation, EC2 public-IP block)
+    are wired tree-wide into the runtime injection hook (`applyWrapper`), matching v2's default-on
+    behaviour and the `LogRetentionAspect` precedent. Three stay opt-in-only, each blocked on a
+    dependency v3 doesn't provision by default (yet): `AccessLogsForBucketAspect` needs the
+    not-yet-ported compliance-log bucket (`m9-migrate-compliance-bucket`); `EncryptCloudWatchLogGroupsAspect`
+    needs a KMS key (v2 pulled one implicitly from a default per-stage `EncryptionProvider` that has no
+    v3 equivalent -- out of scope here, so the aspect takes the key as an explicit prop instead);
+    `LambdaDLQAspect` takes a caller-constructed `IQueue` rather than lazily creating its own stack +
+    queue (v2's per-stage-plugin-hook that did that has no v3 equivalent either, and v2 itself shipped
+    this one opt-in, not default-on). `npx projen compile`/`test`/`compat` all green.
+    Blocked because the architect's real-AWS deploy-verify pass found 2 of the 4 tree-wide-wired
+    aspects silently inert, the exact same cross-`aws-cdk-lib`-module-copy failure mode
+    `m9-migrate-log-retention` hit: `EncryptBucketOnTransitAspect` (`node instanceof Bucket`) and
+    `EncryptSNSTopicOnTransitAspect` (`node instanceof Topic`) both check an L2 construct class, and
+    this repo's dev tree resolves two distinct physical copies of `aws-cdk-lib` (root `node_modules`
+    vs. the wrapper package's own nested `node_modules`), so the `instanceof` is false across that
+    module-identity boundary -- confirmed via `require.resolve` returning two different `aws-cdk-lib`
+    paths for a fixture's own code vs. the wrapper's compiled `src/support/*.js`, and via a
+    temporary probe (S3 bucket + SNS topic + KMS key added to `level1-app`, reverted after): the
+    synthesized template has no `DenyHTTP`/`HttpsOnly` bucket/topic policy statements at all, while
+    the KMS key's `EnableKeyRotation: true` (via `RotateEncryptionKeysAspect`'s already-fixed
+    structural check) is present. Worse than a silent no-op: because `AwsSolutionsChecks` is already
+    wired tree-wide (pre-existing, unrelated to this task) and these two mitigations never land, a
+    real `harness.sh deploy` against `level1-app` (real AWS creds, real test account, no stack ever
+    reached CloudFormation -- confirmed via `describe-stacks`, nothing to tear down) failed outright
+    with cdk-nag `AwsSolutions-S10`/`SNS2`/`SNS3` "Found errors" before any AWS API call -- i.e. any
+    real consuming app with an S3 bucket or SNS topic under this same module-layout cannot
+    `cdk-cicd exec` deploy at all. The fix applied to the three L1-`CfnResource`-based aspects in this
+    same task (`RotateEncryptionKeysAspect`, `DisablePublicIPAssignmentForEC2Aspect`,
+    `EncryptCloudWatchLogGroupsAspect` -- `CfnResource.isCfnResource` + `cfnResourceType` instead of
+    `instanceof`) was never applied to the two L2-construct-based ones, and reordering
+    `Aspects.of(app).add(...)` calls in `inject.ts` does not fix it either (ruled out empirically) --
+    the L2 `instanceof` check itself is the defect, not aspect-application order. Lower-severity
+    instance of the same pattern, latent because these three stay opt-in (not wired into
+    `applyWrapper`) so no immediate blast radius: `AccessLogsForBucketAspect` still checks
+    `instanceof CfnBucket` (an L1 class -- the exact case the structural-check fix targets, left
+    unfixed here even though the fix pattern already existed elsewhere in this same change);
+    `DestroyEncryptionKeysOnDeleteAspect` (`instanceof Key`) and `LambdaDLQAspect`
+    (`instanceof LambdaFunction`) also use unfixed L2 `instanceof` checks. Per review routing,
+    architect verdict `deploy-failed` mandates blocking without a further code-quality pass. Fix:
+    find (or build) a structural check for these L2 constructs that survives a cross-copy
+    `aws-cdk-lib` boundary the way `CfnResource.isCfnResource` does for L1 (e.g. checking the
+    construct's `defaultChild`'s `cfnResourceType`, if `Bucket`/`Topic`'s default child is reliably an
+    `L1` at aspect-visit time), across all five affected aspects, and add a regression test that spans
+    two `aws-cdk-lib` copies (mirroring whatever `m9-migrate-log-retention` ships) before
+    re-submitting.
 
 - **`m9-migrate-compliance-bucket`** — port the v2 compliance/access-log bucket  ·  todo · wave 8 ·
   wrapper · migration
