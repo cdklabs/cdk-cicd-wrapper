@@ -19,7 +19,6 @@ on:
           - "*all packages*"
           - "@cdklabs/cdk-cicd-wrapper"
           - "@cdklabs/cdk-cicd-wrapper-cli"
-          - "@cdklabs/cdk-cicd-wrapper-projen"
         default: "*all packages*"
 jobs:
   release:
@@ -30,7 +29,6 @@ jobs:
       latest_commit: ${{ steps.git_remote.outputs.latest_commit }}
       publish-cdklabs-cdk-cicd-wrapper: ${{ steps.check-publish-cdklabs-cdk-cicd-wrapper.outputs.publish }}
       publish-cdklabs-cdk-cicd-wrapper-cli: ${{ steps.check-publish-cdklabs-cdk-cicd-wrapper-cli.outputs.publish }}
-      publish-cdklabs-cdk-cicd-wrapper-projen: ${{ steps.check-publish-cdklabs-cdk-cicd-wrapper-projen.outputs.publish }}
     env:
       CI: "true"
     steps:
@@ -52,9 +50,6 @@ jobs:
       - id: check-publish-cdklabs-cdk-cicd-wrapper-cli
         run: (git ls-remote -q --exit-code --tags origin $(cat dist/releasetag.txt) && (echo "publish=false" >> $GITHUB_OUTPUT)) || echo "publish=true" >> $GITHUB_OUTPUT
         working-directory: packages/@cdklabs/cdk-cicd-wrapper-cli
-      - id: check-publish-cdklabs-cdk-cicd-wrapper-projen
-        run: (git ls-remote -q --exit-code --tags origin $(cat dist/releasetag.txt) && (echo "publish=false" >> $GITHUB_OUTPUT)) || echo "publish=true" >> $GITHUB_OUTPUT
-        working-directory: packages/@cdklabs/cdk-cicd-wrapper-projen
       - name: Check for new commits
         id: git_remote
         run: echo "latest_commit=$(git ls-remote origin -h ${{ github.ref }} | cut -f1)" >> $GITHUB_OUTPUT
@@ -81,18 +76,6 @@ jobs:
         with:
           name: cdklabs-cdk-cicd-wrapper-cli_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper-cli/dist
-          overwrite: true
-      - name: "@cdklabs/cdk-cicd-wrapper-projen: Backup artifact permissions"
-        if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        run: cd dist && getfacl -R . > permissions-backup.acl
-        continue-on-error: true
-        working-directory: packages/@cdklabs/cdk-cicd-wrapper-projen
-      - name: "@cdklabs/cdk-cicd-wrapper-projen: Upload artifact"
-        if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: cdklabs-cdk-cicd-wrapper-projen_build-artifact
-          path: packages/@cdklabs/cdk-cicd-wrapper-projen/dist
           overwrite: true
   release_gate:
     name: Publish gate
@@ -126,18 +109,6 @@ jobs:
           else
             echo "✅ Will publish @cdklabs/cdk-cicd-wrapper-cli"
             echo "@cdklabs/cdk-cicd-wrapper-cli" >> publish.txt
-          fi
-      - name: "@cdklabs/cdk-cicd-wrapper-projen: Check publish"
-        run: |-
-          should_publish="${{ needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper-projen }}"
-          package_filter="${{ (!github.event.inputs.package || github.event.inputs.package == '*all packages*' || contains(fromJSON('["@cdklabs/cdk-cicd-wrapper-projen"]'), github.event.inputs.package)) }}"
-          if [[ "$should_publish" != "true" ]]; then
-            echo "⏭️ Skipping @cdklabs/cdk-cicd-wrapper-projen: release tag already exists"
-          elif [[ "$package_filter" != "true" ]]; then
-            echo "⏭️ Skipping @cdklabs/cdk-cicd-wrapper-projen: not selected for release"
-          else
-            echo "✅ Will publish @cdklabs/cdk-cicd-wrapper-projen"
-            echo "@cdklabs/cdk-cicd-wrapper-projen" >> publish.txt
           fi
       - name: Collect packages to publish
         id: collect
@@ -454,80 +425,6 @@ jobs:
     needs:
       - cdklabs-cdk-cicd-wrapper-cli_release_github
       - cdklabs-cdk-cicd-wrapper-cli_release_npm
-    runs-on: ubuntu-latest
-    permissions: {}
-    if: ${{ !cancelled() && !failure() }}
-    steps:
-      - run: echo "All publish jobs complete"
-  cdklabs-cdk-cicd-wrapper-projen_release:
-    name: "@cdklabs/cdk-cicd-wrapper-projen: Release"
-    needs: release_gate
-    runs-on: ubuntu-latest
-    permissions: {}
-    if: ${{ contains(fromJSON(needs.release_gate.outputs.packages_to_publish), '@cdklabs/cdk-cicd-wrapper-projen') }}
-    steps:
-      - run: echo "Releasing @cdklabs/cdk-cicd-wrapper-projen..."
-  cdklabs-cdk-cicd-wrapper-projen_release_github:
-    name: "@cdklabs/cdk-cicd-wrapper-projen: Publish to GitHub Releases"
-    needs: cdklabs-cdk-cicd-wrapper-projen_release_npm
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    environment: release
-    if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper-projen_release.result == 'success' }}
-    steps:
-      - uses: actions/setup-node@v6
-        with:
-          node-version: lts/*
-          package-manager-cache: false
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: dist
-          name: cdklabs-cdk-cicd-wrapper-projen_build-artifact
-      - name: Restore build artifact permissions
-        run: cd dist && setfacl --restore=permissions-backup.acl
-        continue-on-error: true
-      - name: Release
-        if: ${{ !inputs.dry_run }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: errout=$(mktemp); gh release create $(cat dist/releasetag.txt) -R $GITHUB_REPOSITORY -F dist/changelog.md -t $(cat dist/releasetag.txt) --target $GITHUB_SHA 2> $errout && true; exitcode=$?; if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" $errout; then cat $errout; exit $exitcode; fi
-  cdklabs-cdk-cicd-wrapper-projen_release_npm:
-    name: "@cdklabs/cdk-cicd-wrapper-projen: Publish to npm"
-    needs: cdklabs-cdk-cicd-wrapper-projen_release
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    environment: release
-    if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper-projen_release.result == 'success' }}
-    steps:
-      - uses: actions/setup-node@v6
-        with:
-          node-version: lts/*
-          package-manager-cache: false
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: dist
-          name: cdklabs-cdk-cicd-wrapper-projen_build-artifact
-      - name: Restore build artifact permissions
-        run: cd dist && setfacl --restore=permissions-backup.acl
-        continue-on-error: true
-      - name: Release
-        env:
-          NPM_DIST_TAG: latest
-          NPM_REGISTRY: registry.npmjs.org
-          NPM_CONFIG_PROVENANCE: "true"
-          NPM_TRUSTED_PUBLISHER: "true"
-          PUBLIB_DRYRUN: ${{ inputs.dry_run }}
-        run: npx -p publib@latest publib-npm
-  cdklabs-cdk-cicd-wrapper-projen_release_done:
-    name: "@cdklabs/cdk-cicd-wrapper-projen: Release complete"
-    needs:
-      - cdklabs-cdk-cicd-wrapper-projen_release_github
-      - cdklabs-cdk-cicd-wrapper-projen_release_npm
     runs-on: ubuntu-latest
     permissions: {}
     if: ${{ !cancelled() && !failure() }}

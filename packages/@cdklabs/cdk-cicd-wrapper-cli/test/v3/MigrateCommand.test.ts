@@ -3,8 +3,6 @@
 //
 // Unit tests for the v2->v3 migration analyzer. Pure over source text -- no filesystem, no spawn.
 
-import { readFileSync } from 'fs';
-import * as path from 'path';
 import { analyzeV2Source, renderCicdConfig } from '../../src/cmds/v3/MigrateCommand';
 
 describe('m5-codemod: analyzeV2Source', () => {
@@ -56,8 +54,44 @@ describe('m5-codemod: analyzeV2Source', () => {
     expect(analyzeV2Source(`const app = new App(); new MyStack(app, 'x'); app.synth();`).foundBuilder).toBe(false);
   });
 
-  test('works on the REAL v2 sample (samples/cdk-ts-example/src/main.ts)', () => {
-    const sample = readFileSync(path.join(__dirname, '../../../../../samples/cdk-ts-example/src/main.ts'), 'utf-8');
+  test('works on a real-world-shaped v2 app (workbench + addStack, no defineStages)', () => {
+    // Verbatim shape of the retired samples/cdk-ts-example/src/main.ts (deleted alongside the v2
+    // sample + the projen product, m8-remove-v2) -- kept inline so the analyzer is still exercised
+    // against genuine v2 source, not just synthetic snippets.
+    const sample = `
+      import { PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+      import { App, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
+      import { Construct } from 'constructs';
+
+      interface Props extends StackProps {
+        value?: string;
+      }
+
+      export class MyStack extends Stack {
+        constructor(scope: Construct, id: string, props: Props = {}) {
+          super(scope, id, props);
+
+          new CfnOutput(this, 'hello', { value: props.value || 'world' });
+        }
+      }
+
+      const app = new App();
+
+      PipelineBlueprint.builder()
+        .workbench({
+          provide(context) {
+            new MyStack(context.scope, 'cdk-ts-example-workbench', { value: 'workbench' });
+          },
+        })
+        .addStack({
+          provide(context) {
+            new MyStack(context.scope, 'cdk-ts-example');
+          },
+        })
+        .synth(app);
+
+      app.synth();
+    `;
     const plan = analyzeV2Source(sample);
     expect(plan.foundBuilder).toBe(true);
     // The sample has workbench + addStack and NO defineStages -> default stages + a workbench warning.

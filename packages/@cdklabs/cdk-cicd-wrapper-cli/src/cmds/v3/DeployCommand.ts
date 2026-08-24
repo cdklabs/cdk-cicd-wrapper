@@ -23,12 +23,7 @@ import { logger } from '../../utils/Logging';
  * the change sets, then returns immediately. That is what lets the Lambda deploy driver own the
  * CloudFormation wait -- the expensive part -- rather than a build container (D-deploy-wait).
  */
-export function deployArgs(
-  outDir: string,
-  deployRole?: string,
-  changeSetName?: string,
-  express = false,
-): string[] {
+export function deployArgs(outDir: string, deployRole?: string, changeSetName?: string, express = false): string[] {
   const args = ['cdk', 'deploy', '--app', outDir, '--all', '--require-approval', 'never'];
   if (changeSetName !== undefined) {
     args.push('--no-execute', '--change-set-name', changeSetName);
@@ -302,11 +297,15 @@ class Command implements yargs.CommandModule {
 
       // A --deploy-role flag (container mode) overrides the stage config's forced role.
       const deployRole = (args.deployRole as string | undefined) ?? stage.deployment?.deployRole;
-      const deploy = spawnSync('npx', deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined, config.express), {
-        stdio: 'inherit',
-        cwd,
-        env: { ...process.env, ...target.env },
-      });
+      const deploy = spawnSync(
+        'npx',
+        deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined, config.express),
+        {
+          stdio: 'inherit',
+          cwd,
+          env: { ...process.env, ...target.env },
+        },
+      );
       if (deploy.error) {
         logger.error(
           `cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`,

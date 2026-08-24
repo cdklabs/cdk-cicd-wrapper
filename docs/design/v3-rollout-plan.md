@@ -1,9 +1,13 @@
 # v3 Rollout Plan — Autopilot as mainline (handover + decisions)
 
-Status: **in progress.** Working branch `autopilot-mainline` (off `v3` @ `8b73fb2`). This doc is the
-authoritative capture of the rollout plan and every grilled decision (Q1–Q16), the migration
-backlog, execution stages, and current state. Companion: `docs/design/v2-v3-parallel-maintenance.md`
-(release mechanics) and `docs/design/v3-devops-experience.md` (v3 design).
+Status: **in progress.** `autopilot-mainline` was merged into `v3` (`68def56`) and deleted — Stage 0/1
+work now lives as ordinary commits on `v3` itself, and Stages 2–3 (below) landed the same way,
+directly on `v3`. The earlier "worktree-isolated sandbox" constraint that forced a separate branch no
+longer applies (this work continued from a different machine/session with a normal `v3` checkout).
+This doc is the authoritative capture of the rollout plan and every grilled decision (Q1–Q16), the
+migration backlog, execution stages, and current state. Companion:
+`docs/design/v2-v3-parallel-maintenance.md` (release mechanics) and `docs/design/v3-devops-experience.md`
+(v3 design).
 
 ## The two lines (naming)
 
@@ -84,48 +88,43 @@ replay; migration-guide note).
 
 ## Execution stages & current state
 
-Branch `autopilot-mainline` (off `v3` `8b73fb2`) — commits so far:
+Commits so far (Stage 0–1 landed on `autopilot-mainline` before the merge; Stage 2 onward landed
+directly on `v3`):
 - `436235d` **Stage 0** — captured your 4 uncommitted v3 files (a complete `--express` deploy feature).
 - `fa43b85` **Stage 1** — reconciled the 12 OSS fixes (source auto-merged clean; `findings.json`/
   `yarn.lock` kept as v3's; picomatch verified 2.3.2).
 - `f249cd8` **Stage 1 fixup** — restored v3's `AppConfig` rosetta example (a cherry-pick regressed it).
+- `68def56` **merge** — `autopilot-mainline` → `v3`; the branch was then deleted (local + `origin`).
+- `58d312a` **Stage 2** — flattened `src/v3/*`→`src/`, deleted the entire v2 tree
+  (`stacks/ resource-providers/ code-pipeline/ plugins/ common/ constructs/ utils/`) and
+  `src/projen/**` (Q13), landed the curated `src/index.ts` barrel.
+- **Stage 3** (this session) — decommissioned `@cdklabs/cdk-cicd-wrapper-projen`: deleted the package,
+  `projenrc/ProjenConfig.ts`, and its `.projenrc.ts` wiring; regenerated the projen-managed files
+  (`package.json` workspaces/jest, `tsconfig*.json`, `.github/workflows/release.yml`) via `npx projen`;
+  re-baselined `npx projen compat` with a new `.compatignore` (122 removed v2 symbols — the clean
+  0.x→1.x break from Q8/Q2/Q6). Also deleted `samples/cdk-ts-example` (v2-exclusive, entangled with the
+  projen removal per `m5-sample-migrate`'s own note; superseded by `samples/cdk-v3-example`) and fixed
+  the one test (`MigrateCommand.test.ts`) that read it off disk. This closes out `task.md`'s
+  `m8-remove-v2` — all its dependencies were already `done`, so the "deprecation period" gate was
+  satisfied by the `legacy-blueprint` branch split instead of in-place deprecation. **Found but not
+  fixed** (now in `findings.json`): `samples/cdk-python-example` still imports the deleted
+  `PipelineBlueprint` — never got the TS sample's migration treatment.
 
 Remaining:
-- **Stage 2** — flatten `src/v3/*`→`src/`, delete the v2 tree, rewrite `src/index.ts` to v3's *curated*
-  export list (keep it curated, not `export *`). Also delete `src/projen/**` (Q13).
-- **Stage 3** — decommission the `@cdklabs/cdk-cicd-wrapper-projen` package (drop `ProjenConfig.ts`,
-  update `.projenrc.ts`); regen; re-baseline compat.
-- **Stage 4** — write the migration backlog (table above) into `task.md`; **rebuild `findings.json`**
-  (mark the OSS-readiness findings resolved + add the backlog). Add the "local `cdk deploy` w/o
-  pipeline" docs note (from dropped #13).
+- **Stage 4** — write the migration backlog (table above) into `task.md` as new tasks; **rebuild
+  `findings.json`** (mark the OSS-readiness findings resolved + add the backlog). Add the "local
+  `cdk deploy` w/o pipeline" docs note (from dropped #13).
 - **Stage 5** — full Autopilot docs rewrite + Blueprint docs → `legacy/` with banner + redirects.
   Inventory: only `docs/content/workshops/v3-pipeline/**` is Autopilot today; README + landing are
   100% v2; ~18 `developer_guides/*` + 2 workshops are Blueprint → relocate. `cli/`, `mcp/`, `faqs`,
-  `contributing`, `prerequisites` = neutral (keep).
+  `contributing`, `prerequisites` = neutral (keep). (Stage 3 already did the minimal factual fixes —
+  README's package-structure bullets, the sample-app Taskfile default, one contributing-guide
+  command — that Stage 2/3's deletions broke; the narrative rewrite itself is still Stage 5's job.)
 - **Stage 6** — Fable/Opus/Haiku persona verification of the docs (Q9 gate).
 - **Stage 7** — final full code+security+legal review (Q10; docs-priority).
-- **Stage 8** — squash the new Step-2 work; PR `autopilot-mainline`→`main` (CI verifies); set Autopilot
+- **Stage 8** — squash the new Step-2 work; PR `v3`→`main` (CI verifies); set Autopilot
   `releaseOptions` `{ majorVersion:1, prerelease:'alpha', npmDistTag:'next' }` (move the currently-inert
   top-level `majorVersion`/`prerelease` in RootConfig into `releaseOptions`).
-
-Stage 1 build: the rosetta fixup (`f249cd8`) needs a re-run to confirm green (the log was lost to a
-`/tmp` wipe). The fix is a provenance-safe restore of v3's already-green example, so low risk — but
-**re-run `yarn workspace @cdklabs/cdk-cicd-wrapper run build` before Stage 2.**
-
-## Where the work lives & how to see it (important)
-
-All Stage 0–1 work is **commits on `autopilot-mainline`**, durable in the shared `.git`. It does NOT
-appear in the main checkout (`~/.workspace/src/cdk-cicd-wrapper`) because that checkout is on branch
-`v3`; git shows the checked-out branch's files, not another branch's. Nothing is lost. To see it:
-- In the main checkout: `git switch autopilot-mainline` (note: `v3` is currently checked out there;
-  switching shows the Autopilot-mainline files), or
-- push the branch and inspect on GitHub: `git push -u origin autopilot-mainline` (safe — new branch,
-  does not touch `main`).
-
-**Sandbox constraint:** this agent session is worktree-isolated to
-`.claude/worktrees/blueprint`; the harness *refuses* git operations against the main `v3` checkout
-(`git -C …` is rejected). That is why the work is on a branch in the worktree and reaches `main` via a
-PR — it is not a choice, and it cannot be worked around from this session.
 
 ## Parallel track — Blueprint (legacy) line
 Branch `legacy-blueprint` is configured + committed (`8e29f16`): `releaseOptions` `{ branchName:
@@ -134,6 +133,5 @@ Branch `legacy-blueprint` is configured + committed (`8e29f16`): `releaseOptions
 review = GO). Push cmd: `git push -u origin legacy-blueprint`.
 
 ## Continue from here
-Read this doc + `docs/design/v2-v3-parallel-maintenance.md`. Re-run the wrapper build to confirm
-`f249cd8` is green, then execute **Stage 2** (flatten + delete v2 + delete `src/projen`), committing
-per stage and verifying build/test each time.
+Read this doc + `docs/design/v2-v3-parallel-maintenance.md`. Execute **Stage 4** (migration backlog →
+`task.md`, `findings.json` rebuild), committing per stage and verifying build/test each time.

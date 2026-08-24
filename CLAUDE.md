@@ -160,8 +160,9 @@ cd packages/@cdklabs/cdk-cicd-wrapper && npx projen compile   # or: npx projen t
 - Husky runs `pre-commit`, `commit-msg`, `pre-push` — do not bypass with `--no-verify`.
 - Prettier + eslint; run `task fix` rather than reformatting by hand.
 - Tests live in each package's `test/`, mirroring `src/`. `test/integration/` holds the heavier ones.
-- Samples in `samples/cdk-ts-example` and `samples/cdk-python-example` double as smoke tests — keep
-  them working. They are what users copy.
+- Samples in `samples/cdk-v3-example` and `samples/cdk-python-example` double as smoke tests — keep
+  them working. They are what users copy. (`cdk-ts-example`, the Blueprint/v2 sample, was deleted
+  alongside the projen product in `m8-remove-v2` — it lives on, untouched, on `legacy-blueprint`.)
 
 ## AWS / test account
 

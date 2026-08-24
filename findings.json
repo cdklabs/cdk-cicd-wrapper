@@ -951,6 +951,17 @@
       "title": "PluginBase's 3 no-op default methods carry `//@ts-ignore` (aislop ai-slop/ts-directive) plus a misplaced eslint-disable that no longer suppresses the unused-param warning",
       "detail": "PluginBase.create/beforeStage/afterStage (Types.ts:476,482,488) are no-op default implementations whose params (context/scope) are intentionally unused but must keep their names -- renaming to _-prefixed would change the jsii-visible parameter surface and could trip compat. Each is guarded by both `// eslint-disable-next-line @typescript-eslint/no-unused-vars` and `//@ts-ignore`. Two observations: (1) aislop ai-slop/ts-directive (INFO) flags the three @ts-ignore lines; keeping the public param names while satisfying noUnusedParameters is the reason they exist, so they are intentional. (2) A real minor defect: the eslint-disable-next-line sits directly above the `//@ts-ignore` comment, so it disables the rule for the comment line, not for the method signature two lines below -- which is why eslint/no-unused-vars still fires on Types.ts:477/483/489 in the current scan. Fix direction when this file is next touched: move each eslint-disable-next-line to immediately precede the method signature (and re-check whether the @ts-ignore is still needed once the disable lands on the right line). Left for a dedicated pass to avoid touching public base-class signatures under an unrelated cleanup. RESOLVED: replaced the three //@ts-ignore + misplaced eslint-disable-next-line with the `void param;` idiom in the no-op bodies -- it references the intentionally-unused params so noUnusedParameters (tsc) and @typescript-eslint/no-unused-vars both pass, the public jsii parameter names are preserved, and the blunt @ts-ignore is gone. Clears ai-slop/ts-directive with no API change; compile + strict rosetta green.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/common/types/Types.ts", "line": 475 }
+    },
+    {
+      "id": "migration-python-sample-still-references-removed-pipelineblueprint",
+      "component": "infra",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "samples/cdk-python-example still imports PipelineBlueprint, which m8-remove-v2 deleted from the wrapper source",
+      "detail": "The Blueprint/v2 API surface (PipelineBlueprint and the rest) was deleted from packages/@cdklabs/cdk-cicd-wrapper/src as part of the flatten (src/v3 -> src) that landed the Autopilot line on v3/main. samples/cdk-ts-example, the TS analogue, was migrated to a sibling samples/cdk-v3-example (m5-sample-migrate) and the original then deleted outright alongside the projen product (m8-remove-v2). samples/cdk-python-example never got the same treatment -- app.py still does `from aws_cdk_cicd_wrapper import PipelineBlueprint`, a class that no longer exists in this tree. It will fail at import the next time anything runs/installs it against the local source (it currently still resolves against an already-published 0.x PyPI wheel, so nothing has failed yet, but that masks the drift). Needs its own migration to a cicd.config.ts-shaped Python equivalent (or deletion + signposting to legacy-blueprint, mirroring the TS sample) as a dedicated task -- out of scope for the projen-decommission work that surfaced it.",
+      "location": { "path": "samples/cdk-python-example/app.py" }
     }
   ]
 }

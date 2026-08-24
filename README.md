@@ -40,13 +40,12 @@ This repository is organized as a monorepo containing multiple packages and tool
   - **Supporting Stacks** - Additional infrastructure (SSMParameterStack, PostDeployExecutorStack, ComplianceBucketStack)
   - **VPC Stacks** - Network configuration options (ManagedVPCStack, NoVPCStack, VPCFromLookUpStack)
 - **`packages/@cdklabs/cdk-cicd-wrapper-cli`** - Command-line interface for validation, security scanning, and project management
-- **`packages/@cdklabs/cdk-cicd-wrapper-projen`** - Projen integration for project scaffolding and management
 
 ### Additional Components
 
 - **`mcp-servers/debugger-mcp/`** - MCP (Model Context Protocol) server for AI-powered debugging assistance
 - **`samples/`** - Example projects demonstrating CDK CI/CD Wrapper usage
-  - `cdk-ts-example/` - TypeScript CDK example
+  - `cdk-v3-example/` - TypeScript CDK example
   - `cdk-python-example/` - Python CDK example
 - **`docs/`** - Documentation source files and build scripts
 - **`projenrc/`** - Projen configuration files for managing project structure

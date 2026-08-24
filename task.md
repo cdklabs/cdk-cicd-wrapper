@@ -933,8 +933,17 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 7 — The v3 major (breaking)
 
-- **`m8-remove-v2`** — Remove v2 + the projen product  ·  todo · wave 7 · shared · migration · breaking
+- **`m8-remove-v2`** — Remove v2 + the projen product  ·  done · wave 7 · shared · migration · breaking
   - **desc:** Delete v2 (`PipelineBlueprint`) and `@cdklabs/cdk-cicd-wrapper-projen` — **only** once
     parity + migration are proven and the deprecation period has elapsed.
   - **depends-on:** m4-verify, m5-migration-doc, m5-codemod, m5-deprecate-projen
-  - **notes:** `npx projen compat` will flag the break — expected here, not before.
+  - **acceptance:** all four dependencies were `done`, so the gate was satisfied by branch split
+    rather than in-place deprecation: Blueprint/v2 keeps publishing untouched from `legacy-blueprint`
+    (own `releaseOptions`, still 0.x/`latest`), so `main`/`v3` could take a clean break instead of
+    waiting out a deprecation window. See `docs/design/v3-rollout-plan.md` Q1–Q16.
+  - **notes:** `npx projen compat` flagged the break as expected; re-baselined via
+    `packages/@cdklabs/cdk-cicd-wrapper/.compatignore` (122 removed v2 symbols). Done in two commits:
+    v2 source tree + `src/projen/**` deleted (flatten `src/v3`→`src`); then the
+    `@cdklabs/cdk-cicd-wrapper-projen` package itself deleted (workspaces/jest/tsconfig refs
+    regenerated via `npx projen`), plus its v2-exclusive `samples/cdk-ts-example` (superseded by
+    `samples/cdk-v3-example`, m5-sample-migrate).

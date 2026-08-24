@@ -91,8 +91,7 @@
   "workspaces": {
     "packages": [
       "packages/@cdklabs/cdk-cicd-wrapper",
-      "packages/@cdklabs/cdk-cicd-wrapper-cli",
-      "packages/@cdklabs/cdk-cicd-wrapper-projen"
+      "packages/@cdklabs/cdk-cicd-wrapper-cli"
     ],
     "nohoist": [
       "@cdklabs/cdk-cicd-wrapper/@cloudcomponents/cdk-pull-request-approval-rule",
@@ -106,8 +105,7 @@
   "jest": {
     "projects": [
       "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper",
-      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-cli",
-      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-projen"
+      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-cli"
     ]
   },
   "commitlint": {

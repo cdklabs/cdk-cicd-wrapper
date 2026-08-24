@@ -228,7 +228,7 @@ Set the `SAMPLE_APP` environment variable name as the folder is called inside th
 Once you've selected a sample, that you'd like to use as baseline you need to then go ahead and initialize a project based on that running the following commands:
 
 ```bash
-export SAMPLE_APP=cdk-ts-example;
+export SAMPLE_APP=cdk-v3-example;
 task samples:dev:init
 ```
 

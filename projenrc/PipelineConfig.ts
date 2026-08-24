@@ -66,7 +66,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       'import/no-extraneous-dependencies': [
         'error',
         {
-          devDependencies: ['**/test/**', '**/build-tools/**', '**/src/projen/**'],
+          devDependencies: ['**/test/**', '**/build-tools/**'],
           optionalDependencies: false,
           peerDependencies: true,
         },

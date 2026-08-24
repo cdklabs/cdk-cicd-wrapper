@@ -18,7 +18,6 @@ tasks:
       - task build
       - task: publish:pipeline
       - task: publish:cli
-      - task: publish:projen
   
   unpublish:
     desc: Unpublish all package versions
@@ -27,11 +26,8 @@ tasks:
         vars: 
           PACKAGE: 'cdk-cicd-wrapper-cli'
       - task: unpublish:package
-        vars: 
+        vars:
           PACKAGE: 'cdk-cicd-wrapper'
-      - task: unpublish:package
-        vars: 
-          PACKAGE: 'cdk-cicd-wrapper-projen'
 
   unpublish:package:
     internal: true
@@ -82,14 +78,7 @@ tasks:
     cmds:
       - npm publish
 
-  publish:projen:
-    desc: Publish the projen package
-    dir: packages/@cdklabs/cdk-cicd-wrapper-projen/dist/js/
-    internal: true
-    cmds:
-      - npm publish
-
-  repository:create: 
+  repository:create:
     desc: Create a codeartifact repository
     cmds:
       - aws codeartifact {{with .AWS_PROFILE}} --profile {{.}} {{end}}create-domain --domain {{.DOMAIN}} {{with .AWS_REGION}} --region {{.}} {{end}} &> /dev/null
