@@ -179,3 +179,58 @@ export function assertAppModuleLayout(appModule: unknown, cdkVersion: string): v
     );
   }
 }
+
+/**
+ * Every place `App` is independently re-exported from one aws-cdk-lib install: the internal leaf
+ * module the caller already resolved (`core/lib/app.js`), plus the `aws-cdk-lib` and
+ * `aws-cdk-lib/core` package entry points. Newer aws-cdk-lib releases (confirmed on 2.220.0+,
+ * unaffected on 2.195.0) compile each of these barrels with a SELF-MEMOIZING getter for `App` --
+ * the first read anywhere freezes it to a plain, non-writable value, permanently disconnected from
+ * the leaf module's own (still-writable) property. Patching only the leaf, as this hook did before,
+ * silently misses whichever of these a caller's `import { App } from 'aws-cdk-lib'` already resolved
+ * through before the patch ran -- `new App()` in that caller's code then builds a REAL, unpatched App
+ * instead of being redirected, with no error, until something downstream (e.g. aws-cdk-lib's own
+ * `App.isApp` check during synthesis) trips over the mismatch.
+ */
+export function appExportTargets(cdkRoot: string, leafModule: object): object[] {
+  const targets = [leafModule];
+  for (const specifier of [cdkRoot, path.join(cdkRoot, 'core')]) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require(specifier) as object;
+      if (mod !== leafModule && !targets.includes(mod)) {
+        targets.push(mod);
+      }
+    } catch {
+      // Not every aws-cdk-lib layout resolves both; the leaf module is the one guaranteed hit.
+    }
+  }
+  return targets;
+}
+
+/**
+ * Force-set `App` on every export target for one aws-cdk-lib copy, via `Object.defineProperty` --
+ * unlike a plain assignment, this works even once aws-cdk-lib's own lazy re-export has already
+ * frozen itself into a non-writable value (see `appExportTargets`). Returns each target's original
+ * descriptor (or `undefined` if it had none) for `restoreAppExports` to put back exactly, preserving
+ * whatever accessor shape aws-cdk-lib itself used rather than collapsing it to a plain value.
+ */
+export function patchAppExports(targets: object[], value: unknown): Map<object, PropertyDescriptor | undefined> {
+  const originals = new Map<object, PropertyDescriptor | undefined>();
+  for (const target of targets) {
+    originals.set(target, Object.getOwnPropertyDescriptor(target, 'App'));
+    Object.defineProperty(target, 'App', { value, writable: true, configurable: true, enumerable: true });
+  }
+  return originals;
+}
+
+/** Undo `patchAppExports`, restoring each target's exact original property descriptor. */
+export function restoreAppExports(originals: Map<object, PropertyDescriptor | undefined>): void {
+  for (const [target, descriptor] of originals) {
+    if (descriptor === undefined) {
+      Reflect.deleteProperty(target, 'App');
+    } else {
+      Object.defineProperty(target, 'App', descriptor);
+    }
+  }
+}

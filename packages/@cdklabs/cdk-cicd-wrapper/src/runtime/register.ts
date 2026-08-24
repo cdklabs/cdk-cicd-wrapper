@@ -16,6 +16,8 @@ import type { App, AppProps } from 'aws-cdk-lib';
 import {
   applyWrapper,
   assertAppModuleLayout,
+  appExportTargets,
+  patchAppExports,
   BUNDLED_DIAGNOSTIC_MESSAGE,
   EXEC_FLAG,
   appsConstructed,
@@ -29,9 +31,10 @@ import {
 const WRAPPED = Symbol.for('@cdklabs/cdk-cicd-wrapper.WrappedApp');
 
 /**
- * Patch one aws-cdk-lib copy's `App` at its leaf module. Patching the leaf propagates to
- * `aws-cdk-lib` and `aws-cdk-lib/core`, which re-read it lazily -- one assignment covers
- * every import path into this copy. Idempotent and safe to call for a copy already patched.
+ * Patch one aws-cdk-lib copy's `App`, at its leaf module AND every other place that copy
+ * re-exports `App` from (see `appExportTargets` -- newer aws-cdk-lib releases self-memoize each
+ * barrel's `App` getter independently on first read, so patching only the leaf can silently miss
+ * `aws-cdk-lib`/`aws-cdk-lib/core`). Idempotent and safe to call for a copy already patched.
  */
 function patchCopy(cdkRoot: string, cdkVersion: string): void {
   // `require('aws-cdk-lib/core/lib/app')` is blocked by the package `exports` map
@@ -66,7 +69,10 @@ function patchCopy(cdkRoot: string, cdkVersion: string): void {
   }
   Object.defineProperty(WrappedApp, WRAPPED, { value: true });
 
-  appModule.App = WrappedApp;
+  // Patch every re-export of `App` this aws-cdk-lib copy has (see appExportTargets), not just the
+  // leaf module -- a plain `appModule.App = WrappedApp` silently misses whichever one a caller's
+  // `import { App } from 'aws-cdk-lib'` already resolved through before this hook ran.
+  patchAppExports(appExportTargets(cdkRoot, appModule), WrappedApp);
 }
 
 /**
