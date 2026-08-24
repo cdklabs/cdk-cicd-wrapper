@@ -66,6 +66,12 @@ plugins:
   - git-revision-date
   - search
   - macros
+  - redirects:
+      redirect_maps:
+        'getting_started/projen.md': 'legacy/projen.md'
+        'getting_started/projen_with_taskfile.md': 'legacy/projen_with_taskfile.md'
+        'workshops/basics-lvl300/index.md': 'legacy/workshops/basics-lvl300/index.md'
+        'workshops/github-pipeline/index.md': 'legacy/workshops/github-pipeline/index.md'
   # Disabled API reference as it is not working
   # - typedoc:
   #     source: '../../packages/@cdklabs/cdk-cicd-wrapper/lib/**/*.d.ts'

@@ -1,5 +1,11 @@
 # Setting Up a Project with Projen
 
+!!! warning "Blueprint (0.x) only"
+
+    `@cdklabs/cdk-cicd-wrapper-projen` has been **decommissioned**; there is no Autopilot (1.x)
+    equivalent. If you are starting a new project, follow [Getting Started](../getting_started/index.md)
+    instead — a plain `cdk init`-ed app plus a `cicd.config.ts` file, no project-generator needed.
+
 [Projen](https://projen.io) is a tool that helps define and maintain complex project configurations through code. It allows you to generate project configuration files from a well-typed definition, making it easier to manage and maintain your project structure.
 
 ## Prerequisites

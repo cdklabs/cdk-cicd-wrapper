@@ -8,4 +8,5 @@ nav:
   - FAQs: faqs
   - Contributing: contributing
   - Workshops: workshops
+  - Legacy (Blueprint 0.x): legacy
   - Release notes: https://github.com/cdklabs/cdk-cicd-wrapper/releases
