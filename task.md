@@ -957,7 +957,7 @@ types/props) per Q8, plus a `MIGRATION.md` mapping-table row. Independent of eac
 all gate `m9-migration-gate` below, which is what blocks flipping the `1.0.0`/`latest` npm dist-tag —
 not this branch reaching `main`.
 
-- **`m9-migrate-security-plugins`** — port the v2 security-hardening plugins  ·  blocked · wave 8 ·
+- **`m9-migrate-security-plugins`** — port the v2 security-hardening plugins  ·  done · wave 8 ·
   wrapper · migration
   - **desc:** Bucket SSL/encryption, CloudWatch-log & SNS encryption, KMS key rotation, Lambda DLQ,
     EC2 public-IP block. v2 source (see Wave 7 note): `src/plugins/security/AccessLogsForBucketPlugin.ts`,
@@ -1016,6 +1016,37 @@ not this branch reaching `main`.
     `L1` at aspect-visit time), across all five affected aspects, and add a regression test that spans
     two `aws-cdk-lib` copies (mirroring whatever `m9-migrate-log-retention` ships) before
     re-submitting.
+    Unblocked. The two tree-wide-wired L2 aspects this note named -- `EncryptBucketOnTransitAspect`
+    and `EncryptSNSTopicOnTransitAspect` -- now check structurally instead of by `instanceof`:
+    `Resource.isResource(node)` (a `Symbol.for` marker in aws-cdk-lib's global symbol registry, so it
+    survives the same cross-copy boundary `Symbol.for` gives `CfnResource.isCfnResource`) plus the
+    node's default child's `cfnResourceType`, then a cast back to `IBucket`/`ITopic` to call the same
+    `addToResourcePolicy` mechanism as before -- unchanged behaviour, only the identity check moved.
+    Verified: `npx projen compile`/`test`/`compat` all green, plus a regression test per aspect
+    (`jest.isolateModules` builds a genuinely distinct `Bucket`/`Topic` class, mirroring the
+    `LogRetentionAspect` precedent) proving the check survives the cross-copy boundary; 100% branch
+    coverage on both files. Real-deploy-verified: reproduced the same probe (S3 bucket + SNS topic +
+    KMS key added to `level1-app`, reverted after), and this time the deploy actually reached
+    CloudFormation -- confirmed via `aws s3api get-bucket-policy`/`aws sns get-topic-attributes` that
+    the real, deployed `AWS::S3::BucketPolicy`/`AWS::SNS::TopicPolicy` carry `DenyHTTP` and
+    `NoHTTPSubscriptions`/`HttpsOnly` respectively, then `harness.sh destroy` tore the stack down clean
+    (confirmed via `describe-stacks` and a tag-scoped stack query -- no orphans). cdk-nag needed
+    `NagSuppressions` on the probe to reach CloudFormation at all, for findings unrelated to (and
+    unresolved by) this fix: `AwsSolutions-S1`/`-SNS2`/`-KMS5` are orthogonal concerns no aspect here
+    addresses, and -- a genuinely new discovery, logged as
+    `migration-encryptbuckettransit-s10-action-scope` in findings.json -- `AwsSolutions-S10` can never
+    pass for `EncryptBucketOnTransitAspect` regardless of this fix, because cdk-nag's S10 rule
+    requires the Deny statement's action to be `s3:*`/`*` while the aspect (matching v2's exact
+    scope) denies only `s3:PutObject`; `AwsSolutions-SNS3`, by contrast, now passes cleanly on the
+    same probe, since `EncryptSNSTopicOnTransitAspect`'s `HttpsOnly` statement already includes
+    `SNS:Publish`. Remaining gap, deliberately out of scope for this fix (narrowed to exactly the two
+    tree-wide-wired aspects the deploy-verify failure named): the three opt-in aspects this same
+    note flagged as a lower-severity instance of the identical pattern -- `AccessLogsForBucketAspect`
+    (`instanceof CfnBucket`), `DestroyEncryptionKeysOnDeleteAspect` (`instanceof Key`),
+    `LambdaDLQAspect` (`instanceof LambdaFunction`) -- are untouched and still carry the unfixed
+    `instanceof` check; they stay latent (not wired into `applyWrapper`, so no immediate blast radius)
+    until a session scoped to fix them lands. `MIGRATION.md`'s row for these aspects (line ~69)
+    already describes the port at the design level with no mechanism detail, so it needed no edit.
 
 - **`m9-migrate-compliance-bucket`** — port the v2 compliance/access-log bucket  ·  todo · wave 8 ·
   wrapper · migration
