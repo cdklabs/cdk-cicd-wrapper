@@ -1,6 +1,12 @@
 
 # Introduction & Overview
 
+!!! warning "Blueprint (0.x) only"
+
+    This workshop uses Blueprint's `GitHubPipelinePlugin` (0.x). The Autopilot (1.x) equivalent is the
+    `GitHubActionsEngine` (`engine: EngineType.GITHUB_ACTIONS` in `cicd.config.ts`) — see the
+    [v3 pipelines workshop](../../../workshops/v3-pipeline/index.md).
+
 ## Welcome
 
 Welcome to the workshop on leveraging the **GitHub Pipeline Plugin** with the **CDK CI/CD Wrapper**. In this session, you'll learn how to seamlessly integrate your **GitHub** repositories with **GitHub Actions** to automate the deployment of AWS CDK applications to AWS environments. This workshop is designed to demonstrate how the plugin simplifies the continuous integration and deployment process by connecting GitHub and AWS.

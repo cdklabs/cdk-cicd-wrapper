@@ -1,5 +1,10 @@
 # Introduction & Overview
 
+!!! warning "Blueprint (0.x) only"
+
+    This workshop builds its pipeline with `PipelineBlueprint.builder()`, the Blueprint (0.x) API. For
+    the current major version, see the [v3 pipelines workshop](../../../workshops/v3-pipeline/index.md) instead.
+
 **Welcome, and thank you for joining us!**
 
 We are excited to have you here to learn more about the **CDK CI/CD Wrapper**, a powerful tool designed to streamline your CI/CD processes using AWS CDK.
