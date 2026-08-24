@@ -1084,9 +1084,44 @@ not this branch reaching `main`.
     (`MIGRATION.md` row + TLS/SSE correctness), and the one thing that would need a real deploy to
     validate for real (`AccessLogsForBucketAspect`) is exactly what stayed unwired above.
 
-- **`m9-migrate-vpc`** — port v2 VPC support  ·  todo · wave 8 · wrapper · migration
+- **`m9-migrate-vpc`** — port v2 VPC support  ·  blocked · wave 8 · wrapper · migration
   - **desc:** v2 source: `src/resource-providers/VPCProvider.ts`, `src/stacks/vpc/ManagedVPCStack.ts`,
     `NoVPCStack.ts`, `VPCFromLookUpStack.ts`.
+  - **notes:** BLOCKED on real-AWS deploy-verify: `vpc: { managedVpc: {} }` (the default config, and the
+    exact shape every unit test in this task exercises) fails synthesis with `AwsSolutions-VPC7` (no
+    Flow Log) on `Support/Vpc/Resource`, because every wrapper app runs `AwsSolutionsChecks`
+    unconditionally and `Vpc.ts`'s `buildManagedVpc` only calls `vpc.addFlowLog(...)` when
+    `flowLogsBucketName` is supplied, with no `NagSuppressions` fallback for the omitted case. Deploy
+    with a manually-supplied `flowLogsBucketName` succeeds and the underlying VPC/subnet/security-group/
+    CodeBuild wiring across `BuildProject`/`UpdatePipeline`/`Deploy-dev` verified correct on real AWS
+    (teardown clean, no orphans). Fix needed before this can be marked done: either suppress
+    `AwsSolutions-VPC7` on the managed VPC when `flowLogsBucketName` is omitted (mirroring this task's
+    own IAM5-suppression pattern), or default flow logs on via `SupportResources`'s
+    `complianceLogBucket` when available. `resolveVpcNetworking` (`src/support/Vpc.ts`) ports `ManagedVPCStack`/`NoVPCStack`/
+    `VPCFromLookUpStack` as a plain function rather than v2's per-stage stack -- v3 attaches the VPC
+    directly to the pipeline's own construct tree, since the CodeBuild projects that consume it already
+    live in the stack this resolves against. New `VpcConfig`/`ManagedVpcConfig` (`config/types.ts`),
+    threaded through `defineCICD`'s `vpc` prop. Wired into every CodeBuild project both engines create:
+    `CodePipelineEngine` via `SupportResources.vpcNetworking` (build, self-update, per-stage deploy,
+    the container-mode `BuildImage` project); `CdkPipelinesEngine` via `codeBuildDefaults` directly
+    (synth + self-mutation), since that engine doesn't use `SupportResources`. `useProxy` (from
+    `config.proxy !== undefined`) selects isolated subnets + the default CodeBuild interface endpoints,
+    matching v2's `VPCProvider` reading `GlobalResources.PROXY`. Ports the `restrictDefaultSecurityGroup`/
+    `allowAllOutbound` fix forward as `??` instead of v2's `props.x || true` (which forced both on even
+    when a caller explicitly passed `false`) -- a defect, not a behaviour to preserve. cdk-nag IAM5
+    suppressions on both engines extended to cover the VPC-attached CodeBuild role's network-interface
+    permissions. Added engine-level wiring tests (`CodePipelineEngine.test.ts`,
+    `cdk-pipelines-engine.test.ts`) alongside the existing `Vpc.test.ts`/`SupportResources.test.ts`
+    coverage, and fixed one pre-existing test bug found along the way: `Vpc.test.ts`'s
+    `allowAllOutbound: false` case asserted `SecurityGroupEgress: Match.absent()`, but CDK's own
+    `ec2.SecurityGroup` substitutes a "disallow all traffic" placeholder egress rule in that case rather
+    than omitting the property (CloudFormation has no way to express zero egress rules) -- not a defect
+    in `Vpc.ts`, just a wrong assertion. `npx projen compile`/`test` both green (31 suites, 281 tests).
+    **Not yet done:** no real-AWS deploy-verify pass. No dedicated VPC fixture exists under
+    `test/fixtures/`; `test/fixtures/pipeline-app` (the `CodePipelineEngine` fixture) only deploys via
+    `test/proof/m4-verify.sh`'s bespoke bundling, not a generic `harness.sh run` -- extending it with a
+    `vpc: { managedVpc: {} }` config and reusing that bundling is the likely path, or a small isolated
+    fixture if the architect prefers not to grow `pipeline-app`'s deploy time with a NAT gateway.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 3
   - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
 
