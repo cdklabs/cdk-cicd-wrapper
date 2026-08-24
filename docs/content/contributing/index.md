@@ -236,7 +236,7 @@ The last command creates the `development/project` temporarily folder and initia
 
 #### Configure environment variables for the sample application
 
-The environment variables listed on the [Variables](../developer_guides/variables.md) page.
+The environment variables listed on the [Variables](../legacy/variables.md) page (Blueprint/0.x-era; `cdk-v3-example` does not use this env-var model — see [Getting Started](../getting_started/index.md) for its `cicd.config.ts` instead).
 These variables can be included into the `.env` file in either the root or in the `development/project` folder.
 
 The requirements for the samples projects can be different, so check the **README.md** file of the sample application for more details.

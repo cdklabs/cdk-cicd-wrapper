@@ -1,5 +1,11 @@
 # Modularizing Stacks with BaseStackProvider and DefaultStackProvider
 
+!!! warning "Blueprint (0.x) only"
+
+    `BaseStackProvider`/`DefaultStackProvider` have no v3 equivalent. Autopilot's `bin/` is plain
+    CDK, so organize your stacks however plain TypeScript classes/functions/modules would — there is
+    no wrapper-specific base class to extend. See [Getting Started](../getting_started/index.md).
+
 In complex CDK projects, managing inlined stacks within `PipelineBlueprint.builder()` can become cumbersome. To enhance organization and reusability, the `BaseStackProvider` and `DefaultStackProvider` abstraction offers a powerful solution.
 
 The `DefaultStackProvider` serves as an abstract base class that you can extend to define your stack provisioning logic. The core implementation lies within the mandatory `stacks()` function.

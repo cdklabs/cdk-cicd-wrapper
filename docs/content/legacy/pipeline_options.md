@@ -1,5 +1,14 @@
 # Advanced Pipeline Configuration Options
 
+!!! warning "Blueprint (0.x) only"
+
+    `.pipelineOptions()` (`selfMutation`/`publishAssetsInParallel`/`dockerCredentials`/`useChangeSets`)
+    configured the CDK Pipelines-based engine directly. v3's `CdkPipelinesEngine`
+    (`engine: EngineType.CDK_PIPELINES` in `cicd.config.ts`) does not expose these knobs today, and
+    they are not listed in `MIGRATION.md`'s mapping table or `task.md`'s migration backlog — whether
+    they are planned, or intentionally dropped, was not determined for this pass. Do not assume any
+    of these are configurable in v3 until confirmed against `CdkPipelinesEngineProps`.
+
 These new options allow you to configure the [AWS CDK CodePipeline](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.pipelines.CodePipeline.html) values.
 
 In this guide, we'll explore new properties for configuring your CI/CD pipeline using the CDK CI/CD Wrapper, along with their benefits, use cases, and code examples.

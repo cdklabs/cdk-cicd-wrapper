@@ -1,5 +1,12 @@
 # Global Resources
 
+!!! warning "Blueprint (0.x) only"
+
+    This dependency-injection system (`GlobalResources`/resource providers, reached through
+    `context.get(...)` inside an `addStack` callback) has no v3 equivalent. Autopilot's `bin/` is
+    plain CDK — construct whatever you need directly (a KMS key, an SSM lookup, …) instead of pulling
+    it from a shared registry. See [Getting Started](../getting_started/index.md).
+
 {{ project_name }} uses a simple [Dependency Injection](https://en.wikipedia.org/wiki/Dependency_injection#:~:text=Dependency%20injection%20aims%20to%20separate,how%20to%20construct%20those%20services) system to ease the complexity of the cross-cutting resource generation. On this page you can read more about how it is been used in the {{ project_name }} and how can you use for your benefit as well.
 
 ## Dependency Injection and Resource Providers
