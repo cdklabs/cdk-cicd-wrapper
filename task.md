@@ -1301,7 +1301,37 @@ not this branch reaching `main`.
     not a blocker for this task's own acceptance criterion.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog (GitHub Actions); D4
   - **acceptance:** a `cicd.config.ts` selecting the GitHub engine renders a working Actions
-    workflow, proven by at least one real GitHub Actions run + a `MIGRATION.md` row. ✅
+    workflow, proven by at least one real GitHub Actions run + a `MIGRATION.md` row. ✅ Full
+    end-to-end confirmed (Synthesize → publish assets → real `cdk deploy` to `dev-DemoStack`,
+    `CREATE_COMPLETE`) after the two fixes in `m9-fix-pipeline-stack-env-fallback` below.
+
+- **`m9-fix-pipeline-stack-env-fallback`** — pin the pipeline stack's own env when no ambient
+  credentials are active  ·  done · wave 8 · wrapper · migration
+  - **desc:** A second, independent blocker found only once the App-export fix let synth complete
+    for real: `buildPipelineApp` (`pipeline-assembler.ts`) took the pipeline stack's own
+    account/region solely from `process.env.CDK_DEFAULT_ACCOUNT`/`_REGION`. Fine for `deploy-ci`
+    (ambient creds active) but wrong for the GitHub Actions engine's own self-mutation "Synthesize"
+    job, which runs `cdk synth` before assuming any role -- `stack.account` resolved to an
+    unresolved CDK token there, so the GitHubActionRole's `role-to-assume` ARN in the generated
+    `deploy.yml` churned between runs and tripped `cdk-pipelines-github`'s "commit the updated
+    workflow file" self-mutation check.
+  - **notes:** ✅ Fix: falls back to the first configured stage's account/region when
+    `CDK_DEFAULT_ACCOUNT`/`_REGION` are unset (ambient creds still win when present). Verified
+    deterministic: `cdk synth` with no AWS credentials active reproduces `deploy.yml` byte-for-byte
+    across repeated runs. A THIRD, separate blocker surfaced after this fix, external to the
+    wrapper: `cdk-pipelines-github` 0.4.x hardcodes `roleExternalId: 'Pipeline'` on its "Assume CDK
+    Deploy Role" step with no override exposed, which the current CDK bootstrap default
+    (`--deny-external-id`, enabled by default) rejects outright. Not a wrapper bug -- resolved for
+    the sandbox test account by re-bootstrapping with a minimally-customized template that adds one
+    extra `AssumeRolePolicyDocument` statement to `DeploymentActionRole` allow-listing exactly
+    `StringEquals: {sts:ExternalId: "Pipeline"}`, leaving the existing `Null: {sts:ExternalId:
+    "true"}` (deny-any-other-external-id) statement untouched. Real users on a
+    `--deny-external-id`-hardened bootstrap will need the same account-side accommodation; tracked
+    as a documentation follow-up, not a code fix (there is nothing in wrapper code to change).
+  - **spec:** discovered verifying `m9-migrate-github-actions-engine` end to end
+  - **acceptance:** real GitHub Actions run (`gyalai-aws/github-plugin-test`, run 32779383501)
+    completes Synthesize + Publish Assets + Deploy, stack `dev-DemoStack` reaches
+    `CREATE_COMPLETE`. ✅
 
 - **`m9-fix-app-export-patching`** — fix the wrapper's App-patching hooks for aws-cdk-lib 2.220+  ·
   done · wave 8 · wrapper · migration

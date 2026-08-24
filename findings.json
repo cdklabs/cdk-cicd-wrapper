@@ -1039,6 +1039,17 @@
       "title": "GitHubActionsEngine copies CdkPipelinesEngine's codeArtifact/proxy command strings but not the IAM grants or PROXY_* env that make them work",
       "detail": "GitHubActionsEngine.ts's Synth job install commands include the same codeArtifact-login and proxy-export command strings CdkPipelinesEngine/CodePipelineEngine use, but a CodeBuild project gets those commands working via IAM grants (codeArtifactReadStatements-equivalent) and injected PROXY_* environment variables that the other two engines wire up explicitly -- GitHubActionsEngine does not. A rendered workflow with codeArtifact or proxy configured would run the login/export commands but fail at runtime (no credentials to read the secret, no env to export). Not exercised by the end-to-end real-deploy verification performed for m9-migrate-github-actions-engine (a minimal config with neither codeArtifact nor proxy set), so this did not block that task's own acceptance criterion. Fix direction: either port the missing IAM-role-policy grants + env population (mirroring CdkPipelinesEngine's approach, adapted for a GitHub Actions job's own credential model -- likely a Secrets Manager read granted to the GitHubActionRole plus explicit env in the generated workflow step), or explicitly document codeArtifact/proxy as unsupported for this engine until that lands.",
       "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/github/GitHubActionsEngine.ts" }
+    },
+    {
+      "id": "migration-github-actions-engine-deny-external-id-incompatibility",
+      "component": "wrapper",
+      "layer": "production",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "GitHubActionsEngine's generated workflow cannot assume the CDK deploy role on a bootstrap with --deny-external-id (the current CDK CLI default)",
+      "detail": "cdk-pipelines-github 0.4.x (a transitive dependency GitHubActionsEngine builds on, not this wrapper's own code) hardcodes roleExternalId: 'Pipeline' on the 'Assume CDK Deploy Role' GitHub Action step it renders, with no prop to override or omit it. A CDK bootstrap stack created with the current CLI default (--deny-external-id, i.e. DenyExternalId=true) rejects any sts:AssumeRole call on cdk-*-deploy-role-* that carries ANY ExternalId, so the two are mutually incompatible out of the box: the deploy job fails with 'is not authorized to perform: sts:AssumeRole on resource ...deploy-role...'. Confirmed end to end against the sandbox test account (gyalai-aws/github-plugin-test) -- Synthesize and asset-publish succeeded, only the deploy step failed. Not fixable in wrapper source: there is no override point in cdk-pipelines-github to change. Worked around for the sandbox account by re-bootstrapping with a minimally-customized template (see task.md m9-fix-pipeline-stack-env-fallback) that adds one extra AssumeRolePolicyDocument statement to DeploymentActionRole allow-listing exactly StringEquals: {sts:ExternalId: 'Pipeline'}, leaving the existing Null-ExternalId deny-everything-else statement untouched -- a real users' account needs the same one-time accommodation (or cdk-pipelines-github needs to stop hardcoding the external ID upstream). Should be called out explicitly in the GitHub Actions engine's developer-guide docs as a prerequisite, not silently discovered at deploy time.",
+      "location": { "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/github/GitHubActionsEngine.ts" }
     }
   ]
 }
