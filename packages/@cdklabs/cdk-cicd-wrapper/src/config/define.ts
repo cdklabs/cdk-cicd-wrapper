@@ -21,6 +21,8 @@ import {
   DeployModel,
   DeploymentConfig,
   EngineType,
+  NpmRegistryConfig,
+  ProxyConfig,
   RegionOrder,
   ResolvedCicdConfig,
   ResolvedDeploymentConfig,
@@ -54,6 +56,15 @@ export interface CiConfigInput {
   readonly steps?: { [key: string]: string };
   readonly synthStages?: string[] | 'all';
   readonly image?: string;
+  /** Escape hatch: a CodeBuild spec fragment merged into the CI build project. See `CiConfig.partialBuildSpec`. */
+  readonly partialBuildSpec?: codebuild.BuildSpec;
+}
+
+/** Proxy config as written: `noProxy`/`proxyTestUrl` are optional, defaulted by `normalizeProxy`. */
+export interface ProxyConfigInput {
+  readonly proxySecretArn: string;
+  readonly noProxy?: string[];
+  readonly proxyTestUrl?: string;
 }
 
 /** What a user passes to `defineCICD`. Deliberately permissive; normalized to `ResolvedCicdConfig`. */
@@ -67,6 +78,10 @@ export interface CicdConfigProps {
   readonly engine?: EngineType;
   readonly ci?: CiConfigInput;
   readonly codeArtifact?: CodeArtifactConfig;
+  /** Generic private npm registry the builds authenticate against. See `ResolvedCicdConfig.npmRegistry`. */
+  readonly npmRegistry?: NpmRegistryConfig;
+  /** HTTP(S) proxy every build project routes through. See `ResolvedCicdConfig.proxy`. */
+  readonly proxy?: ProxyConfigInput;
   /**
    * CodeBuild environment overrides (privileged mode, compute type, environment variables) applied to
    * every CodeBuild project. See `ResolvedCicdConfig.codeBuildEnvSettings`.
@@ -99,6 +114,17 @@ function normalizeCi(ci: CiConfigInput | undefined, stageNames: string[]): CiCon
     steps: ci?.steps ?? {},
     synthStages: ci?.synthStages === undefined ? [] : ci.synthStages === 'all' ? [...stageNames] : ci.synthStages,
     image: ci?.image,
+    partialBuildSpec: ci?.partialBuildSpec,
+  };
+}
+
+/** Normalize the permissive proxy input, defaulting `noProxy`/`proxyTestUrl` like v2's `defaultProxy` did. */
+function normalizeProxy(proxy: ProxyConfigInput | undefined): ProxyConfig | undefined {
+  if (proxy === undefined) return undefined;
+  return {
+    proxySecretArn: proxy.proxySecretArn,
+    noProxy: proxy.noProxy ?? [],
+    proxyTestUrl: proxy.proxyTestUrl ?? 'https://aws.amazon.com',
   };
 }
 
@@ -148,6 +174,8 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
       stages.map((s) => s.name),
     ),
     codeArtifact: props.codeArtifact,
+    npmRegistry: props.npmRegistry,
+    proxy: normalizeProxy(props.proxy),
     codeBuildEnvSettings: props.codeBuildEnvSettings,
     deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,
     asyncDeploy: props.asyncDeploy ?? false,
@@ -193,6 +221,8 @@ export interface DeploymentProps {
   readonly repository?: Repository;
   /** Private CodeArtifact repo the CD build logs into before `npm ci` (for a pre-release wrapper CLI). */
   readonly codeArtifact?: CodeArtifactConfig;
+  /** Generic private npm registry the CD build authenticates against before `npm ci`. */
+  readonly npmRegistry?: NpmRegistryConfig;
 }
 
 function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarget {
@@ -235,5 +265,6 @@ export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConf
     targets: props.targets.map(normalizeTarget),
     repository: props.repository,
     codeArtifact: props.codeArtifact,
+    npmRegistry: props.npmRegistry,
   };
 }
