@@ -16,7 +16,7 @@ The {{ project_name }} can address these issues and drastically reduce the effor
 
 Here are some key features provided by the {{ project_name }}:
 
-- :white_check_mark: **Zero wrapper code in your app** — your `bin/` stays exactly what `cdk init` produced; the pipeline lives in a separate `cicd.config.ts`
+- :white_check_mark: **Zero wrapper code in your app** (TypeScript/JavaScript apps) — your `bin/` stays exactly what `cdk init` produced; the pipeline lives in a separate `cicd.config.ts`. Non-Node apps (e.g. Python) use the explicit `CdkCicd.attach(app)` opt-in instead — see [Getting Started](../getting_started/index.md)
 - :white_check_mark: [Customizable CI](../developer_guides/ci.md) steps to meet project requirements, run behind one `cdk-cicd check` command
 - :white_check_mark: Integration of various [security scanning tools](../developer_guides/security.md) (cdk-nag, Bandit, Semgrep, ShellCheck, dependency-vulnerability scanning)
 - :white_check_mark: Multi-staged Continuous Deployment process with manual-approval gating on by default for anything past your inner development loop
