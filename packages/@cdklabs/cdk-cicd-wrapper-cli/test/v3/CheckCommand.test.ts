@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { CHECK_NAMES, CheckPlan, planChecks, runPlans } from '../../src/cmds/v3/CheckCommand';
+import { CliHelpers } from '../../src/utils/CliHelpers';
 
 const dirs: string[] = [];
 afterAll(() => dirs.forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })));
@@ -85,6 +86,15 @@ describe('m4-ci-checks: planChecks', () => {
       'package-verification.json': JSON.stringify({ 'npm-lock-file': 'abc123' }),
     });
     expect(planChecks(['license'], noLicenseSection)[0].args).toEqual(['license']);
+  });
+
+  test('security is skipped with a reason when python is not on PATH', () => {
+    const spy = jest.spyOn(CliHelpers, 'isPythonAvailable').mockReturnValue(false);
+    const [plan] = planChecks(['security'], project(CONFIGURED));
+    spy.mockRestore();
+
+    expect(plan.args).toBeUndefined();
+    expect(plan.skip).toContain('python');
   });
 
   test('audit selects the ecosystems the underlying tools can audit here', () => {

@@ -21,6 +21,7 @@ import { spawnSync } from 'child_process';
 import { existsSync } from 'fs';
 import * as path from 'path';
 import * as yargs from 'yargs';
+import { CliHelpers } from '../../utils/CliHelpers';
 import { logger } from '../../utils/Logging';
 
 /** The checks `cdk-cicd check` runs when no name is given, in execution order. */
@@ -114,10 +115,14 @@ function planLicense(cwd: string): CheckPlan {
 
 /**
  * `security` needs no project baseline, so it always runs; its scanners are opt-in flags in v2, so
- * turn them all on. It does need python and registry access at run time -- that is not something a
- * file probe can establish, so a toolchain-less runner sees the scan fail rather than be skipped.
+ * turn them all on. It does need python at run time (venv creation, then bandit/semgrep install), so
+ * probe for it and skip with a reason rather than let a toolchain gap read as a security finding.
+ * Registry access for the actual installs is still not something a file probe can establish.
  */
 function planSecurity(): CheckPlan {
+  if (!CliHelpers.isPythonAvailable()) {
+    return { name: 'security', skip: 'no python (or python3) on PATH -- required by the security scanners' };
+  }
   return { name: 'security', args: ['security-scan', '--bandit', '--shellcheck', '--semgrep'] };
 }
 

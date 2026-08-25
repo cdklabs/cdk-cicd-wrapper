@@ -13,39 +13,26 @@ import { logger } from './Logging';
  */
 export class CliHelpers {
   /**
+   * Whether a usable Python 3 interpreter is on PATH. Non-throwing, for callers that need to skip
+   * (rather than fail) a python-dependent step when the toolchain is absent.
+   */
+  static isPythonAvailable(): boolean {
+    return CliHelpers.probePythonCommand() !== undefined;
+  }
+
+  /**
    * Determines the appropriate Python executable and pip executable based on the installed Python version.
    *
    * @returns An object containing the Python executable and pip executable paths.
    * @throws An error if Python is not installed.
    */
   static getPythonCommand() {
-    // 1 min timeout
-    const TIMEOUT = { timeout: 5 * 60 * 1000 };
-    const pythonResults = spawnSync('python', ['-v'], {
-      encoding: 'utf8',
-      ...TIMEOUT,
-    });
-
-    if (pythonResults.status === 0 && pythonResults.output.find((line) => line?.match('.*Python 3.*'))) {
-      return {
-        pythonExecutable: 'python',
-        pipExecutable: 'pip',
-      };
-    } else {
-      const python3Results = spawnSync('python3', ['-v'], {
-        encoding: 'utf8',
-        ...TIMEOUT,
-      });
-
-      if (python3Results.status !== 0) {
-        logger.error('Python is not installed. Security checks will not be executed');
-        throw new Error('Python is not installed. Security checks will not be executed');
-      }
-      return {
-        pythonExecutable: 'python3',
-        pipExecutable: 'pip3',
-      };
+    const command = CliHelpers.probePythonCommand();
+    if (command === undefined) {
+      logger.error('Python is not installed. Security checks will not be executed');
+      throw new Error('Python is not installed. Security checks will not be executed');
     }
+    return command;
   }
 
   /**
@@ -127,5 +114,41 @@ export class CliHelpers {
     checkSumState[checksumKey] = checksumValue;
 
     writeFileSync(verificationFile, JSON.stringify(checkSumState, null, 2));
+  }
+
+  /**
+   * Probes PATH for a usable Python 3 interpreter, preferring `python` (if it resolves to a 3.x
+   * install) and falling back to `python3`.
+   *
+   * @returns The executable pair, or `undefined` if neither resolves to Python 3.
+   */
+  private static probePythonCommand() {
+    // 1 min timeout
+    const TIMEOUT = { timeout: 5 * 60 * 1000 };
+    const pythonResults = spawnSync('python', ['-v'], {
+      encoding: 'utf8',
+      ...TIMEOUT,
+    });
+
+    if (pythonResults.status === 0 && pythonResults.output.find((line) => line?.match('.*Python 3.*'))) {
+      return {
+        pythonExecutable: 'python',
+        pipExecutable: 'pip',
+      };
+    }
+
+    const python3Results = spawnSync('python3', ['-v'], {
+      encoding: 'utf8',
+      ...TIMEOUT,
+    });
+
+    if (python3Results.status === 0) {
+      return {
+        pythonExecutable: 'python3',
+        pipExecutable: 'pip3',
+      };
+    }
+
+    return undefined;
   }
 }

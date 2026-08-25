@@ -11,18 +11,6 @@ import { BanditScanner, ScanningContext, SemgrepScanner, Shellcheck } from './sc
 import { CliHelpers } from '../utils/CliHelpers';
 import { logger } from '../utils/Logging';
 
-const pythonExecutables = CliHelpers.getPythonCommand();
-
-/**
- * The command to execute Python.
- */
-const PYTHON_COMMAND = pythonExecutables.pythonExecutable;
-
-/**
- * The command to execute Python's package installer (pip).
- */
-const PIP_COMMAND = pythonExecutables.pipExecutable;
-
 /**
  * Command module for security scanning.
  */
@@ -42,6 +30,11 @@ class Command implements yargs.CommandModule {
     let workingDir;
     let exitCode = 0;
     try {
+      // Resolved lazily, here rather than at module scope: this file is imported (to register the
+      // yargs command) on every `cdk-cicd` invocation, so probing python at import time made it a
+      // hard requirement of the whole CLI instead of just `security-scan`.
+      const { pythonExecutable: PYTHON_COMMAND, pipExecutable: PIP_COMMAND } = CliHelpers.getPythonCommand();
+
       workingDir = mkdtempSync(path.join(os.tmpdir(), 'security'));
       const venvLocation = path.join(workingDir, '.venv');
 
