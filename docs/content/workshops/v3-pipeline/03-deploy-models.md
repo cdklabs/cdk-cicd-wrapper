@@ -69,8 +69,9 @@ dominates your deploy time.
 ## Tuning the pipeline
 
 Most tuning is config-as-data on `defineCICD` and the stages — there is no engine object to wire up. The
-`engine` field only *selects* the CD engine (`EngineType.CODEPIPELINE` is the default and, today, the only
-option). The knobs you actually reach for:
+`engine` field only *selects* the CD engine (`EngineType.CODEPIPELINE` is the default; `CDK_PIPELINES` and
+`GITHUB_ACTIONS` are the two alternates — see chapter 1's config reference). The knobs below are specific
+to the default `CODEPIPELINE` engine:
 
 | Knob | Where | Effect |
 |---|---|---|
