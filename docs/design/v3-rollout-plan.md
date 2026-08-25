@@ -123,17 +123,36 @@ Remaining:
   kept `v3`'s `findings.json` over the branch's own copy, so those findings' resolved-state was never
   carried over and can't be reconstructed. There is nothing left to mark; treat this sub-step as moot
   rather than pending.
-- **Stage 5** — full Autopilot docs rewrite + Blueprint docs → `legacy/` with banner + redirects.
-  Inventory: only `docs/content/workshops/v3-pipeline/**` is Autopilot today; README + landing are
-  100% v2; ~18 `developer_guides/*` + 2 workshops are Blueprint → relocate. `cli/`, `mcp/`, `faqs`,
-  `contributing`, `prerequisites` = neutral (keep). (Stage 3 already did the minimal factual fixes —
-  README's package-structure bullets, the sample-app Taskfile default, one contributing-guide
-  command — that Stage 2/3's deletions broke; the narrative rewrite itself is still Stage 5's job.)
-- **Stage 6** — Fable/Opus/Haiku persona verification of the docs (Q9 gate).
-- **Stage 7** — final full code+security+legal review (Q10; docs-priority).
+- **Stage 5** — ✅ done. Full Autopilot docs rewrite + Blueprint docs → `legacy/` with banner +
+  redirects. `overview`/`getting_started` rewritten around `defineCICD`/`cicd.config.ts`; a `legacy/`
+  section established with `mkdocs-redirects` wiring; 6 developer guides + 2 workshops relocated there
+  (no v3 equivalent); 11 developer guides rewritten for v3; `MIGRATION.md` gained rows for
+  `pipelineOptions` (dropped) and a corrected container-mode row. `cli/`, `mcp/`, `contributing`,
+  `prerequisites`, `faqs` kept in place but factually corrected where Stage 6 found them stale, not
+  wholesale-relocated (they were never Blueprint-only in the way the 18 developer guides were).
+- **Stage 6** — ✅ done. Q9 gate: five persona reviews (new user, v2→v3 migrator,
+  security/compliance reviewer, non-TS/Python consumer, skeptical senior engineer), each independently
+  verifying doc claims against source rather than trusting prose. Found and fixed as must-fix (9
+  commits): wrong v2 default stages (`RES`/`DEV`/`INT`, not `+PROD`) in `MIGRATION.md` + a workshop
+  chapter; two workshop chapters claiming `EngineType.CODEPIPELINE` was "the only option" (stale —
+  `CDK_PIPELINES`/`GITHUB_ACTIONS` both ship); 3 wrong/missing CLI command descriptions in
+  `cli/index.md` (`check`, `compliance-bucket`, missing `deploy-ci`); `cdk-cicd migrate` overstated as
+  extracting the repository (it never does); the TS/JS-only scope of the zero-touch `exec` path never
+  stated; `security.md` overselling Semgrep's free tier as supply-chain/secrets scanning; two known,
+  already-logged gaps (`AwsSolutions-S10` unsatisfiable, GitHub Actions engine's `DenyExternalId`
+  bootstrap incompatibility) not mentioned in the docs pages a reader would need them on; a dead
+  `migration_guide.md` nav stub; stale fixed-`RES`/`DEV`/`INT`/`PROD` framing in `prerequisites.md`/
+  `faqs/index.md`. Every fix verified against source directly (not just trusting the reviewing
+  persona's claim) before editing; `mkdocs build --strict` re-run clean after. Advisory-only findings
+  (clarity/UX, not accuracy) were logged in the review transcripts but not treated as a merge gate per
+  Q9 — notably the two architecture diagrams in `overview/index.md` still visually depict Blueprint
+  0.x and need an actual redraw, not a text fix; `cdk_context.md` is still fully v2-flavored;
+  `docs/content/legacy/workshops/github-pipeline/index.md` has one pre-existing unfilled image
+  placeholder (predates this session).
+- **Stage 7** — final full code+security+legal review (Q10; docs-priority). Not started.
 - **Stage 8** — squash the new Step-2 work; PR `v3`→`main` (CI verifies); set Autopilot
   `releaseOptions` `{ majorVersion:1, prerelease:'alpha', npmDistTag:'next' }` (move the currently-inert
-  top-level `majorVersion`/`prerelease` in RootConfig into `releaseOptions`).
+  top-level `majorVersion`/`prerelease` in RootConfig into `releaseOptions`). Not started.
 
 ## Parallel track — Blueprint (legacy) line
 Branch `legacy-blueprint` is configured + committed (`8e29f16`): `releaseOptions` `{ branchName:
@@ -142,7 +161,6 @@ Branch `legacy-blueprint` is configured + committed (`8e29f16`): `releaseOptions
 review = GO). Push cmd: `git push -u origin legacy-blueprint`.
 
 ## Continue from here
-Read this doc + `docs/design/v2-v3-parallel-maintenance.md`. Stage 4 is done (see above). Next is
-**Stage 5** — the full Autopilot docs rewrite + relocating Blueprint docs to `legacy/`. This is a
-much bigger, more subjective effort than Stages 2–4 (narrative rewrite, not mechanical deletion) —
-worth scoping/checking in on before diving in, rather than assuming the same "just execute" mode.
+Read this doc + `docs/design/v2-v3-parallel-maintenance.md`. Stages 0–6 are done (see above). Next is
+**Stage 7** — the final full code+security+legal review (Q10, docs-priority per that decision). Not
+started; scope it against the current `v3` diff vs. `main` before diving in.
