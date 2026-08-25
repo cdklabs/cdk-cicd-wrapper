@@ -62,6 +62,39 @@ From the maintainer; these override convenience.
    of scope. Nothing is silently dropped. So the loop per unit of work is: implement → verify →
    review → disposition findings → commit.
 
+## Writing CDK resources
+
+Ground rules 1 and 2, made specific. Four checks before writing or changing a resource in
+`packages/@cdklabs/cdk-cicd-wrapper/src/**` or a fixture — each because skipping it costs a real deploy
+cycle, and a rolled-back stack is a slower teacher than five minutes of the CloudFormation reference.
+
+1. **Dependencies and update semantics.** What must exist first, what the resource requires vs. accepts
+   as optional, and above all *what an update does* — many properties are `Update requires: Replacement`,
+   so an innocuous edit destroys and recreates. This repo already learned it the expensive way: a stack
+   name that doesn't match v2's makes a migration a new stack instead of an in-place update, and the
+   stateful resource is recreated (`MIGRATION.md` §stack names, proven in
+   `test/proof/migration-continuity.sh`, warned in `docs/content/workshops/v3-pipeline/06-*.md`). Record
+   replacement-triggering properties in a comment **where someone would edit them**, not in a doc.
+2. **Name, title and description limits come from the reference, not from a guess.** Charsets and
+   lengths, looked up. An EC2 description field allows only `a-zA-Z0-9`, spaces and
+   `._-:/()#,@[]+=;{}!$*` — an apostrophe in a possessive fails the deploy *after* CloudFormation has
+   started creating. Assume the toolchain will not catch it: this repo runs no `cdk synth --strict`
+   (`--strict` here is only `jsii-rosetta` and `mkdocs build`), so there is no synth-time net at all.
+   Where an error message and the property reference disagree on allowed characters, take the narrower
+   set.
+3. **Private by default, always.** Public access is never the default and never the convenient
+   shortcut. When something is unreachable the answer is the private path — a VPC/interface endpoint
+   plus an in-VPC client — not flipping a `public*` flag. Trading the network layer for IAM-only
+   protection is a posture decision that belongs to a human. If you believe public access is genuinely
+   required, **say so and stop**: don't implement it, and above all don't write a test that pins it — a
+   test asserts the decision is settled, which claims authority you weren't given.
+4. **No partial patching.** Fix the class in the construct, never the instance that happened to fail.
+   One bad character is a symptom; the defect is patching a constraint without checking its siblings.
+   Where a constraint covers a family of fields, assert it over the family — and make the assertion
+   **fail on an empty set**, because a scan that inspected nothing reports clean. Hand-fixing deployed
+   state is acceptable only against a full blocker (the IaC genuinely cannot express it), and then the
+   blocker is written down as a parameter plus a documented human step, never left as tribal knowledge.
+
 ## Task board
 
 `task.md` (repo root) is the living, schema-driven board of planned work, governed by
@@ -95,28 +128,52 @@ holds incidental discoveries.
 
 ## Toolchain (read this first)
 
-`node`/`yarn`/`npx` are **not on the default PATH**. Either enter `devbox shell`, or prepend:
+`node`/`yarn`/`npx` are **not on the default PATH**. Either enter `devbox shell`, or prepend a node bin
+dir **after checking it exists on this machine** — the dir is per machine and per user, so never paste
+one from another checkout or another session's notes:
 
 ```bash
-export PATH=/home/gyalai/.nvm/versions/node/v24.19.0/bin:$PATH   # node v24.19.0, yarn 1.22.22
-export NODE_OPTIONS=--max-old-space-size=6144                    # jsii compile needs the headroom
+# Prefer the node major CI builds on; fall back to the newest installed. Run from the repo root.
+CI_MAJOR=$(grep -ho 'node-version: *"[0-9]*"' .github/workflows/*.yml | grep -o '[0-9]\+' | sort -n | tail -1)
+NODE_BIN=$(ls -d "${NVM_DIR:-$HOME/.nvm}"/versions/node/v${CI_MAJOR:-*}.*/bin 2>/dev/null | sort -V | tail -1)
+[ -x "$NODE_BIN/node" ] || NODE_BIN=$(ls -d "${NVM_DIR:-$HOME/.nvm}"/versions/node/*/bin 2>/dev/null | sort -V | tail -1)
+[ -x "$NODE_BIN/node" ] && export PATH="$NODE_BIN:$PATH" || echo 'no nvm node found — use devbox shell'
+export NODE_OPTIONS=--max-old-space-size=6144   # jsii compile needs the headroom
 ```
 
-Yarn 1 workspaces over three packages in `packages/@cdklabs/`:
+The `SessionStart` hook (`.claude/hooks/preflight-toolchain.sh`) runs this check for you and reports
+which of `node`/`yarn`/`jq`/`python3` resolve, plus a verified dir to prepend.
+
+**Mind which node you get.** `.github/workflows/*.yml` build on node `24` and `lts/*`; `devbox.json`
+pins `nodejs@18.19.1`, behind both — devbox is the reliable way to get `task` and `jq`, not a match for
+CI's node. The preflight reads the pinned major out of the workflows and prefers a matching installed
+node, saying so; when nothing matches it names what it found and flags that a local-only pass on
+another major is weaker evidence than a CI run.
+
+**Never put `PATH` in `.claude/settings.json` under `env`.** Values there are **not** interpolated —
+`${PATH}` and `$PATH` arrive verbatim — so the entry *replaces* the session PATH instead of extending
+it. A stale entry there (a hardcoded nvm dir from another machine) left every session with a PATH of
+two non-existent directories, and every hook that resolves a binary by name died with exit 127
+(`/bin/sh: bash: command not found`, `/bin/sh: python3: command not found`) on every prompt and every
+tool call. PATH belongs in the shell you run commands in, not in committed settings.
+
+Yarn 1 workspaces over two packages in `packages/@cdklabs/`:
 
 | Package | Notes |
 |---|---|
 | `cdk-cicd-wrapper` | the constructs library — **jsii**, published to npm/PyPI/Maven/NuGet |
 | `cdk-cicd-wrapper-cli` | the `cdk-cicd` CLI (`bin/cdk-cicd`), plain TS |
-| `cdk-cicd-wrapper-projen` | projen project types, plain TS |
+
+`cdk-cicd-wrapper-projen` was the third package; v3 removed it (task.md **D5**, package consolidation
+3→2). Its migration path is `cicd.config.ts` + the `cdk-cicd` CLI — see `MIGRATION.md`.
 
 ## This repo is projen-managed
 
 **Never hand-edit generated files.** Anything containing `~~ Generated by projen` is output, not
 source — that includes every `package.json`, `tsconfig*.json`, `.eslintrc.json`, `.github/workflows/*`.
 
-Source of truth is `.projenrc.ts` + `projenrc/*.ts` (`RootConfig`, `PipelineConfig`, `CLIConfig`,
-`ProjenConfig`). Change those, then regenerate:
+Source of truth is `.projenrc.ts` + `projenrc/*.ts` (`RootConfig`, `PipelineConfig`, `CLIConfig` — the
+three `.projenrc.ts` instantiates). Change those, then regenerate:
 
 ```bash
 npx projen          # regenerate; must be re-run after touching .projenrc.ts or projenrc/
