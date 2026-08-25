@@ -57,7 +57,10 @@ export default defineCICD({
 
 `cdk-cicd deploy-ci` only deploys the OIDC role (`GitHubActionRole`) the generated workflow assumes — the workflow itself is what runs the pipeline once you push it. See the [`v3 pipelines` workshop](../workshops/v3-pipeline/index.md) for a walkthrough.
 
-**Current limitation:** `codeArtifact`/`proxy` are not yet wired for the GitHub Actions engine — the generated workflow includes the same login/proxy-export commands the other engines use, but not the IAM grants or environment variables that make them work at runtime (tracked in `findings.json` as `migration-github-actions-engine-missing-codeartifact-proxy-plumbing`). Don't rely on `codeArtifact`/`proxy` with this engine yet.
+**Current limitations:**
+
+- `codeArtifact`/`proxy` are not yet wired for the GitHub Actions engine — the generated workflow includes the same login/proxy-export commands the other engines use, but not the IAM grants or environment variables that make them work at runtime (tracked in `findings.json` as `migration-github-actions-engine-missing-codeartifact-proxy-plumbing`). Don't rely on `codeArtifact`/`proxy` with this engine yet.
+- **Bootstrap prerequisite:** the generated workflow's deploy step assumes the CDK deploy role with an explicit `ExternalId` (a `cdk-pipelines-github` default, not something this wrapper controls). If your environment was bootstrapped with the current CDK CLI default (`cdk bootstrap`'s `--deny-external-id`, enabled by default), that assume-role call is rejected outright and the deploy job fails. You need to either re-bootstrap without `--deny-external-id`, or allow-list exactly that `ExternalId` on the deploy role's trust policy (a minimally-customized `cdk bootstrap --template`, adding one statement, is enough — see `findings.json`'s `migration-github-actions-engine-deny-external-id-incompatibility` for the exact shape). This is a real prerequisite, not an edge case — it will block your very first real deploy on a freshly-bootstrapped account.
 
 ### Known Issues
 
