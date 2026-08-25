@@ -4,7 +4,7 @@ This guide walks through turning a plain AWS CDK app into a CI/CD pipeline with 
 
 ## Overview
 
-There is **no wrapper code in your app**. Your `bin/` entry point stays exactly what `cdk init` produced — a plain `App` with your stacks. A separate `cicd.config.ts` file, next to `cdk.json`, describes the pipeline (source repository, stages, CI steps, …). The wrapper is injected at synth time through `cdk.json`'s `app` command; with no `cicd.config.ts` present your app deploys as stock CDK, unmodified.
+There is **no wrapper code in your app** — for a TypeScript/JavaScript CDK app. Your `bin/` entry point stays exactly what `cdk init` produced — a plain `App` with your stacks. A separate `cicd.config.ts` file, next to `cdk.json`, describes the pipeline (source repository, stages, CI steps, …). The wrapper is injected at synth time through `cdk.json`'s `app` command (a Node `require` preload); with no `cicd.config.ts` present your app deploys as stock CDK, unmodified. This walkthrough is TS/JS-specific: the preload mechanism can't attach to a non-Node app entry (e.g. Python), so those apps use the explicit `CdkCicd.attach(app)` call in `bin/` instead of the zero-touch `cdk-cicd exec` path — see the package's jsii-published bindings for the equivalent in your language.
 
 ## Prerequisites
 
@@ -149,7 +149,7 @@ If you have an existing `PipelineBlueprint.builder()…synth(app)` project, `cdk
 npx cdk-cicd migrate --entry src/main.ts --application my-project   # add --dry-run to preview
 ```
 
-It extracts your stage list and repository, flags anything it can't safely determine (hooks/phases, `workbench`, …), and prints the remaining manual steps. It deliberately does not rewrite your entry file's stack construction. Read the full mapping table and the **Preserving already-deployed resources** section in the repository's [`MIGRATION.md`](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/MIGRATION.md) before switching a production pipeline over — getting the CloudFormation stack name right is what decides whether your existing resources are updated in place or recreated.
+It extracts your stage list (falling back to v2's default `RES`/`DEV`/`INT` when no `.defineStages(...)` call is found), flags anything it can't safely determine — the repository is always flagged as unresolved today (set `repository: Repository.*(...)` yourself), plus hooks/phases, `workbench`, … — and prints the remaining manual steps. It deliberately does not rewrite your entry file's stack construction. Read the full mapping table and the **Preserving already-deployed resources** section in the repository's [`MIGRATION.md`](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/MIGRATION.md) before switching a production pipeline over — getting the CloudFormation stack name right is what decides whether your existing resources are updated in place or recreated.
 
 ## Next steps
 
