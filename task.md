@@ -50,7 +50,11 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **D3 — Demo medium** ✅ Use the **`asciinema-recorder` skill**; **target = mp4**. Command-line
   walkthrough of the resources is fine, but every step must carry **explanatory comments** so a viewer
   understands what's happening. mp4 needs `agg` + `ffmpeg` (both absent) → the recorder task installs
-  them; if the environment blocks install, fall back to `.cast` and flag it.
+  them; if the environment blocks install, fall back to `.cast` and flag it. ⚠️ **AMENDED by the
+  maintainer (2026-08-25)** — recordings are no longer committed. `test/proof/record-demo.sh` still
+  produces `.cast`/`.mp4` into `docs/proof/`, but that output path is now gitignored; a milestone's
+  recorded proof is generated and reviewed locally/in CI artifacts, not checked in. Existing
+  already-committed recordings in `docs/proof/` are left as historical record, not deleted.
 - **D4 — Deferred scope** ✅ Container two-repo mode + GitHub Actions engine are iteration 2. Keep
   `IEngine` honest so they slot in without a rewrite.
 - **D5 — Package consolidation (3→2)** ✅ Retire `@cdklabs/cdk-cicd-wrapper-projen` (v3 `cdk-cicd

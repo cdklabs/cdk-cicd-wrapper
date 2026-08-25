@@ -180,6 +180,17 @@ export class RootConfig extends yarn.Monorepo {
 
     this.configureHusky();
     this.configureContributors();
+
+    this.ignoreProofArtifacts();
+  }
+
+  /**
+   * D3 (task.md), amended 2026-08-25: docs/proof/ recordings are generated and reviewed, not
+   * committed. Only stops *new* paths from being tracked -- the six already-committed demos stay.
+   */
+  private ignoreProofArtifacts() {
+    this.addGitIgnore('docs/proof/*.cast');
+    this.addGitIgnore('docs/proof/*.mp4');
   }
 
   /**

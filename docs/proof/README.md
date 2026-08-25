@@ -10,13 +10,14 @@ Each proof is a pair:
 | `<demo>.cast` | **the source.** An [asciinema](https://asciinema.org) recording — plain text, diffs in review, replayable with `asciinema play`, and re-exportable at any size or speed. |
 | `<demo>.mp4` | **the artifact.** What a reviewer watches without installing anything. Generated from the `.cast`; never edited by hand. |
 
-## Why both are committed
+## Why new recordings aren't committed
 
-The `.cast` is the record of what happened and is small enough to review as text. The `.mp4` is
-regenerable from it, but committing it means a maintainer or an external contributor can watch the
-proof straight from the repo — which is the point of the ground rule. Terminal recordings compress
-well (roughly 20 KB per second of video), so this stays cheap. If a demo ever gets long enough for
-the mp4 to be awkward, drop the mp4 and keep the `.cast`.
+D3 originally committed both files for every milestone (rationale: a maintainer or external
+contributor could watch the proof straight from the repo). **Amended 2026-08-25**: `docs/proof/` is
+now gitignored, so `record-demo.sh` still produces `.cast`/`.mp4` locally but new runs are no longer
+checked in — recording and reviewing a proof no longer means growing the repo's binary history. The
+recordings already committed below (through M4) are left in place as the historical record; nothing
+was deleted.
 
 ## Recording one
 
