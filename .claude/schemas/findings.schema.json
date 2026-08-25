@@ -28,9 +28,9 @@
           "type": "string"
         },
         "component": {
-          "description": "Ownership axis — the three published packages in packages/@cdklabs/ (see CLAUDE.md -> 'Toolchain'), plus 'shared' for findings that genuinely span more than one (e.g. a type exported by cdk-cicd-wrapper and consumed by the CLI, or the register hook contract the CLI's exec depends on). Findings about process, tooling, samples, or docs that aren't about a specific package (e.g. this schema file, projen config, the test harness) go under 'infra'. 'wrapper' = @cdklabs/cdk-cicd-wrapper (the jsii constructs library). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. 'projen' = @cdklabs/cdk-cicd-wrapper-projen.",
+          "description": "Ownership axis — the two published packages in packages/@cdklabs/ (see CLAUDE.md -> 'Toolchain'), plus 'shared' for findings that genuinely span more than one (e.g. a type exported by cdk-cicd-wrapper and consumed by the CLI, or the register hook contract the CLI's exec depends on). Findings about process, tooling, samples, or docs that aren't about a specific package (e.g. this schema file, projen config, the test harness) go under 'infra'. 'wrapper' = @cdklabs/cdk-cicd-wrapper (the jsii constructs library). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. There was a third value, 'projen' (@cdklabs/cdk-cicd-wrapper-projen); v3 removed that package (task.md D5, consolidation 3→2) and no finding used the value, so it was retired with it.",
           "type": "string",
-          "enum": ["wrapper", "cli", "projen", "shared", "infra"]
+          "enum": ["wrapper", "cli", "shared", "infra"]
         },
         "layer": {
           "description": "Detection axis, kept tool-agnostic so new checks don't need a new value: 'static' = found without executing anything (eslint/tsc, jsii compile, 'npx projen compat', security-review/code-review skill output, design/planning discussion). 'dynamic' = found by executing code outside production (today: jest unit tests, and the real-AWS deploy harness in task.md Phase 0; tomorrow: any other test framework). 'production' = surfaced by observing a live environment (monitoring, alarms, a real incident) — no current producer emits this; reserved for that future case.",
