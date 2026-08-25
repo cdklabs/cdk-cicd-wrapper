@@ -4,11 +4,11 @@ This documentation provides a step-by-step guide for setting up the necessary pr
 
 ## AWS Account
 
-- You need to have access to an AWS account for the respective environments (RES/DEV/INT/PROD).
+- You need access to an AWS account for each stage you define in `cicd.config.ts` (v3 has no reserved stage names — `RES`/`DEV`/`INT`/`PROD` are just an example naming, not a requirement).
 
 ## Operating System
 
-- The setup can be performed on macOS, Linux, or Windows. If you're using Windows, it's recommended to use the Linux Subsystem for Windows (WSL) or a Cloud9 environment with Ubuntu Server 22.04 LTS Platform in your RES account.
+- The setup can be performed on macOS, Linux, or Windows. If you're using Windows, it's recommended to use the Linux Subsystem for Windows (WSL) or a Cloud9 environment with Ubuntu Server 22.04 LTS Platform in the account hosting your pipeline.
 
 ## Terminal
 
@@ -24,7 +24,7 @@ This documentation provides a step-by-step guide for setting up the necessary pr
 
 ## AWS Credentials and Profiles
 
-- Configure your AWS credentials and profiles for each environment (RES/DEV/INT/PROD) by following the instructions [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html). The credentials should be stored in the `~/.aws/config` file.
+- Configure your AWS credentials and profiles for each stage/account you plan to deploy to by following the instructions [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html). The credentials should be stored in the `~/.aws/config` file.
 
 ## Node.js and NPM
 
