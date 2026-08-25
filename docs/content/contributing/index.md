@@ -224,48 +224,23 @@ The {{ project_name }} packages can be added to any CDK project from the AWS Cod
 The repository comes with a `samples` folder that host example projects to understand the benefit of the {{ project_name }}.
 
 The available samples can be listed, with the `task samples:list` command.
-Set the `SAMPLE_APP` environment variable name as the folder is called inside the sample folder.
-Once you've selected a sample, that you'd like to use as baseline you need to then go ahead and initialize a project based on that running the following commands:
 
-```bash
-export SAMPLE_APP=cdk-v3-example;
-task samples:dev:init
-```
+!!! warning "The `task samples:dev:*` devloop below is Blueprint (0.x)-era and currently broken"
 
-The last command creates the `development/project` temporarily folder and initialize the project with [Projen](https://projen.io/).
+    `Taskfile.sample-app.yml`'s `dev:init`/`dev:build`/`dev:synth`/`dev:deploy` steps assume an
+    npm + [Projen](https://projen.io/)-scaffolded sample (the deleted v2/Blueprint TS sample). Neither
+    sample that remains is one: `samples/cdk-v3-example` (the `SAMPLE_APP` default) has no `.projenrc`
+    and no npm `scripts` at all, and `samples/cdk-python-example` has no `package.json` (it's Python) —
+    so `task samples:dev:init` fails at its `npm run projen`/`npm run default` step for either.
+    Tracked as `migration-sample-app-taskfile-assumes-projen` in `findings.json`. Until that's fixed,
+    use each sample's own README directly instead of the Taskfile — for `cdk-v3-example`:
 
-#### Configure environment variables for the sample application
+    ```bash
+    cd samples/cdk-v3-example
+    npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while v3 is pre-release)
+    npx cdk-cicd deploy-ci            # provisions the pipeline into the hub account, from cicd.config.ts alone
+    ```
 
-The environment variables listed on the [Variables](../legacy/variables.md) page (Blueprint/0.x-era; `cdk-v3-example` does not use this env-var model — see [Getting Started](../getting_started/index.md) for its `cicd.config.ts` instead).
-These variables can be included into the `.env` file in either the root or in the `development/project` folder.
-
-The requirements for the samples projects can be different, so check the **README.md** file of the sample application for more details.
-
-You can verify the detected configuration with the `task samples:dev:info`. This is recommended if you are managing multiple AWS accounts.
-
-#### Bootstrap the accounts
-
-The accounts must be bootstrapped prior to the first deployment.
-You can execute it with the `task samples:dev:bootstrap`.
-
-#### Update the cdk-cicd-wrapper libraries in the development
-
-You can update the packages with the `task samples:dev:update` command that ensures the latest {{ project_name }} is used.
-
-#### Deploy the pipeline to the account
-
-You can deploy the pipelines from the development folder with the `task samples:dev:deploy` command.
-
-#### Push the sources of the sample application up to the generated repository AWS CodeCommit
-
-You can push the changes made into the sample from the folder with the `task samples:dev:git:push`
-
-#### Deploy workbench stacks
-
-The workbench stacks can be deployed with the `task samples:dev:workbench:deploy`.
-
-#### Do development iteration
-
-You can test your changes in the {{ project_name }} simply with calling the `task samples:dev:loop`.
+    See [Getting Started](../getting_started/index.md) for the full walkthrough this sample follows.
 
 ## FAQ
