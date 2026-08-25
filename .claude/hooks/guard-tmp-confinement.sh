@@ -8,6 +8,13 @@
 # only against its own simple command; obfuscated writes (eval/xargs) are out of scope.
 set -uo pipefail
 
+# Preflight before doing any work: this guard reads its payload with jq, so without jq it cannot judge
+# a single tool call and would fail open silently on every one of them. Say so once, visibly, instead.
+if ! command -v jq >/dev/null 2>&1; then
+  printf '%s\n' '{"systemMessage":"tmp-confinement guard is OFF: jq did not resolve on PATH, so the hook cannot read its payload. Scratch writes are unguarded until jq is available (devbox.json pins jq 1.7.1). See .claude/hooks/preflight-toolchain.sh."}'
+  exit 0
+fi
+
 input=$(cat)
 tool=$(jq -r '.tool_name // ""' <<<"$input")
 ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
