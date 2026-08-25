@@ -564,7 +564,7 @@
       "layer": "dynamic",
       "producer": "qa",
       "severity": "high",
-      "status": "open",
+      "status": "resolved",
       "title": "Every cdk-cicd invocation fails at load on a host without python 3, because the security command resolves python at module top level",
       "detail": "The security command resolves the python executable in module-scope code, and the CLI entry point imports every command module unconditionally to register it with yargs. So the python probe runs on EVERY `cdk-cicd` invocation, and on a host without python 3 the process dies during module load with 'Python is not installed' -- including for `cdk-cicd --help`, `--version`, `synth` and `deploy`, none of which need python. That makes a python toolchain a hard requirement of the whole CLI rather than of one command, which matters for the v3 story: a plain TypeScript CDK user has no reason to have it, and the deploy CodeBuild image is not guaranteed to. Pre-existing v2 defect, found while wiring `cdk-cicd check`. Fix direction: resolve python lazily inside the handler (or the scanner wrapper), so the failure lands on the command that actually needs it, with a message naming that command.",
       "location": {
@@ -578,7 +578,7 @@
       "layer": "dynamic",
       "producer": "qa",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "The security check has no skip path, so a runner without python or registry access fails the build instead of degrading",
       "detail": "`cdk-cicd check` skips a check whose baseline or manifest is absent, which is a file probe. The `security` check has no such precondition and always runs, but it needs python 3, a writable venv and network access to PyPI plus the semgrep rule registry. On an air-gapped or restricted CI runner it therefore fails the whole `check` run for an environmental reason rather than a code finding, and the failure looks like a security violation. A file probe cannot establish any of those preconditions. Fix direction: probe the toolchain (python present, venv creatable) and skip with a logged reason when it is absent, or expose an explicit opt-out so a restricted runner can declare it; either way keep the distinction between 'scanner could not run' and 'scanner found something' visible in the summary. Consider together with qa-cli-requires-python-at-import, which is the same missing-python condition surfacing far earlier.",
       "location": {
