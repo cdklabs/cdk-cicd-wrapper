@@ -49,6 +49,12 @@ More information about CDK Nag:
 
 CDK Nag is mandatory — it runs on every `cdk synth`, which is not skippable.
 
+!!! warning "Known gap: `AwsSolutions-S10` can't be satisfied on any S3 bucket"
+    The wrapper's own TLS-enforcement aspect denies only `s3:PutObject` over non-TLS, but cdk-nag's
+    `AwsSolutions-S10` rule requires the Deny statement's action to be `s3:*`/`*` — so this rule fails on
+    every bucket regardless of environment, and needs a manual `NagSuppressions` entry per bucket today.
+    Tracked as `migration-encryptbuckettransit-s10-action-scope` in the repo's `findings.json`.
+
 ### Better NPM Audit
 
 Additional features on top of the existing `npm audit` options, aimed at encouraging more people to run security audits for their projects.
@@ -71,11 +77,12 @@ Run `cdk-cicd check-dependencies --python`. `cdk-cicd check`'s `audit` check inc
 
 ### Semgrep
 
-Scans code and package dependencies for known issues, software vulnerabilities, and hardcoded secrets. Semgrep offers:
-
-- Code scanning to find bugs & vulnerabilities using custom or pre-built rules
-- Supply-chain scanning to find dependencies with known vulnerabilities
-- Secrets scanning to find hardcoded credentials that shouldn't be checked into source code
+Static code scanning for common bug/vulnerability patterns, using Semgrep's free community rule sets. What
+runs here is plain `semgrep scan --config p/default` — no login, no `SEMGREP_APP_TOKEN`. Semgrep's paid
+Supply Chain and Secrets products (dependency-vulnerability scanning, hardcoded-credential detection) are
+**not** what's wired up here; those require the logged-in `semgrep ci` workflow, which this integration
+does not use. Dependency vulnerabilities are covered separately by [Better NPM Audit](#better-npm-audit)
+above; there is no dedicated secrets scanner in the default `cdk-cicd check` pipeline.
 
 More information about [Semgrep](https://github.com/returntocorp/semgrep).
 
