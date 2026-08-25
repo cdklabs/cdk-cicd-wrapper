@@ -46,7 +46,8 @@ new MyStack(app, 'my-app', {
 });
 ```
 
-`uppercaseStage` matches v2's *default* stages (`RES`/`DEV`/`INT`/`PROD`). If your v2 stages were
+`uppercaseStage` matches v2's *default* stages (`RES`/`DEV`/`INT` — no `PROD` unless you called
+`.defineStages(...)` yourself). If your v2 stages were
 lowercase or custom-case, drop it (the stage is used verbatim), or set `stackName` to your literal v2
 name.
 

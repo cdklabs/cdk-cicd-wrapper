@@ -100,7 +100,7 @@ The naming differs by default, and it is measurable:
 
 | | CloudFormation stack name |
 |---|---|
-| **v2** (your stacks were nested in an `AppStage`, i.e. a `cdk.Stage`) | `<stageId>-myapp` — the stage id prefixed **verbatim**; `DEV-myapp` with v2's default `RES`/`DEV`/`INT`/`PROD` stages, but `staging-myapp` if you defined lowercase/custom stages |
+| **v2** (your stacks were nested in an `AppStage`, i.e. a `cdk.Stage`) | `<stageId>-myapp` — the stage id prefixed **verbatim**; `DEV-myapp` with v2's default `RES`/`DEV`/`INT` stages (no `PROD` unless you called `.defineStages(...)` yourself), but `staging-myapp` if you defined lowercase/custom stages |
 | **v3** (plain `new MyStack(app, 'myapp')` in `bin/`) | `myapp` — just the construct id |
 
 The **logical IDs inside the stack are unchanged** between v2 and v3, so once the names match it is a
@@ -116,7 +116,7 @@ new MyStack(app, 'myapp', { stackName: stageStackName('myapp', { stageFirst: tru
 
 **`uppercaseStage` matches v2's *default* stages only.** cdk prefixed the stack name with your stage id
 *verbatim* — it did not uppercase. `uppercaseStage: true` is right only because the built-in stages are
-`RES`/`DEV`/`INT`/`PROD`. If you defined lowercase or custom-case stages in v2 (`staging`, `gamma`, `Prod`),
+`RES`/`DEV`/`INT`. If you defined lowercase or custom-case stages in v2 (`staging`, `gamma`, `Prod`),
 **drop `uppercaseStage`** (the stage is used as-is) or set `stackName` to your literal v2 name — otherwise
 you will deploy a differently-cased name and recreate resources. If your v2 stack set an explicit
 `stackName` (no stage prefix at all), just reuse that literal string.
