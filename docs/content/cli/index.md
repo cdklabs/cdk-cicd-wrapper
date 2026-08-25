@@ -19,7 +19,7 @@ npx cdk-cicd <command> --help
 | `license` | Check and generate the third-party license `NOTICE` (`--fix` to write). |
 | `check-dependencies` | Check dependencies (npm and/or Python) for a project. |
 | `security-scan` | Run the security scanners (`--bandit`, `--semgrep`, `--shellcheck`). |
-| `compliance-bucket` | Delete a pipeline's artifact bucket and key together with the stack (for throwaway pipelines). |
+| `compliance-bucket` | Configure the compliance log bucket (creates/updates it and its bucket policy; does not delete anything). |
 
 ## v3 pipeline (experimental)
 
@@ -27,9 +27,10 @@ npx cdk-cicd <command> --help
 | --- | --- |
 | `exec` | Run a CDK app under the wrapper — the single entry point that activates the pipeline for both engines, reading the engine and stages from `cicd.config`. |
 | `synth` | Synthesize the app per stage/region (`--stage`, or `--all` for full CI validation). |
-| `deploy` | Deploy a stage, with a drift/assembly check against the resolved target account and region. |
-| `check` | Run the drift/assembly checks against a synthesized manifest without deploying. |
-| `migrate` | Generate a v3 `cicd.config.ts` from an existing v2 app (`--entry`, `--application`, `--dry-run`). |
+| `deploy` | Synth, drift-check, and deploy a stage across its regions. |
+| `deploy-ci` | Provision the pipeline itself into the hub account, from `cicd.config.ts` alone (the one command a user runs by hand; everything after it is the pipeline deploying the application). `--disposable` deletes the pipeline's artifact bucket and key together with the stack (for throwaway pipelines). |
+| `check` | Run the default-on CI checks (`validate`, `audit`, `license`, `security`). |
+| `migrate` | Generate a v3 `cicd.config.ts` from an existing v2 `PipelineBlueprint` entry file (`--entry`, `--application`, `--dry-run`). |
 
 Some commands (for example the pipeline app / deployment-CI handlers) are invoked by the pipeline
 itself rather than run directly by users.
