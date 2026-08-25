@@ -18,6 +18,11 @@
   <a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits/main"><img src="https://img.shields.io/github/commit-activity/w/cdklabs/cdk-cicd-wrapper" alt="Commit activity"></a>
 </p>
 
+> [!WARNING]
+> **Experimental — pre-release (v3 `alpha`).** The public API is not yet frozen and may change
+> before the `1.0` release. The versions published to npm today are the stable `0.x` (v2) line;
+> the v3 developer experience described on the `v3` branch is under active development.
+
 # Welcome to the CDK CI/CD Wrapper
 
 The CDK CI/CD Wrapper gives you an easy way to deliver your CDK applications like a pro.
@@ -35,13 +40,12 @@ This repository is organized as a monorepo containing multiple packages and tool
   - **Supporting Stacks** - Additional infrastructure (SSMParameterStack, PostDeployExecutorStack, ComplianceBucketStack)
   - **VPC Stacks** - Network configuration options (ManagedVPCStack, NoVPCStack, VPCFromLookUpStack)
 - **`packages/@cdklabs/cdk-cicd-wrapper-cli`** - Command-line interface for validation, security scanning, and project management
-- **`packages/@cdklabs/cdk-cicd-wrapper-projen`** - Projen integration for project scaffolding and management
 
 ### Additional Components
 
 - **`mcp-servers/debugger-mcp/`** - MCP (Model Context Protocol) server for AI-powered debugging assistance
 - **`samples/`** - Example projects demonstrating CDK CI/CD Wrapper usage
-  - `cdk-ts-example/` - TypeScript CDK example
+  - `cdk-v3-example/` - TypeScript CDK example
   - `cdk-python-example/` - Python CDK example
 - **`docs/`** - Documentation source files and build scripts
 - **`projenrc/`** - Projen configuration files for managing project structure

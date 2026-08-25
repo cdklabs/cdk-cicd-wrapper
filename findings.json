@@ -1,0 +1,1539 @@
+{
+  "schemaVersion": 1,
+  "findings": [
+    {
+      "id": "planning-projen-majorversion-mismatch",
+      "component": "infra",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "medium",
+      "status": "open",
+      "title": "projen majorVersion is 1 but the package has only ever published 0.x (latest 0.3.8)",
+      "detail": "RootConfig.ts sets majorVersion: 1 and prerelease: 'alpha', yet npm shows 50 published versions all in 0.x with no 1.x, no alpha, and only a 'latest' dist-tag. The config has never produced a shipped release. To make the v3 redesign version 1.0.0-alpha (decision D6), main's majorVersion must move to 0 to avoid a release-branch major collision \u2014 which also aligns the config with the actually-published 0.x line. Confirm the maintainer's intent for the current line before changing main's release config or enabling the v3 release branch.",
+      "location": {
+        "path": "projenrc/RootConfig.ts",
+        "line": 37
+      }
+    },
+    {
+      "id": "harness-asciinema-skill-gap",
+      "component": "infra",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "low",
+      "status": "open",
+      "title": "The asciinema-recorder skill only documents interactive shell-wrapping, not the scripted recording + mp4 export this repo's milestone proofs need",
+      "detail": "Decision D3 says to build the milestone recorder on the user's asciinema-recorder skill. The skill's actual workflow is 'exit your agent, wrap your shell in asciinema rec, work normally' and it assumes brew/apt for installation. A milestone gate has to produce its proof unattended, so test/proof/record-demo.sh uses 'asciinema rec --command <script>' instead, and the skill documents no cast->mp4 export path at all (no agg/ffmpeg). The recorder built here works and is self-contained, so nothing is blocked. Out of scope to fix because the skill lives outside this repo in a shared global skills directory and editing it would change behaviour for the user's other projects; the skill's own self-evolution policy would have it patched, so raise it with the maintainer rather than silently amending a shared file.",
+      "location": {
+        "path": "test/proof/record-demo.sh"
+      }
+    },
+    {
+      "id": "qa-compat-gate-already-red",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "npx projen compat is already failing with 64 pre-existing API-removal errors, so it cannot serve as the API-break tripwire",
+      "detail": "CLAUDE.md names 'npx projen compat' as the tripwire that guards the published multi-language API, and ground rule 1 relies on it. It currently exits 1 with 64 'has been removed' errors before any v3 work is added, so it reports nothing useful. Root cause looks like aws-cdk-lib version skew rather than a deliberate API change: the removals are overwhelmingly members this repo inherits from aws-cdk-lib rather than declares (propertyInjectors on many *Props structs, Stack.removeStackTag, Stack.env, and the .with() methods on IEncryptionKey/IParameterConstruct/IRepositoryStack). The dependency is declared as a caret range (aws-cdk-lib@^<cdkVersion>) while the lockfile resolves locally to exactly the range floor, so the published release was compiled against a newer minor that has those members and the local build is compared against an older one that does not. Confirmed unrelated to the v3 work: 0 of the 122 types in the generated .jsii assembly are sourced from src/v3, so the new module contributes nothing to the diff. Left unfixed because resolving it means moving a dependency version or curating a .compatignore (which does not exist yet) for the published 0.x line, both outside an additive v3 task. Consequence while it stays red: a genuine break in the v3 public surface introduced by m1-accessor or a later milestone would be indistinguishable from this noise, so treat compat as uninformative until it is fixed. Fix direction: align the resolved aws-cdk-lib with the version the last release was built against, re-diff, and only then add genuinely-accepted keys to a .compatignore.",
+      "location": {
+        "path": "projenrc/PipelineConfig.ts",
+        "line": 29
+      }
+    },
+    {
+      "id": "code-review-jsii-silently-omits-free-functions",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Exported bare functions compile fine but are silently dropped from the jsii assembly, so they do not exist for Python/Java/.NET consumers",
+      "detail": "jsii only models types, so a bare exported function is compiled by tsc and then omitted from the generated assembly with no error and no warning. Verified against the existing published surface: mergeCodeBuildOptions is exported from the package entry point via src/resource-providers, yet the generated .jsii contains zero entries for it. TypeScript consumers can call it; Python, Java and .NET consumers cannot see it at all. This is pre-existing on the current 0.x line, not introduced by v3, and it is a silent failure mode rather than a build break, which is why it has gone unnoticed. Recorded here because it is a trap for every future milestone: the v3 public barrel deliberately exports only classes, interfaces and enums for this reason, and anything that needs to be callable from a non-TS language has to be a static method on a class rather than a function. Fix direction for the existing case: decide whether mergeCodeBuildOptions is meant to be public, and if so move it onto a class; if not, stop exporting it from the entry point.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/resource-providers/CodeBuildFactoryProvider.ts",
+        "line": 296
+      }
+    },
+    {
+      "id": "code-review-derived-defaults-drops-malformed-aws",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "applyDerivedDefaults silently discards an aws value that is present but not an object, repairing a typo from ambient env instead of reporting it",
+      "detail": "applyDerivedDefaults replaces a non-plain-object aws value with a fresh object and then fills it from the environment, so a config file that says aws as a bare string or a list has that value thrown away with no signal. If the caller's schema lists aws.accountId as a required key the mistake still fails closed with MISSING_KEY, but if it does not, the typo is silently repaired from CDK_DEFAULT_ACCOUNT/CDK_DEFAULT_REGION and the user never learns their config was ignored. Consistent with the deliberate, tested behaviour that a whole config document which is not an object falls back to base defaults, so it is not an inconsistency so much as an open design question. Left unfixed because reporting it honestly needs a fifth ConfigError kind for a type mismatch, and the m1-validation task scope is explicitly ConfigError with four kinds. Revisit when M3 resolves config for real stages, where a silently ignored aws block would be much more costly.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/defaults.ts",
+        "line": 73
+      }
+    },
+    {
+      "id": "code-review-level0-fixture-lacks-feature-flags",
+      "component": "infra",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The level0-app fixture omits the cdk.json context feature-flag block that real cdk init emits, so it synthesizes under legacy defaults",
+      "detail": "level0-app exists to prove Level-0 inertness against an untouched cdk init app, and its TypeScript is faithful: it imports only aws-cdk-lib and constructs, with no wrapper symbol anywhere. Its cdk.json, however, is three lines, whereas cdk init app --language typescript emits a large context block of feature flags (and also package.json, jest.config.js, test/ and a watch key). The fixture therefore synthesizes under default/legacy feature-flag behaviour rather than the behaviour a newly initialised user app actually gets. Harmless for the current deploy/assert/destroy lifecycle test, which only checks a stack and an SSM parameter. It becomes a silent divergence for any later milestone that compares a synthesized template against what a real user app would produce, which is exactly what the M2 injection and M3 deploy-time-synth gates do. Fix direction: paste the feature-flag context from a real cdk init of the pinned aws-cdk version, and note the version it came from so it can be refreshed deliberately. The absent package.json is a separate, deliberate choice (root node_modules resolution) and is not part of this finding.",
+      "location": {
+        "path": "test/fixtures/level0-app/cdk.json"
+      }
+    },
+    {
+      "id": "code-review-sweep-age-requires-gnu-date",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The orphan sweep's stack-age arithmetic depends on GNU date and aborts the whole sweep if a timestamp fails to parse",
+      "detail": "cmd_sweep computes each stack's age with an arithmetic expression that embeds a date -u -d command substitution. The -d flag is GNU-specific, which is fine for this repo's Linux target but would break on BSD/macOS. More to the point, if that substitution ever produces empty output the arithmetic becomes a syntax error and the sweep exits non-zero having listed nothing useful, which is a poor failure mode for the one command whose job is finding leaked stacks. Latent rather than live: CloudFormation always returns a parseable ISO 8601 CreationTime, so there is no known input that triggers it today. Left unfixed as it is cosmetic against the reviewed change and the sweep's safety properties do not depend on the age column at all -- age is display-only and never feeds the teardown guard. Fix direction: compute the age in a guarded step and fall back to printing the raw timestamp when parsing fails.",
+      "location": {
+        "path": "test/proof/harness.sh"
+      }
+    },
+    {
+      "id": "code-review-appconfig-context-skips-defaults-merge",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "AppConfig.of applies base + derived defaults on the file path but not on the injected-context path, so the same app can see differently-shaped config",
+      "detail": "AppConfig.load (the file path) does deepMerge(getDefaultConfig(), file) then applyDerivedDefaults then validate. AppConfig.of on the injected-context path validates the raw context object with no base-defaults merge and no derived-defaults step. So an app run under the future 'cdk-cicd exec' (config arriving via cicd:config context) can see config lacking the removalPolicies RETAIN defaults and lacking CDK_DEFAULT_ACCOUNT/_REGION derivation, while the same app under plain cdk deploy (config from file) sees them. This is only correct if the injecting wrapper pre-applies base+derived defaults before writing the context value, which is what accessor.ts's comment assumes. It is latent, not a present bug, because the injecting wrapper does not exist yet. Recorded so the M2 runtime-injection milestone (m2-register and friends) does not silently reintroduce the asymmetry: either the wrapper must resolve the full config (base + derived) before writing context, or AppConfig.of must run the same merge/derive pipeline on the context value that load runs on the file. Decide which at M2 and add a test that the two paths produce identical config for identical input.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/accessor.ts",
+        "line": 59
+      }
+    },
+    {
+      "id": "code-review-deepmerge-aliases-override-arrays",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "deepMerge assigns array-valued override keys by reference, so a later mutation of the parsed config would leak into an already-merged config",
+      "detail": "mergeRecords recurses into plain objects (which both clones and applies the UNSAFE_KEYS filter at depth) but assigns any non-plain-object value, including arrays, directly: result[key] = value. The deepMerge doc correctly says arrays replace rather than concatenate, and that is the intended semantics, but it does not clone them. The 'override object is not aliased into the result' test covers nested objects only, not arrays, so an array-valued key in the merged result is the same reference as in the caller's parsed object. Harmless today because the loader does not mutate the parsed config after merging and callers are not expected to either. It would become a real aliasing bug if any later code mutates a parsed config in place after AppConfig has returned. Fix direction if revisited: shallow-copy arrays on assignment (result[key] = value.slice() when Array.isArray(value)) and extend the aliasing test to an array-valued key.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/defaults.ts",
+        "line": 39
+      }
+    },
+    {
+      "id": "code-review-stringlist-skips-element-type-check",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "FieldKind.STRING_LIST validation checks only that the value is a non-empty array, not that its elements are strings",
+      "detail": "isMissing for STRING_LIST returns false as soon as the value is an array with length > 0, so a config value like [1, 2] or a mixed list satisfies a field declared STRING_LIST. This matches the enum member's documented semantics ('A non-empty array'), so it is very likely intentional rather than a defect, and tightening it would be a behaviour change that could reject configs that validate today. Recorded only so the choice stays conscious: if a later milestone relies on STRING_LIST fields actually being lists of strings (e.g. availabilityZones passed straight into a CDK construct that will throw on a non-string), either strengthen isMissing to check every element is a non-blank string or rename the kind to make the loose semantics explicit. No change now.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/validation.ts",
+        "line": 59
+      }
+    },
+    {
+      "id": "code-review-register-context-read-asymmetry",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The preload's construction-time config read sees a narrower context set than AppConfig.of, so a cicd:config in cdk.json drives the read side but not the injected tags/synthesizer",
+      "detail": "register.ts's readInjectedConfig runs before super(), when there is no App node, so it can only consult props.context and CDK_CONTEXT_JSON. The read side, AppConfig.of, reads the App's fully-merged context and its docstring notes cicd:config can also be hand-set in cdk.json's context field. So a cicd:config placed directly in cdk.json would be seen by AppConfig.of (used inside stacks) but would NOT drive the hook's tags/synthesizer, because the hook cannot read the cdk.json file pre-super without a node. This is fine for the supported path -- cdk-cicd exec (m2-exec) injects via CDK_CONTEXT_JSON, and command-line --context is merged into CDK_CONTEXT_JSON by the CDK CLI, so both are covered. It is an asymmetry to keep in mind when m2-exec is built and when documenting how config reaches the wrapper: the hook's inputs are CDK_CONTEXT_JSON + AppProps.context only. Fix direction if it ever bites: have exec normalise a cdk.json-level cicd:config into CDK_CONTEXT_JSON, or document that cdk.json-level cicd:config is read-only (consumed by AppConfig.of, not by injection).",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/inject.ts",
+        "line": 70
+      }
+    },
+    {
+      "id": "code-review-register-no-cross-copy-version-check",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The multi-copy App patch does not check that the distinct aws-cdk-lib copies agree on version, so a dev/monorepo minor-version skew could silently misapply Aspects/tags",
+      "detail": "register.ts patches every distinct aws-cdk-lib copy reachable from the app entry / cwd / the hook, to survive workspaces that carry more than one copy. The cross-copy mechanism is sound for SAME-version copies: Aspects.of stores under Symbol.for('cdk-aspects') (a hardcoded global-registry key) and synthesis reads it back the same way, so the nested-copy applyWrapper and the root-copy synth share the same node metadata slot regardless of which copy's class created the App. All copies in this workspace are 2.195.0. The latent fragility: if two copies disagree on aws-cdk-lib minor version, data written by one copy's classes is read by another's synth logic, and interface drift (e.g. aspect-priority handling) could silently misbehave. Published installs are single-copy because aws-cdk-lib is a peerDependency, so this never affects users -- only dev/monorepo setups. Optional hardening: have distinctCdkCopies emit a warning (not throw) when the resolved copies' versions differ, so a skew is visible rather than silent. Not a correctness bug at the pinned version.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/register.ts",
+        "line": 76
+      }
+    },
+    {
+      "id": "code-review-attach-reuses-construction-counter",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CdkCicd.attach reuses markAppConstructed(), conflating an explicit attach with a wrapped-constructor App -- fine for today's diagnostic, revisit when m2-bundled-diagnostic is built",
+      "detail": "The construction counter (inject.ts markAppConstructed/appsConstructed) is named for Apps that pass through the wrapped constructor, but CdkCicd.attach also increments it so that an app which opts into attach counts as wrapped and the future bundled-app diagnostic stays silent. The counter's real semantic (appsConstructed = 'Apps the wrapper has wrapped') is satisfied and this is correct for the diagnostic's only current requirement (non-zero when the wrapper was applied). The coupling is baked in before m2-bundled-diagnostic exists: if that diagnostic later needs to distinguish an attach from constructor-wrapping (e.g. to warn that a non-bundled app called attach unnecessarily), this shared counter is too coarse and attach would need its own signal. Resolve when building m2-bundled-diagnostic: either keep the shared counter (if 'was the wrapper applied at all' stays the only question) or split into distinct construct-vs-attach counters. No change needed now.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/attach.ts",
+        "line": 32
+      }
+    },
+    {
+      "id": "code-review-exec-flag-cross-package-literal",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The CDK_CICD_EXEC arming flag is a cross-package contract exported only from an internal deep path, so m2-exec will likely duplicate the literal string",
+      "detail": "The bundled-app diagnostic arms only when process.env.CDK_CICD_EXEC === '1'. That flag is defined as EXEC_FLAG in the wrapper's internal src/v3/runtime/inject.ts, but its OTHER end -- the cdk-cicd exec launcher -- lives in the separate cdk-cicd-wrapper-cli package, which cannot import a non-exported deep runtime path (the jsii package's exports map does not publish it, and importing lib/v3/runtime/inject reaches past the public surface). So m2-exec will most likely hardcode the literal 'CDK_CICD_EXEC' a second time. Resolve when building m2-exec: either expose the flag name somewhere the CLI can import cleanly, or add a small test that asserts the two copies of the string agree, so a rename on one side cannot silently disarm the diagnostic on real runs.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/inject.ts",
+        "line": 26
+      }
+    },
+    {
+      "id": "code-review-bundled-diagnostic-test-needs-compiled-lib",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The bundled-diagnostic subprocess test depends on a compiled lib/ that the test task does not build, so it only passes after a separate compile step",
+      "detail": "bundled-diagnostic.test.ts runs the COMPILED preload (lib/v3/runtime/register.js) under node -r in a subprocess -- the only faithful way to exercise a process.on('exit') handler. But the projen 'test' task is jest + eslint with no compile step, and lib/ is gitignored, so a bare `npx jest` after a clean checkout would hit the test's beforeAll guard ('run npx projen compile first') and fail deterministically. It passes under the canonical `npm run build` (compile then test) and in this session because compile was run first. Not flaky, just order-dependent. Fix direction: have the wrapper's projen 'test' task spawn 'compile' first, or move the subprocess wiring test behind an integration-test task that depends on compile, so the standalone `npx jest` invocation is self-sufficient.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/runtime/bundled-diagnostic.test.ts",
+        "line": 34
+      }
+    },
+    {
+      "id": "code-review-cli-yargs18-incompatible",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The CLI's yargs usage breaks on yargs 18, which floated in on a projen regen and broke the entire CLI until yargs was pinned to ^17",
+      "detail": "src/index.ts does `import * as yargs from 'yargs'; const ya = yargs; ya.command(...)`. That namespace-as-instance pattern is a yargs v17 idiom; yargs 18 (released recently) changed its exports and `ya.command` is no longer a function, so `node lib/index.js` throws 'ya.command is not a function' and every CLI subcommand fails. This surfaced when enabling the wrapper dependency for m2-exec required a `npx projen` regen, which re-resolved the previously-unpinned `yargs` dep from 17.7.3 up to 18.0.0. Worked around by pinning `yargs@^17.7.3` + `@types/yargs@^17.0.33` in projenrc/CLIConfig.ts, which restores the working CLI and is the surgical fix. The real follow-up is to migrate the CLI's yargs bootstrap to the v18 API (call the factory / default import instead of the namespace) and then unpin, so the CLI can take yargs security updates. Out of scope for m2-exec, which only needed the CLI to run.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/index.ts",
+        "line": 20
+      }
+    },
+    {
+      "id": "code-review-level1-cicd-config-stale-header",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "level1-app/cicd.config.ts still carries a 'NOT ACTIVE YET -- defineCICD/Repository do not exist until wave 3' header, which is now false",
+      "detail": "As of m3-definecicd, defineCICD and Repository exist and the fixture's cicd.config.ts loads and normalizes via ts-node. Its header comment (lines ~4-8) still says the symbols do not exist until wave 3 and that the file is dormant, and the file is still listed in the fixture's tsconfig.json exclude. Left unchanged by the m3-definecicd unit on purpose (surgical scope): the file belongs to m3-config-discovery, which is the task that actually wires discovery/loading and should update the header (and decide whether to drop the tsconfig exclude) as part of activating it. Resolve when implementing m3-config-discovery: refresh the header to describe how the CLI discovers and loads the file, and remove the now-misleading 'not active' language.",
+      "location": {
+        "path": "test/fixtures/level1-app/cicd.config.ts",
+        "line": 4
+      }
+    },
+    {
+      "id": "code-review-cli-ts-node-not-declared",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "ts-node is required to load a .ts cicd.config (and by exec's -r ts-node/register) but is not a declared CLI dependency, so a global install can fail to resolve it",
+      "detail": "CicdConfig.load does an in-process require('ts-node/register') for a .ts config, and ExecCommand spawns node with -r ts-node/register for a .ts entry. ts-node resolves today only because it is hoisted into the workspace-root node_modules; it is NOT in the CLI package's dependencies. For a locally-installed CLI, in-process resolution walks up into the user's project and usually finds their ts-node; but a GLOBALLY-installed CLI (npm i -g) does not, so a user with a TypeScript cicd.config.ts (or a .ts app entry under exec) hits a module-resolution failure. Mitigated now: CicdConfig.load wraps the require in a clear, actionable error ('needs ts-node ... install it or compile to cicd.config.js') instead of a raw crash; the .ts path is unit-covered. The real fix is a distribution decision to make deliberately before external publish: declare ts-node as a CLI dependency in projenrc/CLIConfig.ts (pin the version to avoid a yargs-18-style float on regen), and apply the same clear-error treatment to the exec spawn path. Out of scope for m3-config-discovery's minimal change; track for the publish/harness-publish-loop work.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CicdConfig.ts",
+        "line": 48
+      }
+    },
+    {
+      "id": "code-review-exec-cicd-stage-tier-dead-on-live-deploy",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "resolveEnvTarget's cicd-config stage tier never fires on a live `cdk deploy` because the CDK CLI always pre-sets CDK_DEFAULT_ACCOUNT/REGION, which win by precedence",
+      "detail": "resolveEnvTarget precedence is (already-set CDK_DEFAULT_* > matching cicd.config stage > app-config aws.*). On a live `cdk deploy`/`cdk synth` the CDK CLI pre-sets CDK_DEFAULT_REGION (from AWS_REGION/profile) and CDK_DEFAULT_ACCOUNT (from resolved STS creds) before running the app command, so the env tier always wins and the cicd-config stage tier is effectively dead on the direct-CLI path -- a `CDK_STAGE=dev cdk deploy` uses the ambient region/account, not the cicd.config dev stage's. This is intended: the real deploy path is `cdk-cicd synth` -> per-region assembly (which sets AWS_REGION to steer the CLI) -> `cdk-cicd deploy`, with account/region correctness enforced by m3-drift-check, not by exec. The cicd-stage tier still matters for a bare `node -r register app.js` (no CDK CLI) or a future path where CDK_DEFAULT_* is genuinely unset. Recorded so the precedence is not mistaken for driving the live target. No change needed; revisit if the direct-CLI path should honor cicd.config stage env (it would need AWS_REGION steering like synth does).",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts",
+        "line": 66
+      }
+    },
+    {
+      "id": "code-review-synth-account-pin-cosmetic",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "cdk-cicd synth pins CDK_DEFAULT_ACCOUNT per target but the CDK CLI re-derives account from STS, so (unlike region via AWS_REGION) the account pin is cosmetic",
+      "detail": "synthTargets sets AWS_REGION/AWS_DEFAULT_REGION to steer the CLI's per-region synth, which works because the CLI derives the app's CDK_DEFAULT_REGION from AWS_REGION. It also sets CDK_DEFAULT_ACCOUNT/CDK_DEPLOY_ACCOUNT from the stage, but there is no AWS_* account analogue: the CDK CLI re-derives CDK_DEFAULT_ACCOUNT from the resolved STS identity and overrides the pin, so a stage account that differs from the ambient creds does NOT change the synthesized account -- the account pin is cosmetic during synth. Harmless for the single-account sandbox, and catching an account that disagrees with the deploy target is exactly m3-drift-check's job (it reads the synthesized manifest's aws://account/region). Recorded as the region/account asymmetry so a future multi-account synth path knows the account cannot be steered the same way region is (it needs assumed creds for the target account, not just an env var).",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/SynthCommand.ts",
+        "line": 46
+      }
+    },
+    {
+      "id": "code-review-driftcheck-undefined-account-bypasses-guard",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "DriftCheck skips the account guard when DriftTarget.account is undefined, so m3-deploy MUST pass the STS-resolved deploy account or the abort is bypassable",
+      "detail": "analyzeManifest, by documented design, skips the account-mismatch check when target.account is undefined (account omitted = 'whatever the creds resolve'). That is fine for the m3-drift-check unit in isolation, but it is a live seam risk for m3-deploy: if deploy calls checkAssembly with a DriftTarget whose account comes from the cicd.config stage (which may be undefined, and per finding code-review-synth-account-pin-cosmetic the synth cannot force it anyway), then a manifest carrying a concrete FOREIGN account -- exactly the hardcoded-env-app shape the drift rule exists to stop -- passes as ok and would deploy. Fix belongs in m3-deploy: populate DriftTarget.account from the STS-resolved deploy-time identity (aws sts get-caller-identity / the harness account), never from the possibly-undefined stage config, so the account the deploy will actually use is the one the manifest is checked against. Recorded so m3-deploy does not reintroduce the gap.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DriftCheck.ts",
+        "line": 75
+      }
+    },
+    {
+      "id": "code-review-driftcheck-partial-agnostic-loses-warning",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "A partially-agnostic environment (e.g. aws://unknown-account/us-east-1) is treated as fully agnostic, dropping a region-mismatch warning",
+      "detail": "analyzeManifest treats a stack as agnostic when EITHER the account or the region is unknown-*. So an env like aws://unknown-account/us-east-1 (concrete but wrong region) short-circuits to 'agnostic' and never emits the region-mismatch warning it otherwise would. Impact is only a lost WARNING (never a blocked deploy -- account is unknown so the account guard correctly does not fire either), and this mixed shape is unusual in real CDK output (an env-agnostic stack is normally unknown-account AND unknown-region). Left as-is for simplicity. Revisit only if a real assembly is observed producing the mixed shape and the missing region warning matters; the fix is to evaluate account-agnostic and region-agnostic independently.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DriftCheck.ts",
+        "line": 72
+      }
+    },
+    {
+      "id": "code-review-forced-roles-asset-roles-stay-default",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "m3-forced-roles sets the deploy and CFN-execution roles but leaves asset-publishing/lookup roles at bootstrap defaults",
+      "detail": "resolveSynthesizer threads CDK_CICD_DEPLOY_ROLE_ARN and CDK_CICD_CFN_EXEC_ROLE_ARN into DefaultStackSynthesizer, but the asset file/image publishing roles and the lookup role keep their bootstrap defaults. In a strict setup where the default asset roles are unusable (e.g. a locked-down bootstrap), assets would still publish under bootstrap roles while the stack deploys under the forced role -- a partial forcing. This is the documented M3 scope: the design (v3-devops-experience.md ~214-218) leaves full synthesizer control (all roles baked into the manifest) to a later escape hatch, and app-staging's DeploymentIdentities.specifyRoles is deferred (alpha). Recorded so it is not rediscovered as a bug when the full-control escape hatch lands: extend resolveSynthesizer to also accept fileAssetPublishingRoleArn/imageAssetPublishingRoleArn/lookupRoleArn from env (or move to AppStagingSynthesizer.DeploymentIdentities) when a consumer needs strict asset roles.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/inject.ts",
+        "line": 78
+      }
+    },
+    {
+      "id": "code-review-forced-roles-ambient-env-passthrough",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "For a stage with no deployment config, an ambient CDK_CICD_DEPLOY_ROLE_ARN/CFN_EXEC_ROLE_ARN in the caller's env is still honored by the preload",
+      "detail": "exec folds forcedRoleEnv(cicdStage) into childEnv after ...process.env, so a stage that configures roles overrides the ambient value (correct, stage-wins). But when the stage has NO deployment, forcedRoleEnv returns {} and any ambient CDK_CICD_DEPLOY_ROLE_ARN/CDK_CICD_CFN_EXEC_ROLE_ARN in the caller's environment passes straight through ...process.env and is read by resolveSynthesizer. These are undocumented wrapper-private contract vars, so real-world impact is nil, but the 'no deployment => no forced roles' guarantee only holds with a clean ambient environment. Optional hardening if it ever matters: have exec explicitly clear the two role vars when the resolved stage has no deployment, so the stage config is the sole source of truth regardless of ambient env.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts",
+        "line": 224
+      }
+    },
+    {
+      "id": "code-review-deploy-fail-open-on-unresolved-account",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "cdk-cicd deploy fails OPEN on the account drift guard when STS/the aws CLI cannot resolve the deploy account (drift degrades to region-only and deploy proceeds on a warning)",
+      "detail": "DeployCommand resolves the deploy account by spawning `aws sts get-caller-identity`. When that returns undefined -- the aws CLI is not on PATH (realistic in CI that sets AWS_* env creds and installs only node/cdk), or STS errors -- it warns and passes account:undefined to checkAssembly, which then skips the account-mismatch check entirely and deploys on region-only drift. So the very guard meant to stop a foreign/hardcoded account is silently downgraded on the STS-unavailable path (a sibling of the honored finding code-review-driftcheck-undefined-account-bypasses-guard, via a different route). Rated medium not high because the degradation is bounded: a genuinely foreign hardcoded account would still make `cdk deploy`'s own assume-role fail -- a late, ugly failure rather than a silent wrong-account deploy. Two related notes: (F3) this introduces an `aws` CLI PATH dependency that `cdk-cicd synth`/`exec` do not have. Fix direction (maintainer decision, before external publish): either FAIL CLOSED (block deploy when the account cannot be resolved), or resolve the account via @aws-sdk/client-sts (add the dep) / a documented CDK_DEPLOY_ACCOUNT env fallback, so the guard never silently downgrades and the aws-CLI dependency is removed.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts",
+        "line": 67
+      }
+    },
+    {
+      "id": "code-review-m2-injection-demo-shows-untagged-narration",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "m2-injection demo would now print a cdk-cicd-wrapper-test tag its narration does not explain (only on a future re-record)",
+      "detail": "m3-verify added a static cdk-cicd-wrapper-test tag to level1-app/config/dev.json (so the teardown guard can destroy stacks that `cdk-cicd deploy` created without the harness's own --tags). The m2-injection demo's `marker level1 tags` step now prints {cdk-cicd-wrapper-test, Stage}, but the narration ('the Stage tag was applied tree-wide') mentions only Stage. No account-id leak (static string) and the committed mp4 is unchanged, so this bites only if/when the m2-injection demo is re-recorded. Out of scope for the m3-verify unit (touches the m2 demo script). Fix when re-recording m2-injection: either add a one-line say() explaining the harness tag, or point the demo's config read at a stage/config without the test tag.",
+      "location": {
+        "path": "test/proof/demos/m2-injection.sh",
+        "line": 64
+      }
+    },
+    {
+      "id": "code-review-m3verify-assert-region-get-template-message",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "m3-verify assert_region_deployed reports 'not wrapped' even when the underlying get-template call itself failed",
+      "detail": "assert_region_deployed does `aws_masked cloudformation get-template ... | grep -q '\"Stage\"' || die '...lacks the injected Stage tag -- not wrapped'`. Under pipefail a get-template API failure (throttling, transient error) also trips the `|| die` and is reported as 'not wrapped' rather than the real cause. It is fail-CLOSED (correct direction for a positive assertion -- the gate errors rather than passing), so this is a message/consistency nit versus m2-verify's deliberately-split has_wrapper_tag, not a correctness bug. Fix if revisited: split the get-template call from the grep (capture, die on the AWS call failing with a distinct message, then grep the captured body) -- mirroring the m2-verify has_wrapper_tag hardening.",
+      "location": {
+        "path": "test/proof/m3-verify.sh",
+        "line": 40
+      }
+    },
+    {
+      "id": "code-review-codepipeline-deploy-role-lacks-iam",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "resolved",
+      "title": "The CodePipeline deploy CodeBuild project has no deploy IAM, so a real pipeline run will fail AccessDenied -- blocks m4-verify",
+      "detail": "CodePipelineEngine's per-stage deploy PipelineProject runs `npx cdk-cicd deploy --stage <name>`, which runs `cdk deploy` and needs sts:AssumeRole on the CDK bootstrap roles (cdk-<qualifier>-{deploy,file-publishing,image-publishing,lookup}-role-*) plus SSM read of the bootstrap version param. The engine grants the project's default CodeBuild service role none of this, so a real deploy fails with AccessDenied. Synth-level tests cannot catch it (the engine skeleton is correct at synth). No existing M4 task explicitly owns this IAM. It must be added before m4-verify's 'a commit flows dev->prod' gate can go green: grant the deploy project role assume-role on the bootstrap role ARNs, scoped to the target account/region (wherever the deploy-time role wiring lands -- likely m4-support-resources or a small addition in the engine). Recorded so m4-verify is not surprised. RESOLVED by m4-support-resources: grantDeployPermissions gives each stage's deploy project sts:AssumeRole on the four bootstrap roles for every (account, region) the stage targets, plus the stage's forced deployer role when one is configured, plus ssm:GetParameter on the bootstrap version parameter. Verified against the installed aws-cdk-lib/aws-cdk sources rather than from memory: the role-name pattern and default qualifier match DefaultStackSynthesizer, sts:AssumeRole alone is sufficient (sts:TagSession is only needed when assumeRoleAdditionalOptions sets session tags, which the wrapper never does), and a missing grant would fail loudly rather than silently. The grant carries zero wildcards -- narrower than aws-cdk-lib's own pipelines module, which uses cdk-<qualifier>-*. Two residual gaps were split into their own findings rather than left under this one: code-review-bootstrap-qualifier-not-single-source-of-truth and code-review-ci-project-lacks-lookup-role. Still to be proven end-to-end on real AWS by m4-verify.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 70
+      }
+    },
+    {
+      "id": "code-review-codepipeline-no-cdknag-suppressions",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "resolved",
+      "title": "CodePipelineEngine adds no cdk-nag suppressions for the pipeline's own auto-generated roles/bucket -- will block pipeline-stack synth if AwsSolutionsChecks runs on it",
+      "detail": "v3 applies AwsSolutionsChecks on the workload app (inject.ts applyWrapper). The CodePipeline engine's auto-generated pipeline role, CodeBuild roles and artifact bucket carry wildcard IAM (IAM5) and other findings that v2 suppressed (CDKPipeline.ts:312-368). When m4-approval-selfupdate's `cdk-cicd deploy-ci` provisions the pipeline stack, if that path applies AwsSolutionsChecks, synth of the pipeline stack will error and block provisioning. Adding suppressions now is premature -- the provisioning app (PipelineApp) does not exist yet, so where they attach is unknown -- hence logged, not fixed here. m4-approval-selfupdate / m4-verify must port v2's pipeline suppression list (or decide the pipeline stack is not nag-checked). Flagged prominently so the M4 gate is not blocked by an un-suppressed nag error. Update after m4-support-resources: the surface grew slightly. The support artifact bucket has no server access logging (S1), and under removalPolicy DESTROY the stack also contains a Custom::S3AutoDeleteObjects custom resource whose provider Lambda carries a managed policy and a broad inline policy (IAM4/IAM5) and a pinned runtime (L1). That is a few more entries in the suppression list this task already has to write -- no restructuring needed, and the count is reasoned from the rendered template rather than measured with cdk-nag. RESOLVED: the engine suppresses the pipeline\u2019s own IAM5/S1 (and the driver Lambda\u2019s IAM4/IAM5/L1) with evidence, now VERIFIED live -- the rendered pipeline stack has zero unsuppressed AwsSolutions findings under a live checker (nag-compliance.test.ts), and it deploys clean on real AWS (m4-verify).",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 1
+      }
+    },
+    {
+      "id": "code-review-codepipeline-manualapproval-ignored",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "CodePipelineEngine does not yet read stage.manualApproval (no ManualApprovalAction) -- owned by m4-approval-selfupdate",
+      "detail": "ResolvedStage.manualApproval is populated but the engine's render() ignores it: no codepipeline_actions.ManualApprovalAction is inserted before a gated stage's deploy action, and render returns void (no handle to the created Pipeline). This is expected for the m4-codepipeline skeleton -- real approval gates are m4-approval-selfupdate. Cleanest resolution: have the engine itself read stage.manualApproval and insert the approval action before the deploy action (no pipeline getter needed, keeping render void). Recorded as the seam m4-approval-selfupdate builds on. RESOLVED (m4-approval-selfupdate, approval half): the engine now reads `stage.manualApproval` and emits a ManualApprovalAction at runOrder 1 with the stage deploy at runOrder 2, in the SAME pipeline stage, so `render` still returns void and gating adds no pipeline stage, no CodeBuild project and no SNS topic. Verified against the rendered template and by a review pass that tried the obvious wrong implementations (approval at the same run order, approval in its own stage, approval on every stage) against the new tests.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 55
+      }
+    },
+    {
+      "id": "code-review-bootstrap-qualifier-not-single-source-of-truth",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The bootstrap qualifier has three independent sources (config, cdk.json context, the hardcoded default) and nothing reconciles them, so a custom qualifier breaks the pipeline's deploy stage",
+      "detail": "Three places decide which CDK bootstrap roles matter and they can disagree. (1) ResolvedCicdConfig.qualifier is documented as 'drives the bootstrap qualifier and asset naming' but is read by nothing: resolveSynthesizer (v3/runtime/inject.ts) builds a plain DefaultStackSynthesizer and never threads it. (2) A user's own cdk.json may set the @aws-cdk/core:bootstrapQualifier context, which DefaultStackSynthesizer.bind DOES honour (BOOTSTRAP_QUALIFIER_CONTEXT), so their app's manifest names cdk-<theirQualifier>-*-role-* roles. (3) The engine's grantDeployPermissions hardcodes DefaultStackSynthesizer.DEFAULT_QUALIFIER when building the assume-role grant, because keying it off config.qualifier would point at roles that do not exist while (1) holds. Live consequence today: a user with a custom-qualifier bootstrap sets the context, their app asks to assume cdk-<theirQualifier>-deploy-role-*, the deploy CodeBuild role may only assume the default-qualifier roles, and the deploy stage dies with 'Could not assume role in target account'. Latent consequence: whoever fixes (1) by threading config.qualifier into the synthesizer silently breaks the IAM in (3), and no test catches it because the engine test asserts the default qualifier literally. Fix direction: make ONE resolved qualifier the single source of truth -- resolve it once (config.qualifier, else the app's bootstrapQualifier context, else the default), thread it to both the synthesizer and the engine's IAM, and add a test that a non-default qualifier moves both together.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 122
+      }
+    },
+    {
+      "id": "code-review-ci-project-lacks-lookup-role",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The CI/Build CodeBuild project runs cdk synth but gets no bootstrap lookup-role grant, so a workload using context lookups fails at the Build stage",
+      "detail": "m4-support-resources grants bootstrap assume-role only to the per-stage Deploy projects; the Build project (which runs `cdk-cicd synth --all`) gets nothing. cdk synth resolves context providers -- Vpc.fromLookup, HostedZone.fromLookup, AMI lookups and friends -- by assuming the bootstrap lookup role, so a workload that uses any of them fails at the Build stage before a deploy stage ever runs. Not a blocker for the M4 gate, whose fixture is a trivial app with no lookups, so it is invisible to m4-verify; it is a v2-parity functional gap on a user-visible path. Note the same gap does not apply to deploy-time synth: the Deploy projects do get the lookup role. Fix direction: grant the Build project sts:AssumeRole on the lookup role for every (account, region) any stage targets -- ideally sharing one resolved account/region set with grantDeployPermissions rather than duplicating the ARN construction.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 79
+      }
+    },
+    {
+      "id": "code-review-deploy-project-not-privileged-for-docker",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The deploy project is granted the image-publishing bootstrap role but runs unprivileged with no Docker daemon, so a workload with a container asset still cannot deploy",
+      "detail": "grantDeployPermissions includes the image-publishing bootstrap role in the assume-role grant, which implies the pipeline can publish container assets. It cannot: PipelineProject defaults to privileged: false and the engine sets no override, so there is no Docker daemon in the build container and a workload with a DockerImageAsset (or a bundled Lambda that shells out to Docker) fails during cdk deploy regardless of IAM. v2 handled this by running its synth project privileged (see the AwsSolutions-CB3 suppression in CDKPipeline.ts, reasoned as 'privileged mode is required to build Lambda functions written in JS/TS'). So the grant is currently aspirational. Resolve one of two ways: expose privileged on CodePipelineEngineProps (or turn it on for the deploy projects, accepting the CB3 nag suppression) and keep the grant, or drop the image-publishing role until container assets are actually supported so the IAM does not overstate what works. Worth deciding alongside the Wave 6 container work (m6-container).",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 33
+      }
+    },
+    {
+      "id": "code-review-stage-shorthand-has-no-regions",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The bare-name stage shorthand resolves to an empty region list, so `stages: ['dev']` synthesizes a stage that can never deploy",
+      "detail": "normalizeStage in v3/config/define.ts gives a stage written as a bare name (or one whose env omits region/regions) an empty regions array. synthTargets then produces zero targets, so `cdk-cicd deploy --stage dev` logs 'nothing to deploy' and exits 0 -- a silent no-op rather than an error or a sensible default. The engine's grantDeployPermissions has to invent a fallback (the pipeline stack's own region) for that case, and its unit test therefore asserts IAM for a configuration that cannot actually deploy, i.e. the fallback branch is unreachable on any real path. The shorthand is prominently documented (`stages: [{...}, 'prod']` in defineCICD's docstring), so this is a real authoring trap, not a corner. Fix direction, in the config layer rather than the engine: either default an omitted region to the deploy-time ambient region (making the shorthand mean 'wherever the creds point', which is what the fallback assumes) or make an empty region list a config error at defineCICD time. Once decided, the engine's fallback and its test either become live or should be deleted.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/config/define.ts",
+        "line": 84
+      }
+    },
+    {
+      "id": "code-review-forced-deploy-role-needs-self-passrole",
+      "component": "shared",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "A stage that sets deployRole without cfnExecutionRole has that one role both assumed and passed to CloudFormation, which needs it to be able to pass itself",
+      "detail": "The forced-role wiring sends a stage's deployRole down two different paths at once. ExecCommand exports it as CDK_CICD_DEPLOY_ROLE_ARN, which resolveSynthesizer turns into DefaultStackSynthesizer.deployRoleArn -- a role the CDK CLI ASSUMES. DeployCommand also passes the same ARN as `cdk deploy --role-arn`, which is CloudFormation's SERVICE role -- a role that is PASSED, not assumed. When a stage configures deployRole and leaves cfnExecutionRole unset, the same role plays both parts, so it must be able to iam:PassRole itself, and nothing in the wrapper arranges or documents that. This is an M3 design wart rather than a defect in the M4 IAM: the engine's sts:AssumeRole grant on the configured deployRole is correct and necessary for the assume path, so it should not be 'fixed' in the other direction. Fix direction: decide whether --role-arn should be driven by cfnExecutionRole only (leaving deployRole purely as the assumed role, which matches the names and the design doc's 'forced deployer / CloudFormation-execution roles' split), and document the trust/PassRole requirement either way. Cheap to get wrong, and only reproducible with a real forced-role stage, which no gate currently exercises.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts",
+        "line": 19
+      }
+    },
+    {
+      "id": "code-review-support-lazy-getters-side-effecting",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "SupportResources provisions on property READ, which is idiomatic in TypeScript but surprising in the other jsii languages",
+      "detail": "SupportResources implements 'provisioned only when referenced' as getters that create the construct on first access, so reading support.artifactBucket mutates the construct tree. It is jsii-legal (the assembly models both as immutable properties), aws-cdk-lib has precedent for lazily-created children, and the docstrings say 'Created on first read' -- which survives into the generated docs for every language. Still, Python/Java/.NET consumers reasonably assume property access is cheap and idempotent, and a debugger or a REPL inspecting the object would provision resources as a side effect of being looked at. Recorded, not changed, because the alternative (a method like getArtifactBucket()) trades a pleasant call site for honesty and the decision should be made once for the whole support surface rather than per resource -- ideally before the compliance bucket, SSM and VPC members land, and certainly before the v3 major freezes the API. Related, minor: SupportResourcesProps.removalPolicy accepts all five RemovalPolicy values while only DESTROY and RETAIN are meaningful (SNAPSHOT emits a DeletionPolicy CloudFormation rejects for AWS::S3::Bucket) -- consistent with how aws-cdk-lib itself behaves, so probably leave it.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/support/SupportResources.ts",
+        "line": 43
+      }
+    },
+    {
+      "id": "code-review-precommit-lint-reformats-unrelated-files",
+      "component": "infra",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The husky pre-commit hook runs eslint --fix across the whole tree, so every commit tends to drag in prettier churn from files the change never touched",
+      "detail": "The pre-commit hook runs `npm run lint`, which is eslint --fix over all of src/test/build-tools in each package rather than over the staged files. The tree is not currently prettier-clean at HEAD, so the hook rewraps unrelated files (observed on test/v3/config/define.test.ts and test/v3/runtime/synthesizer.test.ts, both pure line-wraps) and leaves them dirty in the working tree. It does not corrupt a commit that stages explicit paths, but it does mean an agent or developer using `git commit -a` silently ships reformatting noise, which directly works against ground rule 5 -- the maintainer reviews the EVOLUTION of the branch, and unrelated churn is exactly what makes that harder. Worked around here by staging explicit paths and reverting the churn. Fix direction (projen-managed, so change projenrc rather than the hook by hand): either make the hook lint only staged files (lint-staged) or run prettier once over the tree in a dedicated style commit so the hook has nothing left to rewrite.",
+      "location": {
+        "path": ".husky/pre-commit",
+        "line": 5
+      }
+    },
+    {
+      "id": "qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "high",
+      "status": "resolved",
+      "title": "The wrapper package resolves a nested second copy of aws-cdk-lib and constructs, which silently disables cdk-nag entirely",
+      "detail": "Inside packages/@cdklabs/cdk-cicd-wrapper, `require('aws-cdk-lib')` and `require('constructs')` resolve to nested copies under that package's own node_modules, while `cdk-nag` resolves to the hoisted copies at the repo root. Same versions on both sides (aws-cdk-lib 2.195.0, constructs 10.3.0), but they are different module instances -- verified directly: `localCopy === rootCopy` is false for both. Every cdk-nag rule tests resource identity with instanceof against ITS copy of the Cfn* classes, so no rule ever matches and cdk-nag emits NOTHING. Measured, not inferred: a deliberately non-compliant bare s3.Bucket produces zero annotations when synthesized with the package's resolution, and produces AwsSolutions-S1 as expected when both resolve to the same copy. Root cause chain: PipelineConfig.ts declares @cloudcomponents/cdk-pull-request-approval-rule, @cloudcomponents/cdk-pull-request-check and yaml as bundledDeps (required so the jsii package can ship non-jsii runtime deps); projen turns bundled deps into yarn-1 workspaces.nohoist entries of the form `<pkg>/<dep>/**`; the `/**` pulls the whole subtree down, and because those @cloudcomponents packages declare aws-cdk-lib and constructs as PEER dependencies, yarn satisfies the peers with nested installs. Consequences: the package's compliance posture is unverified, and every cdk-nag assertion in its test suite is vacuous (see qa-cdk-nag-compliance-tests-are-vacuous). Note the blast radius is limited to this repo's own test/build resolution -- a user installing the published package has a single aws-cdk-lib, so `applyWrapper`'s AwsSolutionsChecks does fire in their app, which is why this has never shown up as a runtime bug. Confirmed structural rather than a stale-install artifact: the duplication is still present after a full `npx projen` regen + yarn install. Fix direction: narrow or eliminate the nohoist so aws-cdk-lib/constructs stay single-instance (dropping the `/**` suffix, or excluding the peers), then re-measure with the control case above; expect previously-green compliance tests to go red once cdk-nag actually runs. Boundary now measured precisely, because it decides whether the next unit can verify itself: the CLI package resolves aws-cdk-lib from the repo root while the wrapper package resolves its nested copy, so a CLI-hosted pipeline app builds App/Stack from one copy and the engine renders resources from the other. Cross-copy RENDERING is fine -- aws-cdk-lib identity checks such as Stack.of use the global symbol registry, which is shared across copies, and a full render plus synth succeeds -- which is a second reason this never surfaced as a runtime bug. cdk-nag is the part that breaks, because its rules use real instanceof: the same control bucket yields 2 AwsSolutions findings when cdk-nag and the resources share a copy, and 0 across copies. So a pipeline app that applies AwsSolutionsChecks is correct for a published user but its nag pass cannot be verified in this workspace until this is fixed, and any \"expect zero findings\" assertion written here would be vacuously green. RESOLVED (m4-nag-compliance): a jest moduleNameMapper (projenrc/PipelineConfig.ts) forces a single aws-cdk-lib copy in tests, so cdk-nag is now LIVE in the wrapper suite; test/v3/engine/codepipeline/nag-compliance.test.ts proves it with a control finding. The dual copy was a workspace/bundling artifact; a published consumer installs one aws-cdk-lib, so this never affected shipped behaviour.",
+      "location": {
+        "path": "projenrc/PipelineConfig.ts",
+        "line": 33
+      }
+    },
+    {
+      "id": "qa-cdk-nag-compliance-tests-are-vacuous",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "high",
+      "status": "resolved",
+      "title": "The 'No unsuppressed Warnings/Errors' cdk-nag tests pass unconditionally and assert nothing",
+      "detail": "The wrapper package's compliance tests assert `expect(findError('*', stringLikeRegexp('AwsSolutions-.*'))).toHaveLength(0)` and similar for warnings. They are green because cdk-nag emits no annotations at all in this package's module resolution (see qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert), not because the stacks are compliant -- so they would stay green no matter how non-compliant the templates became. A second, independent defect makes some of them doubly vacuous: they register the Aspect AFTER `Template.fromStack(stack)` has already synthesized, and the synthesized assembly is cached, so the Aspect would not run on that stack even with correct module resolution. Any assertion shaped 'expect no findings' needs a companion control assertion that the checker is live -- e.g. a throwaway non-compliant resource that MUST produce at least one AwsSolutions finding in the same run -- otherwise a silent false green is indistinguishable from real compliance. Applies to test/stacks/PipelineBlueprintStack.test.ts (the v2 pipeline compliance tests) and should be the pattern for any v3 nag test added later. Fix together with the resolution defect, since fixing resolution alone will turn these red and the failures will be real. RESOLVED (m4-nag-compliance): nag-compliance.test.ts adds a CONTROL assertion (a deliberately non-compliant bucket MUST produce an AwsSolutions finding) alongside the zero-findings assertion, so a green result can no longer be vacuous; the unification also makes the v2 suite\u2019s nag checks real.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/test/stacks/PipelineBlueprintStack.test.ts",
+        "line": 106
+      }
+    },
+    {
+      "id": "qa-check-deps-python-deletes-requirements-txt",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "The python dependency audit regenerates requirements.txt from a Pipfile and then deletes it, destroying a hand-maintained file",
+      "detail": "The python branch of the dependency check regenerates a requirements file from a Pipfile so a scanner can read it, then removes it again as cleanup. A project that legitimately keeps BOTH a Pipfile and a hand-maintained requirements file in the same directory therefore loses the hand-maintained one -- an unrecoverable local edit, not just a rebuild. Pre-existing v2 behaviour, but until now it was effectively unreachable: v2's generated task passed no ecosystem flags, so the python path was never enabled by default. `cdk-cicd check` turns `audit` on automatically for any project with a Pipfile, which makes the hazard reachable on a default run. Read from the script rather than executed, so the exact deletion condition should be confirmed before fixing. Fix direction: write the generated file to a temp directory (or a uniquely-named file) and never remove a path the project already had; at minimum refuse to overwrite an existing requirements file.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/scripts/check-deps-python.sh",
+        "line": 1
+      }
+    },
+    {
+      "id": "qa-cli-requires-python-at-import",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "Every cdk-cicd invocation fails at load on a host without python 3, because the security command resolves python at module top level",
+      "detail": "The security command resolves the python executable in module-scope code, and the CLI entry point imports every command module unconditionally to register it with yargs. So the python probe runs on EVERY `cdk-cicd` invocation, and on a host without python 3 the process dies during module load with 'Python is not installed' -- including for `cdk-cicd --help`, `--version`, `synth` and `deploy`, none of which need python. That makes a python toolchain a hard requirement of the whole CLI rather than of one command, which matters for the v3 story: a plain TypeScript CDK user has no reason to have it, and the deploy CodeBuild image is not guaranteed to. Pre-existing v2 defect, found while wiring `cdk-cicd check`. Fix direction: resolve python lazily inside the handler (or the scanner wrapper), so the failure lands on the command that actually needs it, with a message naming that command.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/SecurityCommand.ts",
+        "line": 1
+      }
+    },
+    {
+      "id": "qa-check-security-no-toolchain-precondition",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "The security check has no skip path, so a runner without python or registry access fails the build instead of degrading",
+      "detail": "`cdk-cicd check` skips a check whose baseline or manifest is absent, which is a file probe. The `security` check has no such precondition and always runs, but it needs python 3, a writable venv and network access to PyPI plus the semgrep rule registry. On an air-gapped or restricted CI runner it therefore fails the whole `check` run for an environmental reason rather than a code finding, and the failure looks like a security violation. A file probe cannot establish any of those preconditions. Fix direction: probe the toolchain (python present, venv creatable) and skip with a logged reason when it is absent, or expose an explicit opt-out so a restricted runner can declare it; either way keep the distinction between 'scanner could not run' and 'scanner found something' visible in the summary. Consider together with qa-cli-requires-python-at-import, which is the same missing-python condition surfacing far earlier.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts",
+        "line": 120
+      }
+    },
+    {
+      "id": "qa-check-umbrella-handler-untested",
+      "component": "cli",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "The check command's yargs handler and child-process spawn are covered only by manual runs, and the entry-point resolution differs between compiled and ts-jest execution",
+      "detail": "`planChecks` and `runPlans` are unit tested with an injected runner, which is the right seam, but the yargs `handler` and the `spawnCheck` helper around it are exercised only by manual CLI runs against the compiled output. The fragile part is how `spawnCheck` locates the CLI entry to re-invoke: a relative `require.resolve` of the entry module. That is correct for the compiled layout, but it silently depends on the relative depth of the command file, so moving or re-nesting the file breaks the child spawn with no test failure. Worse for testability, under ts-jest the same call resolves to the TypeScript entry, which `node` cannot execute -- so a naive unit test of `spawnCheck` would fail for a reason unrelated to the code being wrong. Fix direction: resolve the entry from the package root (or inject the entry path) so it is assertable, and add a test that pins the resolved target against the compiled layout rather than the test-time one.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts",
+        "line": 190
+      }
+    },
+    {
+      "id": "qa-check-loses-junit-reports",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "cdk-cicd check never passes the CI flag to the security scan, so a job switching to it loses the junit report artifacts",
+      "detail": "v2's CI wiring passed a `--ci` flag to the security scan when a CI environment variable was set, which makes the scanners emit junit-format XML into a reports directory for the build system to collect. `cdk-cicd check` always invokes the scan without that flag, so a project migrating its CI job from the v2 npm scripts to `cdk-cicd check` silently stops producing those report artifacts. No consumer of the reports exists in the wrapper source today, which is why this is low rather than medium -- it matters to whichever task wires the v3 CI step and decides whether the CodeBuild project declares a report group. Fix direction: detect CI the same way v2 did and forward the flag, and if the v3 engine is meant to surface test reports, have the CI project declare the matching report group so the artifacts are actually collected rather than merely written.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts",
+        "line": 121
+      }
+    },
+    {
+      "id": "code-review-ci-steps-replace-drops-checks",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Configuring any ci.steps REPLACES the default CI commands, so an override silently drops both the check gate and the synth step",
+      "detail": "The engine builds the CI project's commands as `steps.length > 0 ? ['npm ci', ...steps] : DEFAULT_CI_COMMANDS`. So a project that configures a single extra CI step (say a unit-test command) does not get that step ADDED to the default run -- it gets the whole default run replaced, losing `cdk-cicd check` (validate/audit/license/security) and `cdk-cicd synth --all`. That works directly against what makes those checks default-on: the gate is present only for projects that configured nothing. Nothing fails loudly either, because the deploy actions synth for themselves, so the only symptom is a pipeline that quietly stopped running its own checks. Fix direction: decide and document whether `ci.steps` is additive or a replacement. Additive (append the configured steps after the defaults, with the defaults still first) preserves the gate and is the behaviour the naming implies; if replacement is genuinely wanted, it should be a distinct, explicit opt-out rather than a side-effect of adding one step, and the config type should say so.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 158
+      }
+    },
+    {
+      "id": "code-review-check-audit-skips-yarn-projects",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "A yarn-only project gets no dependency audit at all from cdk-cicd check, because the v2 audit command can only drive npm audit",
+      "detail": "`check`'s audit planner only selects `--npm` for a `package-lock.json`/`npm-shrinkwrap.json` and `--python` for a `Pipfile`, so a project whose lock file is a `yarn.lock` (or whose python deps are a `requirements.txt`) is planned as a skip. The skip is correct given the underlying tool -- v2's audit shells out to `npm audit`, which refuses a yarn-only tree, and the python script only ever resolves Pipfiles -- and skipping is much better than the alternative green run that audited nothing. But the net effect is that a whole class of real projects has NO dependency audit in CI while `cdk-cicd check` reports success, and `validate` still happily checksums the same `yarn.lock` it cannot audit, which makes the gap easy to miss. Fix direction: teach the audit path `yarn npm audit` (yarn 2+) / `yarn audit` (yarn 1) and `pip-audit -r requirements.txt`, so ecosystem coverage follows the project rather than the tool. Until then the skip reason is the only warning a user gets.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts",
+        "line": 84
+      }
+    },
+    {
+      "id": "code-review-security-scan-cold-budget-in-ci",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The security scan builds and then deletes a throwaway python venv per run, so every CI build pays a full cold install of the scanners",
+      "detail": "v2's scan creates a fresh temp directory, builds a python venv in it, pip-installs its scanners into that venv, and removes the whole directory in a `finally`. Nothing is cached between runs by construction. Interactively that is a sensible hygiene choice; as a default-on CI gate reached through `cdk-cicd check` it means each pipeline build spends minutes on a cold `pip install` of the scanners plus their transitive deps, and takes a hard dependency on registry reachability from inside the build -- a registry blip becomes a red pipeline with a `Security scan failed` message that says nothing about the real cause. Fix direction belongs with whoever sizes the v3 CI project: either point the venv at a cacheable location and declare it in the CodeBuild cache, or bake the scanners into the CI image, so the gate's cost is paid at image-build time instead of on every commit.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/SecurityCommand.ts",
+        "line": 369
+      }
+    },
+    {
+      "id": "code-review-security-scan-null-status-reads-as-pass",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Each v2 scanner returns `status || 0`, so a scanner killed by a signal reports success",
+      "detail": "All three scanners end with `return commandResults.status || 0`. `spawnSync` sets `status` to null when the child is terminated by a signal rather than exiting, so an OOM-killed or timed-out scanner -- exactly what a large repo hits on a small CodeBuild container -- yields null, `null || 0` is 0, and the scan reports a clean pass. The same idiom also folds a spawn failure into 0. This is a false green in a security gate, which is what makes it worth fixing even though the trigger is uncommon: the failure mode is silent, and it gets more likely the bigger the scanned tree. Fix direction: `status ?? 1` (with the signal named in the log line), which is the idiom v3's `check` umbrella already uses when it collects a child's exit code. Note that fixing it will surface previously-hidden failures, so it wants to land with the CI sizing work rather than on its own.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/SecurityCommand.ts",
+        "line": 239
+      }
+    },
+    {
+      "id": "code-review-license-check-writes-licensecheck-json",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The license check writes a licensecheck.json into the project root when none exists, so a read-only CI gate mutates the checked-out source tree",
+      "detail": "v2's license checker loads its config by creating it first: if the configured file is absent it writes a default `licensecheck.json` into the project root, then reads it back. Reached through `cdk-cicd check`, that makes a gate whose job is only to report drift leave a new untracked file in the CI workspace -- harmless in a throwaway checkout, but it means `check` is not side-effect free, it will show up as a dirty tree to any later step that inspects git status, and on a `--fix`-less run the user gets a file they never asked for. Fix direction: treat an absent config as 'use the built-in defaults in memory' and only persist it under `--fix`, matching how the verification file itself is treated. Low because the file is deterministic and the checks still behave correctly with it present.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/LicenseCommand.ts",
+        "line": 85
+      }
+    },
+    {
+      "id": "code-review-engine-buildspec-assertions-substring-only",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The engine tests assert buildspec contents by regex substring, so they cannot catch a command landing in the wrong phase or the wrong order",
+      "detail": "The CodePipeline engine tests check what a CodeBuild project runs with `Match.stringLikeRegexp('cdk-cicd check')` against the rendered `Source.BuildSpec`, which is a single JSON string in the template. That confirms the substring appears SOMEWHERE in the buildspec and nothing more: the same assertion passes if the command moves from `build` to `post_build`, if it runs before `npm ci`, or if it ends up in a comment. It also can't express the absence of a command without risking a match on an unrelated one. Fix direction: parse the buildspec string out of the template and assert on the resulting object (`phases.build.commands` as an array), which makes phase and order part of the contract and reads better than a regex. Low because the current assertions are not wrong, just weak -- worth doing when the next change touches these tests.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/engine/codepipeline/CodePipelineEngine.test.ts",
+        "line": 1
+      }
+    },
+    {
+      "id": "code-review-m4-verify-must-approve-gated-stage",
+      "component": "shared",
+      "layer": "production",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The m4-verify gate has to drive the approval explicitly, or the real pipeline run stalls on it for days",
+      "detail": "Now that the engine emits real approval gates, any m4-verify fixture stage not named `dev` or `res` is gated by default, so a real pipeline execution reaches that stage and WAITS -- CodePipeline's default approval timeout is 7 days. The deploy never runs, so a gate that asserts a deployed stack would hang rather than fail, and because the pipeline is created with `restartExecutionOnUpdate: true` every subsequent stack update starts another execution that queues behind the pending approval, leaving teardown to run with an execution in flight. Fix direction, and the better test: have the harness prove the gate BOTH ways -- assert the stage stays pending while unapproved, then approve it via `codepipeline put-approval-result` and assert the deploy proceeds. Setting `manualApproval: false` on the fixture stage would also unblock the gate but would leave the approval path itself unproven, which is the more interesting half. This is planning for the gate, not a defect in the engine.",
+      "location": {
+        "path": "task.md",
+        "line": 574
+      }
+    },
+    {
+      "id": "code-review-approval-has-no-notification-or-timeout",
+      "component": "wrapper",
+      "layer": "production",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "A manual approval gate notifies nobody and inherits the 7-day default timeout, with no config surface to change either",
+      "detail": "The engine emits `ManualApprovalAction` with neither `notifyEmails`/`notificationTopic` nor `timeout`, so nothing tells anyone a gate is waiting and the action fails silently once the CodePipeline default timeout (7 days) elapses. There is no way for a user to configure it either: `StageInput.manualApproval` is a plain boolean. This is v2 parity -- v2's bare `ManualApprovalStep` notified nobody either -- so it is a long-standing gap rather than a regression, and adding a topic now with no user asking for one would be exactly the speculative configurability CLAUDE.md principle 2 rules out. Recorded so the gap is a decision rather than an oversight. Fix direction when a real need appears: widen the stage input to accept an object form (`manualApproval: { notifyEmails, timeout }`) alongside the boolean, rather than bolting notification props onto the engine, so the setting stays with the stage it belongs to.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 104
+      }
+    },
+    {
+      "id": "code-review-stage-name-unvalidated-in-definecicd",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "defineCICD never validates stage names, so a bad name surfaces as a raw CDK regex error naming a derived identifier",
+      "detail": "`normalizeStage` accepts any string as a stage name, so invalid names are caught much later by CDK and reported against an identifier the user never wrote. Reproduced: a 93-character stage name fails with \"Action name must match regular expression\" quoting the derived `Approve-<name>`; a name containing a space fails on stage-name validation; a stage named `Build` fails as a duplicate stage, because the engine reserves `Source` and `Build`. The 93-character case is a narrow new window opened by the approval work -- the `Approve-` prefix is one character longer than `Deploy-`, so names that previously fit now do not -- while the space and reserved-name cases are pre-existing. All of them fail loudly at synth and none can reach a deploy, which is why this is low. Fix direction: validate in `normalizeStage` that the name matches the CodePipeline-safe pattern with enough headroom for the longest prefix the engine derives, and is not one of the engine's reserved stage names, reporting the stage the user actually wrote.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/config/define.ts",
+        "line": 80
+      }
+    },
+    {
+      "id": "code-review-engine-approval-test-loop-hygiene",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The approval footprint test loops over both gated cases inside one test, so a failure does not say which case broke",
+      "detail": "The test asserting that gating adds no pipeline stage and no CodeBuild project iterates `for (const gated of [true, false])` inside a single test, so a regression in one case reports the one test name with no indication of which iteration failed; `test.each` would name it. The gated iteration also only asserts what is ABSENT (stage list, project count, topic count) and never that the approval is present, so read alone it would pass an implementation ignoring `manualApproval` entirely -- not a hole in the suite, since a separate test pins the approval and its run order, but it does mean this test is weaker than it looks. Separately, no test renders TWO gated stages at once; distinct action names per gated stage were verified by hand during review rather than pinned. Fix direction: split with `test.each`, add the positive approval assertion to the gated case, and add a two-gated-stage case.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/engine/codepipeline/CodePipelineEngine.test.ts",
+        "line": 270
+      }
+    },
+    {
+      "id": "code-review-application-name-unvalidated-in-stackname",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "PipelineApp uses config.application verbatim as the CloudFormation stackName with no legality check",
+      "detail": "`PipelineApp` builds `name = `${config.application ?? 'cdk-cicd'}-pipeline`` and uses it as both the construct id and the stack's `stackName`. `defineCICD`/`resolveCicdConfig` sanitize only the qualifier (`deriveQualifier`), never `application`, so an application with dots, spaces, underscores, or long enough to push the stack name past CloudFormation's 128-character limit synthesizes cleanly and then fails late at deploy with a generic CloudFormation validation error rather than a synth-time message naming the field the user set. Sibling to `code-review-stage-name-unvalidated-in-definecicd` (same class of gap, different identifier). Reasoned during review, not executed. Out of scope for m4-approval-selfupdate; validation belongs in `defineCICD` where the application name is first accepted. Fix direction: validate `application` against a CloudFormation-safe pattern in `resolveCicdConfig`, with headroom for the `-pipeline` suffix, reporting the value the user actually wrote.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/app/PipelineApp.ts",
+        "line": 63
+      }
+    },
+    {
+      "id": "code-review-deploy-ci-config-throw-shows-stack-trace",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "deploy-ci's fail-fast config load only handles undefined, so a THROWN config error surfaces as a raw stack trace",
+      "detail": "`DeployCiCommand` calls `loadCicdConfig(cwd)` purely to fail fast with a friendly 'no cicd.config.ts' message, but it only branches on the `undefined` return. If `load` instead THROWS -- ts-node not resolvable, or the user's `cicd.config.ts` itself throws at require time -- the error propagates to `index.ts` `main().catch`, which logs `e.stack` and exits 1: a stack trace, not the intended friendly message. This is consistent with the existing `SynthCommand`/`DeployCommand`, which do not catch either, so it is a pre-existing pattern rather than a regression introduced here. Reasoned, not executed. Fix direction (fleet-wide, not just this command): wrap the config load in the v3 commands in one shared helper that turns a throw into a single-line diagnostic.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCiCommand.ts",
+        "line": 46
+      }
+    },
+    {
+      "id": "code-review-pipeline-app-and-deploy-ci-handlers-untested",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The pipeline-app and deploy-ci command handlers have no unit tests; only the pure argv builders do",
+      "detail": "Unit tests cover the pure `deployCiArgs`/`pipelineAppCommand` builders and the wrapper-side `PipelineApp`, but neither CLI command's `handler` is exercised: deploy-ci's fail-fast branch, its `spawnSync` call and exit-code propagation, and the whole of `PipelineAppCommand.ts` (no test file at all) rely solely on the m4-verify real-AWS gate. The end-to-end run against the built CLI covered the happy path and the missing-config path by hand during this unit, but nothing pins them in CI. Acknowledged in the test-file comment; acceptable because these handlers are thin spawn shims whose logic lives in the tested builders, but recorded so the gap is a decision. Fix direction: a handler test that injects a fake spawn and asserts argv + exit code, mirroring how the deploy handler could be tested.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/PipelineAppCommand.ts",
+        "line": 25
+      }
+    },
+    {
+      "id": "code-review-pipeline-app-config-not-constructible-off-ts",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "PipelineApp is exported to all jsii languages but its required config can only be built by the TS-only defineCICD",
+      "detail": "`PipelineApp`/`PipelineAppProps` are exported from the v3 barrel and cross the jsii boundary (subclassing `aws-cdk-lib.App` is jsii-sound and `PipelineAppProps` is a proper readonly struct). But `PipelineAppProps.config: ResolvedCicdConfig` can in practice only be produced by `defineCICD`, a free function with a union-typed input that jsii omits (see the barrel comment and design open-question O1). So the advertised 'explicit opt-in: instantiate PipelineApp in your own bin/' story holds only for TypeScript consumers; a Python/Java consumer can import `PipelineApp` but has no ergonomic way to construct a `ResolvedCicdConfig` to pass it. Not a defect in this unit -- it is the same non-TS authoring gap O1 already tracks, now reachable through a second door -- but worth recording against PipelineApp specifically. Fix direction is whatever O1 lands (a jsii-modeled config builder); until then the non-TS opt-in path is provisioning via `cdk-cicd deploy-ci`, not `new PipelineApp`.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/app/PipelineApp.ts",
+        "line": 44
+      }
+    },
+    {
+      "id": "code-review-self-update-iam-test-account-coincides",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The self-update IAM test can't tell the pipeline's own account from the first stage's, because they coincide",
+      "detail": "The test 'the self-update project may assume the bootstrap roles in the pipeline own account/region' renders with `stages: ['dev']`, a bare stage whose env falls back to the pipeline stack's env (111111111111/us-west-2). So the self-update grant (pipeline account) and the first stage's grant (also 111111111111 by fallback) target the same ARNs. Mutation confirmed during review: rewriting the self-update grant to derive account/region from `config.stages[0].env` instead of `stack.account`/`stack.region` left all tests green. The implementation is correct (it uses the pipeline's own env); the test just cannot catch a regression that swaps to stage env. Out of scope for the self-update commit. Fix direction: render the pipeline in one account with a stage pinned to a DIFFERENT account, and assert the self-update policy grants the pipeline's account, not the stage's.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/test/v3/engine/codepipeline/CodePipelineEngine.test.ts",
+        "line": 54
+      }
+    },
+    {
+      "id": "code-review-codeartifact-login-needs-aws-cli-on-custom-image",
+      "component": "wrapper",
+      "layer": "production",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "codeArtifact login adds an implicit aws-CLI dependency that a custom buildImage may not satisfy",
+      "detail": "When `codeArtifact` is set, every build project runs `aws codeartifact login` in pre_build -- a dependency on the AWS CLI that a bare `npm ci` did not have. The default image (CDK PipelineProject -> STANDARD_7_0) ships aws CLI v2 + npm, so the common path is fine. But a user who sets `CodePipelineEngineProps.buildImage` via `fromDockerRegistry` to an image without the aws CLI on PATH only finds out at deploy time, when pre_build fails. Pre-existing shape (v2's CodeArtifactPlugin assumed the same). Not worth code now; fix direction is a doc note on `buildImage`/`codeArtifact` that the image must carry the aws CLI when a private registry is configured.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 225
+      }
+    },
+    {
+      "id": "code-review-codeartifact-npmscope-leading-at-not-stripped",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "A codeArtifact npmScope passed with a leading @ is neither stripped nor rejected",
+      "detail": "`CodeArtifactConfig.npmScope` is documented as the bare scope (`cdklabs` for `@cdklabs/*`) and passed straight into `--namespace <scope>`. A user who follows npm's own convention and writes `@cdklabs` produces `aws codeartifact login --namespace @cdklabs`, which CodeArtifact rejects -- a late, confusing failure for a natural mistake. v2 behaved identically. Fix direction: strip a leading `@` (and/or validate the scope) in `codeArtifactLogin`, or tighten the doc. Low because it fails loudly at deploy, not silently.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 224
+      }
+    },
+    {
+      "id": "code-review-engine-codeartifact-helpers-freefn-vs-method",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CodeArtifact helpers are module-level functions while the sibling deploy-grant is a private method",
+      "detail": "`codeArtifactLogin`/`grantCodeArtifactRead` are module-level free functions, whereas the sibling `grantDeployPermissions` (same file, same statelessness w.r.t. instance fields) is a private method; additionally `codeArtifactLogin` receives `stack` as a parameter while `grantCodeArtifactRead` recomputes `Stack.of(project)` itself. Purely stylistic -- both work and both are covered -- recorded so a later consistency pass can align them rather than re-notice. Not worth churn on its own.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 209
+      }
+    },
+    {
+      "id": "qa-ci-synthstages-declared-but-inert",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "resolved",
+      "title": "ci.synthStages is declared, normalized and then read by nothing -- the designed CI synth cost lever does nothing",
+      "detail": "`CiConfig.synthStages` ('Stages CI synthesizes for validation. Empty means all stages.') is part of the resolved config and `defineCICD` normalizes the permissive `'all'` form into it, but no consumer reads it: the engine hardcodes `npx cdk-cicd synth --all` in `DEFAULT_CI_COMMANDS`, and the CLI's synth command takes `--stage`/`--all` from argv. So a user who sets `synthStages` to narrow CI synth gets no effect and no warning, and every pipeline pays a full all-stages CI synth on top of each stage's own deploy-time synth -- e.g. `dev` is synthesized twice per run. Found while answering a maintainer question about why the dev stage synthesizes again; it is the concrete waste behind the D-deploy amendment. Fix is task `m4-synth-efficiency` (wire the lever, default to one env); the deeper duplication is addressed by `m4-assembly-promotion`. A config field that silently does nothing is worse than an absent one, so if wiring it slips, reject it in `defineCICD` instead. RESOLVED by `m4-synth-efficiency`: `ciSynthStages()` in the engine now reads it, the default is one stage rather than `--all`, an unknown stage name is rejected instead of ignored, and narrowing it under `ASSEMBLY_PROMOTION` is a clear error because every stage's assembly is its deployed artifact there.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 31
+      }
+    },
+    {
+      "id": "code-review-nag-suppression-applytochildren-too-broad",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "The pipeline IAM5 suppression uses applyToChildren and lands on ~6x more resources than have findings",
+      "detail": "Measured during review (with a single-aws-cdk-lib shim making cdk-nag live in-workspace): with suppressions off the pipeline stack yields 53 errors (AwsSolutions-S1 x1, IAM5 x52) across exactly 6 resources; with them on, 0. But the suppression metadata lands on 54 resources, 12 of them in the pipeline subtree, of which only 2 actually have findings (Pipeline/Role/DefaultPolicy and Source/Source/CodePipelineActionRole/DefaultPolicy). So the four CodePipeline action roles (Build, SelfMutate, Deploy-dev, Deploy-prod) each carry a blanket IAM5 pass they do not need. Harmless today -- the whole subtree is wrapper plumbing -- but a later change that adds a genuinely over-broad statement to one of those action roles (a cross-account support role, or a user-supplied action once the engine has one) would be silently excused. Fix direction: add `appliesTo` so only the named wildcards are excused, or, once nag is live in this workspace, assert suppressed-resource count == finding count so over-breadth is visible. Related: the suppression is applied at the END of render() because the source action's role only exists after addStage -- a stage added after that call would miss it (tested: a post-suppression CodeBuild stage adds 0 findings, so the fragility is real but low-risk).",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 164
+      }
+    },
+    {
+      "id": "code-review-m4-verify-runid-reuse-false-pass",
+      "component": "shared",
+      "layer": "production",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "m4-verify can pass on leftovers if a run id is reused after a failed teardown",
+      "detail": "`drive_pipeline` finishes on evidence (both app stacks deployed) guarded by `approvals > 0`, which closes the obvious false pass -- leftover stacks with no pending approval return 1 with 'prod was not gated'. The residual window: `CDK_CICD_TEST_RUN_ID` is documented as reusable, so a re-run after a failed teardown can find both app stacks already present AND a live approval token from the leftover pipeline on the first poll, and report PASSED without this run having deployed anything. Worth noting the evidence chain is otherwise stronger than it looks: a live Approve-prod token implies Source/Build/UpdatePipeline/dev all succeeded in that execution, so 'PASSED while a stage did not run' is not reachable -- only 'a stage is not in the pipeline at all', which the footprint assertion now covers. Fix direction: pre-flight refusal if either app stack already exists for this run id.",
+      "location": {
+        "path": "test/proof/m4-verify.sh",
+        "line": 174
+      }
+    },
+    {
+      "id": "qa-esm-project-cannot-load-ts-cicd-config",
+      "component": "cli",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "A project with \"type\": \"module\" cannot load a TypeScript cicd.config.ts at all",
+      "detail": "The CLI loads `cicd.config.ts` with `require()` under ts-node, so a package.json declaring `\"type\": \"module\"` fails with 'Must use import to load ES Module'. Measured before and after the `module: commonjs` override across five project shapes (CommonJS, NodeNext, moduleResolution bundler, no tsconfig, type module): the first four load in both cases -- so forcing commonjs is NOT a regression for modern tsconfigs -- and the ESM case fails identically before and after. So this is a pre-existing gap, not something the override introduced, and overriding the user's `module` is defensible precisely because the file is `require`d. Fix direction if ESM support is ever wanted: ts-node's `moduleTypes: { '**/cicd.config.ts': 'cjs' }`, or load the config with a dynamic `import()` instead of `require`. Until then the documented workaround is a `cicd.config.js` (CommonJS) or dropping `\"type\": \"module\"`.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CicdConfig.ts",
+        "line": 36
+      }
+    },
+    {
+      "id": "code-review-exec-overrides-user-ts-node-options",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "cdk-cicd exec overwrites a user's own TS_NODE_COMPILER_OPTIONS, and the injection has no test",
+      "detail": "`ExecCommand` spreads `process.env` first and then sets `TS_NODE_COMPILER_OPTIONS`, so a user who exported their own (e.g. `{\"target\":\"ES2022\"}`) loses it silently rather than having `module: commonjs` merged into it. Overriding is deliberately the safer default -- a merge would let a user reintroduce `module: esnext` and break the child with the exact error this fixes -- so the recommendation is to keep the override and document it, not to merge. Second half: the childEnv injection lives inside the yargs `handler` and is asserted nowhere; `ExecCommand.test.ts` only covers the exported `preloadArgs`/`buildContextJson` helpers, and the config-side register path is covered in `CicdConfig.test.ts`. Fix direction: extract the childEnv construction into an exported pure function and assert the key is present, which also makes the precedence explicit.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts",
+        "line": 226
+      }
+    },
+    {
+      "id": "code-review-await-listfunctions-suppression-reason",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "lambda:ListFunctions on * on the Await action role is covered only by an artifact-bucket-worded suppression",
+      "detail": "aws-cdk-lib's `LambdaInvokeAction.bound()` adds `lambda:ListFunctions` on `*` to each Await action's CodePipeline role, which the render()-level AwsSolutions-IAM5 suppression (applyToChildren) silences under a reason that talks only about the KMS-encrypted artifact bucket. Read-only enumeration on an internal action role, imposed by aws-cdk-lib, so it is safe -- but the evidence text does not name it. Overlaps `code-review-nag-suppression-applytochildren-too-broad`. Fix direction: extend the reason or add a scoped suppression on the action role with its own evidence. Documentation-scope only.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 229
+      }
+    },
+    {
+      "id": "code-review-await-iam4-reason-overstated",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The driver Lambda's AwsSolutions-IAM4 suppression reason understates AWSLambdaBasicExecutionRole scope",
+      "detail": "The IAM4 suppression on the deploy-driver Lambda says the managed AWSLambdaBasicExecutionRole grants 'only CloudWatch Logs writes for this function's own log group'. The managed policy actually grants Logs actions (incl. CreateLogGroup) on `arn:aws:logs:*:*:*` -- account-wide, not this function's group. Wording only; the ground truth is one line away in the rendered template and the grant is the CDK default for any non-VPC Lambda. Fix direction: correct the reason (or leave as-is if the file is not otherwise touched).",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 349
+      }
+    },
+    {
+      "id": "code-review-async-crossstack-importvalue-at-createchangeset",
+      "component": "cli",
+      "layer": "production",
+      "producer": "code-review",
+      "severity": "high",
+      "status": "wontfix",
+      "title": "asyncDeploy prepares ALL change sets up front, but Fn::ImportValue resolves at CreateChangeSet -- a first cross-stack deploy may be unpreparable",
+      "detail": "The asyncDeploy prepare step runs one `cdk deploy --all --no-execute`, which CREATES every stack's change set before any executes. CloudFormation resolves `Fn::ImportValue` at CreateChangeSet time, so on a FIRST deploy of an app with a cross-stack reference, the consumer's change set is created against an export that does not exist yet -> change set FAILED -> prepare exits non-zero. The same app deploys fine with asyncDeploy OFF, because `cdk deploy --all` fully deploys the producer before creating the consumer's change set. The driver's topological ordering only helps at EXECUTE time, not CREATE time. NOT confirmed offline (this is the one link that needs AWS) -- it must be the first thing an asyncDeploy AWS gate checks, with a 2-stack cross-stack fixture where the producer is not yet created. If confirmed, the fix is a redesign: create each change set inside the driver just before executing it (so producers exist first), or document the limitation loudly and refuse cross-stack apps under asyncDeploy. Until then asyncDeploy is safe only for apps whose stacks have no cross-stack exports on first deploy. The current m4-verify async fixture is single-stack and does not exercise this. RESOLVED (wontfix -- premise disproven by measurement): a direct CloudFormation probe showed CreateChangeSet SUCCEEDS with a non-existent Fn::ImportValue (CREATE_COMPLETE), and the import is resolved at EXECUTE time (executing with the export still absent gave ROLLBACK_COMPLETE). Preparation never fails; the dependency is handled by executing in topological order -- the producer executes first and creates the export, then the consumer's already-created change set executes and resolves it. The driver executes in dependency order (planFromAssembly topological sort, unit-tested) and a rollback is caught (ROLLBACK_COMPLETE is terminal-bad -> PutJobFailureResult). A 2-stack async e2e remains worthwhile as belt-and-suspenders (tracked on m4-deploy-observer), but the claimed prepare-time failure does not occur.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts",
+        "line": 218
+      }
+    },
+    {
+      "id": "planning-iengine-provisioning-is-cfn-shaped",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "medium",
+      "status": "open",
+      "title": "The engine seam renders under a CloudFormation Stack and provisions via deploy-ci -- a GitHub Actions engine needs a different provisioning path",
+      "detail": "IEngine.render(scope, props) takes a CDK Construct (the pipeline Stack), and the surrounding machinery is CloudFormation-shaped: PipelineApp builds one Stack, deploy-ci runs 'cdk deploy' of it, and it self-updates via a CFN stack. A GitHub Actions engine (m7-gha) does not fit this: a GHA 'pipeline' is a workflow YAML file committed to .github/workflows, not a stack you deploy -- so it needs an emit-and-commit provisioning path, not deploy-ci, and AWS auth via OIDC role config fields that ResolvedCicdConfig does not have. The IEngine.render side-effect contract technically allows writing a file, but PipelineApp/deploy-ci assume a deployable stack. Decision D4 anticipated non-CodePipeline engines; this records the concrete gap to close before m7-gha/m6-container: (a) a provisioning abstraction that is not CFN-only (deploy the stack vs write+commit a file vs build+push an image), and (b) engine-specific config (e.g. GHA OIDC role). Discovered while scoping m7-gha; it is a design decision, not a mechanical build.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/types.ts",
+        "line": 20
+      }
+    },
+    {
+      "id": "code-review-migration-explicit-stackname-not-covered",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "MIGRATION.md's stage-prefix framing does not call out v2 stacks that set an explicit stackName (no prefix)",
+      "detail": "The 'Preserving already-deployed resources' section and the mapping-table row describe v2 as deploying '<stageId>-<id>'. That holds when the stack used the DEFAULT name (cdk.Stage prefixes the construct id). A v2 user who set an explicit props.stackName got NO stage prefix -- just their literal name -- so they should reuse that literal string, not stageStackName. The doc's escape hatch ('set stackName to whatever you like') covers it implicitly but does not flag the case. Fix direction: add a sentence noting that if your v2 stack set an explicit stackName, match that literal instead. Low: the escape hatch exists and cdk diff catches a mismatch. RESOLVED in the same commit: the section now says to reuse the explicit stackName literal if v2 set one.",
+      "location": {
+        "path": "MIGRATION.md",
+        "line": 76
+      }
+    },
+    {
+      "id": "planning-naming-deploy-vs-deployci-confusable",
+      "component": "cli",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "medium",
+      "status": "open",
+      "title": "`deploy` and `deploy-ci` are confusably close for two very different actions",
+      "detail": "`cdk-cicd deploy --stage <s>` deploys a STAGE's application; `cdk-cicd deploy-ci` deploys the PIPELINE ITSELF. The names differ by a jargon suffix ('ci') and a user could easily run the wrong one -- e.g. `deploy` expecting to provision the pipeline. Found in the spike-naming pass. Options (all breaking, so batch for the pre-alpha rename): rename `deploy-ci` to a distinct verb like `provision`/`install-pipeline`/`bootstrap`, and/or make `deploy` refuse without an explicit --stage (it already requires --stage, but the name still invites confusion). No change now: renames wait for the major (ground rule 1); recorded so the rename pass has the list.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/index.ts",
+        "line": 1
+      }
+    },
+    {
+      "id": "planning-naming-cicd-acronym-casing",
+      "component": "shared",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "low",
+      "status": "open",
+      "title": "The CICD/Cicd acronym is cased inconsistently across the public API",
+      "detail": "`defineCICD` uses all-caps CICD, while `CdkCicd`, `ResolvedCicdConfig` (and `cicd.config.ts`) use PascalCase `Cicd`. jsii/TS convention treats acronyms as words (Cicd). Pick one before the first alpha publish -- most likely `defineCicd` to match the classes -- since it is a breaking export rename. Batched for the pre-alpha rename pass.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/index.ts",
+        "line": 1
+      }
+    },
+    {
+      "id": "planning-naming-enum-suffix-inconsistent",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "low",
+      "status": "open",
+      "title": "Enum suffixes are inconsistent: Type vs Kind vs Strategy vs Model",
+      "detail": "The v3 enums mix suffixes: `EngineType`/`SynthesizerType`/`RepositorySourceType` (Type), `BuildImageKind` (Kind), `ImageTagStrategy` (Strategy), `DeployModel` (Model). Each reads fine alone but the set is inconsistent. Consider standardizing (e.g. Type where it's a discriminator) in the pre-alpha rename pass; breaking, so not now. Note `RemovalPolicyValue` is a value enum, a separate category.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/index.ts",
+        "line": 1
+      }
+    },
+    {
+      "id": "spike-python-injection-is-node-preload-only",
+      "component": "cli",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "medium",
+      "status": "open",
+      "title": "Zero-touch injection is Node-only; a Python CDK app must use the explicit CdkCicd.attach opt-in",
+      "detail": "spike-python-hook conclusion. v3's zero-touch injection is a Node preload: cdk-cicd exec spawns process.execPath (node) with -r ts-node/register + -r register.js and runs the entry as a Node module (ExecCommand.ts). That cannot apply to a Python entry (you cannot -r a Node module into a python process), so `cdk-cicd exec app.py` does not work. What IS language-agnostic: config reaches the app via CDK_CONTEXT_JSON (cicd:config), which Python CDK reads with node.tryGetContext, so config/tags DATA crosses fine. What does NOT cross: applying the synthesizer + tags + Aspects (register.js patches the Node App). The wrapper ships a Python jsii binding (cdklabs.cdk_cicd_wrapper) and CdkCicd.attach(app) is exported, so the Python path is the SAME explicit opt-in the bundled-app diagnostic points to: the app constructs its own App (+ defaultStackSynthesizer) and calls CdkCicd.attach(app); attach applies tags/Aspects but NOT the synthesizer (documented in attach.ts), so the synthesizer must be set at construction. Recommendation (post-alpha): (a) make cdk-cicd exec language-aware -- for a non-.ts/.js entry run the app's own cdk.json command with CDK_CONTEXT_JSON + stage env set, skipping the Node preload -- or (b) document the explicit Python opt-in as the supported path, leaving zero-touch a Node/TS feature. No code changed; spike analysis.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts",
+        "line": 218
+      }
+    },
+    {
+      "id": "code-review-container-gitsha-tag-degrades-on-s3",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Container GIT_SHA tag silently degrades to latest for S3/artifact sources (and version-id chars can be illegal in a tag)",
+      "detail": "The GIT_SHA tag default relies on CODEBUILD_RESOLVED_SOURCE_VERSION, which is not reliably populated for a CodeBuild action inside CodePipeline when the SOURCE is S3/artifact (vs a raw git checkout). When empty the buildspec's ${...:-latest} fallback silently tags the image `latest`, so the GIT_SHA promise of an immutable per-commit tag is fiction for S3/CodeCommit-via-artifact sources -- repeated runs overwrite one mutable `latest`. If the var IS populated for S3 it holds the object version id, which can contain / and + (both illegal in a Docker tag), risking a non-deterministic `docker build -t` failure. The container-verify gate cannot catch this: it asserts only that an ECR image digest exists, never that the tag is a sha (the run PASSED, so the tag was SOME valid value -- unknown which). Fix direction: scope GIT_SHA to git sources, sanitize the value to the allowed tag charset, and have the gate assert the produced tag. Slice-1 goal (build+push to ECR) is proven; this is a tag-correctness refinement.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 363
+      }
+    },
+    {
+      "id": "code-review-regionorder-declared-not-honored",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "Stage env.regionOrder (SEQUENTIAL/PARALLEL) is declared and normalized but never consumed -- PARALLEL is a no-op",
+      "detail": "RegionOrder is a public enum, is a field on StageEnvInput/StageEnvironment, and defineCICD/defineDeployment normalize it (define.ts:107,183 default SEQUENTIAL). But NO engine or CLI code ever reads regionOrder: the CodePipeline engine renders one deploy action per stage, and cdk-cicd deploy iterates a stage's regions with a plain sequential `for (const target of targets)` loop (DeployCommand). So regions always roll out sequentially and setting RegionOrder.PARALLEL has zero effect -- a config knob that silently does nothing. This surfaced while uplifting the v3 workshop: the docs must not teach a no-op, so the region-order content was removed from chapters 2 and 3. Fix direction: either implement parallel region rollout (deploy a stage's regions concurrently when PARALLEL) or remove the field until it is honored. Multi-region deploy itself works (sequential); only the order/parallelism switch is inert.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/config/define.ts",
+        "line": 107
+      }
+    },
+    {
+      "id": "code-review-cdkpipelines-blanket-iam5-suppression",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CdkPipelinesEngine suppresses AwsSolutions-IAM5 blanket-wide on the pipeline construct rather than with v2's explicit action-wildcard allowlist",
+      "detail": "suppressGeneratedPipelineNag adds a recursive AwsSolutions-IAM5 suppression on this.pipeline with no appliesTo, so EVERY IAM5 anywhere under the CDK Pipelines construct subtree is silenced. This is scope-confined to wrapper-owned plumbing (the app stages are `new Stage(this, ...)` siblings of this.pipeline, not descendants, so it cannot leak onto user stacks -- confirmed in review), and it is intentionally simpler than the v2 CDKPipeline reference (CDKPipeline.ts:323-338), which scoped IAM5 to an explicit action-wildcard regex allowlist (s3:Abort/GetObject/DeleteObject/List/GetBucket, kms:GenerateDataKey/ReEncrypt, ec2messages/ssmmessages). The tradeoff: if a future change adds a genuinely over-broad IAM5 to one of the pipeline's own roles (e.g. a new rolePolicyStatement on the synth step), the blanket suppression would mask it instead of surfacing it. Left as-is per 'simplicity first' and because the pipeline construct is 100% generated plumbing. Fix direction if it ever matters: narrow to an appliesTo action-wildcard regex mirroring v2, plus a path-scoped Resource:: suppression for the pipeline/self-mutation/assets roles.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/cdkpipelines/CdkPipelinesEngine.ts",
+        "line": 165
+      }
+    },
+    {
+      "id": "migration-v3-no-v2-stackname-logicalid-preservation",
+      "component": "wrapper",
+      "layer": "production",
+      "producer": "migration",
+      "severity": "high",
+      "status": "open",
+      "title": "A naive v2->v3 migration renames CFN stacks and re-hashes reimplemented components' logical IDs, which would DESTROY Delete-policy stateful resources unless identity is explicitly preserved",
+      "detail": "Proven against a live v2 automation pipeline (in-place migration diff, bin/migrate-devfra.ts in the tef-ivms clone). Two identity-preservation gaps break a v2->v3 migration by default: (1) STACK NAMES -- v2's DefaultStackProvider deploys `<STAGE>-<app>-<provider>-<Stack>` (e.g. DEVFRA-automation-Core-Automationstack), but v3 (plain app or CdkPipelinesEngine's cdk.Stage prefix) yields bare/stage-prefixed names (Automationstack / SBFRA-Automationstack). A different CFN stack name = a brand-new stack; the old stack (owning the data) is orphaned and its Delete-policy resources are lost. (2) REIMPLEMENTED-COMPONENT LOGICAL IDS -- where v3 reimplements a v2 wrapper-provided construct (here the EncryptionProvider KMS key, rebuilt in build-stacks with a different construct id), the resource gets a fresh logical ID, so CloudFormation REMOVES the v2 logical ID (Key961B73FD) and adds a new one -- destroying a Delete-policy KMS key and rendering everything encrypted with it unreadable. Good news confirmed by the diff: the APP stacks' in-place logical IDs (7 DynamoDB GlobalTables, 2 tables, S3 buckets, the GitOps secret) are byte-identical between v2 and v3 because they derive from the construct path INSIDE the unchanged AutomationStack/GitOpsStack classes -- so those need no intervention. The migration is safe ONLY with: explicit stackName pinned to the v2 names, plus overrideLogicalId for each reimplemented stateful resource (the KMS key + its alias here), plus keeping the same stage identity so physical names are unchanged, gated on a cdk diff showing zero Replacement/removal on stateful logical IDs. Fix direction for the product: ship a documented v2->v3 migration path -- either a compat stack-naming resource provider that reproduces v2's DefaultStackProvider names, or explicit migration guidance + helpers (stackName mapping + overrideLogicalId table) -- and strongly recommend flipping stateful resources to RETAIN before cutover as a safety net. Without this, every existing v2 user migrating to v3 risks silent data loss.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/engine/cdkpipelines/CdkPipelinesEngine.ts",
+        "line": 134
+      }
+    },
+    {
+      "id": "code-review-cdkpipelines-replay-drops-inline-app-props",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The CDK Pipelines per-stage replay discards inline new cdk.App(props) (context/synthesizer); only cdk.json / CDK_CONTEXT_JSON context is honored",
+      "detail": "runtime/pipeline-assembler.ts replays the plain entry per stage by patching `new cdk.App()` to RETURN the current cdk.Stage; the ReplayApp constructor ignores its props. So an entry that passes inline App props -- `new cdk.App({ context: {...}, defaultStackSynthesizer: ... })` -- loses them under the CDK Pipelines engine, whereas the flat engine's register.ts subclasses App and calls super(props), honoring them. Same plain bin can therefore synthesize differently across engines; inline feature-flag context could shift logical IDs and undermine self-mutation stability. Mitigated: cdk.json / CDK_CONTEXT_JSON context flows through the assembler's root App and is INHERITED by every stage (App context propagates down the tree), which is the documented, recommended way to pass context -- so the common path is fine. Left unfixed now because forwarding inline props onto the stage node is fiddly (context can be set post-hoc via stage.node.setContext, but a synthesizer is constructor-only on a Stack, so an inline App synthesizer cannot be reproduced onto the stage's stacks). Fix direction: forward props.context onto each stage's node, and document that an inline App synthesizer is unsupported under CDK Pipelines (use the wrapper's forced-roles env instead). Documented as a limitation in replayEntryInto's doc comment.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/runtime/pipeline-assembler.ts",
+        "line": 62
+      }
+    },
+    {
+      "id": "code-review-aislop-generic-merge-double-assertions",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "aislop ai-slop/double-type-assertion flags 9 `as unknown as` casts that are load-bearing (generic deep-merge boundary and deliberate runtime App/stage replay), not slop",
+      "detail": "Surfaced by the aislop quality-gate sweep and dispositioned during a comments+easy-types fix pass. The nine ai-slop/double-type-assertion sites split into two intentional patterns. (1) The generic deep-merge boundary in appconfig: deepMerge/applyDerivedDefaults (defaults.ts:52,53,54,77,94) and ConfigLoader (loader.ts:90,94) bridge a caller's typed struct T and the internal Record<string, unknown> the recursive merge/validate operates on; TypeScript cannot relate a generic T to Record<string,unknown> without `as unknown as`, and a typed wrapper would add indirection without adding real safety. (2) Deliberate, already-documented runtime trickery in the CDK Pipelines replay: pipeline-assembler.ts:95 casts the current cdk.Stage to swap its synth() to a no-op, and :103 casts an anonymous ReplayApp class to the App constructor type so `new cdk.App()` yields the stage. Both carry explanatory comments. None has a trivially-available proper type, so all nine were left as-is under the chosen scope. Revisit only if the appconfig merge is ever refactored to carry types end-to-end. RESOLVED (no suppression): (1) deepMerge/applyDerivedDefaults now constrain their generic to `<T extends Record<string, unknown>>` -- every caller (loader + tests) already passes Record<string, unknown>, so base needs no cast and the results downcast to T with a single `as` (the return builds an explicit `const result: Record<string, unknown>` so it stays comparable to T); (2) loader.ts uses explicit `unknown` boundaries (`const defaults: unknown = ...; deepMerge(defaults as Record...)` and `const validated: unknown = ...; return validated as T`) instead of the compact `as unknown as`; (3) pipeline-assembler.ts replaces the stage/App casts with Reflect.get/set/deleteProperty, which need no cast. 91 appconfig+runtime jest tests pass; compile + strict rosetta green.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/defaults.ts",
+        "line": 50
+      }
+    },
+    {
+      "id": "code-review-aislop-cdk-internal-any-casts",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "aislop ai-slop/unsafe-type-assertion flags 3 `as any` casts that reach into CDK-internal or dynamically-shaped values with no clean public type",
+      "detail": "Three of the four ai-slop/unsafe-type-assertion sites reach past a public type on purpose (the fourth, ResourceContext.get, was a redundant no-op cast and has been removed). DefaultStackProvider.ts:163 writes the private aws-cdk-lib field `(node as any)._stackName` from a stack-name-normalization Aspect -- a known CDK-internal reach already carrying an eslint-disable for no-explicit-any. GitHubPipelinePlugin.ts:174 sets `(definition as any).manualApprovalRequired = false` on a deployment-definition value whose type does not declare that key. GitHubPipelineProvider.ts:34 reads `(buildSpec as any).spec` to pull the raw object out of an aws-cdk-lib BuildSpec whose `.spec` is not public. Each targets a value with no clean exported type, so a proper-type fix is not trivially available; forcing one would add a fragile local interface mirroring a CDK internal. Left as-is. Note DefaultStackProvider._stackName is also the shape flagged in the CDK Pipelines self-mutation literature; if aws-cdk-lib ever exposes a supported stack-name override, replace the reach. RESOLVED without any `as any`: the two CDK-internal reaches now use Reflect (Reflect.set(node, '_stackName', ...) in DefaultStackProvider, Reflect.get(buildSpec, 'spec') in GitHubPipelineProvider), which need no cast and let the no-explicit-any eslint-disables go; the third is a real (readonly) field so it uses a precise writable cast `(definition as { manualApprovalRequired: boolean })` rather than `as any`. Clears ai-slop/unsafe-type-assertion with no `as unknown as` double-cast and no new no-unsafe lint; compile + strict rosetta green.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/common/types/DefaultStackProvider.ts",
+        "line": 163
+      }
+    },
+    {
+      "id": "code-review-aislop-narrative-jsdoc-false-positive",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "aislop ai-slop/narrative-comment flags 3 JSDoc blocks that are legitimate public jsii API documentation, not decorative narration",
+      "detail": "aislop's narrative-comment rule (auto-fixable = deletion) targets three JSDoc blocks that are actually the published API docs for jsii-exported symbols: the class doc on VPCProvider (VPCProvider.ts:77), the property doc on CodeStarConnectRepositoryStack.pipelineInput/pipelineEnvVars (CodeStarConnectRepositoryStack.ts:34), and the class doc on the abstract BaseStackProvider (BaseStackProvider.ts:13). Deleting these would strip the descriptions that jsii-rosetta and pacmak render into the generated Python/Java/.NET docs, degrading the published multi-language surface -- the opposite of the intent for a documented constructs library. Treated as a false positive for a jsii package and left intact. If aislop supports per-rule path scoping, exclude public-API JSDoc from narrative-comment rather than the whole engine. The only borderline case is BaseStackProvider's second/third sentences restating the implements clause -- a candidate for tightening (not deletion) if the class doc is ever revised. RESOLVED (no suppression, docs kept): reworded rather than deleted. The rule keys on CROSS_REFERENCE_PHRASES (the `used by` in VPCProvider and CodeStarConnectRepositoryStack.pipelineEnvVars) and on a >=3-line JSDoc preamble with a `This class ...` justification opener (BaseStackProvider). Rewrote all three into concise factual docs with no cross-reference phrasing and under the preamble threshold -- a doc improvement, not a loss. AI Slop engine now reports 0 issues; compile + strict rosetta green.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/resource-providers/VPCProvider.ts",
+        "line": 77
+      }
+    },
+    {
+      "id": "code-review-aislop-definecicd-thin-wrapper-intentional",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "aislop ai-slop/thin-wrapper flags defineCICD, which is the intended public Level-1 entry point and cannot be inlined without breaking the published API",
+      "detail": "aislop flags defineCICD (define.ts:155) as a thin wrapper because its body is just `return resolveCicdConfig(props)`. But defineCICD is the documented Level-1 entry point a user writes in cicd.config.ts (see its JSDoc example) -- a deliberate, stable public name that keeps resolveCicdConfig internal and gives the config surface a single obvious export. Inlining it (per the rule's suggestion to call the inner function directly) would either force users to import an internal name or remove a published symbol, violating CLAUDE.md ground rule 1 (additive-before-destructive) and tripping `npx projen compat`. Intentional public API; not slop. RESOLVED (no suppression, no API break): converted defineCICD from a call-only wrapper function to a direct alias -- `export const defineCICD = resolveCicdConfig;` -- so there is no wrapping function body for the rule to flag while the public name, signature (CicdConfigProps => ResolvedCicdConfig) and JSDoc example are unchanged. resolveCicdConfig keeps its body and its own export (the tested YAML path). Clears ai-slop/thin-wrapper; 21 define tests pass; compile + strict rosetta green.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/v3/config/define.ts",
+        "line": 155
+      }
+    },
+    {
+      "id": "code-review-aislop-pluginbase-ts-ignore",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "lens": "code-review",
+      "severity": "low",
+      "status": "resolved",
+      "title": "PluginBase's 3 no-op default methods carry `//@ts-ignore` (aislop ai-slop/ts-directive) plus a misplaced eslint-disable that no longer suppresses the unused-param warning",
+      "detail": "PluginBase.create/beforeStage/afterStage (Types.ts:476,482,488) are no-op default implementations whose params (context/scope) are intentionally unused but must keep their names -- renaming to _-prefixed would change the jsii-visible parameter surface and could trip compat. Each is guarded by both `// eslint-disable-next-line @typescript-eslint/no-unused-vars` and `//@ts-ignore`. Two observations: (1) aislop ai-slop/ts-directive (INFO) flags the three @ts-ignore lines; keeping the public param names while satisfying noUnusedParameters is the reason they exist, so they are intentional. (2) A real minor defect: the eslint-disable-next-line sits directly above the `//@ts-ignore` comment, so it disables the rule for the comment line, not for the method signature two lines below -- which is why eslint/no-unused-vars still fires on Types.ts:477/483/489 in the current scan. Fix direction when this file is next touched: move each eslint-disable-next-line to immediately precede the method signature (and re-check whether the @ts-ignore is still needed once the disable lands on the right line). Left for a dedicated pass to avoid touching public base-class signatures under an unrelated cleanup. RESOLVED: replaced the three //@ts-ignore + misplaced eslint-disable-next-line with the `void param;` idiom in the no-op bodies -- it references the intentionally-unused params so noUnusedParameters (tsc) and @typescript-eslint/no-unused-vars both pass, the public jsii parameter names are preserved, and the blunt @ts-ignore is gone. Clears ai-slop/ts-directive with no API change; compile + strict rosetta green.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/common/types/Types.ts",
+        "line": 475
+      }
+    },
+    {
+      "id": "migration-python-sample-still-references-removed-pipelineblueprint",
+      "component": "infra",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "samples/cdk-python-example still imports PipelineBlueprint, which m8-remove-v2 deleted from the wrapper source",
+      "detail": "The Blueprint/v2 API surface (PipelineBlueprint and the rest) was deleted from packages/@cdklabs/cdk-cicd-wrapper/src as part of the flatten (src/v3 -> src) that landed the Autopilot line on v3/main. samples/cdk-ts-example, the TS analogue, was migrated to a sibling samples/cdk-v3-example (m5-sample-migrate) and the original then deleted outright alongside the projen product (m8-remove-v2). samples/cdk-python-example never got the same treatment -- app.py still does `from aws_cdk_cicd_wrapper import PipelineBlueprint`, a class that no longer exists in this tree. It will fail at import the next time anything runs/installs it against the local source (it currently still resolves against an already-published 0.x PyPI wheel, so nothing has failed yet, but that masks the drift). Needs its own migration to a cicd.config.ts-shaped Python equivalent (or deletion + signposting to legacy-blueprint, mirroring the TS sample) as a dedicated task -- out of scope for the projen-decommission work that surfaced it.",
+      "location": {
+        "path": "samples/cdk-python-example/app.py"
+      }
+    },
+    {
+      "id": "migration-encryptbuckettransit-s10-action-scope",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "EncryptBucketOnTransitAspect denies only s3:PutObject over non-TLS, which structurally can never satisfy cdk-nag AwsSolutions-S10",
+      "detail": "While real-AWS deploy-verifying the m9-migrate-security-plugins identity-check fix (EncryptBucketOnTransitAspect/EncryptSNSTopicOnTransitAspect switched from instanceof to a structural Resource.isResource + cfnResourceType check, mirroring m9-migrate-log-retention), a probe bucket/topic/key added to level1-app and reverted after the run showed the fix genuinely works -- the DenyHTTP bucket-policy statement and NoHTTPSubscriptions/HttpsOnly topic-policy statements now land in the synthesized template and in the real deployed AWS::S3::BucketPolicy/AWS::SNS::TopicPolicy (confirmed via aws s3api get-bucket-policy / aws sns get-topic-attributes). But cdk-nag AwsSolutions-S10 still flags the bucket even with the identity fix in place, independent of module-copy identity: cdk-nag/lib/rules/s3/S3BucketSSLRequestsOnly.js requires the Deny statement's Action to be exactly s3:* or * (checkMatchingAction), while EncryptBucketOnTransitAspect (matching v2's EncryptBucketOnTransitPlugin exactly, per its own docstring) denies only s3:PutObject. So this aspect can never make a bucket AwsSolutions-S10-compliant, in any environment, single- or dual-aws-cdk-lib-copy alike -- a pre-existing gap in the ported v2 policy scope, not something the identity-check fix touches or introduces. By contrast EncryptSNSTopicOnTransitAspect's HttpsOnly statement already includes SNS:Publish, which does satisfy cdk-nag's AwsSolutions-SNS3 (SNSTopicSSLPublishOnly.js requires only sns:publish) -- confirmed clean on the same probe. Fix direction if S10 compliance is wanted: widen EncryptBucketOnTransitAspect's Deny action from s3:PutObject to s3:* (or add a second statement), which is a deliberate behavior change from v2's scope, not an identity-check fix, and needs its own decision.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/support/EncryptBucketOnTransitAspect.ts",
+        "line": 24
+      }
+    },
+    {
+      "id": "qa-cdk-cicd-exec-synth-fails-codepipeline-dev-stage",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "npx cdk-cicd synth --all fails inside a real CodeBuild Build project (CODEPIPELINE engine, dev stage), with no error detail in the log",
+      "detail": "Observed during m9-migrate-private-registry-auth's real-AWS deploy-verify (M4_NPM_REGISTRY=true bash test/proof/m4-verify.sh against test/fixtures/pipeline-app): the pipeline stack deployed cleanly and the CI Build project's pre_build phase (codeArtifact login + the npmRegistry .npmrc login commands) succeeded, `npm ci` and `npx cdk-cicd check` both passed, but the BUILD phase's `npx cdk-cicd synth --all` failed with COMMAND_EXECUTION_ERROR after only two lines of output: `cdk-cicd synth: dev -> us-west-2 (...)` then `cdk-cicd exec: stage='dev', engine='codepipeline', running bin/app.ts` then immediately `npx cdk-cicd exec bin/app.ts: Subprocess exited with error 1` -- nothing from the spawned child in between, even though ExecCommand.ts's spawnSync uses `stdio: 'inherit'`. This is very likely unrelated to npmRegistry itself (the failure is entirely inside the BUILD phase, after the npmRegistry-specific PRE_BUILD commands already completed), but that was not independently confirmed by running the plain (non-npmRegistry) m4-verify.sh gate in the same session. Root cause not yet isolated -- worth checking whether it reproduces standalone (`CDK_STAGE=dev CDK_DEFAULT_REGION=us-west-2 npx cdk-cicd exec bin/app.ts` inside a fresh install of the fixture) and whether the CDK CLI is swallowing the child's stdio on a non-zero exit rather than truly inheriting it.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts",
+        "line": 261
+      }
+    },
+    {
+      "id": "migration-config-types-define-wave8-clobbering",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "high",
+      "status": "open",
+      "title": "config/types.ts and config/define.ts kept losing NpmRegistryConfig/ProxyConfig/CiConfig.partialBuildSpec to concurrent Wave 8 sessions editing the same working tree",
+      "detail": "While working m9-migrate-private-registry-auth, config/types.ts and config/define.ts were observed missing the NpmRegistryConfig and ProxyConfig interfaces (plus CiConfig.partialBuildSpec and ResolvedDeploymentConfig.npmRegistry) three separate times in one session, each time while other uncommitted files (CodePipelineEngine.ts, CdkPipelinesEngine.ts, DeploymentPipeline.ts, index.ts) still referenced them -- a state that does not compile (`npx tsc --noEmit` reported 46 error TS2305/TS2339 errors the first time). Recovered the missing declarations verbatim from dangling git blobs (`git fsck --unreachable`) each time and committed them (5a219d5), but the same fields were gone again minutes later, apparently each time a different Wave 8 task (m9-migrate-codebuild-customization, m9-migrate-security-plugins) finished its own isolated fix-and-commit cycle on the same two shared files. Whatever mechanism produces each task's isolated diff for these two files appears to regenerate them from a baseline that predates other tasks' still-uncommitted additions, silently dropping the latter rather than merging. If Wave 8 tasks continue to be worked concurrently against this one working tree, later sessions should verify `npx tsc --noEmit -p packages/@cdklabs/cdk-cicd-wrapper` is clean before trusting any uncommitted state in these two files, and ideally serialize edits to config/types.ts + config/define.ts across concurrent Wave 8 sessions rather than each task touching both.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/config/types.ts"
+      }
+    },
+    {
+      "id": "code-review-partialbuildspec-merge-precedence-reversed",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "ci.partialBuildSpec's merge direction favors the user's fragment on scalar conflicts, the opposite of v2's actual precedent",
+      "detail": "CodePipelineEngine.project() calls `codebuild.mergeBuildSpecs(generatedBuildSpec, partialBuildSpec)`, with the engine's own generated spec as the first (lhs) argument and the user's `ci.partialBuildSpec` as the second (rhs). aws-cdk-lib's `mergeBuildSpecs` resolves scalar-key conflicts in favor of the rhs argument (array-valued keys are concatenated regardless of order, so this only matters for scalars). v2's actual mechanism -- `pipelines.CodeBuildStep`'s own `partialBuildSpec` prop, which is what `CDKPipelineProps.ciBuildSpec` fed -- calls the same underlying `mergeBuildSpecs(userPartialSpec, engineGeneratedSpec)` with the user's fragment as lhs and the generated spec as rhs, i.e. the engine's own generated fields win a scalar conflict in v2, not the user's. This port reverses that precedence: here the user's fragment wins. In practice this rarely bites -- the generated spec here only sets `env` when `proxy`/`npmRegistry` is configured, and typical escape-hatch use (extra install commands, a cache block, additional env vars) doesn't collide on the same key -- but it is a real, documented-nowhere behavioral difference from v2 for anyone whose `ci.partialBuildSpec` does redefine a key the engine also sets (e.g. `env.shell`, or an env var name that collides with a proxy/npmRegistry-set one). Letting the user's override win is arguably the more sensible default for an escape hatch, but it is a deliberate choice this port made silently rather than v2 parity, and should be called out in `CiConfig.partialBuildSpec`'s doc comment or `MIGRATION.md` if kept as-is.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts"
+      }
+    },
+    {
+      "id": "architect-projen-build-dropped-uncommitted-root-fsextra-dep",
+      "component": "infra",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "low",
+      "status": "open",
+      "title": "npm run build's projen synth silently dropped an uncommitted root package.json dependency while verifying unrelated Wave 8 tasks",
+      "detail": "Before this session touched anything, root package.json (working tree, uncommitted, never `git add`ed) carried a `\"dependencies\": { \"fs-extra\": \"^11.4.0\" }` block that is not declared anywhere in .projenrc.ts/projenrc/*.ts. Running `npm run build` (needed to verify m9-migrate-codebuild-customization/custom-buildspec/http-proxy) invoked projen's synth step, which regenerates package.json from projenrc and has no record of that block, so it silently rewrote package.json without it (visible in the build log's own package.json diff). Because the edit was never staged, `git fsck --dangling` cannot recover it either -- it is genuinely gone from git's perspective, only reconstructable from this finding's text. Checked whether this has any live impact: docs/scripts/generate-markdown.js (root-level, already committed) is the only root-level fs-extra consumer, and `node -e \"require.resolve('fs-extra')\"` from the repo root still resolves it via workspace hoisting (the CLI package's own fs-extra dependency, see projenrc/CLIConfig.ts) -- so nothing currently breaks without the explicit root dependency. Left unrestored rather than hand-edited back in, since re-adding it directly to package.json would itself violate the project's own rule against hand-editing projen-generated files with no corresponding projenrc source; if the root dependency was intentional (e.g. for a future root-level script), it needs to go into projenrc, not back into package.json by hand. Flagging as a general hazard: any uncommitted, never-staged change to a projen-generated file (package.json, tsconfig*.json, .eslintrc.json, etc.) is invisible to git and will be silently overwritten the next time anyone runs a projen synth/build in this shared working tree.",
+      "location": {
+        "path": "package.json"
+      }
+    },
+    {
+      "id": "code-review-accesslogsforbucketaspect-stale-landed-comment",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "AccessLogsForBucketAspect's file header says to attach it once the compliance bucket and config field land -- they now have, but it deliberately stays unwired, and the comment was not updated",
+      "detail": "AccessLogsForBucketAspect.ts's top-of-file comment (written under m9-migrate-security-plugins, before the compliance bucket existed) says: 'not wired into the runtime injection hook until the compliance bucket and its config field land; attach it directly once they do.' m9-migrate-compliance-bucket has now landed both (SupportResources.complianceLogBucket + complianceLogBucketName config field), but its own notes explicitly chose NOT to wire this aspect into applyWrapper, because it still uses an unfixed `instanceof CfnBucket` check -- the same cross-aws-cdk-lib-module-copy failure class already found to silently no-op EncryptBucketOnTransitAspect/EncryptSNSTopicOnTransitAspect on a real deploy. The decision not to wire is correct and well-documented in task.md, but the aspect's own doc comment still tells a future reader the opposite (that landing the dependency is sufficient to attach it), which could lead someone to wire it in without first applying the structural-check fix. Not fixed inline because the file belongs to the already-committed-pending m9-migrate-security-plugins unit, not this task's diff -- editing it here would be an out-of-scope touch. Fix direction: once the structural-check fix lands for this aspect (tracked as part of the still-latent instanceof CfnBucket/Key/LambdaFunction gap noted under m9-migrate-security-plugins), update or remove this header comment as part of that same change.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/support/AccessLogsForBucketAspect.ts",
+        "line": 9
+      }
+    },
+    {
+      "id": "migration-github-actions-engine-missing-codeartifact-proxy-plumbing",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "GitHubActionsEngine copies CdkPipelinesEngine's codeArtifact/proxy command strings but not the IAM grants or PROXY_* env that make them work",
+      "detail": "GitHubActionsEngine.ts's Synth job install commands include the same codeArtifact-login and proxy-export command strings CdkPipelinesEngine/CodePipelineEngine use, but a CodeBuild project gets those commands working via IAM grants (codeArtifactReadStatements-equivalent) and injected PROXY_* environment variables that the other two engines wire up explicitly -- GitHubActionsEngine does not. A rendered workflow with codeArtifact or proxy configured would run the login/export commands but fail at runtime (no credentials to read the secret, no env to export). Not exercised by the end-to-end real-deploy verification performed for m9-migrate-github-actions-engine (a minimal config with neither codeArtifact nor proxy set), so this did not block that task's own acceptance criterion. Fix direction: either port the missing IAM-role-policy grants + env population (mirroring CdkPipelinesEngine's approach, adapted for a GitHub Actions job's own credential model -- likely a Secrets Manager read granted to the GitHubActionRole plus explicit env in the generated workflow step), or explicitly document codeArtifact/proxy as unsupported for this engine until that lands.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/github/GitHubActionsEngine.ts"
+      }
+    },
+    {
+      "id": "migration-github-actions-engine-deny-external-id-incompatibility",
+      "component": "wrapper",
+      "layer": "production",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "GitHubActionsEngine's generated workflow cannot assume the CDK deploy role on a bootstrap with --deny-external-id (the current CDK CLI default)",
+      "detail": "cdk-pipelines-github 0.4.x (a transitive dependency GitHubActionsEngine builds on, not this wrapper's own code) hardcodes roleExternalId: 'Pipeline' on the 'Assume CDK Deploy Role' GitHub Action step it renders, with no prop to override or omit it. A CDK bootstrap stack created with the current CLI default (--deny-external-id, i.e. DenyExternalId=true) rejects any sts:AssumeRole call on cdk-*-deploy-role-* that carries ANY ExternalId, so the two are mutually incompatible out of the box: the deploy job fails with 'is not authorized to perform: sts:AssumeRole on resource ...deploy-role...'. Confirmed end to end against the sandbox test account (gyalai-aws/github-plugin-test) -- Synthesize and asset-publish succeeded, only the deploy step failed. Not fixable in wrapper source: there is no override point in cdk-pipelines-github to change. Worked around for the sandbox account by re-bootstrapping with a minimally-customized template (see task.md m9-fix-pipeline-stack-env-fallback) that adds one extra AssumeRolePolicyDocument statement to DeploymentActionRole allow-listing exactly StringEquals: {sts:ExternalId: 'Pipeline'}, leaving the existing Null-ExternalId deny-everything-else statement untouched -- a real users' account needs the same one-time accommodation (or cdk-pipelines-github needs to stop hardcoding the external ID upstream). Should be called out explicitly in the GitHub Actions engine's developer-guide docs as a prerequisite, not silently discovered at deploy time.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/github/GitHubActionsEngine.ts"
+      }
+    },
+    {
+      "id": "migration-sample-app-taskfile-assumes-projen",
+      "component": "infra",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "Taskfile.sample-app.yml's dev loop (task samples:dev:init/build/synth/deploy) assumes an npm+projen sample; neither remaining sample is one",
+      "detail": "dev:npm:install runs `npx projen install`, `npm run default`, and `npm run projen` unconditionally; dev:build/dev:synth/dev:deploy/upgrade/dev:prepare all run `npm run <script>` for scripts (build/upgrade/validate/lint/license) that assume a projen-generated package.json. This Taskfile was written for the deleted v2/Blueprint TS sample (projen-scaffolded) and was never updated for either successor: samples/cdk-v3-example/package.json (SAMPLE_APP's own default) has no \"scripts\" key at all and no .projenrc -- a deliberately plain, non-projen sample (per its own README: `npm install && npx cdk-cicd deploy-ci` is the whole flow); samples/cdk-python-example has no package.json at all (it is Python -- `npm run` cannot apply regardless of scripts). Running `task samples:dev:init` with either sample fails at dev:npm:install's `npm run projen`/`npm run default` step ('missing script' or no package.json). Compounds with the already-tracked migration-python-sample-still-references-removed-pipelineblueprint finding (the python sample's own code is also stale) -- fixing that alone would not make this Taskfile work for it, since the devloop itself is npm/projen-shaped. Fix direction: make the Taskfile branch per-sample (skip projen-specific steps when no .projenrc; use a python-appropriate install/synth path for cdk-python-example), or drop the generic devloop in favor of each sample's own documented flow. contributing/index.md's 'Use a sample app for development' section was corrected to describe cdk-v3-example's actual working flow instead of the broken task command, pending this fix.",
+      "location": {
+        "path": "Taskfile.sample-app.yml"
+      }
+    },
+    {
+      "id": "migration-migrate-codemod-misses-enum-stage-objects",
+      "component": "cli",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "cdk-cicd migrate silently falls back to v2's default stage list when a real defineStages(...) array mixes an enum member (Stage.RES) with account/region props",
+      "detail": "Ran `cdk-cicd migrate --entry bin/automation.ts --application automation` against a real v2 app (a 7-stage PipelineBlueprint.builder() chain from a customer clone, in a demo working area) whose defineStages(...) array looks like `[{ stage: Stage.RES, account: process.env.ACCOUNT_RES }, { stage: 'DEVFRA', account: ..., manualApprovalRequired: false }, ...]`. MigrateCommand.ts's stageNamesFrom() only reads an object-literal stage element's `stage` property when it is a string literal (ts.isStringLiteral check); here the first element's `stage` is `Stage.RES` (a PropertyAccessExpression), so the whole array parse bails (returns undefined) and the command falls through to the 'no defineStages(...) found' path, emitting v2's unrelated defaults (res, dev, int) instead of the real 7 stages -- with only a WARN-level 'could not read defineStages(...) automatically' message, easy to miss in CI log noise. The command already handles a bare `Stage.DEV` array element (property-access branch) and a string-literal `stage` property inside an object element, but not an enum-member `stage` property inside an object element -- the exact shape produced when a real app mixes the default Stage.RES/Stage.DEV/Stage.INT constants with custom stages that need per-stage account/region overrides. Not fixed here since it is a CLI parser gap, out of scope for the migration proof itself (the real stages were set by hand in cicd.config.ts afterward, per MIGRATION.md's own guidance that the codemod 'deliberately does not rewrite' stack construction and needs review). Fix direction: extend the object-literal branch in stageNamesFrom() to also accept ts.isPropertyAccessExpression for the `stage` property's initializer, lowercasing the member name the same way the bare-element branch already does.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/MigrateCommand.ts",
+        "line": 56
+      }
+    },
+    {
+      "id": "qa-deploymentpipeline-cd-role-missing-ecr-pull-permissions",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "DeploymentPipeline's CD deploy CodeBuild role is never granted ECR pull permissions, so the CD-pipeline-in-CodePipeline round trip fails at `docker login`",
+      "detail": "Real-AWS proof (demo-forge Chapter 2, container two-repo mode against a real EKS product): after `deploy-ci` provisions the Repo 2 CD CodePipeline and it triggers, the Deploy CodeBuild action fails immediately with `AccessDeniedException ... not authorized to perform: ecr:GetAuthorizationToken`. DeploymentPipeline.ts builds `ecrLoginCommands` (`aws ecr get-login-password | docker login ...`) into the buildspec for every distinct ECR host across the targets' images, but the IAM grant section only adds `sts:AssumeRole` on bootstrap roles, CodeArtifact permissions, and Secrets Manager read for npmRegistry -- no `ecr:GetAuthorizationToken` (needed to log in at all) and no `ecr:BatchGetImage`/`ecr:GetDownloadUrlForLayer`/`ecr:BatchCheckLayerAvailability` scoped to the target repo (needed to pull after login). This means the CD pipeline can never successfully pull a private ECR image today -- it is not an edge case, it is the default/only path since `defineDeployment.image` is always an ECR reference in the documented usage. This is very likely the concrete root cause behind task.md m6-container's note that 'the CD-pipeline-in-CodePipeline round trip is the open gate' after Slice 3. Fix direction: add an IAM policy statement granting `ecr:GetAuthorizationToken` (resource `*`, required by the ECR API) plus `ecr:BatchGetImage`/`ecr:GetDownloadUrlForLayer`/`ecr:BatchCheckLayerAvailability` scoped to each distinct image repository ARN derived from `config.targets[].image`/`config.image`, mirroring how `ecrLoginCommands` already derives the distinct hosts.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/DeploymentPipeline.ts",
+        "line": 68
+      }
+    },
+    {
+      "id": "qa-check-scanner-timeout-hardcoded-blocks-container-buildimage",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "open",
+      "title": "`cdk-cicd check`'s security scanners spawn with a hardcoded 2-minute timeout with no config override, and container mode's BuildImage stage has no hook to skip/replace the check",
+      "detail": "Real-AWS proof (demo-forge Chapter 2): running `npx cdk-cicd check` against a real, ~1000-tracked-file product repo, the semgrep sub-scan reliably failed with `ETIMEDOUT` inside AWS CodeBuild (container mode's BuildImage stage), at exactly the 2-minute mark every time, across five attempts -- regardless of trimming the scanned file count from ~1100 to ~110 tracked files (via .semgrepignore) or bumping CodeBuild compute from default to LARGE, and regardless of setting `SEMGREP_ENABLE_VERSION_CHECK=0` to rule out a version-check network stall. The same scan finished locally in ~11-27s on the identical (or larger) file set, so the bottleneck is specific to running inside this CodeBuild environment, not scan complexity. `GLOBAL_TIMEOUT = { timeout: 2 * 60 * 1000 }` in scanners.ts is a hardcoded constant applied via `spawnSync(..., { ...GLOBAL_TIMEOUT })` for bandit, shellcheck, and semgrep alike, with no `cicd.config.ts` field, CLI flag, or env var to extend or disable it. Separately, `CodePipelineEngine.renderImageBuild`'s BuildImage CodeBuild project buildspec hardcodes `['npm ci', 'npx cdk-cicd check', ...]` with no `ci.partialBuildSpec`/`ci.steps` hook (those only apply to the main CI build project, not this container-mode-specific one) -- so there is no config-level way to skip or customize this specific check for container mode even if a user wanted to. Together these make the CI pipeline's BuildImage stage impossible to complete for any real-world repo whose environment hits this scanner-timeout ceiling. Fix direction: make the scanner timeout configurable (e.g. via `codeBuildEnvSettings`-adjacent config or a dedicated `ci.securityScanTimeout`), and/or thread `ci.partialBuildSpec`-equivalent overrides into the BuildImage project.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/scanners.ts",
+        "line": 12
+      }
+    },
+    {
+      "id": "qa-github-actions-engine-eager-import-forces-peer-dep",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "The wrapper's package entry point eagerly requires GitHubActionsEngine, forcing `cdk-pipelines-github` as a hard runtime dependency even for CodePipeline-only apps",
+      "detail": "Real-AWS proof (demo-forge Chapter 2, container mode): running the vendored `@cdklabs/cdk-cicd-wrapper`/`-cli` tarballs inside a deployer image without a `cdk-pipelines-github` dependency throws `Cannot find module 'cdk-pipelines-github'` at CLI startup (require stack: cdk-cicd-cli/bin/cdk-cicd -> lib/index.js -> cmds/v3/DeployCiCommand.js -> @cdklabs/cdk-cicd-wrapper/lib/index.js -> lib/engine/github/GitHubActionsEngine.js), even though the app in question uses only the default CodePipeline engine and never references GitHubActionsEngine or EngineType.GITHUB_ACTIONS. `cdk-pipelines-github` is a documented peerDependency (correctly so), but the eager top-level `require` in the wrapper's own index means every consumer must install it regardless of which engine they actually use, rather than it being lazily loaded only when `EngineType.GITHUB_ACTIONS` is selected. Fix direction: lazy-require `GitHubActionsEngine` (dynamic `require`/`import` inside the branch that selects it) instead of a static top-level import chain.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/index.ts",
+        "line": 1
+      }
+    },
+    {
+      "id": "qa-container-deploy-from-image-no-app-config-passthrough",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "`deploy --from-image` forwards only stage/account/region/role/credentials into the container -- Repo 2 has no way to pass arbitrary app-level config to a config-agnostic image",
+      "detail": "Real-AWS proof (demo-forge Chapter 2) against a real product with its own app-level config system (a JSON file read via `CDK_APP_CONFIG_PATH`, defaulting to a fixed path, plus `CLUSTER_*` env var overrides): `DeployFromImage.ts`'s `dockerRunArgs` sets a fixed list of env vars (`CDK_STAGE`, `CDK_DEFAULT_ACCOUNT`/`CDK_DEPLOY_ACCOUNT`, `CDK_DEFAULT_REGION`/`CDK_DEPLOY_REGION`, `AWS_REGION`/`AWS_DEFAULT_REGION`, and the AWS credential trio) with no generic passthrough for additional `-e NAME=value` pairs or a volume mount, and `DeploymentPipeline.ts`'s CD CodeBuild action similarly only sets `TARGET_STAGE`. For any product whose app-level configuration is not purely a function of stage name (i.e. anything beyond what the wrapper's own `stage`/`env.account`/`env.region` model captures), the only way to make `deploy --from-image` deploy the RIGHT thing is to bake that config into the image at build time (Repo 1) -- which quietly breaks the 'config-agnostic image' framing documented for this feature (build-image.ts's own header comment: 'The image payload is the CDK app + its npm deps ... NOT cdk.out, so Repo 2 can synth-and-deploy it offline against any target's config'). In practice Repo 2 cannot supply 'any target's config' beyond stage/account/region. Fix direction: either document this limitation explicitly, or add an optional `environmentVariables`/config-file-mount passthrough on `DeploymentTargetInput`/`dockerRunArgs` that Repo 2 can use to inject product-specific config into the container.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployFromImage.ts",
+        "line": 73
+      }
+    },
+    {
+      "id": "qa-container-image-must-exec-cdkcicd-as-literal-command",
+      "component": "shared",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "Container mode's contract requires the deployer image to exec `cdk-cicd ...` as the literal `docker run` command; an image with its own opinionated ENTRYPOINT silently breaks",
+      "detail": "Real-AWS proof (demo-forge Chapter 2): `dockerRunArgs` always runs `docker run --rm [network] [env] <image> cdk-cicd deploy --stage <stage> --yes [...]`, i.e. it appends `cdk-cicd ...` as the container's command with no shell wrapping. This only works if the image has no ENTRYPOINT (or one that execs its argv verbatim). A real product's own existing deployer Dockerfile had `ENTRYPOINT [\"/app/scripts/docker-entrypoint.sh\"]`, which always forwards its first arg through `npm run cdk --` regardless of what that arg is -- so `cdk-cicd deploy --stage dev --yes` would have been rewritten into `cdk cdk-cicd deploy --stage dev --yes` (an unknown `cdk` subcommand), silently failing. The fix was to drop the product's own ENTRYPOINT/CMD in the Repo 1 Dockerfile, which is a reasonable ask but undocumented -- nothing in `BuildImage`/`DockerBuildProps` or the design doc states that the built image's default command must resolve to a plain `cdk-cicd` invocation, or that Docker images with their own entrypoint contract are incompatible. Fix direction: document this contract explicitly next to `BuildImage.docker`/`DockerBuildProps`, or make `deploy --from-image` invoke the container via an explicit `--entrypoint cdk-cicd` override so an image's own ENTRYPOINT does not need to be removed.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployFromImage.ts",
+        "line": 105
+      }
+    },
+    {
+      "id": "qa-resolvesynthesizer-ignores-config-qualifier",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "`resolveSynthesizer` never reads the resolved `qualifier` field, so `cicd.config.ts`'s `qualifier`/derived-from-`application` value has no effect on the app's actual stack synthesizer",
+      "detail": "`CicdConfigProps.qualifier` (or one derived from `application` via `deriveQualifier`, define.ts) is documented as 'Bootstrap qualifier (<=10 chars)', implying it drives the CDK bootstrap qualifier used for asset publishing/deploy roles. But `runtime/inject.ts`'s `resolveSynthesizer` constructs `new DefaultStackSynthesizer()` (optionally with `deployRoleArn`/`cloudFormationExecutionRole` from separate env vars) and never reads `qualifier` from anywhere -- so every app run through `cdk-cicd exec` always uses CDK's own global default qualifier (`hnb659fds`) regardless of what `qualifier`/`application` resolves to in cicd.config.ts. This is harmless when the account only ever bootstraps with the default qualifier, but silently defeats any attempt to use a custom bootstrap qualifier via this field. Fix direction: thread `config.qualifier` into `new DefaultStackSynthesizer({ qualifier, ... })` in `resolveSynthesizer`, or remove/deprecate the field if it is intentionally not wired up yet.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/runtime/inject.ts",
+        "line": 81
+      }
+    },
+    {
+      "id": "migration-codebuild-oom-kill-surfaces-as-bare-exit1",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "migration",
+      "severity": "medium",
+      "status": "open",
+      "title": "A CI Build CodeBuild project OOM-killed mid-esbuild-bundle surfaces only a bare exit-1/COMMAND_EXECUTION_ERROR, with no signal that memory (not the build script) was the cause",
+      "detail": "Real-AWS proof (demo-forge Chapter 1): the CI Build project's default compute (BUILD_GENERAL1_SMALL, 3 GB RAM) OOM-killed `npx esbuild` while bundling the heaviest of this app's ~25 Lambdas across 6 synthesized stages. The only signal anywhere in CodePipeline/CodeBuild's own output was `CommandExitedWithNonZeroStatus: ... exited with status null` inside a `«FailedToBundleAsset»` CDK error, then `npx cdk-cicd exec bin/automation.ts: Subprocess exited with error 1` from ExecCommand.ts's exit-code passthrough -- nothing surfaces the OOM kill itself (no dmesg/cgroup OOM line reached the build log, no memory-pressure metric surfaced in the pipeline UI). Diagnosis required manually correlating 'exited with status null' (a killed-by-signal exit, not a normal esbuild error) with the CI Build project's ComputeType via a separate `aws codebuild batch-get-projects` call and reasoning about which asset was heaviest -- nothing in the wrapper's own tooling pointed at compute sizing as the cause. Confirmed as the real cause: bumping `codeBuildEnvSettings.computeType` to LARGE made the identical build succeed, including that same asset. Not a wrapper defect (the CLI has no way to know a child process's true kill reason -- `spawnSync`'s exit code is `null` for a signal, and Node does not expose the specific signal without extra plumbing), but a real observability gap: a user hitting this has no reason to suspect compute sizing from the error text alone. Fix direction: when `ExecCommand`'s spawned child exits with a null status code (killed by signal) rather than a non-null one, log a specific hint (e.g. 'child process was killed by a signal, likely OOM -- consider raising cicd.config.ts's codeBuildEnvSettings.computeType') instead of just propagating a bare exit code.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts",
+        "line": 265
+      }
+    },
+    {
+      "id": "qa-licensecheck-agpl-exact-match-noop",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "high",
+      "title": "licensecheck.json's bare AGPL block-list entries never match any real dependency license string",
+      "detail": "licensecheck.json's failOnLicenses passes through to license-checker-rseidelsohn's --failOn, which checks membership with Array.includes -- exact string equality against each dependency's normalized SPDX license value, not a substring/prefix match. The config lists bare \"AGPL\" and \"GNU AGPL\", but no real npm package ever reports its license as literally \"AGPL\" -- it reports \"AGPL-3.0-only\", \"AGPL-3.0-or-later\", etc, so these two entries can never fire. No dependency currently carries an AGPL license (OSS_License_Summary.csv has none today), so there is no active violation, but the gate itself is silently non-functional for the single most commonly cited must-never-appear license in a permissively-licensed OSS project. Also absent from the list entirely: \"Confluent Community License\". Fix direction: replace bare \"AGPL\"/\"GNU AGPL\" with the actual SPDX identifiers (AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later), and add Confluent Community License.",
+      "status": "open",
+      "location": {
+        "path": "licensecheck.json",
+        "line": 3
+      }
+    },
+    {
+      "id": "qa-audit-gate-not-wired-into-ci",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "high",
+      "title": "The audit task (check-dependencies + security-scan + license + scrub-check) never runs automatically -- not in CI, not in a git hook",
+      "detail": "projenrc/RootConfig.ts's configureAudit() wires check-dependencies, security-scan, license, and scrub-check (tools/scrub-check.js, the internal-reference/account-id leak guard) under one `audit` task, but nothing spawns `audit` anywhere: none of .github/workflows/*.yml reference security-scan/license/scrub-check/audit, and .husky/pre-push only runs `npm run build` + `npm run license` (no security-scan, no scrub-check). The only way any of this runs is a developer manually typing `npm run audit` / `task audit` before a release. For a repo whose explicit purpose for scrub-check.js is guarding against internal-reference/account-id leaks reaching a public tree, that guard currently has no automatic enforcement point.",
+      "status": "open",
+      "location": {
+        "path": "projenrc/RootConfig.ts",
+        "line": 290
+      }
+    },
+    {
+      "id": "qa-release-workflow-shell-injection",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "medium",
+      "title": "release.yml interpolates ${{ github.ref }} and workflow_dispatch inputs directly into run: shell strings instead of via env:",
+      "detail": "semgrep (yaml.github-actions.security.run-shell-injection) flags two spots in .github/workflows/release.yml: line 55, `run: echo \"latest_commit=$(git ls-remote origin -h ${{ github.ref }} | cut -f1)\" >> $GITHUB_OUTPUT`, and lines 90-92, which interpolate `${{ github.event.inputs.package }}` and `${{ needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper }}` directly into the run: block body. Because ${{ }} substitution happens at workflow-YAML-render time (before the shell ever executes), a value containing shell metacharacters becomes part of the script text itself, not a quoted argument -- GitHub's own hardening guidance is to pass such values through `env:` and reference them as `\"$VAR\"` inside the script instead. release.yml is the workflow holding npm-publish and GitHub-release credentials, so it is the highest-blast-radius place in this repo for this pattern to exist, even though exploiting the workflow_dispatch input requires an actor who already has trigger permission on the repo.",
+      "status": "open",
+      "location": {
+        "path": ".github/workflows/release.yml",
+        "line": 55
+      }
+    },
+    {
+      "id": "qa-actions-mutable-tag-refs",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "title": "7 GitHub Actions steps reference third-party actions by mutable tag (@v6/@v4/@v8/@v7) rather than a pinned commit SHA",
+      "detail": "semgrep (yaml.github-actions.security.github-actions-mutable-action-tag) flags: .github/workflows/aislop.yml (actions/setup-node@v4), build.yml (actions/download-artifact@v8), dependency-review.yml (actions/dependency-review-action@v4), release.yml (actions/download-artifact@v8), and upload-artifact@v7 used twice across the release/build workflows. A tag or branch reference can be silently repointed by the action owner (or an attacker who compromises the owner's account), which is the exact mechanism behind the tj-actions/changed-files and reviewdog/action-setup incidents. Some actions in this same repo are already pinned by full SHA (e.g. upgrade.yml's peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1) -- the fix is applying that same convention to the remaining 7 references.",
+      "status": "open",
+      "location": {
+        "path": ".github/workflows/build.yml"
+      }
+    },
+    {
+      "id": "qa-dependabot-missing-cooldown",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "title": "dependabot.yml has no cooldown period, so version bumps to just-published (potentially malicious/unstable) packages can be proposed immediately",
+      "detail": "semgrep (package_managers.dependabot.dependabot-missing-cooldown) flags .github/dependabot.yml's npm package-ecosystem entry for lacking a `cooldown` block. Adding `cooldown: { default-days: 7 }` delays proposing an update until a newly published version has had time in the wild, giving the ecosystem a window to catch a compromised release before this repo's Dependabot PRs pick it up.",
+      "status": "open",
+      "location": {
+        "path": ".github/dependabot.yml",
+        "line": 3
+      }
+    },
+    {
+      "id": "qa-security-scan-scans-full-cwd-not-git-tracked",
+      "component": "cli",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "title": "security-scan's bandit invocation scans the whole working directory rather than git-tracked files, so local scratch content produces unrelated noise",
+      "detail": "scanners.ts's bandit command builds `bandit -r <projectRoot>` with only a hardcoded `-x '**node_modules/*,**cdk.out/*,**docs/*'` exclude plus bandit.yaml's exclude_dirs (.github, .devbox, .husky, .projen, .vscode, docs, node_modules) -- there is no git-tracked-files-only scoping and no gitignore awareness, unlike the semgrep invocation in the same file, which inherits semgrep's own git-tracking-aware default. In a real run against this repo, bandit picked up an untracked, gitignored local scratch directory outside the source tree and reported 1733 Low-severity findings from it, drowning out the handful of real findings in tracked source. Fix direction: add the equivalent of `.tmp` to bandit.yaml's exclude_dirs (or scope the `-r` target to git-tracked paths) so `npm run audit` failures reflect this project's own code.",
+      "status": "open",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/scanners.ts",
+        "line": 306
+      }
+    }
+  ]
+}

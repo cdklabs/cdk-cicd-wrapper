@@ -1,0 +1,10 @@
+---
+nav:
+  - index.md
+  - "{{ project_name }} with Projen": "projen.md"
+  - "{{ project_name }} with Projen and Taskfile": "projen_with_taskfile.md"
+  - "Global Resources": "global_resource.md"
+  - "Modularizing Stacks": "modularizing_stacks.md"
+  - "Advanced Pipeline Configuration Options": "pipeline_options.md"
+  - "Variables": "variables.md"
+  - "Workshops": workshops

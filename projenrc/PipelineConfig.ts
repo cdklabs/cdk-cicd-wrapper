@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as pj from 'projen';
 import { yarn } from 'cdklabs-projen-project-types';
 import { Eslint } from 'projen/lib/javascript';
@@ -12,6 +15,10 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       description:
         'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
+      // The line is pre-release (RootConfig prerelease 'alpha'); publish the jsii surface as
+      // experimental so non-TS consumers get the maturity signal and jsii-diff/compat does not
+      // treat evolving v3 API as breaking a 'stable' contract.
+      stability: 'experimental',
       releaseEnvironment: 'release',
       releasableCommits: pj.ReleasableCommits.ofType(['feat', 'fix', 'chore'], '.'),
       devDeps: [
@@ -35,7 +42,20 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         'yaml',
       ],
       deps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check', 'yaml'],
-      jest: true,
+      jestOptions: {
+        jestConfig: {
+          // Force a SINGLE aws-cdk-lib copy in tests. This package bundles deps, which nests its own
+          // aws-cdk-lib, while cdk-nag resolves the root copy -- so cdk-nag's `instanceof` rule checks
+          // silently miss every construct and AwsSolutionsChecks is inert (finding
+          // qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert). Mapping every aws-cdk-lib request to the nested
+          // copy the src already uses unifies them, so the nag-compliance test can assert the checker is
+          // actually LIVE (a control finding) rather than vacuously green.
+          moduleNameMapper: {
+            '^aws-cdk-lib$': '<rootDir>/node_modules/aws-cdk-lib',
+            '^aws-cdk-lib/(.*)$': '<rootDir>/node_modules/aws-cdk-lib/$1',
+          },
+        },
+      },
       disableTsconfig: true,
       // Required here, not just on the mixin: only the project-level flag clears `npmTokenSecret`,
       // and `publishToNpm` rejects a token alongside trusted publishing.
@@ -46,7 +66,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       'import/no-extraneous-dependencies': [
         'error',
         {
-          devDependencies: ['**/test/**', '**/build-tools/**', '**/src/projen/**'],
+          devDependencies: ['**/test/**', '**/build-tools/**'],
           optionalDependencies: false,
           peerDependencies: true,
         },
@@ -82,11 +102,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
 
     root.addGitIgnore(this.workspaceDirectory + '/tsconfig.json');
 
-    this.addDevDeps('copyfiles');
     this.addDevDeps(...root.eslintDeps);
-    this.tasks
-      .tryFind('post-compile')!
-      .exec('copyfiles -u 1 -E src/**/*.py src/**/Pipfile src/**/Pipfile.lock src/projen/Taskfile.yaml lib');
 
     this.addTask('integ', {
       description: 'Run integration snapshot tests',

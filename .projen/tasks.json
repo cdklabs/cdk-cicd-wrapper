@@ -1,5 +1,14 @@
 {
   "tasks": {
+    "aislop": {
+      "name": "aislop",
+      "description": "Gate staged changes on the aislop code-quality score",
+      "steps": [
+        {
+          "exec": "aislop ci --staged --human"
+        }
+      ]
+    },
     "audit": {
       "name": "audit",
       "steps": [
@@ -11,6 +20,9 @@
         },
         {
           "spawn": "license"
+        },
+        {
+          "spawn": "scrub-check"
         }
       ]
     },
@@ -214,6 +226,15 @@
         {
           "exec": "yarn workspaces run",
           "receiveArgs": true
+        }
+      ]
+    },
+    "scrub-check": {
+      "name": "scrub-check",
+      "description": "Fail if Amazon-internal references or non-placeholder AWS account ids reached the public tree",
+      "steps": [
+        {
+          "exec": "node tools/scrub-check.js"
         }
       ]
     },

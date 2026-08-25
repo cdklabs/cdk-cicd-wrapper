@@ -1,0 +1,10 @@
+{
+  "application": "cdkcicdtest-pipeline",
+  "aws": {
+    "region": "us-west-1"
+  },
+  "tags": {
+    "Stage": "prod",
+    "cdk-cicd-wrapper-test": "m4verify"
+  }
+}

@@ -9,6 +9,14 @@ import complianceBucket from './cmds/ComplianceBucketCommand';
 import configure from './cmds/ConfigureCommand';
 import license from './cmds/LicenseCommand';
 import security from './cmds/SecurityCommand';
+import check from './cmds/v3/CheckCommand';
+import deployCi from './cmds/v3/DeployCiCommand';
+import deploy from './cmds/v3/DeployCommand';
+import deploymentApp from './cmds/v3/DeploymentAppCommand';
+import exec from './cmds/v3/ExecCommand';
+import migrate from './cmds/v3/MigrateCommand';
+import pipelineApp from './cmds/v3/PipelineAppCommand';
+import synth from './cmds/v3/SynthCommand';
 import validate from './cmds/ValidateCommand';
 import { logger } from './utils/Logging';
 
@@ -26,6 +34,14 @@ async function main() {
   ya.command(complianceBucket);
   ya.command(security);
   ya.command(checkDependencies);
+  ya.command(check);
+  ya.command(exec);
+  ya.command(synth);
+  ya.command(deploy);
+  ya.command(pipelineApp);
+  ya.command(deploymentApp);
+  ya.command(deployCi);
+  ya.command(migrate);
 
   // Enable command recommendations and strict command handling
   ya.recommendCommands();
@@ -33,6 +49,7 @@ async function main() {
 
   // Configure CLI options
   ya.showHelpOnFail(true); // Show help on command failure
+  // aislop-ignore-next-line import/namespace -- yargs v17 namespace idiom (pinned to ^17)
   ya.wrap(yargs.terminalWidth()); // Wrap command output to terminal width
   ya.options('debug', { type: 'boolean', default: false, desc: 'Debug logs' }); // Add a --debug option
   ya.completion(); // Enable command completion

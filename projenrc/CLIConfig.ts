@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import { yarn } from 'cdklabs-projen-project-types';
 import { RootConfig } from './RootConfig';
 
@@ -16,8 +19,11 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         'cdk-cicd': './bin/cdk-cicd',
       },
       deps: [
-        'yargs',
-        '@types/yargs',
+        // Pinned to the v17 line: the CLI's yargs usage (namespace `ya.command(...)`) is not
+        // compatible with the v18 major, which floated in on a regen and broke the whole CLI.
+        // See finding code-review-cli-yargs18-incompatible.
+        'yargs@^17.7.3',
+        '@types/yargs@^17.0.33',
         'globby@11.1.0', // globby version 12+ only support ESM
         'fs-extra',
         '@types/fs-extra',
@@ -25,8 +31,24 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         '@aws-sdk/client-s3',
         '@aws-sdk/credential-providers',
         'tslog',
+        // v3 `cdk-cicd exec` resolves the register preload and reuses the config loader from the
+        // constructs package. Kept a workspace dependency, NOT folded into the jsii package (D5).
+        '@cdklabs/cdk-cicd-wrapper',
+        // A TypeScript `cicd.config.ts` is the primary authoring path, and both `CicdConfig.load`
+        // (in-process `require('ts-node/register')`) and `exec`/`deploy-ci` (spawned `-r
+        // ts-node/register`) depend on it. Previously it resolved only because the workspace root
+        // hoisted it, which a global `npm i -g` install does not reproduce. Pinned to the v10 line
+        // rather than floated, for the reason yargs is pinned above.
+        // Resolves finding code-review-cli-ts-node-not-declared.
+        'ts-node@^10.9.2',
+        // `cdk-cicd migrate` parses a v2 entry file with the TypeScript compiler API at RUNTIME, so
+        // typescript must be a runtime dep, not just a devDep (a global CLI install would not otherwise
+        // resolve it). ts-node peer-depends on it too.
+        'typescript@^5.9.3',
       ],
-      jest: false,
+      // Enabled for v3: `cdk-cicd exec`'s pure logic (stage->env resolution, the non-clobbering
+      // CDK_CONTEXT_JSON merge) is unit-tested here; the spawn itself is proven by the harness.
+      jest: true,
     });
 
     this.addPackageIgnore('*.ts');

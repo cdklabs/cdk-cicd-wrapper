@@ -1,0 +1,3 @@
+# Agent-local state — not shared
+worktrees/
+settings.local.json

@@ -41,9 +41,6 @@
     },
     {
       "path": "packages/@cdklabs/cdk-cicd-wrapper-cli"
-    },
-    {
-      "path": "packages/@cdklabs/cdk-cicd-wrapper-projen"
     }
   ]
 }

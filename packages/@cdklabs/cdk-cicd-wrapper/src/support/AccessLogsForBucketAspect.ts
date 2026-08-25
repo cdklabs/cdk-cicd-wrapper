@@ -1,0 +1,85 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+//
+// v2 shipped this as `AccessLogsForBucketPlugin` (m9-migrate-security-plugins), on by default but a
+// no-op unless `complianceLogBucketName` was configured (it read the name off
+// `PipelineBlueprintProps.deploymentDefinition` and initialized `GlobalResources.COMPLIANCE_BUCKET`
+// as a side effect). v3 has no compliance-bucket resource or config field yet
+// (m9-migrate-compliance-bucket, a separate migration item), so this aspect takes the destination
+// bucket name explicitly instead -- not wired into the runtime injection hook until the compliance
+// bucket and its config field land; attach it directly once they do.
+
+import { IAspect, Annotations, Names, Stack } from 'aws-cdk-lib';
+import { CfnBucket } from 'aws-cdk-lib/aws-s3';
+import { IConstruct } from 'constructs';
+
+/** Constructor props for {@link AccessLogsForBucketAspect}. */
+export interface AccessLogsForBucketAspectProps {
+  /** The name of the bucket every visited bucket's access logs are delivered to. */
+  readonly complianceLogBucketName: string;
+
+  /**
+   * The region the compliance log bucket lives in. When a visited bucket's stack is deployed to a
+   * different region, `complianceLogBucketName` is rewritten by substituting `mainRegion` for that
+   * stack's region -- same cross-region name convention as v2.
+   */
+  readonly mainRegion: string;
+}
+
+/**
+ * Configures S3 server access logging (destination + prefix) on every L1 `CfnBucket` it visits that
+ * does not already set a logging destination, matching v2's default-on `AccessLogsForBucketPlugin`.
+ */
+export class AccessLogsForBucketAspect implements IAspect {
+  private readonly complianceLogBucketName: string;
+
+  private readonly mainRegion: string;
+
+  public constructor(props: AccessLogsForBucketAspectProps) {
+    this.complianceLogBucketName = props.complianceLogBucketName;
+    this.mainRegion = props.mainRegion;
+  }
+
+  public visit(node: IConstruct): void {
+    if (!(node instanceof CfnBucket)) {
+      return;
+    }
+
+    const stack = this.findStack(node);
+    if (!stack) {
+      throw new Error('Could not find stack for the bucket');
+    }
+
+    let complianceLogBucketName = this.complianceLogBucketName;
+    if (stack.region !== this.mainRegion) {
+      Annotations.of(node).addWarningV2(
+        'access-logs-for-bucket-aspect-cross-region-used',
+        'The Access Logs For Bucket aspect is used cross region',
+      );
+      complianceLogBucketName = this.complianceLogBucketName.replace(this.mainRegion, stack.region);
+    }
+
+    if (node.loggingConfiguration === undefined) {
+      node.loggingConfiguration = {
+        destinationBucketName: complianceLogBucketName,
+        logFilePrefix: Names.uniqueId(node),
+      };
+    } else {
+      const currentLoggingConfig = node.loggingConfiguration as CfnBucket.LoggingConfigurationProperty;
+      if (currentLoggingConfig.logFilePrefix) {
+        node.loggingConfiguration = {
+          destinationBucketName: complianceLogBucketName,
+          logFilePrefix: currentLoggingConfig.logFilePrefix,
+        };
+      }
+    }
+  }
+
+  private findStack(node: IConstruct): Stack | undefined {
+    let current: IConstruct | undefined = node;
+    while (current && current.node.scope && !('stackName' in current)) {
+      current = current.node.scope;
+    }
+    return current as Stack | undefined;
+  }
+}

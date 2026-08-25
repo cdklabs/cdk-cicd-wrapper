@@ -1,185 +1,72 @@
 # Git Branching Strategies
 
-The CDK CI/CD Wrapper can be used with git branching strategies as described below.
+The {{ project_name }} can be used with git branching strategies as described below.
 
 # Trunk-Based Development
 
-Trunk-based development has no branches, and changes are committed directly to the main trunk.  The PipelineBlueprint is used with default options and has the following parameters:
+Trunk-based development has no branches, and changes are committed directly to the main trunk. One `cicd.config.ts` with default options covers this:
 
-```
-PipelineBlueprint.builder()
-    .defineStages([
-        Stage.RES,
-        Stage.DEV,
-        Stage.INT,]
-    )
-    .addStack({
-        provide: (context) => {
-            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
-        });
-        },
-    })
-    .synth(app);
-```
+```typescript
+import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.codecommit('my-repo'), // tracks 'main' by default
+  stages: ['dev', 'int'],
+});
+```
 
 ![Trunk Based Development](../assets/diagrams/trunk-development.png){ width="75%" }
 
 # Git(x)Flow Feature Branches
 
-[GitFlow](https://nvie.com/posts/a-successful-git-branching-model/), [GitHub Flow](https://githubflow.github.io/) and [GitLab Flow](https://about.gitlab.com/topics/version-control/what-is-gitlab-flow/) are development methodologies where work is done on branches that are merged into the main trunk when they are ready to be deployed into production.  There are three ways that the CDK CI/CD Wrapper can be used with these types of methodologies.
+[GitFlow](https://nvie.com/posts/a-successful-git-branching-model/), [GitHub Flow](https://githubflow.github.io/) and [GitLab Flow](https://about.gitlab.com/topics/version-control/what-is-gitlab-flow/) are development methodologies where work happens on branches that merge into the main trunk when ready for production. There are two ways to use the {{ project_name }} with these methodologies.
 
-## Workbench Deployments
+## Local ad hoc deploys (no pipeline)
 
-Workbench deployments are deployed directly from the developer's environment.  An additional `.workbench()` section is added to the pipeline builder that includes the stacks that the developer is working on in their feature branch.  The `.workbench()` section should not be committed to the trunk because it is specific to a branch and is no longer necassary when the branch is merged.
+Blueprint (0.x) had a `.workbench()` section for deploying a feature branch's stacks directly from a developer's machine, without a pipeline. There is no equivalent construct in v3 — you don't need one, because `cdk.json`'s `app` command (`npx cdk-cicd exec bin/my-app.ts`) already runs *every* `cdk` invocation through the wrapper, pipeline or not. Deploy ad hoc straight from your branch:
 
-```
-PipelineBlueprint.builder()
-    .defineStages([
-        Stage.RES,
-        Stage.DEV,
-        Stage.INT,]
-    )
-    .workbench({
-        provide: (context) => {
-        // This is a duplicate of the stack below
-            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
-        });
-        },
-    })
-    .addStack({
-        provide: (context) => {
-            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
-        });
-        },
-    })
-    .synth(app);
+```bash
+npx cdk deploy --all
 ```
 
-Changes are deployed to the workbench account with the `npm run workbench deploy` command.  They can be removed with `npm run workbench destroy`.
+This deploys with whatever `CDK_STAGE`/`AppConfig` resolves to locally (the `local` stage, absent an override — see [AppConfig](./cd.md#varying-application-level-configuration-per-stage)). Give the stack a distinct name (for example suffixed with your username) if you don't want it colliding with a pipeline-managed stack of the same base name:
 
-![Workbench Development](../assets/diagrams/workbench-deployment.png){ width="75%" }
+```typescript
+new MyStack(app, 'my-app', { stackName: `my-app-${process.env.USER}` });
+```
 
 !!! note
 
-    * Workbench resources are a copy of the stack in the `.addStack()` section, not the exact same stack.
-    * The resources that are deployed will be prefixed with the username of the currently logged in user so that multiple users can deploy into the same development or sandbox account
-    * No pipeline is created for the workbench deployment and the developer must manually deploy all changes
-    * Compliance and encryption stacks are created for every workbench
-    * Resources must be manually cleaned up either with `workbench destroy` or by deleting the associated Cloudformation stacks
-    * If the workbench stack builds containers they will be compiled for the architecture of the developer's device (eg. ARM64), not the CodeBuild environment used by the pipeline
+    Unlike Blueprint's `.workbench()`, this has no built-in per-user resource prefixing, no automatically-created compliance/encryption stacks, and no `workbench destroy` — clean up with `cdk destroy` yourself.
 
+## Feature pipelines
 
-## Feature Pipelines
+A feature pipeline is a **second, independent** pipeline that tracks a feature branch instead of `main`, deployed with its own `cicd.config.ts`. Since `cicd.config.ts` is just a TypeScript file, keep the feature branch's copy **uncommitted to trunk** (the same convention Blueprint's `.workbench()` followed) — for example, a `cicd.config.feature.ts` you swap in locally, or a small branch-name check inside `cicd.config.ts` itself:
 
-Feature pipelines can be created to automatically deploy from a code branch to a set of accounts.  This is a separate pipeline that exists for the lifetime of the feature and can deploy into multiple accounts.
+```typescript
+// cicd.config.ts, on a feature branch only -- not merged back to main
+import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
-It is not possible to have both a `.workbench()` section and a second pipeline.
-
-```
-// Main branch pipline
-PipelineBlueprint.builder()
-    .defineStages([
-        Stage.RES,
-        Stage.DEV,
-        Stage.INT,]
-    )
-    .addStack({
-        provide: (context) => {
-            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
-        });
-        },
-    })
-    .synth(app);
-
-// Feature branch pipeline
-PipelineBlueprint.builder()
-    .repository(RepositorySource.github({
-        codeStarConnectionArn: 'arn:aws:codeconnections:us-east-1:111111111:connection/aaaaaaa',
-        repositoryName: 'repoowner/project',
-        branch: 'feature1'
-    }))
-    .defineStages([
-        Stage.RES,
-        { stage: 'feature1stagedev', account: '2222222222', region: 'us-east-1', manualApprovalRequired: false },
-        { stage: 'feature1stageint', account: '3333333333', region: 'us-east-1', manualApprovalRequired: true },
-        ]
-    )
-    .addStack({
-        provide: (context) => {
-            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
-        });
-        },
-    })
-    .applicationName('feature1app')
-    .applicationQualifier('f1')
-    .synth(app);
+export default defineCICD({
+  application: 'my-app-feature1', // distinct application/qualifier avoids clashing with the main pipeline
+  qualifier: 'f1app',
+  repository: Repository.codestarConnection('org/my-app', 'arn:aws:codestar-connections:...', 'feature1'),
+  stages: [
+    { name: 'feature1dev', env: { account: '222222222222', region: 'eu-west-1' }, manualApproval: false },
+    { name: 'feature1int', env: { account: '333333333333', region: 'eu-west-1' }, manualApproval: true },
+  ],
+});
 ```
 
-![Workbench Development](../assets/diagrams/branch-development.png){ width="75%" }
+Run `cdk-cicd deploy-ci` from that branch's checkout to provision the feature pipeline. It builds and deploys its own copy of the stacks in `bin/`/`lib/` — the same source, a different pipeline.
 
 !!! note
 
-    * Each pipeline will have a copy of the `.addStack()` section, not the exact same stack.
-    * A repository section must be added to the pipeline builder that identifies the branch to use
-    * Stages other than RES must have a full stage definition because names such as `Stage.Dev` cannot be re-used in a second pipeline
-    * Application name and qualifier must be supplied to prevent duplicate resources being created
-    * Resources in stacks should use naming conventions that prevent name clashes when multiple versions are deployed into the same account
-    * Resources must be manually cleaned up by deleting Cloudformation stacks in the accounts where they are created when the feature branch is merged into trunk
+    * `application`/`qualifier` must differ from the main pipeline's to avoid duplicate/clashing resources.
+    * Stage names must be unique across pipelines sharing accounts/regions with the main pipeline.
+    * Resources must be cleaned up manually (deleting the CloudFormation stacks in the accounts where they were created) when the feature branch merges or is abandoned.
 
-## Developer Sandbox Pipelines
+## Developer sandbox pipelines
 
-Pipelines for individual developers can be created to automatically deploy from a code branch to a personal sandbox account.  This differs from the feature branch approach above because the Code Pipeline is in the sandbox account, not the RES account.
-
-It is not possible to have both a `.workbench()` section and a second pipeline.
-
-```
-// Main branch pipline
-PipelineBlueprint.builder()
-    .defineStages([
-        Stage.RES,
-        Stage.DEV,
-        Stage.INT,]
-    )
-    .addStack({
-        provide: (context) => {
-            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
-        });
-        },
-    })
-    .synth(app);
-
-// Feature branch pipeline
-PipelineBlueprint.builder()
-    .repository(RepositorySource.github({
-        codeStarConnectionArn: 'arn:aws:codeconnections:us-east-1:111111111:connection/aaaaaaa',
-        repositoryName: 'repoowner/project',
-        branch: 'feature1'
-    }))
-    .defineStages([ // Two stages are required even though RES and DEV are the same
-        { stage: 'RES', account: '111111111', region: 'us-east-1', manualApprovalRequired: false },
-        { stage: 'feature1stagedev', account: '111111111', region: 'us-east-1', manualApprovalRequired: true },
-        ]
-    )
-    .disable(GlobalResources.COMPLIANCE_BUCKET)
-    .addStack({
-        provide: (context) => {
-            new MyStack(context.scope, `${context.blueprintProps.applicationName}Stack`, {
-        });
-        },
-    })
-    .applicationName('feature1app')
-    .applicationQualifier('f1')
-    .synth(app);
-```
-
-![Workbench Development](../assets/diagrams/developer-branch-development.png){ width="75%" }
-
-!!! note
-
-    * The pipeline will have a copy of the `.addStack()` section, not the exact same stack.
-    * A repository section must be added to the pipeline builder that identifies the branch to use
-    * It is not currently possible to have compliance bucket support when a pipeline and deployment are in the same account, so this must be disabled
-    * Both a RES and deployment environments must have full stage definitions even though they are the same account
-    * Application name and qualifier must be supplied to prevent duplicate resources being created
-    * Resources must be manually cleaned up by deleting Cloudformation stacks in the accounts where they are created
+The same feature-pipeline pattern also covers a per-developer sandbox: point `repository` at the developer's branch and `stages` at their personal sandbox account. Unlike Blueprint (0.x) — where the compliance/access-log bucket was on by default and had to be explicitly disabled (`GlobalResources.COMPLIANCE_BUCKET`) to run a pipeline and its deployment target in the same account — v3's compliance bucket is opt-in (`complianceLogBucketName` in `cicd.config.ts`), so simply leaving it unset avoids the conflict; there is nothing to disable.

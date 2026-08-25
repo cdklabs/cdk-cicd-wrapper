@@ -6,6 +6,7 @@
     "url": "https://github.com/cdklabs/cdk-cicd-wrapper.git"
   },
   "scripts": {
+    "aislop": "projen aislop",
     "audit": "projen audit",
     "build": "projen build",
     "check-dependencies": "projen check-dependencies",
@@ -23,6 +24,7 @@
     "post-upgrade": "projen post-upgrade",
     "release": "projen release",
     "run": "projen run",
+    "scrub-check": "projen scrub-check",
     "security-scan": "projen security-scan",
     "test": "projen test",
     "upgrade": "projen upgrade",
@@ -41,6 +43,7 @@
     "@typescript-eslint/eslint-plugin": "^7",
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
+    "aislop": "^0.14.1",
     "all-contributors-cli": "^6.26.1",
     "cdklabs-projen-project-types": "^0.5.2",
     "constructs": "10.5.0",
@@ -56,7 +59,8 @@
     "typescript": "^5.9.3"
   },
   "resolutions": {
-    "constructs": "10.5.0"
+    "constructs": "10.5.0",
+    "micromatch/picomatch": "^2.3.2"
   },
   "keywords": [
     "aws",
@@ -87,8 +91,7 @@
   "workspaces": {
     "packages": [
       "packages/@cdklabs/cdk-cicd-wrapper",
-      "packages/@cdklabs/cdk-cicd-wrapper-cli",
-      "packages/@cdklabs/cdk-cicd-wrapper-projen"
+      "packages/@cdklabs/cdk-cicd-wrapper-cli"
     ],
     "nohoist": [
       "@cdklabs/cdk-cicd-wrapper/@cloudcomponents/cdk-pull-request-approval-rule",
@@ -102,8 +105,7 @@
   "jest": {
     "projects": [
       "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper",
-      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-cli",
-      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-projen"
+      "<rootDir>/packages/@cdklabs/cdk-cicd-wrapper-cli"
     ]
   },
   "commitlint": {

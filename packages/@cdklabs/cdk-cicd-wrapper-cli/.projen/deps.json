@@ -1,6 +1,10 @@
 {
   "dependencies": [
     {
+      "name": "@types/jest",
+      "type": "build"
+    },
+    {
       "name": "@types/node",
       "type": "build"
     },
@@ -51,7 +55,20 @@
       "type": "build"
     },
     {
+      "name": "jest",
+      "type": "build"
+    },
+    {
+      "name": "jest-junit",
+      "version": "^17",
+      "type": "build"
+    },
+    {
       "name": "prettier",
+      "type": "build"
+    },
+    {
+      "name": "ts-jest",
       "type": "build"
     },
     {
@@ -67,11 +84,16 @@
       "type": "runtime"
     },
     {
+      "name": "@cdklabs/cdk-cicd-wrapper",
+      "type": "runtime"
+    },
+    {
       "name": "@types/fs-extra",
       "type": "runtime"
     },
     {
       "name": "@types/yargs",
+      "version": "^17.0.33",
       "type": "runtime"
     },
     {
@@ -88,11 +110,22 @@
       "type": "runtime"
     },
     {
+      "name": "ts-node",
+      "version": "^10.9.2",
+      "type": "runtime"
+    },
+    {
       "name": "tslog",
       "type": "runtime"
     },
     {
+      "name": "typescript",
+      "version": "^5.9.3",
+      "type": "runtime"
+    },
+    {
       "name": "yargs",
+      "version": "^17.7.3",
       "type": "runtime"
     }
   ],

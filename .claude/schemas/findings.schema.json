@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cdklabs/cdk-cicd-wrapper/schemas/findings.schema.json",
+  "title": "Findings File",
+  "description": "The shared machine-readable findings.json (repo root) that AI-assisted planning, coding, and testing work in this repo appends to, keyed by finding id, so a later session can pick up open side-effects instead of re-discovering them. During implementation, anything noticed that is out of scope for the current session (a side-effect, an unrelated defect, a follow-up) is recorded here rather than fixed inline — see CLAUDE.md -> 'Findings file'. This file is committed to a PUBLIC repo: no finding may contain secrets, credentials, AWS account IDs or ARNs, or internal-only URLs/hostnames — describe the shape of an issue and reference code by path/line, never paste sensitive values. Restricted to the JSON Schema subset Claude's Structured Outputs supports, so an agent can be constrained to this schema directly via output_config.format / messages.parse() when producing a finding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "findings"],
+  "properties": {
+    "schemaVersion": {
+      "description": "Stable schema version. Bump only on breaking changes to this contract.",
+      "type": "integer",
+      "const": 1
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "component", "layer", "producer", "severity", "status", "title"],
+      "properties": {
+        "id": {
+          "description": "Stable, unique key for this finding across appends and status updates (dedupe key). Convention: producer + a short kebab-case slug (e.g. 'qa-jest-configloader-yaml-parse') — no counter. Pick a slug and check for an existing collision before writing; don't rely on reading the whole file for a 'next' value.",
+          "type": "string"
+        },
+        "component": {
+          "description": "Ownership axis — the three published packages in packages/@cdklabs/ (see CLAUDE.md -> 'Toolchain'), plus 'shared' for findings that genuinely span more than one (e.g. a type exported by cdk-cicd-wrapper and consumed by the CLI, or the register hook contract the CLI's exec depends on). Findings about process, tooling, samples, or docs that aren't about a specific package (e.g. this schema file, projen config, the test harness) go under 'infra'. 'wrapper' = @cdklabs/cdk-cicd-wrapper (the jsii constructs library). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. 'projen' = @cdklabs/cdk-cicd-wrapper-projen.",
+          "type": "string",
+          "enum": ["wrapper", "cli", "projen", "shared", "infra"]
+        },
+        "layer": {
+          "description": "Detection axis, kept tool-agnostic so new checks don't need a new value: 'static' = found without executing anything (eslint/tsc, jsii compile, 'npx projen compat', security-review/code-review skill output, design/planning discussion). 'dynamic' = found by executing code outside production (today: jest unit tests, and the real-AWS deploy harness in task.md Phase 0; tomorrow: any other test framework). 'production' = surfaced by observing a live environment (monitoring, alarms, a real incident) — no current producer emits this; reserved for that future case.",
+          "type": "string",
+          "enum": ["static", "dynamic", "production"]
+        },
+        "producer": {
+          "description": "What emitted the finding, named for the durable role rather than today's specific tool so the value survives past any one effort. 'qa' = jest (each package's test/**) or the real-AWS deploy harness failures/gaps. 'code-review' = the security-review or code-review skill run against pending changes. 'migration' = gaps found while carrying out whichever large structural migration is currently underway — today, the v2->v3 rework (see docs/design/v3-devops-experience.md, task.md); update this description, not the enum value, when a different migration takes its place. 'planning' = design/spec gaps surfaced before implementation starts (design-doc authoring, a grilling session, resolving a task.md D<n> decision).",
+          "type": "string",
+          "enum": ["qa", "code-review", "migration", "planning"]
+        },
+        "severity": {
+          "description": "high is worth resolving before merging the related change; medium/low are advisory. Not currently enforced by any gate — this repo has no CI check reading this file, so treat 'high' as a strong signal for whoever reads it next, not a merge block.",
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "status": {
+          "description": "open until an agent or developer resolves it. Flip in place to resolved (or wontfix) rather than deleting the entry, so history stays visible.",
+          "type": "string",
+          "enum": ["open", "resolved", "wontfix"]
+        },
+        "title": {
+          "description": "Human-facing one-line summary (a sentence, not the id slug).",
+          "type": "string"
+        },
+        "detail": {
+          "description": "Optional human-readable explanation.",
+          "type": "string"
+        },
+        "location": {
+          "description": "Optional file/resource this finding anchors to.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": { "type": "string" },
+            "line": { "type": "integer" }
+          }
+        },
+        "lens": {
+          "description": "Only meaningful for producer=code-review: which review skill raised it. Not schema-enforced against producer (conditional keywords are outside the Structured Outputs subset) — leave unset for every other producer.",
+          "type": "string",
+          "enum": ["security-review", "code-review"]
+        }
+      }
+    }
+  }
+}

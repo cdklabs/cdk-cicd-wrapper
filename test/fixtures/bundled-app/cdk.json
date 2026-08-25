@@ -1,0 +1,5 @@
+{
+  "app": "node dist/app.js",
+  "build": "./bundle.sh",
+  "output": "cdk.out"
+}

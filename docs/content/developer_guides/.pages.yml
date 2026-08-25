@@ -1,12 +1,8 @@
 ---
 nav:
   - index.md
-  - "Variables": "variables.md"
   - "Continuous Integration": "ci.md"
   - "Continuous Deployment": "cd.md"
-  - "Resources":
-    - "Global Resources": "global_resource.md"
-  - "Modularizing Stacks": modularizing_stacks.md
   - "CDK Context": "cdk_context.md"
   - "Security": "security.md"
   - "Python Dependencies":
