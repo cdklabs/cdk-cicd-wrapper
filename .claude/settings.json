@@ -29,7 +29,7 @@
     ],
     "deny": [
       "Bash(git push:*)",
-      "Bash(git commit:* --no-verify)"
+      "Bash(git commit --no-verify:*)"
     ]
   },
   "hooks": {
