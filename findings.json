@@ -1451,6 +1451,89 @@
         "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts",
         "line": 265
       }
+    },
+    {
+      "id": "qa-licensecheck-agpl-exact-match-noop",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "high",
+      "title": "licensecheck.json's bare AGPL block-list entries never match any real dependency license string",
+      "detail": "licensecheck.json's failOnLicenses passes through to license-checker-rseidelsohn's --failOn, which checks membership with Array.includes -- exact string equality against each dependency's normalized SPDX license value, not a substring/prefix match. The config lists bare \"AGPL\" and \"GNU AGPL\", but no real npm package ever reports its license as literally \"AGPL\" -- it reports \"AGPL-3.0-only\", \"AGPL-3.0-or-later\", etc, so these two entries can never fire. No dependency currently carries an AGPL license (OSS_License_Summary.csv has none today), so there is no active violation, but the gate itself is silently non-functional for the single most commonly cited must-never-appear license in a permissively-licensed OSS project. Also absent from the list entirely: \"Confluent Community License\". Fix direction: replace bare \"AGPL\"/\"GNU AGPL\" with the actual SPDX identifiers (AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later), and add Confluent Community License.",
+      "status": "open",
+      "location": {
+        "path": "licensecheck.json",
+        "line": 3
+      }
+    },
+    {
+      "id": "qa-audit-gate-not-wired-into-ci",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "high",
+      "title": "The audit task (check-dependencies + security-scan + license + scrub-check) never runs automatically -- not in CI, not in a git hook",
+      "detail": "projenrc/RootConfig.ts's configureAudit() wires check-dependencies, security-scan, license, and scrub-check (tools/scrub-check.js, the internal-reference/account-id leak guard) under one `audit` task, but nothing spawns `audit` anywhere: none of .github/workflows/*.yml reference security-scan/license/scrub-check/audit, and .husky/pre-push only runs `npm run build` + `npm run license` (no security-scan, no scrub-check). The only way any of this runs is a developer manually typing `npm run audit` / `task audit` before a release. For a repo whose explicit purpose for scrub-check.js is guarding against internal-reference/account-id leaks reaching a public tree, that guard currently has no automatic enforcement point.",
+      "status": "open",
+      "location": {
+        "path": "projenrc/RootConfig.ts",
+        "line": 290
+      }
+    },
+    {
+      "id": "qa-release-workflow-shell-injection",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "medium",
+      "title": "release.yml interpolates ${{ github.ref }} and workflow_dispatch inputs directly into run: shell strings instead of via env:",
+      "detail": "semgrep (yaml.github-actions.security.run-shell-injection) flags two spots in .github/workflows/release.yml: line 55, `run: echo \"latest_commit=$(git ls-remote origin -h ${{ github.ref }} | cut -f1)\" >> $GITHUB_OUTPUT`, and lines 90-92, which interpolate `${{ github.event.inputs.package }}` and `${{ needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper }}` directly into the run: block body. Because ${{ }} substitution happens at workflow-YAML-render time (before the shell ever executes), a value containing shell metacharacters becomes part of the script text itself, not a quoted argument -- GitHub's own hardening guidance is to pass such values through `env:` and reference them as `\"$VAR\"` inside the script instead. release.yml is the workflow holding npm-publish and GitHub-release credentials, so it is the highest-blast-radius place in this repo for this pattern to exist, even though exploiting the workflow_dispatch input requires an actor who already has trigger permission on the repo.",
+      "status": "open",
+      "location": {
+        "path": ".github/workflows/release.yml",
+        "line": 55
+      }
+    },
+    {
+      "id": "qa-actions-mutable-tag-refs",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "title": "7 GitHub Actions steps reference third-party actions by mutable tag (@v6/@v4/@v8/@v7) rather than a pinned commit SHA",
+      "detail": "semgrep (yaml.github-actions.security.github-actions-mutable-action-tag) flags: .github/workflows/aislop.yml (actions/setup-node@v4), build.yml (actions/download-artifact@v8), dependency-review.yml (actions/dependency-review-action@v4), release.yml (actions/download-artifact@v8), and upload-artifact@v7 used twice across the release/build workflows. A tag or branch reference can be silently repointed by the action owner (or an attacker who compromises the owner's account), which is the exact mechanism behind the tj-actions/changed-files and reviewdog/action-setup incidents. Some actions in this same repo are already pinned by full SHA (e.g. upgrade.yml's peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1) -- the fix is applying that same convention to the remaining 7 references.",
+      "status": "open",
+      "location": {
+        "path": ".github/workflows/build.yml"
+      }
+    },
+    {
+      "id": "qa-dependabot-missing-cooldown",
+      "component": "infra",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "title": "dependabot.yml has no cooldown period, so version bumps to just-published (potentially malicious/unstable) packages can be proposed immediately",
+      "detail": "semgrep (package_managers.dependabot.dependabot-missing-cooldown) flags .github/dependabot.yml's npm package-ecosystem entry for lacking a `cooldown` block. Adding `cooldown: { default-days: 7 }` delays proposing an update until a newly published version has had time in the wild, giving the ecosystem a window to catch a compromised release before this repo's Dependabot PRs pick it up.",
+      "status": "open",
+      "location": {
+        "path": ".github/dependabot.yml",
+        "line": 3
+      }
+    },
+    {
+      "id": "qa-security-scan-scans-full-cwd-not-git-tracked",
+      "component": "cli",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "low",
+      "title": "security-scan's bandit invocation scans the whole working directory rather than git-tracked files, so local scratch content produces unrelated noise",
+      "detail": "scanners.ts's bandit command builds `bandit -r <projectRoot>` with only a hardcoded `-x '**node_modules/*,**cdk.out/*,**docs/*'` exclude plus bandit.yaml's exclude_dirs (.github, .devbox, .husky, .projen, .vscode, docs, node_modules) -- there is no git-tracked-files-only scoping and no gitignore awareness, unlike the semgrep invocation in the same file, which inherits semgrep's own git-tracking-aware default. In a real run against this repo, bandit picked up an untracked, gitignored local scratch directory outside the source tree and reported 1733 Low-severity findings from it, drowning out the handful of real findings in tracked source. Fix direction: add the equivalent of `.tmp` to bandit.yaml's exclude_dirs (or scope the `-r` target to git-tracked paths) so `npm run audit` failures reflect this project's own code.",
+      "status": "open",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/scanners.ts",
+        "line": 306
+      }
     }
   ]
 }
