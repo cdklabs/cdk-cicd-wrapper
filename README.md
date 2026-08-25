@@ -19,9 +19,14 @@
 </p>
 
 > [!WARNING]
-> **Experimental — pre-release (v3 `alpha`).** The public API is not yet frozen and may change
-> before the `1.0` release. The versions published to npm today are the stable `0.x` (v2) line;
-> the v3 developer experience described on the `v3` branch is under active development.
+> **Experimental — pre-release (`1.x` alpha), not yet published.** The developer experience
+> documented below is the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** —
+> the newest published version is `0.3.9`, on the stable `0.x` (Blueprint) line. So `npm install`
+> today gives you `0.x`, whose API is *not* the one described here: see the
+> [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/) for that, and
+> the [Migration Guide](./MIGRATION.md) for the mapping between the two. To try the flow below now,
+> work from this repository — `samples/cdk-v3-example/` is a complete example. The public API is not
+> frozen and may change before `1.0`.
 
 # Welcome to the CDK CI/CD Wrapper
 
@@ -65,7 +70,11 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
 ### 1. Installation
 
-Install the CDK CI/CD Wrapper pipeline package by running the following command:
+> [!IMPORTANT]
+> As noted above, the `1.x` line these steps describe is **unreleased**, so the command below
+> currently resolves to `0.3.9` on the `0.x` line — which does not have `defineCICD` or
+> `cdk-cicd exec`. Until the first `1.x` alpha is published, follow these steps against a checkout of
+> this repository (start from `samples/cdk-v3-example/`) rather than a fresh `npm install`.
 
 ```bash
 npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
@@ -234,7 +243,7 @@ On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged
 You should not fork this repository and expect to reproduce the same in your AWS Accounts, this repository is only used for preparing, testing and shipping all the packages used by the CDK CI/CD Wrapper. Using the CDK CI/CD Wrapper gives you the following benefits:
 
 - :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
-- :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions
+- :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions (`0.x` only; `1.x` has no pipeline equivalent — use a direct `cdk deploy`, see [MIGRATION.md](./MIGRATION.md))
 - :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
 - :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
 - :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
