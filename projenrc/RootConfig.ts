@@ -92,6 +92,12 @@ export class RootConfig extends yarn.Monorepo {
         branchName: 'legacy-blueprint',
         majorVersion: 0,
         npmDistTag: 'latest',
+        // npm's Trusted Publisher (OIDC) config on npmjs.com is keyed by workflow filename, and only
+        // `release.yml` (main's) is registered. Reusing that exact filename here — instead of the
+        // default `release-legacy-blueprint.yml` — lets this branch's publish jobs authenticate
+        // under the same registration; GitHub's `release` environment branch policy is what actually
+        // restricts which branches may use it.
+        releaseWorkflowName: 'release',
       },
       githubOptions: {
         dependencyReview: true,
