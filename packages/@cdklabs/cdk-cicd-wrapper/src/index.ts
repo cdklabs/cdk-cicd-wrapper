@@ -25,7 +25,7 @@ export { ConditionalFieldGroup, ConfigSchema, FieldKind, RequiredField } from '.
 // exported; `CdkCicd.attach` is the jsii-safe explicit entry point for bundled/ESM apps where the
 // preload cannot patch App. The rest of `./runtime` (the shared helpers, the counter, the loader)
 // stays internal for the same reasons the config machinery does.
-export { CdkCicd } from './runtime/attach';
+export { CdkCicd, AttachOptions } from './runtime/attach';
 
 // CICD (pipeline) config -- the `cicd.config.ts` authoring surface. `Repository`, the enums and the
 // resolved structs are jsii-modeled. `defineCICD` is exported for the TypeScript authoring path but,
@@ -44,6 +44,7 @@ export {
   GitHubActionsConfig,
   ManagedVpcConfig,
   NpmRegistryConfig,
+  PluginRef,
   ProxyConfig,
   RegionOrder,
   ResolvedCicdConfig,

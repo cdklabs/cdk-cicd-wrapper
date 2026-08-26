@@ -28,6 +28,7 @@
 > [Migration Guide](./MIGRATION.md) for the mapping between the two. `samples/cdk-cicd-wrapper-example/`
 > is a complete `1.x` example. The public API is not frozen and may change.
 
+
 # Welcome to the CDK CI/CD Wrapper
 
 The CDK CI/CD Wrapper gives you an easy way to deliver your CDK applications like a pro.
@@ -221,7 +222,7 @@ This provisions the pipeline from `cicd.config.ts` alone — nothing else needs 
 
 #### What the pipeline does
 
-**Source** → **Build** (`npm ci`, then your `ci.steps` or the default `npx cdk-cicd check`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, each gated by a manual approval except your inner-loop stages (`dev`/`res`) unless you set `manualApproval` explicitly.
+**Source** → **Build** (`npm ci`, then your `ci.steps` or the default `npx cdk-cicd check`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, each gated by a manual approval except the inner-loop stage names `dev` and `res` (auto-approved by default), unless you set `manualApproval` explicitly. Autopilot reserves no stage names — `dev`/`res` are simply the two that default to auto-approve; every other name is gated.
 
 Supporting resources — the encryption key, VPC networking for the pipeline's own CodeBuild projects, a compliance bucket — are **lazily provisioned**, so a pipeline only pays for what its configuration actually references.
 
@@ -242,7 +243,7 @@ On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged
 - License management over NPM and Python dependencies
 - Support for private NPM registry to safely store your libraries
 - Customizable CI/CD pipeline to attach to your CDK applications which comes with built-in dependency injection
-- Workbench deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline
+- Workbench deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline (**`0.x` only** — `1.x` has no pipeline equivalent; use a direct `cdk deploy`, see [MIGRATION.md](./MIGRATION.md))
 
 ## Intended usage
 

@@ -23,6 +23,7 @@ import {
   EngineType,
   GitHubActionsConfig,
   NpmRegistryConfig,
+  PluginRef,
   ProxyConfig,
   RegionOrder,
   ResolvedCicdConfig,
@@ -108,6 +109,12 @@ export interface CicdConfigProps {
   readonly express?: boolean;
   /** Container mode (Repo 1): build & push a deployer image to ECR instead of deploying. See `BuildImage`. */
   readonly deployerImage?: BuildImage;
+  /**
+   * Security plugins (hardening Aspects) to apply tree-wide (issue #241). Omitted -> the default-on
+   * set; `[]` -> opt out of all; a non-empty list COMPLETELY overrides the defaults. A non-built-in
+   * name is a custom plugin and must be registered in `bin/` via `CdkCicd.addPlugin`.
+   */
+  readonly plugins?: PluginRef[];
 }
 
 /**
@@ -192,6 +199,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     asyncDeploy: props.asyncDeploy ?? false,
     express: props.express ?? false,
     deployerImage: props.deployerImage,
+    plugins: props.plugins,
   };
 }
 
