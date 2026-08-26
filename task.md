@@ -53,8 +53,10 @@ Not tasks — resolved/open design decisions that tasks reference.
   them; if the environment blocks install, fall back to `.cast` and flag it. ⚠️ **AMENDED by the
   maintainer (2026-08-25)** — recordings are no longer committed. `test/proof/record-demo.sh` still
   produces `.cast`/`.mp4` into `docs/proof/`, but that output path is now gitignored; a milestone's
-  recorded proof is generated and reviewed locally/in CI artifacts, not checked in. Existing
-  already-committed recordings in `docs/proof/` are left as historical record, not deleted.
+  recorded proof is generated and reviewed locally/in CI artifacts, not checked in. **Amended again
+  (2026-08-26)** — the six recordings still tracked from before the first amendment were removed
+  from git (`git rm --cached`); kept on disk, not deleted, but nothing in `docs/proof/` ships in the
+  repository anymore except its `README.md` index.
 - **D4 — Deferred scope** ✅ Container two-repo mode + GitHub Actions engine are iteration 2. Keep
   `IEngine` honest so they slot in without a rewrite.
 - **D5 — Package consolidation (3→2)** ✅ Retire `@cdklabs/cdk-cicd-wrapper-projen` (v3 `cdk-cicd
@@ -98,7 +100,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   |---|---|---|
   | `test/fixtures/` | yes | fixture CDK apps every gate deploys against |
   | `test/proof/` | yes | harness + recorder **tooling** (scripts must be reviewable) |
-  | `docs/proof/` | yes | the delivered proof: `.cast` source + `.mp4` + index |
+  | `docs/proof/` | no (gitignored) for recordings; `README.md` index is the only tracked file | the proof index; recordings themselves are generated and kept locally only, per D3 |
   | `development/v3-proof/` | no (gitignored) | scratch run logs, raw build output |
   Repo-root `test/` is safe because the build only reaches into `packages/@cdklabs/*`: root `lint` =
   `yarn workspaces run eslint`, root `test` = jest `projects` (3 workspaces), root `fmt` = eslint over

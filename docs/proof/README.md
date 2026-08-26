@@ -10,14 +10,15 @@ Each proof is a pair:
 | `<demo>.cast` | **the source.** An [asciinema](https://asciinema.org) recording — plain text, diffs in review, replayable with `asciinema play`, and re-exportable at any size or speed. |
 | `<demo>.mp4` | **the artifact.** What a reviewer watches without installing anything. Generated from the `.cast`; never edited by hand. |
 
-## Why new recordings aren't committed
+## Why recordings aren't committed
 
 D3 originally committed both files for every milestone (rationale: a maintainer or external
 contributor could watch the proof straight from the repo). **Amended 2026-08-25**: `docs/proof/` is
 now gitignored, so `record-demo.sh` still produces `.cast`/`.mp4` locally but new runs are no longer
-checked in — recording and reviewing a proof no longer means growing the repo's binary history. The
-recordings already committed below (through M4) are left in place as the historical record; nothing
-was deleted.
+checked in. **Amended again 2026-08-26**: the recordings through M4 that were still tracked from
+before the first amendment were removed from git (kept on disk, not deleted) — none of `docs/proof/`'s
+recordings live in the repository anymore, only this index does. Recording and reviewing a proof no
+longer means growing the repo's binary history.
 
 ## Recording one
 

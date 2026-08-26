@@ -191,8 +191,9 @@ export class RootConfig extends yarn.Monorepo {
   }
 
   /**
-   * D3 (task.md), amended 2026-08-25: docs/proof/ recordings are generated and reviewed, not
-   * committed. Only stops *new* paths from being tracked -- the six already-committed demos stay.
+   * D3 (task.md), amended 2026-08-25 and 2026-08-26: docs/proof/ recordings are generated and
+   * reviewed locally, never committed. The six demos tracked before the first amendment were
+   * removed from git on 2026-08-26 (`git rm --cached`) -- kept on disk, not deleted.
    */
   private ignoreProofArtifacts() {
     this.addGitIgnore('docs/proof/*.cast');
