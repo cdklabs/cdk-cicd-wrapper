@@ -2,12 +2,13 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a command-line interface (CLI) tool designed to streamline and automate various tasks related to AWS Cloud Development Kit (CDK) projects. It provides developers with a set of utilities to manage compliance, security, licensing, and dependency management, all within a single interface.
+The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a command-line interface (CLI) tool designed to streamline and automate various tasks related to AWS Cloud Development Kit (CDK) projects. It drives the Autopilot pipeline (`exec`, `deploy-ci`, `synth`, `deploy`, `check`, `migrate`) and provides a set of utilities to manage compliance, security, licensing, and dependency management, all within a single interface.
 
 ## Table of Contents
 
 - [Installation](#installation)
 - [Usage](#usage)
+  - [Autopilot pipeline commands](#autopilot-pipeline-commands)
   - [Compliance Bucket](#compliance-bucket)
   - [Security Scanning](#security-scanning)
   - [License Management](#license-management)
@@ -33,6 +34,27 @@ npx @cdklabs/cdk-cicd-wrapper-cli [command]
 ## Usage
 
 The CDK CI/CD Wrapper CLI provides several commands to help you manage various aspects of your CDK project. Here are the available commands and their descriptions:
+
+### Autopilot pipeline commands
+
+These commands drive the Autopilot (`1.x`) config-driven pipeline defined in `cicd.config.ts`. Run any of them with `--help` for the full flag set (`--help` is authoritative and always current):
+
+```bash
+npx cdk-cicd <command> --help
+```
+
+> **Experimental.** The Autopilot pipeline commands are pre-release and still evolving; flags and behaviour may change before the `1.0` release.
+
+| Command     | Description                                                                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `exec`      | Run a CDK app under the wrapper — the single entry point that activates the pipeline for every engine, reading the engine and stages from `cicd.config`. Referenced from `cdk.json` as `"app": "npx cdk-cicd exec bin/app.ts"`.                                    |
+| `synth`     | Synthesize the app per stage/region (`--stage`, or `--all` for full CI validation).                                                                                                                                                                                |
+| `deploy`    | Synth, drift-check, and deploy a stage across its regions (`--stage`), or run the container-mode executor (`--from-image`).                                                                                                                                        |
+| `deploy-ci` | Provision the pipeline itself into the hub account, from `cicd.config.ts` alone — the one command you run by hand; everything after it is the pipeline deploying the application. `--disposable` tears down the pipeline's artifact bucket and key with the stack. |
+| `check`     | Run the default-on CI checks (`validate`, `audit`, `license`, `security`) — the default build step.                                                                                                                                                                |
+| `migrate`   | Generate an Autopilot `cicd.config.ts` from an existing `0.x` `PipelineBlueprint` entry file (`--entry`, `--application`, `--dry-run`).                                                                                                                            |
+
+See the [CLI reference](https://cdklabs.github.io/cdk-cicd-wrapper/cli/) for the full command documentation.
 
 ### Compliance Bucket
 

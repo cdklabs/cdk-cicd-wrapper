@@ -11,7 +11,7 @@
 // nothing to drift against.
 
 import { spawnSync } from 'child_process';
-import { EngineType } from '@cdklabs/cdk-cicd-wrapper';
+import type { EngineType } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, loadDeployment } from './CicdConfig';
 import { logger } from '../../utils/Logging';
@@ -32,7 +32,10 @@ export function deployCiArgs(disposable: boolean, kind: 'ci' | 'cd' = 'ci', engi
   // The self-mutating engines (CDK Pipelines, GitHub Actions) self-mutate: the app IS the pipeline,
   // rendered by cdk.json's `cdk-cicd exec` (the assembler). So deploy the DEFAULT app rather than
   // overriding --app to the flat pipeline-app renderer.
-  if (kind === 'ci' && (engine === EngineType.CDK_PIPELINES || engine === EngineType.GITHUB_ACTIONS)) {
+  // Compared as plain strings (the `EngineType` values) so this file keeps a type-only import of the
+  // wrapper and does not load it at CLI boot.
+  const engineValue = engine as string | undefined;
+  if (kind === 'ci' && (engineValue === 'cdk-pipelines' || engineValue === 'github-actions')) {
     return ['cdk', 'deploy', '--all', '--require-approval', 'never'];
   }
   return ['cdk', 'deploy', '--app', pipelineAppCommand(disposable, kind), '--all', '--require-approval', 'never'];

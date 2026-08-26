@@ -4,7 +4,7 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
-import { AppConfig, ConfigErrorKind, EngineType } from '@cdklabs/cdk-cicd-wrapper';
+import type { EngineType } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, stageByName } from './CicdConfig';
 import { logger } from '../../utils/Logging';
@@ -159,7 +159,10 @@ function readJsonObject(file: string): { [key: string]: any } {
  * config is injected (so `AppConfig.of` returns `{}` rather than re-reading and throwing MISSING_FILE),
  * i.e. the app runs un-configured, not un-wrapped.
  */
-function loadConfig(stage: string): { [key: string]: any } {
+async function loadConfig(stage: string): Promise<{ [key: string]: any }> {
+  // Lazily import the wrapper only when a command that needs it actually runs, so booting the CLI
+  // for a wrapper-free command (license, security-scan, check-dependencies, validate) never loads it.
+  const { AppConfig, ConfigErrorKind } = await import('@cdklabs/cdk-cicd-wrapper');
   try {
     return AppConfig.load({ stage });
   } catch (error) {
@@ -181,7 +184,10 @@ export function preloadArgs(entry: string, registerPath: string): string[] {
 }
 
 /** Engines whose app IS the pipeline (self-mutating), routed through the wrapper's replay assembler. */
-const SELF_MUTATING_ENGINES: EngineType[] = [EngineType.CDK_PIPELINES, EngineType.GITHUB_ACTIONS];
+// The wrapper's `EngineType` string-enum values, kept as plain strings so this routing logic does not
+// force a runtime load of the wrapper (the enum object) at CLI boot. `EngineType` stays a type-only
+// import; comparisons widen the engine to its string value below.
+const SELF_MUTATING_ENGINES: string[] = ['cdk-pipelines', 'github-actions'];
 
 /**
  * The node argv + optional `CDK_CICD_ENTRY` for the child, chosen by engine. The flat engine runs the
@@ -222,7 +228,7 @@ class Command implements yargs.CommandModule {
 
     // Two layers: app-config drives the injected cicd:config context (the app tree); the cicd.config
     // stage supplies the deploy target account/region when the caller has not already pinned one.
-    const config = loadConfig(stage);
+    const config = await loadConfig(stage);
     // A broken cicd.config must not take down the zero-touch path: exec runs on every `cdk deploy`,
     // and a single-region app may not depend on the pipeline config at all. Warn and fall through to
     // app-config resolution rather than aborting the app command.
@@ -259,9 +265,7 @@ class Command implements yargs.CommandModule {
       childEnv.CDK_CICD_ENTRY = invocation.entryEnv;
     }
 
-    logger.info(
-      `cdk-cicd exec: stage='${stage}', engine='${cicd?.engine ?? EngineType.CODEPIPELINE}', running ${entry}`,
-    );
+    logger.info(`cdk-cicd exec: stage='${stage}', engine='${cicd?.engine ?? 'codepipeline'}', running ${entry}`);
     const result = spawnSync(process.execPath, nodeArgs, { stdio: 'inherit', env: childEnv, cwd });
 
     if (result.error) {

@@ -40,5 +40,9 @@
   "exclude": [
     "node_modules"
   ],
-  "references": []
+  "references": [
+    {
+      "path": "../cdk-cicd-wrapper"
+    }
+  ]
 }

@@ -5,7 +5,6 @@
   </a>
 </p>
 
-
 <p align="center">
   <a href="https://cdklabs.github.io/cdk-cicd-wrapper/"><strong>Documentation</strong></a> ·
   <a href="https://github.com/cdklabs/cdk-cicd-wrapper/releases"><strong>Changelog</strong></a> ·
@@ -19,15 +18,15 @@
 </p>
 
 > [!WARNING]
-> **Experimental — pre-release, not yet published.** The developer experience documented below is
-> the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** — the newest published
-> version is `0.4.1`, on the stable `0.x` (Blueprint) line. **`0.4.0` is deprecated — do not use it**;
-> install `0.4.1` or later. So `npm install` today gives you `0.x`, whose API is *not* the one
-> described here: see the
-> [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/) for that, and
-> the [Migration Guide](./MIGRATION.md) for the mapping between the two. To try the flow below now,
-> work from this repository — `samples/cdk-cicd-wrapper-example/` is a complete example. The public API is not
-> frozen and may change before `1.0`.
+> **Experimental — pre-release.** The developer experience documented below is the Autopilot (`1.x`)
+> line, developed on `main`. Version `1.0.0` **is published to npm** but is **not** the `latest`
+> dist-tag: `npm install` still resolves the stable `0.x` (Blueprint) line (currently `0.4.3`; **`0.4.0`
+> is deprecated — do not use it**), whose API is _not_ the one described here. To install the `1.x` line
+> explicitly, pin the version (`npm i @cdklabs/cdk-cicd-wrapper@1.0.0 @cdklabs/cdk-cicd-wrapper-cli@1.0.0`).
+> For the `0.x` API see the
+> [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/), and the
+> [Migration Guide](./MIGRATION.md) for the mapping between the two. `samples/cdk-cicd-wrapper-example/`
+> is a complete `1.x` example. The public API is not frozen and may change.
 
 # Welcome to the CDK CI/CD Wrapper
 
@@ -59,6 +58,7 @@ This repository is organized as a monorepo containing multiple packages and tool
 ### Development Workflow
 
 The project uses:
+
 - **Projen** for project management and code generation
 - **Yarn workspaces** for monorepo dependency management
 - **Jest** for testing across all packages
@@ -72,14 +72,13 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 ### 1. Installation
 
 > [!IMPORTANT]
-> As noted above, the `1.x` line these steps describe is **unreleased**, so the command below
-> currently resolves to `0.4.1` on the `0.x` line (avoid `0.4.0`, which is deprecated) — which does
-> not have `defineCICD` or `cdk-cicd exec`. Until the first `1.x` release is published, follow these
-> steps against a checkout of this repository (start from `samples/cdk-cicd-wrapper-example/`) rather than a
-> fresh `npm install`.
+> As noted above, `npm install` without a version resolves to the `0.x` line (currently `0.4.3`; avoid
+> `0.4.0`, which is deprecated) — which does not have `defineCICD` or `cdk-cicd exec`. To follow the
+> `1.x` steps below, pin `@1.0.0` explicitly (the command shown), or work from a checkout of this
+> repository starting from `samples/cdk-cicd-wrapper-example/`.
 
 ```bash
-npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
+npm i @cdklabs/cdk-cicd-wrapper@1.0.0 @cdklabs/cdk-cicd-wrapper-cli@1.0.0
 ```
 
 ### 2. Describe the pipeline in `cicd.config.ts`
@@ -130,16 +129,19 @@ new MyStack(app, 'my-project', {
 
 By default the pipeline's build step runs `npx cdk-cicd check`, which covers `validate` (lock-file integrity), `audit` (dependency CVEs), `license` (open-source license checking) and `security` (Bandit/Semgrep/ShellCheck) — each **skipped rather than failed** when your project has no baseline for it yet. You do not need to define any scripts to get started.
 
-Setting `ci.steps` in `cicd.config.ts` *replaces* that default rather than adding to it, so include `check` explicitly if you still want those checks alongside your own `build`/`test`. If you would rather drive the same checks from `package.json`, add the definitions below:
+Setting `ci.steps` in `cicd.config.ts` _replaces_ that default rather than adding to it, so include `check` explicitly if you still want those checks alongside your own `build`/`test`. If you would rather drive the same checks from `package.json`, add the definitions below:
 
 #### 4.1. Adding validate script
+
 ```bash
 jq --arg key "validate" --arg val "cdk-cicd validate" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
 jq --arg key "validate:fix" --arg val "cdk-cicd validate --fix" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
 ```
 
 #### 4.2. Adding lint script
+
 We recommend using eslint and you can initialize it:
+
 ```bash
 npm init @eslint/config
 
@@ -148,6 +150,7 @@ jq --arg key "lint:fix" --arg val "eslint . --ext .ts --fix" '.scripts[$key] = $
 ```
 
 #### 4.3. Adding audit scripts
+
 ```bash
 npm install --save -D concurrently
 jq --arg key "audit" --arg val "concurrently 'npm:audit:*(\!fix)'" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
@@ -161,6 +164,7 @@ jq --arg key "license:fix" --arg val "cdk-cicd license --fix" '.scripts[$key] = 
 ```
 
 **Example package.json scripts section:**
+
 ```json
 {
   ...
@@ -247,7 +251,7 @@ You should not fork this repository and expect to reproduce the same in your AWS
 - :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
 - :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions (`0.x` only; `1.x` has no pipeline equivalent — use a direct `cdk deploy`, see [MIGRATION.md](./MIGRATION.md))
 - :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
-- :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
+- :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go
 - :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
 
 ### MCP Debugger Server
@@ -300,8 +304,11 @@ The CDK CI/CD Wrapper community can be found within the #cdk-cicd-wrapper channe
 ## Contributors
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+
 [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->

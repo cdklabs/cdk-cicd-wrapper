@@ -4,6 +4,7 @@ nav:
   - 'Configuration Reference': 'configuration.md'
   - 'Continuous Integration': 'ci.md'
   - 'Continuous Deployment': 'cd.md'
+  - 'Container Mode': 'container_mode.md'
   - 'CDK Context': 'cdk_context.md'
   - 'Security': 'security.md'
   - 'Python Dependencies':
