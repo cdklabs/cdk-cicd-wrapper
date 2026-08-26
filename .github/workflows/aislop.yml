@@ -12,11 +12,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - id: auto_637d35d9
+        uses: actions/checkout@v6
+      - id: auto_e5877e7f
+        uses: actions/setup-node@v4
         with:
           node-version: "24"
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --check-files
       - name: aislop quality gate
+        id: aislop_quality_gate
         run: npx aislop ci --human

@@ -33,16 +33,20 @@ jobs:
       CI: "true"
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - name: Set git identity
+        id: set_git_identity
         run: |-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --check-files --frozen-lockfile
       - name: release
+        id: release
         run: npx projen release
       - id: check-publish-cdklabs-cdk-cicd-wrapper
         run: (git ls-remote -q --exit-code --tags origin $(cat dist/releasetag.txt) && (echo "publish=false" >> $GITHUB_OUTPUT)) || echo "publish=true" >> $GITHUB_OUTPUT
@@ -52,7 +56,9 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper-cli
       - name: Check for new commits
         id: git_remote
-        run: echo "latest_commit=$(git ls-remote origin -h ${{ github.ref }} | cut -f1)" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_REF: ${{ github.ref }}
+        run: echo "latest_commit=$(git ls-remote origin -h "$GITHUB_REF" | cut -f1)" >> $GITHUB_OUTPUT
       - name: "@cdklabs/cdk-cicd-wrapper: Backup artifact permissions"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
         run: cd dist && getfacl -R . > permissions-backup.acl
@@ -60,7 +66,7 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper
       - name: "@cdklabs/cdk-cicd-wrapper: Upload artifact"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: cdklabs-cdk-cicd-wrapper_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper/dist
@@ -72,7 +78,7 @@ jobs:
         working-directory: packages/@cdklabs/cdk-cicd-wrapper-cli
       - name: "@cdklabs/cdk-cicd-wrapper-cli: Upload artifact"
         if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: cdklabs-cdk-cicd-wrapper-cli_build-artifact
           path: packages/@cdklabs/cdk-cicd-wrapper-cli/dist
@@ -87,6 +93,7 @@ jobs:
     if: ${{ needs.release.outputs.latest_commit == github.sha }}
     steps:
       - name: "@cdklabs/cdk-cicd-wrapper: Check publish"
+        id: cdklabs_cdk-cicd-wrapper_check_publish
         run: |-
           should_publish="${{ needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper }}"
           package_filter="${{ (!github.event.inputs.package || github.event.inputs.package == '*all packages*' || contains(fromJSON('["@cdklabs/cdk-cicd-wrapper","@cdklabs/cdk-cicd-wrapper-cli"]'), github.event.inputs.package)) }}"
@@ -99,6 +106,7 @@ jobs:
             echo "@cdklabs/cdk-cicd-wrapper" >> publish.txt
           fi
       - name: "@cdklabs/cdk-cicd-wrapper-cli: Check publish"
+        id: cdklabs_cdk-cicd-wrapper-cli_check_publish
         run: |-
           should_publish="${{ needs.release.outputs.publish-cdklabs-cdk-cicd-wrapper-cli }}"
           package_filter="${{ (!github.event.inputs.package || github.event.inputs.package == '*all packages*' || contains(fromJSON('["@cdklabs/cdk-cicd-wrapper-cli"]'), github.event.inputs.package)) }}"
@@ -127,7 +135,8 @@ jobs:
     permissions: {}
     if: ${{ contains(fromJSON(needs.release_gate.outputs.packages_to_publish), '@cdklabs/cdk-cicd-wrapper') }}
     steps:
-      - run: echo "Releasing @cdklabs/cdk-cicd-wrapper..."
+      - id: auto_39ebea35
+        run: echo "Releasing @cdklabs/cdk-cicd-wrapper..."
   cdklabs-cdk-cicd-wrapper_release_github:
     name: "@cdklabs/cdk-cicd-wrapper: Publish to GitHub Releases"
     needs:
@@ -141,23 +150,36 @@ jobs:
     environment: release
     if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper_release.result == 'success' }}
     steps:
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        id: download_build_artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: dist
           name: cdklabs-cdk-cicd-wrapper_build-artifact
       - name: Restore build artifact permissions
+        id: restore_build_artifact_permissions
         run: cd dist && setfacl --restore=permissions-backup.acl
         continue-on-error: true
       - name: Release
+        id: release
         if: ${{ !inputs.dry_run }}
         env:
+          RELEASE_TAG_FILE: dist/releasetag.txt
+          CHANGELOG_FILE: dist/changelog.md
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: errout=$(mktemp); gh release create $(cat dist/releasetag.txt) -R $GITHUB_REPOSITORY -F dist/changelog.md -t $(cat dist/releasetag.txt) --target $GITHUB_SHA 2> $errout && true; exitcode=$?; if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" $errout; then cat $errout; exit $exitcode; fi
+        run: |-
+          errout=$(mktemp)
+          tag=$(cat "$RELEASE_TAG_FILE")
+          gh release create "$tag" -R "$GITHUB_REPOSITORY" -F "$CHANGELOG_FILE" -t "$tag" --target "$GITHUB_SHA" ${PRERELEASE:+-p} 2> "$errout" && true
+          exitcode=$?
+          if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" "$errout"; then
+            cat "$errout"
+            exit $exitcode
+          fi
   cdklabs-cdk-cicd-wrapper_release_npm:
     name: "@cdklabs/cdk-cicd-wrapper: Publish to npm"
     needs: cdklabs-cdk-cicd-wrapper_release
@@ -168,40 +190,49 @@ jobs:
     environment: release
     if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper_release.result == 'success' }}
     steps:
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        id: download_build_artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: dist
           name: cdklabs-cdk-cicd-wrapper_build-artifact
       - name: Restore build artifact permissions
+        id: restore_build_artifact_permissions
         run: cd dist && setfacl --restore=permissions-backup.acl
         continue-on-error: true
       - name: Checkout
-        uses: actions/checkout@v6
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: .repo
       - name: Install Dependencies
+        id: install_dependencies
         run: cd .repo && yarn install --check-files --frozen-lockfile
       - name: Extract build artifact
+        id: extract_build_artifact
         run: tar --strip-components=1 -xzvf dist/js/*.tgz -C .repo/packages/@cdklabs/cdk-cicd-wrapper
       - name: Move build artifact out of the way
+        id: move_build_artifact_out_of_the_way
         run: mv dist dist.old
       - name: Create js artifact
+        id: create_js_artifact
         run: cd .repo/packages/@cdklabs/cdk-cicd-wrapper && npx projen package:js
       - name: Collect js artifact
+        id: collect_js_artifact
         run: mv .repo/packages/@cdklabs/cdk-cicd-wrapper/dist dist
       - name: Release
+        id: release
         env:
           NPM_DIST_TAG: latest
           NPM_REGISTRY: registry.npmjs.org
           NPM_CONFIG_PROVENANCE: "true"
           NPM_TRUSTED_PUBLISHER: "true"
           PUBLIB_DRYRUN: ${{ inputs.dry_run }}
-        run: npx -p publib@latest publib-npm
+        run: npx '-p' 'publib@latest' 'publib-npm'
   cdklabs-cdk-cicd-wrapper_release_maven:
     name: "@cdklabs/cdk-cicd-wrapper: Publish to Maven Central"
     needs: cdklabs-cdk-cicd-wrapper_release
@@ -211,37 +242,46 @@ jobs:
     environment: release
     if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper_release.result == 'success' }}
     steps:
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v5.7.0
         with:
           distribution: corretto
           java-version: "11"
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        id: download_build_artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: dist
           name: cdklabs-cdk-cicd-wrapper_build-artifact
       - name: Restore build artifact permissions
+        id: restore_build_artifact_permissions
         run: cd dist && setfacl --restore=permissions-backup.acl
         continue-on-error: true
       - name: Checkout
-        uses: actions/checkout@v6
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: .repo
       - name: Install Dependencies
+        id: install_dependencies
         run: cd .repo && yarn install --check-files --frozen-lockfile
       - name: Extract build artifact
+        id: extract_build_artifact
         run: tar --strip-components=1 -xzvf dist/js/*.tgz -C .repo/packages/@cdklabs/cdk-cicd-wrapper
       - name: Move build artifact out of the way
+        id: move_build_artifact_out_of_the_way
         run: mv dist dist.old
       - name: Create java artifact
+        id: create_java_artifact
         run: cd .repo/packages/@cdklabs/cdk-cicd-wrapper && npx projen package:java
       - name: Collect java artifact
+        id: collect_java_artifact
         run: mv .repo/packages/@cdklabs/cdk-cicd-wrapper/dist dist
       - name: Release
+        id: release
         env:
           MAVEN_SERVER_ID: central-ossrh
           MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
@@ -250,7 +290,7 @@ jobs:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_STAGING_PROFILE_ID: ${{ secrets.MAVEN_STAGING_PROFILE_ID }}
           PUBLIB_DRYRUN: ${{ inputs.dry_run }}
-        run: npx -p publib@latest publib-maven
+        run: npx '-p' 'publib@latest' 'publib-maven'
   cdklabs-cdk-cicd-wrapper_release_pypi:
     name: "@cdklabs/cdk-cicd-wrapper: Publish to PyPI"
     needs: cdklabs-cdk-cicd-wrapper_release
@@ -261,40 +301,49 @@ jobs:
     environment: release
     if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper_release.result == 'success' }}
     steps:
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: lts/*
           package-manager-cache: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: 3.x
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        id: download_build_artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: dist
           name: cdklabs-cdk-cicd-wrapper_build-artifact
       - name: Restore build artifact permissions
+        id: restore_build_artifact_permissions
         run: cd dist && setfacl --restore=permissions-backup.acl
         continue-on-error: true
       - name: Checkout
-        uses: actions/checkout@v6
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: .repo
       - name: Install Dependencies
+        id: install_dependencies
         run: cd .repo && yarn install --check-files --frozen-lockfile
       - name: Extract build artifact
+        id: extract_build_artifact
         run: tar --strip-components=1 -xzvf dist/js/*.tgz -C .repo/packages/@cdklabs/cdk-cicd-wrapper
       - name: Move build artifact out of the way
+        id: move_build_artifact_out_of_the_way
         run: mv dist dist.old
       - name: Create python artifact
+        id: create_python_artifact
         run: cd .repo/packages/@cdklabs/cdk-cicd-wrapper && npx projen package:python
       - name: Collect python artifact
+        id: collect_python_artifact
         run: mv .repo/packages/@cdklabs/cdk-cicd-wrapper/dist dist
       - name: Release
+        id: release
         env:
           PYPI_TRUSTED_PUBLISHER: "true"
           PUBLIB_DRYRUN: ${{ inputs.dry_run }}
-        run: npx -p publib@latest publib-pypi
+        run: npx '-p' 'publib@latest' 'publib-pypi'
   cdklabs-cdk-cicd-wrapper_release_nuget:
     name: "@cdklabs/cdk-cicd-wrapper: Publish to NuGet Gallery"
     needs: cdklabs-cdk-cicd-wrapper_release
@@ -305,42 +354,51 @@ jobs:
     environment: release
     if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper_release.result == 'success' }}
     steps:
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: lts/*
           package-manager-cache: false
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6.0.0
         with:
           dotnet-version: 6.x
           cache: false
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        id: download_build_artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: dist
           name: cdklabs-cdk-cicd-wrapper_build-artifact
       - name: Restore build artifact permissions
+        id: restore_build_artifact_permissions
         run: cd dist && setfacl --restore=permissions-backup.acl
         continue-on-error: true
       - name: Checkout
-        uses: actions/checkout@v6
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: .repo
       - name: Install Dependencies
+        id: install_dependencies
         run: cd .repo && yarn install --check-files --frozen-lockfile
       - name: Extract build artifact
+        id: extract_build_artifact
         run: tar --strip-components=1 -xzvf dist/js/*.tgz -C .repo/packages/@cdklabs/cdk-cicd-wrapper
       - name: Move build artifact out of the way
+        id: move_build_artifact_out_of_the_way
         run: mv dist dist.old
       - name: Create dotnet artifact
+        id: create_dotnet_artifact
         run: cd .repo/packages/@cdklabs/cdk-cicd-wrapper && npx projen package:dotnet
       - name: Collect dotnet artifact
+        id: collect_dotnet_artifact
         run: mv .repo/packages/@cdklabs/cdk-cicd-wrapper/dist dist
       - name: Release
+        id: release
         env:
           NUGET_TRUSTED_PUBLISHER: "true"
           NUGET_USERNAME: ${{ secrets.NUGET_USERNAME }}
           PUBLIB_DRYRUN: ${{ inputs.dry_run }}
-        run: npx -p publib@latest publib-nuget
+        run: npx '-p' 'publib@latest' 'publib-nuget'
   cdklabs-cdk-cicd-wrapper_release_done:
     name: "@cdklabs/cdk-cicd-wrapper: Release complete"
     needs:
@@ -353,7 +411,8 @@ jobs:
     permissions: {}
     if: ${{ !cancelled() && !failure() }}
     steps:
-      - run: echo "All publish jobs complete"
+      - id: auto_9c3c4914
+        run: echo "All publish jobs complete"
   cdklabs-cdk-cicd-wrapper-cli_release:
     name: "@cdklabs/cdk-cicd-wrapper-cli: Release"
     needs: release_gate
@@ -361,7 +420,8 @@ jobs:
     permissions: {}
     if: ${{ contains(fromJSON(needs.release_gate.outputs.packages_to_publish), '@cdklabs/cdk-cicd-wrapper-cli') }}
     steps:
-      - run: echo "Releasing @cdklabs/cdk-cicd-wrapper-cli..."
+      - id: auto_b21cc134
+        run: echo "Releasing @cdklabs/cdk-cicd-wrapper-cli..."
   cdklabs-cdk-cicd-wrapper-cli_release_github:
     name: "@cdklabs/cdk-cicd-wrapper-cli: Publish to GitHub Releases"
     needs: cdklabs-cdk-cicd-wrapper-cli_release_npm
@@ -371,23 +431,36 @@ jobs:
     environment: release
     if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper-cli_release.result == 'success' }}
     steps:
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        id: download_build_artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: dist
           name: cdklabs-cdk-cicd-wrapper-cli_build-artifact
       - name: Restore build artifact permissions
+        id: restore_build_artifact_permissions
         run: cd dist && setfacl --restore=permissions-backup.acl
         continue-on-error: true
       - name: Release
+        id: release
         if: ${{ !inputs.dry_run }}
         env:
+          RELEASE_TAG_FILE: dist/releasetag.txt
+          CHANGELOG_FILE: dist/changelog.md
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: errout=$(mktemp); gh release create $(cat dist/releasetag.txt) -R $GITHUB_REPOSITORY -F dist/changelog.md -t $(cat dist/releasetag.txt) --target $GITHUB_SHA 2> $errout && true; exitcode=$?; if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" $errout; then cat $errout; exit $exitcode; fi
+        run: |-
+          errout=$(mktemp)
+          tag=$(cat "$RELEASE_TAG_FILE")
+          gh release create "$tag" -R "$GITHUB_REPOSITORY" -F "$CHANGELOG_FILE" -t "$tag" --target "$GITHUB_SHA" ${PRERELEASE:+-p} 2> "$errout" && true
+          exitcode=$?
+          if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" "$errout"; then
+            cat "$errout"
+            exit $exitcode
+          fi
   cdklabs-cdk-cicd-wrapper-cli_release_npm:
     name: "@cdklabs/cdk-cicd-wrapper-cli: Publish to npm"
     needs:
@@ -400,26 +473,29 @@ jobs:
     environment: release
     if: ${{ !cancelled() && !failure() && needs.cdklabs-cdk-cicd-wrapper-cli_release.result == 'success' }}
     steps:
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        id: download_build_artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: dist
           name: cdklabs-cdk-cicd-wrapper-cli_build-artifact
       - name: Restore build artifact permissions
+        id: restore_build_artifact_permissions
         run: cd dist && setfacl --restore=permissions-backup.acl
         continue-on-error: true
       - name: Release
+        id: release
         env:
           NPM_DIST_TAG: latest
           NPM_REGISTRY: registry.npmjs.org
           NPM_CONFIG_PROVENANCE: "true"
           NPM_TRUSTED_PUBLISHER: "true"
           PUBLIB_DRYRUN: ${{ inputs.dry_run }}
-        run: npx -p publib@latest publib-npm
+        run: npx '-p' 'publib@latest' 'publib-npm'
   cdklabs-cdk-cicd-wrapper-cli_release_done:
     name: "@cdklabs/cdk-cicd-wrapper-cli: Release complete"
     needs:
@@ -429,4 +505,5 @@ jobs:
     permissions: {}
     if: ${{ !cancelled() && !failure() }}
     steps:
-      - run: echo "All publish jobs complete"
+      - id: auto_9c3c4914
+        run: echo "All publish jobs complete"

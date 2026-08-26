@@ -1,11 +1,11 @@
 {
   "license": {
-    "package.json": "92e4f324cad3d749318796496c34a274d26f0880e45ca3152ed0bdb91b36cd51",
+    "package.json": "84bea85c1d26ce0b73b4ee7d31863e1fff3bf81b70bbc4cbdb9f3732a79ef283",
     "samples/cdk-v3-example/package.json": "bd7c2289f8c1e14730463f5187312d7b55c039f12de720090ca59cf1cd15bd70",
-    "packages/@cdklabs/cdk-cicd-wrapper/package.json": "0f5149102bb0712e07c40a39f72753b3ec60afa1a3e739abaae9877dd140f80a",
-    "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "f43f637bacfe9c5fb6b9b1d2a59ca15818a780d61a07abc9a5381dcb819d3b71",
+    "packages/@cdklabs/cdk-cicd-wrapper/package.json": "16e640594a80812e9a84341c8b4399be2f8ffd08bceccb6ed2442827e5505f43",
+    "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "a142cb2a94151b9af928fa9d09810ee76569cb5af40ed0ccef7af62720ed6fc3",
     "test/fixtures/pipeline-app/package.json": "112ecd39b9f84f3937cd418f1869065bf21f8dffe2b8ad49402682318867ed79",
     "projectList": "d8884e845834d7606481360aaf229b1d5fecda9a7f93faad718c34449f5aa40b"
   },
-  "npm-lock-file": "fa5177eca06919031fc247803878c7df6175b8bca407ffa1e2a03cd6fcf35bd3"
+  "npm-lock-file": "ea2caf97a6db83ab69cbc04e2c6ec31d77c4d06221c0f0db922939993a3f43be"
 }

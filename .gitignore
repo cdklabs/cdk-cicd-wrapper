@@ -63,10 +63,10 @@ mcp-servers/debugger-mcp/.coverage
 !/.prettierrc.json
 !/test/
 !/tsconfig.json
-!/tsconfig.dev.json
 !/src/
 /lib
 /dist/
+!/projenrc/tsconfig.json
 !/.eslintrc.json
 !/.github/workflows/aislop.yml
 packages/@cdklabs/cdk-cicd-wrapper/tsconfig.json
