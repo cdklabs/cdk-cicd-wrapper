@@ -21,7 +21,7 @@ export enum RegionOrder {
 
 /** Which stack synthesizer the wrapper installs. */
 export enum SynthesizerType {
-  /** `DefaultStackSynthesizer` -- the v3 default. */
+  /** `DefaultStackSynthesizer` -- the zero-touch default. */
   DEFAULT = 'default',
   /** `AppStagingSynthesizer` -- opt-in, still alpha. */
   APP_STAGING = 'app_staging',
@@ -30,7 +30,7 @@ export enum SynthesizerType {
 /** Which CI/CD engine renders the pipeline. */
 export enum EngineType {
   /**
-   * The lightweight flat engine on raw `aws-cdk-lib/aws-codepipeline` -- the v3 default. Its deploy
+   * The lightweight flat engine on raw `aws-cdk-lib/aws-codepipeline` -- the zero-touch default. Its deploy
    * stages re-invoke the app per stage, so the user's `bin` stays a plain single-stage app.
    */
   CODEPIPELINE = 'codepipeline',
@@ -209,7 +209,7 @@ export interface ManagedVpcConfig {
   readonly allowAllOutbound?: boolean;
   /**
    * S3 bucket to send VPC flow logs to. Blueprint always used the RES stage's compliance-log bucket
-   * implicitly; v3 has not migrated that bucket yet (`m9-migrate-compliance-bucket`), so this is an
+   * implicitly; zero-touch has not migrated that bucket yet (`m9-migrate-compliance-bucket`), so this is an
    * explicit prop instead -- omit to skip flow logs.
    */
   readonly flowLogsBucketName?: string;

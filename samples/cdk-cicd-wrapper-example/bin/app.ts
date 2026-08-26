@@ -13,9 +13,9 @@ import { MyStack } from '../lib/stack';
 
 const app = new cdk.App();
 
-new MyStack(app, 'cdk-v3-example', {
-  // -> `cdk-v3-example-dev` / `cdk-v3-example-prod`. Migrating from Blueprint? Use
-  // `stageStackName('cdk-v3-example', { stageFirst: true, uppercaseStage: true })` to get `DEV-...`.
-  stackName: stageStackName('cdk-v3-example'),
+new MyStack(app, 'cdk-cicd-wrapper-example', {
+  // -> `cdk-cicd-wrapper-example-dev` / `cdk-cicd-wrapper-example-prod`. Migrating from Blueprint? Use
+  // `stageStackName('cdk-cicd-wrapper-example', { stageFirst: true, uppercaseStage: true })` to get `DEV-...`.
+  stackName: stageStackName('cdk-cicd-wrapper-example'),
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });

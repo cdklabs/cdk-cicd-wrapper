@@ -73,7 +73,7 @@ cycle, and a rolled-back stack is a slower teacher than five minutes of the Clou
    so an innocuous edit destroys and recreates. This repo already learned it the expensive way: a stack
    name that doesn't match Blueprint's makes a migration a new stack instead of an in-place update, and the
    stateful resource is recreated (`MIGRATION.md` §stack names, proven in
-   `test/proof/migration-continuity.sh`, warned in `docs/content/workshops/v3-pipeline/06-*.md`). Record
+   `test/proof/migration-continuity.sh`, warned in `docs/content/workshops/zerotouch-pipeline/06-*.md`). Record
    replacement-triggering properties in a comment **where someone would edit them**, not in a doc.
 2. **Name, title and description limits come from the reference, not from a guess.** Charsets and
    lengths, looked up. An EC2 description field allows only `a-zA-Z0-9`, spaces and
@@ -164,7 +164,7 @@ Yarn 1 workspaces over two packages in `packages/@cdklabs/`:
 | `cdk-cicd-wrapper` | the constructs library — **jsii**, published to npm/PyPI/Maven/NuGet |
 | `cdk-cicd-wrapper-cli` | the `cdk-cicd` CLI (`bin/cdk-cicd`), plain TS |
 
-`cdk-cicd-wrapper-projen` was the third package; v3 removed it (task.md **D5**, package consolidation
+`cdk-cicd-wrapper-projen` was the third package; zero-touch removed it (task.md **D5**, package consolidation
 3→2). Its migration path is `cicd.config.ts` + the `cdk-cicd` CLI — see `MIGRATION.md`.
 
 ## This repo is projen-managed
@@ -217,7 +217,7 @@ cd packages/@cdklabs/cdk-cicd-wrapper && npx projen compile   # or: npx projen t
 - Husky runs `pre-commit`, `commit-msg`, `pre-push` — do not bypass with `--no-verify`.
 - Prettier + eslint; run `task fix` rather than reformatting by hand.
 - Tests live in each package's `test/`, mirroring `src/`. `test/integration/` holds the heavier ones.
-- Samples in `samples/cdk-v3-example` and `samples/cdk-python-example` double as smoke tests — keep
+- Samples in `samples/cdk-cicd-wrapper-example` and `samples/cdk-python-example` double as smoke tests — keep
   them working. They are what users copy. (`cdk-ts-example`, the Blueprint sample, was deleted
   alongside the projen product in `m8-remove-v2` — it lives on, untouched, on `legacy-blueprint`.)
 

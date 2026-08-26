@@ -73,7 +73,7 @@ function envArn(value: string | undefined): string | undefined {
 }
 
 /**
- * The synthesizer the wrapper installs. `DefaultStackSynthesizer` is the v3 default (app-staging is
+ * The synthesizer the wrapper installs. `DefaultStackSynthesizer` is the zero-touch default (app-staging is
  * opt-in, still alpha). When the CLI has exported forced deployer / CloudFormation-execution role ARNs
  * for the active stage (m3-forced-roles), they are threaded into the synthesizer here -- read from the
  * environment, not from config, so the wrapper stays decoupled from cicd.config parsing.

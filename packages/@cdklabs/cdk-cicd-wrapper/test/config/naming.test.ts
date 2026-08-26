@@ -17,7 +17,7 @@ describe('m5: stageStackName', () => {
 
   test('reproduces the Blueprint deployed name (<STAGE>-base) so a migration updates in place', () => {
     // Blueprint nested stacks in AppStage(cdk.Stage), so CloudFormation deployed `DEV-myapp`. Matching that name
-    // is what makes the v3 deploy an in-place UPDATE rather than a new stack that orphans the old one.
+    // is what makes the zero-touch deploy an in-place UPDATE rather than a new stack that orphans the old one.
     process.env.CDK_STAGE = 'dev';
     expect(stageStackName('myapp', { stageFirst: true, uppercaseStage: true })).toBe('DEV-myapp');
   });
@@ -34,7 +34,7 @@ describe('m5: stageStackName', () => {
   });
 
   test('default casing lowercases the stage (pins the behavior, not just the already-lowercase input)', () => {
-    // A v3 config may carry an uppercase stage id; the clean default name is lowercase.
+    // A zero-touch config may carry an uppercase stage id; the clean default name is lowercase.
     expect(stageStackName('myapp', { stage: 'DEV' })).toBe('myapp-dev');
   });
 

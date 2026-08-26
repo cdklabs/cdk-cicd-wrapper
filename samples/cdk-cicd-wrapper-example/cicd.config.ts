@@ -7,8 +7,8 @@
 import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
-  application: 'cdk-v3-example',
-  repository: Repository.codecommit('cdk-v3-example'),
+  application: 'cdk-cicd-wrapper-example',
+  repository: Repository.codecommit('cdk-cicd-wrapper-example'),
   // dev auto-approves (inner loop); prod is gated by default. Both single-region here for the sample.
   stages: ['dev', 'prod'],
 });

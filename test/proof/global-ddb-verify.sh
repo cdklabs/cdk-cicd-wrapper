@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# global-ddb-verify -- proves v3 deploys a DynamoDB GLOBAL TABLE across regions. From the global-ddb-app
+# global-ddb-verify -- proves zero-touch deploys a DynamoDB GLOBAL TABLE across regions. From the global-ddb-app
 # fixture, `cdk-cicd deploy --stage dev` deploys one stack in the primary region that owns a TableV2 with
 # a replica in the secondary region; the gate then asserts the table in the primary region carries the
 # replica AND the replica table is ACTIVE in the secondary region. Then it tears everything down.
@@ -30,7 +30,7 @@ main_ddb() {
   local dir stack table rc=0
   dir="$(fixture_dir "$FIXTURE")"; stack="$(stack_of)"; table="$(table_of)"
 
-  # --- deploy via the v3 CLI (single stage; the replica is created cross-region) --------------------
+  # --- deploy via the zero-touch CLI (single stage; the replica is created cross-region) --------------------
   log "leg 1: cdk-cicd deploy --stage dev ($primary) -- provisions the global table + $secondary replica"
   if ! ( cd "$dir" \
           && CDK_DEFAULT_ACCOUNT="$CDK_CICD_TEST_ACCOUNT" CDK_DEFAULT_REGION="$primary" \
@@ -66,7 +66,7 @@ main_ddb() {
   fi
 
   log 'teardown (stack + global table + replica) runs on exit'
-  [ "$rc" = 0 ] && log 'global-ddb-verify PASSED: v3 deployed a DynamoDB global table across two regions, then torn down' \
+  [ "$rc" = 0 ] && log 'global-ddb-verify PASSED: zero-touch deployed a DynamoDB global table across two regions, then torn down' \
                 || log 'global-ddb-verify FAILED'
   return "$rc"
 }

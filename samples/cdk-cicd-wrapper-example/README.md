@@ -1,6 +1,6 @@
-# cdk-v3-example
+# cdk-cicd-wrapper-example
 
-The v3 shape of the CDK CI/CD Wrapper. The point: **the app is ordinary CDK with no wrapper code**,
+The zero-touch shape of the CDK CI/CD Wrapper. The point: **the app is ordinary CDK with no wrapper code**,
 and one `cicd.config.ts` turns it into a pipeline.
 
 ```
@@ -17,12 +17,12 @@ branch (its `cdk-ts-example` sample was removed from `main` in `m8-remove-v2`).
 ## Use it
 
 ```bash
-npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while v3 is pre-release)
+npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while zero-touch is pre-release)
 npx cdk-cicd deploy-ci            # provisions the pipeline into the hub account, from cicd.config.ts alone
 ```
 
 The pipeline then runs Source → Build (checks + synth) → self-update → deploy per stage, with `prod`
-gated on a manual approval. `dev` deploys `cdk-v3-example-dev`, `prod` deploys `cdk-v3-example-prod` —
+gated on a manual approval. `dev` deploys `cdk-cicd-wrapper-example-dev`, `prod` deploys `cdk-cicd-wrapper-example-prod` —
 `bin/app.ts` uses `stageStackName` to name them.
 
 ## Migrating an existing Blueprint app

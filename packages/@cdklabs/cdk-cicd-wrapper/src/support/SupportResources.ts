@@ -6,7 +6,7 @@
 // providers behind a `ResourceContext` singleton, so every pipeline paid for every support resource
 // whether or not it was used.
 //
-// v3 keeps the concept and drops both the singleton and the string-keyed provider registry: this is
+// zero-touch keeps the concept and drops both the singleton and the string-keyed provider registry: this is
 // an ordinary Construct whose resources are created lazily, on first property read. Nothing here is
 // provisioned unless something asks for it, and the lookups are typed instead of `any` off a map.
 // The remaining Blueprint support resources (compliance/log bucket, SSM parameters, VPC, proxy) slot in as
@@ -117,11 +117,11 @@ export class SupportResources extends Construct {
    * configuration (and, cross-region, Blueprint's name-substitution convention) can reference it.
    *
    * Blueprint provisioned this bucket via a custom-resource Lambda so a redeploy could tolerate the bucket
-   * already existing (`BucketAlreadyOwnedByYou`); v3 provisions it as a plain, CloudFormation-managed
+   * already existing (`BucketAlreadyOwnedByYou`); zero-touch provisions it as a plain, CloudFormation-managed
    * `Bucket` instead -- simpler, and the "already exists" case Blueprint tolerated doesn't arise here since
    * this construct's stack owns the bucket for the life of the pipeline.
    *
-   * Folds in the TLS/SSE policy fix Blueprint's Stage-1 change (`0b7ae02`) made and v3 must not regress:
+   * Folds in the TLS/SSE policy fix Blueprint's Stage-1 change (`0b7ae02`) made and zero-touch must not regress:
    * enforcing encryption-in-transit works with a plain `Bool` condition on `aws:SecureTransport`
    * (`enforceSSL`, below) because that key is always present on every request. Enforcing encryption
    * *at rest* does not: `s3:x-amz-server-side-encryption` is only present in the request context when

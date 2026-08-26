@@ -1,4 +1,4 @@
-# v3 Rollout Plan — Autopilot as mainline (handover + decisions)
+# Rollout Plan — Autopilot as mainline (handover + decisions)
 
 Status: **in progress.** `autopilot-mainline` was merged into `v3` (`68def56`) and deleted — Stage 0/1
 work now lives as ordinary commits on `v3` itself, and Stages 2–3 (below) landed the same way,
@@ -7,7 +7,7 @@ longer applies (this work continued from a different machine/session with a norm
 This doc is the authoritative capture of the rollout plan and every grilled decision (Q1–Q16), the
 migration backlog, execution stages, and current state. Companion:
 `docs/design/v2-v3-parallel-maintenance.md` (release mechanics) and `docs/design/v3-devops-experience.md`
-(v3 design).
+(Autopilot design).
 
 ## The two lines (naming)
 
@@ -29,15 +29,15 @@ cross-contaminating.
   `review/v3-oss-readiness` onto v3 (NOT a merge — the branch is 675a97c-based and would drag stale
   generated files); skip `b46c08b` (already on v3). One more full review round before go-live.
 - **Q2 — folder structure:** flatten `src/v3/**` → `src/`; **delete the Blueprint code**; any Blueprint feature not
-  yet in v3 → `task.md` (migrated later, not discarded).
+  yet in Autopilot → `task.md` (migrated later, not discarded).
 - **Q3 — docs:** full **rewrite** for Autopilot (deliberately used to surface missing features);
   relocate Blueprint docs to a `legacy/` subsection with signposting + redirects.
 - **Q4 — sequencing:** stage everything on the branch → one full test/verify → **PR to `main`** (CI
-  hooks verify) → **squash the new Step-2 work to one commit** (preserve v3 rewrite history). The
+  hooks verify) → **squash the new Step-2 work to one commit** (preserve Autopilot rewrite history). The
   feature migration gates the **1.0/latest** cutover, NOT the `main`-branch flip.
 - **Q5 — doc verification:** **Fable + Opus + Haiku**, each simulating personas reading.
-- **Q6 — removal boundary:** delete the Blueprint builder API + Blueprint-exclusive code; the v3 tree is
-  **fully self-contained** (imports zero Blueprint code; CLI imports only v3), so deleting all of
+- **Q6 — removal boundary:** delete the Blueprint builder API + Blueprint-exclusive code; the Autopilot tree is
+  **fully self-contained** (imports zero Blueprint code; CLI imports only Autopilot), so deleting all of
   `stacks/ resource-providers/ code-pipeline/ plugins/ common/ constructs/ utils/` breaks nothing.
   BUT the Blueprint **features** (security plugins, smart providers, …) are a **migrate + re-architect loop**,
   not discard.
@@ -46,7 +46,7 @@ cross-contaminating.
 - **Q8 — API compat:** accept a clean **`0.x`→`1.x` break** (no 1.x published yet; re-baseline the
   already-red compat gate post-flatten). Future feature ports should keep APIs **familiar** (same
   types/similar props) + a migration guide.
-- **Q9 — personas + gate:** personas = (1) new user, (2) Blueprint→v3 migrator, (3) security/compliance
+- **Q9 — personas + gate:** personas = (1) new user, (2) Blueprint→Autopilot migrator, (3) security/compliance
   reviewer, (4) non-TS (Python/Java) consumer, (5) skeptical senior eng. **Accuracy vs the shipped
   `cdk-cicd exec`/`defineCICD`/CLI + broken links = must-fix gate; clarity/UX = advisory.**
 - **Q10 — final review round:** repeat the full multi-lens **code + security + legal** review on the
@@ -58,8 +58,8 @@ cross-contaminating.
   do NOT merge the CLI into the jsii package — it would bundle node-only CLI deps into every
   PyPI/Maven/NuGet artifact (contradicts decision D5), it's orthogonal work, and it loses independent
   CLI releases. "One install" is already met (CLI depends on the wrapper).
-- **Q12 — squash scope:** preserve the v3 rewrite history; squash only the new Step-2 commits.
-- **Q15 — migration backlog:** one **"migrate Blueprint features to v3"** milestone in `task.md`, one task per
+- **Q12 — squash scope:** preserve the Autopilot rewrite history; squash only the new Step-2 commits.
+- **Q15 — migration backlog:** one **"migrate Blueprint features to Autopilot"** milestone in `task.md`, one task per
   feature, each citing the Blueprint source + the Q8 keep-API-familiar constraint.
 - **Q16 — needed vs later:** see table below.
 
@@ -72,8 +72,8 @@ cross-contaminating.
 2. Compliance / access-log bucket · 3. VPC · 4. HTTP proxy · 5. CodeBuild env customization
    (privileged/compute/env vars) · 6. Private-npm-registry basic-auth · 7. Phase/command model ·
    8. Custom BuildSpec escape hatch · 11. **CloudWatch log-retention** ·
-   **+ GitHub Actions pipeline rendering** (port the Blueprint `GitHubPipelinePlugin` to a v3 GitHub engine —
-   v3 only has GitHub-as-source today; the render capability would otherwise be lost)
+   **+ GitHub Actions pipeline rendering** (port the Blueprint `GitHubPipelinePlugin` to an Autopilot GitHub engine —
+   Autopilot only has GitHub-as-source today; the render capability would otherwise be lost)
 
 Note also the skipped Stage-1 fix `0b7ae02` (Blueprint compliance-bucket TLS/SSE policy correctness) → fold
 into the compliance-bucket migration (#2).
@@ -83,14 +83,14 @@ integration · 12. Deploy hooks / pre-post-deploy steps · 13. Workbench (→ re
 `cdk deploy` no-pipeline story — a docs item) · 14. `addStack` provider model (→ replaced by `bin/`-app
 replay; migration-guide note).
 
-**Already in v3 (keep, not backlog):** CodePipeline-Blueprint parity = the `CdkPipelinesEngine` (+ flat
+**Already in Autopilot (keep, not backlog):** CodePipeline-Blueprint parity = the `CdkPipelinesEngine` (+ flat
 `CodePipelineEngine`) under `src/v3/engine/**` — preserved by the flatten.
 
 ## Execution stages & current state
 
 Commits so far (Stage 0–1 landed on `autopilot-mainline` before the merge; Stage 2 onward landed
 directly on `v3`):
-- `436235d` **Stage 0** — captured your 4 uncommitted v3 files (a complete `--express` deploy feature).
+- `436235d` **Stage 0** — captured your 4 uncommitted Autopilot files (a complete `--express` deploy feature).
 - `fa43b85` **Stage 1** — reconciled the 12 OSS fixes (source auto-merged clean; `findings.json`/
   `yarn.lock` kept as v3's; picomatch verified 2.3.2).
 - `f249cd8` **Stage 1 fixup** — restored v3's `AppConfig` rosetta example (a cherry-pick regressed it).
@@ -103,7 +103,7 @@ directly on `v3`):
   (`package.json` workspaces/jest, `tsconfig*.json`, `.github/workflows/release.yml`) via `npx projen`;
   re-baselined `npx projen compat` with a new `.compatignore` (122 removed Blueprint symbols — the clean
   0.x→1.x break from Q8/Q2/Q6). Also deleted `samples/cdk-ts-example` (Blueprint-exclusive, entangled with the
-  projen removal per `m5-sample-migrate`'s own note; superseded by `samples/cdk-v3-example`) and fixed
+  projen removal per `m5-sample-migrate`'s own note; superseded by `samples/cdk-cicd-wrapper-example`) and fixed
   the one test (`MigrateCommand.test.ts`) that read it off disk. This closes out `task.md`'s
   `m8-remove-v2` — all its dependencies were already `done`, so the "deprecation period" gate was
   satisfied by the `legacy-blueprint` branch split instead of in-place deprecation. **Found but not
@@ -126,11 +126,11 @@ Remaining:
 - **Stage 5** — ✅ done. Full Autopilot docs rewrite + Blueprint docs → `legacy/` with banner +
   redirects. `overview`/`getting_started` rewritten around `defineCICD`/`cicd.config.ts`; a `legacy/`
   section established with `mkdocs-redirects` wiring; 6 developer guides + 2 workshops relocated there
-  (no v3 equivalent); 11 developer guides rewritten for v3; `MIGRATION.md` gained rows for
+  (no Autopilot equivalent); 11 developer guides rewritten for Autopilot; `MIGRATION.md` gained rows for
   `pipelineOptions` (dropped) and a corrected container-mode row. `cli/`, `mcp/`, `contributing`,
   `prerequisites`, `faqs` kept in place but factually corrected where Stage 6 found them stale, not
   wholesale-relocated (they were never Blueprint-only in the way the 18 developer guides were).
-- **Stage 6** — ✅ done. Q9 gate: five persona reviews (new user, Blueprint→v3 migrator,
+- **Stage 6** — ✅ done. Q9 gate: five persona reviews (new user, Blueprint→Autopilot migrator,
   security/compliance reviewer, non-TS/Python consumer, skeptical senior engineer), each independently
   verifying doc claims against source rather than trusting prose. Found and fixed as must-fix (9
   commits): wrong Blueprint default stages (`RES`/`DEV`/`INT`, not `+PROD`) in `MIGRATION.md` + a workshop

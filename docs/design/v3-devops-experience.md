@@ -1,4 +1,4 @@
-# CDK CI/CD Wrapper v3 — DevOps Experience Proposal (DRAFT for iteration)
+# CDK CI/CD Wrapper — Zero-Touch DevOps Experience Proposal (DRAFT for iteration)
 
 Status: brainstorming draft — core decisions below are agreed with the maintainer; details still iterating.
 
@@ -18,7 +18,7 @@ Status: brainstorming draft — core decisions below are agreed with the maintai
    publishing, per-stage Pre/PostDeploy steps, self-mutation, CodeGuru, PR checks).
 5. Keep Blueprint's capabilities: multi-stage deployment, CI step customization, hooks, plugins,
    compliance bucket, VPC/proxy/private-registry support.
-6. Ship as a **breaking v3 major** with a migration guide (Blueprint API removed, concepts mapped).
+6. Ship as a **breaking 1.0 major** with a migration guide (Blueprint API removed, concepts mapped).
 
 ## Agreed decisions
 
@@ -27,7 +27,7 @@ Status: brainstorming draft — core decisions below are agreed with the maintai
 | Config format | Typed code file (`cicd.config.ts`), discovered by convention; jsii-friendly equivalent for Python |
 | Docker/artifact model | Alternative engine; CodePipeline stays the default engine |
 | No-config behavior | Plain direct deploy — wrapper inert until a config file exists |
-| Versioning | Breaking v3 major + migration guide |
+| Versioning | Breaking 1.0 major + migration guide |
 | Deploy model | **Two CodePipeline implementations** (see below), *efficiency first*. **Default: assembly promotion (the Blueprint way)** — the synth/Build phase synths every stage **once**, keeps `cdk.out`, and promotes it as the pipeline artifact; deploy stages consume it and never re-synth. **Second option: per-stage synth at deploy time** — the promoted immutable unit is **code + pinned deps** (git sha / image digest) and config is injected per target at deploy time; there, CI synths **one env by default** and anything already synthed is reused. Docker mode always synths at run time (config-agnostic image). First-class multi-region, forced deployer/synthesizer roles. |
 | Pipeline lifecycle | Self-updating pipeline (CodePipeline-self-mutation-like); **initialized via CLI** (`cdk-cicd deploy-ci`); cdk.json integration via feature flag/context only — **no wrapper code required in the CDK app codebase** |
 | CI checks | **Default-on like Blueprint** (validate, audit, license, security scans) — but implemented as wrapper-CLI commands run in CI, so a fresh project passes without adding npm scripts or jq surgery |
@@ -190,7 +190,7 @@ config** — the same mechanism for every engine:
   code + npm deps (not `cdk.out`), so `cdk deploy` synthesizes and deploys **offline** — no registry
   or `npm install` at deploy time.
 
-**Determinism without baking.** Because v3 replaces `*.fromLookup` with config-supplied attributes
+**Determinism without baking.** Because zero-touch replaces `*.fromLookup` with config-supplied attributes
 (the app-config layer) and the sha/image pins code + deps, deploy-time synth is reproducible — the
 same `(code, deps, config)` always yields the same template. Rollback = redeploy a previous sha /
 image tag with its config.
@@ -450,13 +450,13 @@ It then fails the synth non-zero with an actionable message pointing at `CdkCicd
 silent on a normal app and erroring on the bundle. This makes the failure loud at synth time rather
 than at audit time.
 
-**Synthesizer — `DefaultStackSynthesizer` is the v3 default; `AppStagingSynthesizer` is opt-in.**
-Because app-staging is still alpha (API churn, 20-ECR-image cap), v3 defaults to
+**Synthesizer — `DefaultStackSynthesizer` is the zero-touch default; `AppStagingSynthesizer` is opt-in.**
+Because app-staging is still alpha (API churn, 20-ECR-image cap), zero-touch defaults to
 `DefaultStackSynthesizer` (with optional forced `deployRoleArn`/`cloudFormationExecutionRole`).
 Teams opt in with `synthesizer: 'app-staging'`. Both sit behind the wrapper's own synthesizer
 interface so the default can flip later without breaking users. Research findings on app-staging
 that justify offering it (and eventually promoting it):
-- It **does not support CDK Pipelines — requires `cdk deploy`**. v3 synths per stage at deploy time
+- It **does not support CDK Pipelines — requires `cdk deploy`**. zero-touch synths per stage at deploy time
   and deploys with `cdk deploy`, so this aligns instead of conflicts (a reason *not* to keep CDK
   Pipelines).
 - Forced deployer/CFN-execution roles are first-class via
@@ -477,7 +477,7 @@ synthesizer choice needs no bin change.
 > stacks consume (VPC ids, hosted zones, ACM ARNs, feature toggles, tags, removal policies…). It is
 > **not** the pipeline/CICD config from `cicd.config.ts`. The two are independent.
 
-Every application has settings that differ per environment. v3 ships a **config-management layer**
+Every application has settings that differ per environment. zero-touch ships a **config-management layer**
 that, for whichever stage is being synthesized, automatically loads the matching config file and
 makes it available to the CDK code in `bin/` and the stacks:
 
@@ -543,7 +543,7 @@ required-field tables with conditional groups.
 
 ## What carries over from Blueprint (reused, reshaped)
 
-| Blueprint concept | v3 fate |
+| Blueprint concept | Zero-touch fate |
 |---|---|
 | `ResourceContext` DI + resource providers | Keep the concept; drop the singleton; type the lookups |
 | Stage/DeploymentDefinition model | Keep; config-file-driven instead of env-var-driven |
@@ -595,9 +595,9 @@ required-field tables with conditional groups.
 
 ### Guiding constraints
 
-- **Don't kill Blueprint.** Ship v3 in the **same monorepo** as **new modules alongside** the Blueprint code
+- **Don't kill Blueprint.** Ship zero-touch in the **same monorepo** as **new modules alongside** the Blueprint code
   (jsii-published, projen-managed). Blueprint (`PipelineBlueprint`) keeps building and is only removed at
-  the v3.0 major with a migration guide + codemod assist. Every step below is additive until the
+  the 1.0 major with a migration guide + codemod assist. Every step below is additive until the
   final flip.
 - **Reuse, don't reinvent.** The engine-agnostic Blueprint assets carry over: the `ResourceContext`/
   `IResourceProvider` DI concept, the stage/`DeploymentDefinition` model, phase-command model, and
@@ -613,7 +613,7 @@ required-field tables with conditional groups.
 | `cdk-cicd-wrapper/src/v3/runtime` | `register` hook (wraps `App`/`app.synth`), synthesizer install, plugin/Aspect application, tags, stage-env injection |
 | `cdk-cicd-wrapper/src/v3/engine` | `IEngine` interface + `CodePipelineEngine` (first), `GitHubActionsEngine`, `ContainerEngine` (later) |
 | `cdk-cicd-wrapper/src/v3/support` | Lazy support providers reshaped from Blueprint (encryption, logging/compliance bucket, SSM, VPC, proxy) behind a de-singletoned `ResourceContext` |
-| `cdk-cicd-wrapper-cli/src/cmds/v3` | `exec`, `synth`, `publish`, `deploy`, `deploy-ci`, `diff`, `configure` (absorbs existing `validate`/`audit`/`license`/`security`) |
+| `cdk-cicd-wrapper-cli/src/cmds/zerotouch` | `exec`, `synth`, `publish`, `deploy`, `deploy-ci`, `diff`, `configure` (absorbs existing `validate`/`audit`/`license`/`security`) |
 
 ### Milestones (each independently shippable, additive)
 
@@ -631,18 +631,18 @@ required-field tables with conditional groups.
 4. **CodePipeline engine (default)**. `IEngine` + `CodePipelineEngine`: one synth project + one
    deploy action per stage (assets via `cdk-assets`), lazy support resources, manual-approval
    gates, `cdk-cicd deploy-ci` to provision/self-update. This is the Blueprint feature-parity bar.
-5. **Migration**: `MIGRATION.md` Blueprint→v3 chapter + mapping table + a `cdk-cicd migrate` codemod that
+5. **Migration**: `MIGRATION.md` Blueprint→zero-touch chapter + mapping table + a `cdk-cicd migrate` codemod that
    rewrites a Blueprint `PipelineBlueprint.builder()...synth(app)` into `cicd.config.ts` + `cdk.json` app
    command where mechanical.
 6. **Container two-repo mode**: `BuildImage.docker` (Repo 1 build/push), `defineDeployment`
    (`cdk-cicd deploy --from-image`, Repo 2), S3 artifact store default + ECR/OCI support.
 7. **GitHub Actions engine** (reworked from the Blueprint `GitHubPipelinePlugin`, no buildspec
    reverse-engineering — renders from the model directly).
-8. **Deprecate/remove Blueprint** at the v3.0 major once parity + migration are proven.
+8. **Deprecate/remove Blueprint** at the 1.0 major once parity + migration are proven.
 
-### Blueprint → v3 mapping (feeds MIGRATION.md)
+### Blueprint → zero-touch mapping (feeds MIGRATION.md)
 
-| Blueprint | v3 |
+| Blueprint | Zero-touch |
 |---|---|
 | `PipelineBlueprint.builder().defineStages(...).addStack(...).synth(app)` | `defineCICD({ stages, ... })` in `cicd.config.ts`; stacks stay in `bin/` |
 | `ACCOUNT_<STAGE>` / `CDK_QUALIFIER` / `npm_package_config_*` env | fields in `cicd.config.ts` (env interpolation still allowed) |
@@ -669,7 +669,7 @@ required-field tables with conditional groups.
   `deployment.deployRole` is threaded into the synthesizer/deploy.
 - **Container mode**: Repo 1 builds & pushes the config-agnostic image; `defineDeployment` +
   `deploy --from-image` runs it against a target's config, synthing in-container then deploying.
-- Update `samples/cdk-ts-example` and `cdk-python-example` to the v3 shape as living smoke tests.
+- Update `samples/cdk-ts-example` and `cdk-python-example` to the zero-touch shape as living smoke tests.
 
 ## Open questions (deferred to implementation)
 
@@ -678,4 +678,4 @@ required-field tables with conditional groups.
 2. Naming: `deploy-ci` vs `bootstrap-ci` vs `pipeline deploy`; `cdk-cicd exec` vs `cdk-cicd synth`;
    `defineCICD` / `defineDeployment` / `BuildImage.docker`.
 3. Container-engine artifact handoff details (image tag ↔ assembly version mapping, signing).
-4. Full Blueprint→v3 API migration mapping (tracked in the plan below).
+4. Full Blueprint→zero-touch API migration mapping (tracked in the plan below).

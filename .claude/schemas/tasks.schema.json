@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/cdklabs/cdk-cicd-wrapper/schemas/tasks.schema.json",
   "title": "Task Board",
-  "description": "Schema for the repo's evolving task board (task.md is the human-readable board; tasks conform to this contract). Each task is designed to be as INDEPENDENT as possible: tasks in the same `wave` have no dependency on one another and run in parallel, and `dependsOn` carries the only ordering — keep it minimal and push shared work into its own upstream task. Not v3-specific; this schema outlives any one initiative. Restricted to the JSON Schema subset Claude's Structured Outputs supports, so an agent can be constrained to it when emitting a task.",
+  "description": "Schema for the repo's evolving task board (task.md is the human-readable board; tasks conform to this contract). Each task is designed to be as INDEPENDENT as possible: tasks in the same `wave` have no dependency on one another and run in parallel, and `dependsOn` carries the only ordering — keep it minimal and push shared work into its own upstream task. Not zero-touch-specific; this schema outlives any one initiative. Restricted to the JSON Schema subset Claude's Structured Outputs supports, so an agent can be constrained to it when emitting a task.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "tasks"],
@@ -36,7 +36,7 @@
           "type": "string"
         },
         "component": {
-          "description": "Ownership axis — the package/area the task touches (same axis as findings.schema.json). 'wrapper' = @cdklabs/cdk-cicd-wrapper (jsii constructs). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. 'shared' = spans packages. 'infra' = tooling/docs/samples/test-harness/schema. A third value, 'projen' (@cdklabs/cdk-cicd-wrapper-projen), was retired when v3 removed that package (D5, consolidation 3→2) — no task used it.",
+          "description": "Ownership axis — the package/area the task touches (same axis as findings.schema.json). 'wrapper' = @cdklabs/cdk-cicd-wrapper (jsii constructs). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. 'shared' = spans packages. 'infra' = tooling/docs/samples/test-harness/schema. A third value, 'projen' (@cdklabs/cdk-cicd-wrapper-projen), was retired when zero-touch removed that package (D5, consolidation 3→2) — no task used it.",
           "type": "string",
           "enum": ["wrapper", "cli", "shared", "infra"]
         },

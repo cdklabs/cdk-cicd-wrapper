@@ -1,7 +1,7 @@
 # Task Board
 
 A living, schema-driven board for work in this repo. It is **not** tied to any one initiative —
-current tasks happen to be the v3 effort, but the format outlives it.
+current tasks happen to be the zero-touch effort, but the format outlives it.
 
 - **Schema:** `.claude/schemas/tasks.schema.json` — the field contract each task conforms to.
   Machine-readable so an agent can be constrained to it when adding a task.
@@ -59,7 +59,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   ships in the repository anymore.
 - **D4 — Deferred scope** ✅ Container two-repo mode + GitHub Actions engine are iteration 2. Keep
   `IEngine` honest so they slot in without a rewrite.
-- **D5 — Package consolidation (3→2)** ✅ Retire `@cdklabs/cdk-cicd-wrapper-projen` (v3 `cdk-cicd
+- **D5 — Package consolidation (3→2)** ✅ Retire `@cdklabs/cdk-cicd-wrapper-projen` (zero-touch `cdk-cicd
   configure` replaces it; deprecate then remove at the major). CLI stays its own package but depends
   on the wrapper (one install). Do NOT fold the CLI into the jsii package (multi-language bloat). The
   repo's own projen build stays.
@@ -83,11 +83,11 @@ Not tasks — resolved/open design decisions that tasks reference.
   2026-08-20) A deploy action must not bill CodeBuild compute while it merely waits for CloudFormation.
   Kick off the deployment, then let a **stateful Lambda** observe deployment state and drive the action's
   completion. Applies to both implementations above.
-- **D6 — v3 versioning & isolation** ✅ v3 develops on a dedicated **`v3` branch** (created) that is
+- **D6 — zero-touch versioning & isolation** ✅ zero-touch develops on a dedicated **`v3` branch** (created) that is
   **not a declared release branch**, so it cannot publish — the strongest guard against accidental
   use. When we first want alpha exposure it releases as **`1.0.0-alpha.N` under npm dist-tag `next`**
-  (never `latest`); `main`/`latest` stays on the current 0.x line. "v3" is the **initiative codename**;
-  the released artifact is `1.0.0`. **On hold (user decision):** making v3 `1.0.0`
+  (never `latest`); `main`/`latest` stays on the current 0.x line. "zero-touch" is the **initiative codename**;
+  the released artifact is `1.0.0`. **On hold (user decision):** making zero-touch `1.0.0`
   requires main's `majorVersion` → `0` (projen has main at `1` but nothing 1.x ever shipped — live
   `latest` is `0.3.8`); the user chose **not to touch main's config** for now, so the version-config
   is staged only. Branch isolation remains the active guard. See finding
@@ -111,7 +111,7 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 0 — Test & proof harness  *(foundational; build the loop before the features)*
 
-- **`v3-version-isolation`** — Isolate + version the v3 line (first step, D6)  ·  blocked · wave 0 · infra · chore · breaking
+- **`v3-version-isolation`** — Isolate + version the zero-touch line (first step, D6)  ·  blocked · wave 0 · infra · chore · breaking
   - **desc:** Prevent anyone from accidentally consuming the in-progress redesign, and version it as
     the next major. **Isolation ACHIEVED:** `v3` branch created and not a declared release branch →
     it cannot publish, so the anti-accidental-use goal is already met. **Deferred by decision:** the
@@ -120,7 +120,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     than touch main's existing line.
   - **spec:** D6          - **depends-on:** —
   - **acceptance:** (when unblocked) `npm i @cdklabs/cdk-cicd-wrapper` still returns the 0.x line; the
-    v3 line only resolves via `@next`; nothing publishes from the `v3` branch until enabled.
+    zero-touch line only resolves via `@next`; nothing publishes from the `v3` branch until enabled.
   - **notes:** BLOCKER = maintainer decision on main's line (finding
     `planning-projen-majorversion-mismatch`). Until then, branch isolation is the guard; do NOT change
     release config, push, or publish.
@@ -157,7 +157,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Prove the real install path: publish to CodeArtifact, install from a clean dir.
   - **acceptance:** `task codeartifact:publish` then `npm install @cdklabs/cdk-cicd-wrapper` from
     CodeArtifact in a temp dir imports cleanly. (M1 may use a workspace link; M2+ must use this.) ✅
-    Verified repeatedly M4+: the pipeline-app fixture, the v3 sample, and a clean-dir check all install
+    Verified repeatedly M4+: the pipeline-app fixture, the zero-touch sample, and a clean-dir check all install
     @cdklabs/*@0.0.0 from CodeArtifact and import cleanly (defineCICD/stageStackName/PipelineApp/DeployModel
     resolve, cdk-cicd bin present). Published via `npm publish` of `dist/js` (the JS consumer path); the
     Taskfile's twine/python leg is unused and out of scope for the JS loop.
@@ -218,7 +218,7 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 - **`m1-base-schema`** — Base EnvConfig schema  ·  done · wave 1 · wrapper · feature
   - **desc:** Keep it tiny: `aws.accountId`/`aws.region`, `tags`, `removalPolicies`, `application`.
-    Networking deliberately excluded (user-land in v3).
+    Networking deliberately excluded (user-land in zero-touch).
   - **spec:** `docs/design/v3-devops-experience.md` #Application configuration management
   - **produces:** `packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/schema.ts`
   - **notes:** ✅ `BaseConfig` / `AwsEnvironment` / `RemovalPolicies` / `RemovalPolicyValue`, all four in
@@ -348,8 +348,8 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **acceptance:** stock-env app resolves the stage account/region; env-agnostic app stays
     region-agnostic; `CDK_CONTEXT_JSON` replicates the CLI's `cdk.json`+`cdk.context.json` merge
     (does not clobber user context).
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts`, registered in the
-    CLI's `src/index.ts`; `test/v3/ExecCommand.test.ts`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/zerotouch/ExecCommand.ts`, registered in the
+    CLI's `src/index.ts`; `test/zerotouch/ExecCommand.test.ts`.
   - **notes:** ✅ `cdk-cicd exec <app>` loads the stage config (tolerating a stage with no file → runs
     uninjected), exports the stage account/region into both env pairs (absent values left alone, so an
     env-agnostic app stays agnostic), merges `cicd:config` into `CDK_CONTEXT_JSON` WITHOUT clobbering a
@@ -436,8 +436,8 @@ Not tasks — resolved/open design decisions that tasks reference.
     dormant `cicd.config.ts` now loads and normalizes (dev@us-west-2, prod@us-west-1 [approval]).
 - **`m3-config-discovery`** — cicd.config.ts/.yaml discovery  ·  done · wave 3 · cli · feature
   - **depends-on:** m3-definecicd
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CicdConfig.ts` (`discover`/`load`/
-    `stageByName`); `test/v3/CicdConfig.test.ts`; the fixture `cicd.config.ts` header refreshed (F2).
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/zerotouch/CicdConfig.ts` (`discover`/`load`/
+    `stageByName`); `test/zerotouch/CicdConfig.test.ts`; the fixture `cicd.config.ts` header refreshed (F2).
   - **notes:** ✅ `discover(cwd)` probes `cicd.config.ts` → `.js` next to `cdk.json`; missing = Level 0
     (returns undefined, no error). `load(cwd)` loads the `.ts` in-process via ts-node (the same
     transpiler the app entry uses — one config file, no build step) and returns its `default` export
@@ -452,8 +452,8 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Synth into `cdk.out/<stage>/<region>` at deploy time against the target config;
     `cdk-cicd synth --all` for CI validation only.
   - **depends-on:** m2-exec, m3-config-discovery
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/SynthCommand.ts` (registered in the
-    CLI); the `exec` env-resolution refactor (`resolveEnvTarget` fill-not-override); `test/v3/SynthCommand.test.ts`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/zerotouch/SynthCommand.ts` (registered in the
+    CLI); the `exec` env-resolution refactor (`resolveEnvTarget` fill-not-override); `test/zerotouch/SynthCommand.test.ts`.
   - **notes:** ✅ `cdk-cicd synth [--stage s | --all]` enumerates (stage × region) from the discovered
     cicd.config and synths each into `cdk.out/<stage>/<region>`. Proven: `synth --all` on level1 →
     `cdk.out/dev/us-west-2` AND `cdk.out/prod/us-west-1` from ONE invocation, each manifest's stack
@@ -470,8 +470,8 @@ Not tasks — resolved/open design decisions that tasks reference.
     region mismatch = **warn**; account mismatch = **error + abort that stage**.
   - **spec:** D-deploy; D3-Q9          - **depends-on:** m3-synth
   - **acceptance:** fires correctly on `hardcoded-env-app`.
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DriftCheck.ts`
-    (`analyzeManifest` pure + `checkAssembly` io); `test/v3/DriftCheck.test.ts`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/zerotouch/DriftCheck.ts`
+    (`analyzeManifest` pure + `checkAssembly` io); `test/zerotouch/DriftCheck.test.ts`.
   - **notes:** ✅ Lives in the CLI as a post-synth manifest reader (the resolved `aws://acct/region`
     only exists in the synthesized assembly), NOT a preload or Aspect. Rules: env-agnostic
     (`unknown-account`/`unknown-region`) = OK; region mismatch = warn+continue; account mismatch =
@@ -501,8 +501,8 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Synth the stage against its config at deploy time, then deploy (assets via cdk-assets).
     Promoted unit is code+deps (sha), not a prebuilt assembly.
   - **depends-on:** m3-synth
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts` (registered);
-    `test/v3/DeployCommand.test.ts`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/zerotouch/DeployCommand.ts` (registered);
+    `test/zerotouch/DeployCommand.test.ts`.
   - **notes:** ✅ `cdk-cicd deploy --stage <name> [--yes]`. Per region of the stage: synth the assembly,
     run the drift check against the account we will ACTUALLY deploy into (STS get-caller-identity, per
     finding `code-review-driftcheck-undefined-account-bypasses-guard` — never the possibly-undefined
@@ -550,7 +550,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     the direct measurement vs Blueprint's 100+. Source mapping covers S3 (bucket/key split, the m4-verify
     source), CodeCommit (by name), CodeStar/GitHub (requires a connection ARN — else a clear error;
     `Repository.github` has no ARN param so GitHub needs `Repository.codestarConnection`). 6/6 engine
-    tests, wrapper v3 110→112/... green. **Three follow-ups logged that BLOCK m4-verify's real deploy**:
+    tests, wrapper zero-touch 110→112/... green. **Three follow-ups logged that BLOCK m4-verify's real deploy**:
     the deploy CodeBuild role has no deploy IAM (`code-review-codepipeline-deploy-role-lacks-iam`); no
     cdk-nag suppressions on the pipeline's own resources (`code-review-codepipeline-no-cdknag-suppressions`);
     and `stage.manualApproval` is not yet read (`code-review-codepipeline-manualapproval-ignored`, owned
@@ -565,7 +565,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     `test/v3/support/SupportResources.test.ts`; deploy IAM in `CodePipelineEngine.grantDeployPermissions`.
   - **notes:** ✅ **Deviation, deliberate**: Blueprint's `ResourceContext`/`ScopedStorage` service locator was
     *not* ported. It is ~200 lines of string-keyed `any` coupled to `IPipelineBlueprintProps` and the Blueprint
-    `Stage`, for two resources. v3 keeps the *on-demand* concept and drops both the singleton and the
+    `Stage`, for two resources. zero-touch keeps the *on-demand* concept and drops both the singleton and the
     untyped registry: typed lazy getters on a `Construct` — the design doc's own wording ("keep the
     concept; drop the singleton; type the lookups", `v3-devops-experience.md`). Shipped `encryptionKey`
     (rotating CMK, **no alias** — an alias is unique per account/region and would collide with a second
@@ -578,7 +578,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     generated one. **Unblocks m4-verify** by resolving `code-review-codepipeline-deploy-role-lacks-iam`:
     each stage's deploy project may `sts:AssumeRole` the four CDK bootstrap roles per (account, region)
     of that stage plus any forced `deployRole`, and read the bootstrap version SSM parameter — zero
-    wildcards, tighter than aws-cdk-lib's own `pipelines` module. Verified: 123/123 v3 tests (13 suites),
+    wildcards, tighter than aws-cdk-lib's own `pipelines` module. Verified: 123/123 zero-touch tests (13 suites),
     `projen compile` + `eslint` green, `.jsii` carries both new types. 7 follow-ups appended to
     `findings.json`, two of them medium and worth reading before `m4-verify`: the bootstrap qualifier has
     three unreconciled sources (`code-review-bootstrap-qualifier-not-single-source-of-truth`) and the CI
@@ -594,7 +594,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     `stage.manualApproval` and emits a `ManualApprovalAction` at `runOrder: 1` with that stage's deploy at
     `runOrder: 2` in the **same** pipeline stage, so a gate costs no extra stage, no CodeBuild project and
     no SNS topic — the flat-footprint claim `m4-verify` measures is unchanged, and an ungated stage renders
-    bit-identically to before. Resolves `code-review-codepipeline-manualapproval-ignored`. 128/128 v3 tests,
+    bit-identically to before. Resolves `code-review-codepipeline-manualapproval-ignored`. 128/128 zero-touch tests,
     `.jsii` 151 → 151. **2/3 done — provisioning.** `PipelineApp` (a one-stack `aws-cdk-lib.App` subclass
     that renders the config through the engine and applies `AwsSolutionsChecks`) lives in the **wrapper**
     package, not the CLI — reversing the earlier CLI-hosted assumption, because the CLI declares neither
@@ -604,7 +604,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     `cdk deploy --app "npx cdk-cicd pipeline-app" --all --require-approval never`, so provisioning needs
     **zero wrapper files in the user's repo**. Stack env comes from ambient `CDK_DEFAULT_*` (no config
     field for it). `--disposable` threads `RemovalPolicy.DESTROY` to the artifact bucket/key for teardown;
-    default RETAIN. 134/134 wrapper v3 + 56/56 CLI tests, `.jsii` 151 → 153 (exactly `PipelineApp`/
+    default RETAIN. 134/134 wrapper zero-touch + 56/56 CLI tests, `.jsii` 151 → 153 (exactly `PipelineApp`/
     `PipelineAppProps`); end-to-end synth from a bare `cicd.config.ts` produced one stack, the right
     stage/action shape and 3 CodeBuild projects, and `--disposable` flipped the bucket to `Delete`. The nag
     test asserts only that the aspect is **registered**, because this workspace's duplicate `aws-cdk-lib`
@@ -623,8 +623,8 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **`m4-ci-checks`** — default-on CI checks via CLI  ·  done · wave 4 · cli · feature
   - **desc:** validate/audit/license/security run by the CLI in CI — fresh project passes with no
     npm-script surgery.
-  - **produces:** `cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts` (`cdk-cicd check [checks..]`, exporting
-    `CHECK_NAMES`/`CheckPlan`/`planChecks`/`runPlans`); `test/v3/CheckCommand.test.ts` (13 tests);
+  - **produces:** `cdk-cicd-wrapper-cli/src/cmds/zerotouch/CheckCommand.ts` (`cdk-cicd check [checks..]`, exporting
+    `CHECK_NAMES`/`CheckPlan`/`planChecks`/`runPlans`); `test/zerotouch/CheckCommand.test.ts` (13 tests);
     `DEFAULT_CI_COMMANDS` in `CodePipelineEngine` now runs `npx cdk-cicd check`, which is what makes the
     checks default-on; `ts-node` declared in `projenrc/CLIConfig.ts`.
   - **notes:** Each check **delegates** to the Blueprint command that already implements it, spawned as a child
@@ -656,7 +656,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     `instanceof` rules match. `test/v3/engine/codepipeline/nag-compliance.test.ts` then asserts BOTH a
     control (a deliberately non-compliant bucket MUST yield an `AwsSolutions-*` finding — fails first if
     the copies ever drift apart again) AND zero unsuppressed findings on the rendered pipeline. All 164
-    wrapper v3 tests pass with nag now live suite-wide, so the Blueprint compliance tests are no longer vacuous
+    wrapper zero-touch tests pass with nag now live suite-wide, so the Blueprint compliance tests are no longer vacuous
     either. Suppressions themselves shipped earlier (engine IAM5/S1 + driver IAM4/IAM5/L1) and are now
     verified live. Resolves all three spec findings.
   - **depends-on:** m4-approval-selfupdate
@@ -679,7 +679,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     …` in a `pre_build` phase before `npm ci`, and its role gets the three read grants
     (`GetAuthorizationToken` on the domain, `GetRepositoryEndpoint`+`ReadFromRepository` on the repo,
     `sts:GetServiceBearerToken` service-scoped). Reshaped from Blueprint's `CodeArtifactPlugin`; ARNs now use
-    `stack.partition`. Strictly opt-in — a default pipeline is byte-identical. 141/141 v3 tests, `.jsii`
+    `stack.partition`. Strictly opt-in — a default pipeline is byte-identical. 141/141 zero-touch tests, `.jsii`
     153 → 154 (`CodeArtifactConfig`), lint clean. Login command validated against real AWS (writes the
     `@cdklabs:registry` + token an `npm ci` uses). Review clean, no fix-now; 3 low follow-ups appended
     to `findings.json`, and the untested no-`npmScope` branch was closed with a test rather than deferred.
@@ -697,7 +697,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     CLI half is close; what is missing is not synthesizing first). Keep the existing deploy-time-synth
     path working as the opt-in second implementation — additive, per ground rule 1.
     **The open sub-question resolved itself cheaply:** the worry was how one promoted assembly carries
-    per-stage config when v3 injects config at synth time. It does not have to — `cdk-cicd synth --all`
+    per-stage config when zero-touch injects config at synth time. It does not have to — `cdk-cicd synth --all`
     already writes a **separate** assembly per stage×region (`cdk.out/<stage>/<region>`, each synthed with
     that stage's injected env), so promotion just keeps the directory that was already being produced and
     thrown away. No `Stage`-wrapping, no stack renaming, no change to the injection model. That is why
@@ -754,7 +754,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     **Constraint discovered while designing, and it is the reason a Lambda is the right answer:** the
     obvious cheaper design — emit one native `CloudFormationCreateUpdateStackAction` per stack, which
     CodePipeline waits on for free, as CDK Pipelines v1 did — is **not available to us**. Those actions
-    must be enumerated when the *pipeline* is rendered, but in v3 the app is synthesized **inside** the
+    must be enumerated when the *pipeline* is rendered, but in zero-touch the app is synthesized **inside** the
     pipeline, so the stack set of a stage is unknown until run time. Only something that discovers stacks
     at run time can do this, i.e. a Lambda.
     Consequence: the Lambda cannot merely *watch* — `cdk deploy` blocks, so to stop paying for the wait the
@@ -847,7 +847,7 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 5 — Migration (M5)
 
-- **`m5-migration-doc`** — MIGRATION.md Blueprint→v3  ·  done · wave 5 · docs · docs
+- **`m5-migration-doc`** — MIGRATION.md Blueprint→zero-touch  ·  done · wave 5 · docs · docs
   - **spec:** `docs/design/v3-devops-experience.md` #Blueprint → v3 mapping
 - **`m5-codemod`** — cdk-cicd migrate codemod  ·  done · wave 5 · cli · feature
   - **notes:** paired with `stageStackName` (stack-name control) and a MIGRATION.md "preserve deployed
@@ -856,7 +856,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Rewrite mechanical `PipelineBlueprint.builder()...synth(app)` into `cicd.config.ts` +
     `cdk.json` app command.          - **depends-on:** m3-definecicd
 - **`m5-sample-migrate`** — migrate the TS sample  ·  done · wave 5 · infra · migration
-  - **notes:** delivered as a SIBLING `samples/cdk-v3-example/` (plain CDK app + one `cicd.config.ts`,
+  - **notes:** delivered as a SIBLING `samples/cdk-cicd-wrapper-example/` (plain CDK app + one `cicd.config.ts`,
     no wrapper code in the app, `stageStackName` for names), leaving `cdk-ts-example` as the untouched Blueprint
     copy. Converting the Blueprint sample IN PLACE was declined: it is built by the deprecated
     `@cdklabs/cdk-cicd-wrapper-projen` type (D5), so an in-place flip is entangled with the major-gated
@@ -864,7 +864,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     synths via `cdk-cicd exec` (stageStackName resolves), and `cdk-cicd pipeline-app` renders
     Source->Build->UpdatePipeline->dev->prod with 4 projects. Full pipeline deploy not re-run (redundant
     with the pipeline-app fixture / m4-verify).
-  - **desc:** Move `samples/cdk-ts-example` to the v3 shape as a living smoke test; keep a Blueprint copy
+  - **desc:** Move `samples/cdk-ts-example` to the zero-touch shape as a living smoke test; keep a Blueprint copy
     until the flip.          - **depends-on:** m4-verify
 - **`m5-deprecate-projen`** — deprecate the projen product (D5a)  ·  done · wave 5 · projen · chore
   - **desc:** Mark `@cdklabs/cdk-cicd-wrapper-projen` deprecated; document that `cdk-cicd configure` +
@@ -890,7 +890,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     grants per target, in-build cred materialization, cross-account ECR login, nag parity).
     **Remaining:** end-to-end AWS proof of the CD pipeline (provision from a config repo + a CI-built image
     + run) -- the executor and CI-pipeline-provisioning are each AWS-proven; the CD-pipeline-in-CodePipeline
-    round trip is the open gate. Also proven this wave: the Blueprint->v3 migration of a real app (tef-ivms,
+    round trip is the open gate. Also proven this wave: the Blueprint->zero-touch migration of a real app (tef-ivms,
     deployed both with & without pipeline into the sandbox, see development/) and a multi-region global
     DynamoDB gate (`test/proof/global-ddb-verify.sh`, PASSED us-west-2 + us-west-1 replica). · cli · feature
   - **desc:** `BuildImage.docker` (repo 1 build/push of a **config-agnostic** image = code + vendored
@@ -916,7 +916,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Is the import hook acceptable in Python, or is `CdkCicd.attach(app)` the primary path?
     (jsii can't ship a Python import hook cleanly.) Written outcome.
 - **`spike-naming`** — CLI/API naming pass  ·  done · wave 6
-  - **notes:** Reviewed the full v3 surface (7 CLI commands + 39 jsii types + 3 TS-authoring free
+  - **notes:** Reviewed the full zero-touch surface (7 CLI commands + 39 jsii types + 3 TS-authoring free
     functions). Verdict: largely consistent; the naming issues found are ALL breaking renames, so batch
     them for a single pre-alpha rename pass rather than churn the API now (ground rule 1). Recorded as
     findings `planning-naming-deploy-vs-deployci-confusable` (medium -- the one real footgun: `deploy`
@@ -937,7 +937,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     feature later. Decide: default-on vs opt-in, where it sits relative to `m4-ci-checks` (likely
     another default-on CI check via the CLI), and whether the SARIF output feeds anything.
 
-## Wave 7 — The v3 major (breaking)
+## Wave 7 — The zero-touch major (breaking)
 
 - **`m8-remove-v2`** — Remove Blueprint + the projen product  ·  done · wave 7 · shared · migration · breaking
   - **desc:** Delete Blueprint (`PipelineBlueprint`) and `@cdklabs/cdk-cicd-wrapper-projen` — **only** once
@@ -952,13 +952,13 @@ Not tasks — resolved/open design decisions that tasks reference.
     Blueprint source tree + `src/projen/**` deleted (flatten `src/v3`→`src`); then the
     `@cdklabs/cdk-cicd-wrapper-projen` package itself deleted (workspaces/jest/tsconfig refs
     regenerated via `npx projen`), plus its Blueprint-exclusive `samples/cdk-ts-example` (superseded by
-    `samples/cdk-v3-example`, m5-sample-migrate).
+    `samples/cdk-cicd-wrapper-example`, m5-sample-migrate).
   - **Blueprint source note:** the Blueprint tree this wave's tasks cite by path was last present at commit
     `58d312a~1`; it no longer exists on `v3`/`main` but is untouched on `legacy-blueprint`.
 
 ## Wave 8 — Blueprint feature migration backlog (gates 1.0.0/`latest`, NOT the `main`-branch flip — Q4/Q15/Q16)
 
-Each task ports one Blueprint feature into the v3 shape, keeping the v3 API **familiar** (similar
+Each task ports one Blueprint feature into the zero-touch shape, keeping the zero-touch API **familiar** (similar
 types/props) per Q8, plus a `MIGRATION.md` mapping-table row. Independent of each other (same wave);
 all gate `m9-migration-gate` below, which is what blocks flipping the `1.0.0`/`latest` npm dist-tag —
 not this branch reaching `main`.
@@ -971,7 +971,7 @@ not this branch reaching `main`.
     `EncryptSNSTopicOnTransitPlugin.ts`, `RotateEncryptionKeysPlugin.ts`,
     `DisablePublicIPAssignmentForEC2Plugin.ts`, `src/plugins/optimization/DestroyEncryptionKeysOnDeletePlugin.ts`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 1
-  - **acceptance:** each plugin has a v3 equivalent (aspect or engine hook) + a passing unit test +
+  - **acceptance:** each plugin has a zero-touch equivalent (aspect or engine hook) + a passing unit test +
     a `MIGRATION.md` row.
   - **notes:** the Blueprint source list above is missing one file the desc line still names --
     `src/plugins/security/LambdaDLQPlugin.ts` -- ported too (`LambdaDLQAspect`), same as the seven
@@ -979,12 +979,12 @@ not this branch reaching `main`.
     config/resource dependency (bucket/SNS transit encryption, KMS key rotation, EC2 public-IP block)
     are wired tree-wide into the runtime injection hook (`applyWrapper`), matching Blueprint's default-on
     behaviour and the `LogRetentionAspect` precedent. Three stay opt-in-only, each blocked on a
-    dependency v3 doesn't provision by default (yet): `AccessLogsForBucketAspect` needs the
+    dependency zero-touch doesn't provision by default (yet): `AccessLogsForBucketAspect` needs the
     not-yet-ported compliance-log bucket (`m9-migrate-compliance-bucket`); `EncryptCloudWatchLogGroupsAspect`
     needs a KMS key (Blueprint pulled one implicitly from a default per-stage `EncryptionProvider` that has no
-    v3 equivalent -- out of scope here, so the aspect takes the key as an explicit prop instead);
+    zero-touch equivalent -- out of scope here, so the aspect takes the key as an explicit prop instead);
     `LambdaDLQAspect` takes a caller-constructed `IQueue` rather than lazily creating its own stack +
-    queue (Blueprint's per-stage-plugin-hook that did that has no v3 equivalent either, and Blueprint itself shipped
+    queue (Blueprint's per-stage-plugin-hook that did that has no zero-touch equivalent either, and Blueprint itself shipped
     this one opt-in, not default-on). `npx projen compile`/`test`/`compat` all green.
     Blocked because the architect's real-AWS deploy-verify pass found 2 of the 4 tree-wide-wired
     aspects silently inert, the exact same cross-`aws-cdk-lib`-module-copy failure mode
@@ -1059,11 +1059,11 @@ not this branch reaching `main`.
   - **desc:** Blueprint source: `src/resource-providers/ComplianceBucketProvider.ts`,
     `src/stacks/compliance-bucket/ComplianceBucketStack.ts`. **Fold in** the skipped Stage-1 fix
     `0b7ae02` (Blueprint compliance-bucket TLS/SSE policy correctness) while porting — don't reintroduce
-    that bug in the v3 shape.
+    that bug in the zero-touch shape.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 2
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row; TLS/SSE policy correctness
+  - **acceptance:** zero-touch equivalent + passing unit test + `MIGRATION.md` row; TLS/SSE policy correctness
     verified (the thing `0b7ae02` fixed).
-  - **notes:** v3 equivalent is `SupportResources.complianceLogBucket` -- a plain CDK-managed `Bucket`
+  - **notes:** zero-touch equivalent is `SupportResources.complianceLogBucket` -- a plain CDK-managed `Bucket`
     (not Blueprint's custom-resource Lambda; the "bucket already exists" tolerance that Lambda existed for
     doesn't arise, since this construct's own stack owns the bucket for the pipeline's lifetime),
     provisioned lazily on first read from `SupportResourcesProps.complianceLogBucketName`. Added the
@@ -1103,7 +1103,7 @@ not this branch reaching `main`.
     `flowLogsBucketName` set (teardown clean, no orphans); this fix only needed synthesis-level (unit
     test) verification, not a second full deploy, since it changes no deployed resource shape.
     `resolveVpcNetworking` (`src/support/Vpc.ts`) ports `ManagedVPCStack`/`NoVPCStack`/
-    `VPCFromLookUpStack` as a plain function rather than Blueprint's per-stage stack -- v3 attaches the VPC
+    `VPCFromLookUpStack` as a plain function rather than Blueprint's per-stage stack -- zero-touch attaches the VPC
     directly to the pipeline's own construct tree, since the CodeBuild projects that consume it already
     live in the stack this resolves against. New `VpcConfig`/`ManagedVpcConfig` (`config/types.ts`),
     threaded through `defineCICD`'s `vpc` prop. Wired into every CodeBuild project both engines create:
@@ -1128,7 +1128,7 @@ not this branch reaching `main`.
     `vpc: { managedVpc: {} }` config and reusing that bundling is the likely path, or a small isolated
     fixture if the architect prefers not to grow `pipeline-app`'s deploy time with a NAT gateway.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 3
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **acceptance:** zero-touch equivalent + passing unit test + `MIGRATION.md` row.
 
 - **`m9-migrate-http-proxy`** — port Blueprint HTTP proxy support  ·  done · wave 8 · wrapper · migration
   - **desc:** Blueprint source: `src/resource-providers/ProxyProvider.ts` (`IProxyConfig`/`ProxyProps`).
@@ -1158,7 +1158,7 @@ not this branch reaching `main`.
     Synth step; CDK Pipelines' own self-mutation/asset-publishing projects have no per-step hook and stay
     uncovered) — no further doc correction needed.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 4
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
+  - **acceptance:** zero-touch equivalent + passing unit test + `MIGRATION.md` row. ✅
 
 - **`m9-migrate-codebuild-customization`** — port Blueprint CodeBuild env customization  ·  done · wave 8 ·
   wrapper · migration
@@ -1183,14 +1183,14 @@ not this branch reaching `main`.
     custom env var; pipeline stack + source bucket torn down and confirmed deleted (`describe-stacks`
     404 after), no orphans left in the test account.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 5
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
+  - **acceptance:** zero-touch equivalent + passing unit test + `MIGRATION.md` row. ✅
 
 - **`m9-migrate-private-registry-auth`** — port Blueprint private-npm-registry basic-auth  ·  done · wave 8 ·
   shared · migration
-  - **desc:** Not CodeArtifact (that's already in v3 — `m4-private-registry`, done): generic private
+  - **desc:** Not CodeArtifact (that's already in zero-touch — `m4-private-registry`, done): generic private
     npm registry basic-auth. Blueprint source: `src/plugins/utils/CodeArtifactPlugin.ts` and the
     `NPMRegistryConfig` interface (`src/common/types/Types.ts`) — confirm during migration which of
-    the two actually carried the basic-auth path, since CodeArtifact itself has its own v3 story.
+    the two actually carried the basic-auth path, since CodeArtifact itself has its own zero-touch story.
   - **notes:** ✅ `NpmRegistryConfig` ported additively into `src/config/types.ts` with Blueprint's field
     names, wired through `define.ts` and all three pipeline-rendering engines; `npx projen
     compile`/`test`/`compat` all green (30 suites, 260 tests). Ground rule 2's real-AWS deploy gate
@@ -1221,23 +1221,23 @@ not this branch reaching `main`.
     actually been committed; committed for real in a follow-up pass, along with the `MIGRATION.md` row
     this task's own acceptance line required and which had also never landed.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 6
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **acceptance:** zero-touch equivalent + passing unit test + `MIGRATION.md` row.
 
 - **`m9-migrate-phase-command-model`** — port the Blueprint phase/command model  ·  done · wave 8 ·
   wrapper · migration
   - **desc:** Blueprint source: `src/resource-providers/PhaseCommandProvider.ts` (`IPhaseCommand`,
     `IPhaseCommandSettings`) and its command implementations (shell/NPM/Python/inline-shell/script).
-    v3 already has `ci.steps` (a command map) — decide whether this backlog item is fully subsumed by
+    zero-touch already has `ci.steps` (a command map) — decide whether this backlog item is fully subsumed by
     `ci.steps` or whether a familiar-API shim is still owed per Q8.
-  - **notes:** ✅ Resolved as "fully subsumed by `ci.steps`, no v3 equivalent needed" — a plain string
+  - **notes:** ✅ Resolved as "fully subsumed by `ci.steps`, no zero-touch equivalent needed" — a plain string
     is strictly more general than Blueprint's typed command-builder classes, so no shim is owed per Q8. Decision
     independently traced and confirmed correct by both the architect and a code-review pass. The prior
     submission was blocked on process, not substance: its task.md edit was taken from a stale snapshot
     and, alongside the intended entry, silently reverted the unrelated `m9-migrate-security-plugins`
     entry — caught before commit. This edit is scoped to exactly this entry. `MIGRATION.md`'s
-    `definePhase`/`PhaseCommand` row records the full Blueprint→v3 phase-wiring mapping.
+    `definePhase`/`PhaseCommand` row records the full Blueprint→zero-touch phase-wiring mapping.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 7
-  - **acceptance:** either a documented "subsumed by `ci.steps`" `MIGRATION.md` row, or a v3
+  - **acceptance:** either a documented "subsumed by `ci.steps`" `MIGRATION.md` row, or a zero-touch
     equivalent + passing unit test + row.
 
 - **`m9-migrate-custom-buildspec`** — port the Blueprint custom BuildSpec escape hatch  ·  done · wave 8 ·
@@ -1262,7 +1262,7 @@ not this branch reaching `main`.
     UpdatePipeline's and Deploy-dev's — proving both that the merge really lands on a deployed project
     and that the CI-only scope holds on real AWS, not just in the unit tests. Same run, same teardown
     (see above) — nothing orphaned.
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
+  - **acceptance:** zero-touch equivalent + passing unit test + `MIGRATION.md` row. ✅
 
 - **`m9-migrate-log-retention`** — port Blueprint CloudWatch log-retention control  ·  done · wave 8 ·
   wrapper · migration
@@ -1282,11 +1282,11 @@ not this branch reaching `main`.
     `RetentionInDays: 365` via `aws logs describe-log-groups`, then `harness.sh destroy level1-app`
     tore down clean (no orphaned resources).
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 11
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **acceptance:** zero-touch equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-github-actions-engine`** — port GitHub Actions pipeline rendering to a v3 engine  ·
+- **`m9-migrate-github-actions-engine`** — port GitHub Actions pipeline rendering to a zero-touch engine  ·
   done · wave 8 · wrapper · migration
-  - **desc:** v3 today only has GitHub-as-*source* (`Repository.github()`); the *render* capability
+  - **desc:** zero-touch today only has GitHub-as-*source* (`Repository.github()`); the *render* capability
     (emit a GitHub Actions workflow instead of a CodePipeline) would otherwise be lost entirely. Blueprint
     source: `src/plugins/pipeline/GitHubPipelinePlugin.ts`,
     `src/plugins/pipeline/resources/github/GitHubPipelineProvider.ts`,

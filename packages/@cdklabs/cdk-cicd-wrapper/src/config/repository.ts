@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-/** Where a v3 pipeline's source lives. (Named `RepositorySourceType` rather than `RepositoryType`
+/** Where a zero-touch pipeline's source lives. (Named `RepositorySourceType` rather than `RepositoryType`
  * because the latter is a distinct TS-only union alias already on the published Blueprint surface.) */
 export enum RepositorySourceType {
   /** GitHub, via a CodeStar (CodeConnections) connection. */
@@ -15,7 +15,7 @@ export enum RepositorySourceType {
 }
 
 /**
- * The source repository for a v3 pipeline. Constructed through the static factories rather than
+ * The source repository for a zero-touch pipeline. Constructed through the static factories rather than
  * directly, so the shape a caller writes (`Repository.github('org/repo')`) is the shape that reads
  * cleanly in every jsii language.
  */

@@ -10,7 +10,7 @@ with **conditional groups**, and the `resolvePath` / `load` / `validate` flow. T
 and the concrete field tables are **examples of what a user supplies** — the wrapper's own base schema
 stays tiny (`aws`, `tags`, `removalPolicies`, `application`) and **excludes networking** by design.
 
-## Deltas from this reference to v3 (must-change)
+## Deltas from this reference to zero-touch (must-change)
 
 1. **Resolution keys off `CDK_STAGE`, not `ENVIRONMENT`**, and falls back to `config/local.*` (for a
    plain `cdk deploy`), not `dev`. Order: `CONFIG_FILE` → `config/<CDK_STAGE>.(json|yaml)` → `config/local.*`.
@@ -57,7 +57,7 @@ export interface EnvConfig {
 
   /**
    * EXAMPLE app-specific group replacing `*.fromLookup` context lookups.
-   * In v3 this belongs to the USER schema, not the wrapper base schema.
+   * In zero-touch this belongs to the USER schema, not the wrapper base schema.
    */
   networking: {
     vpcId: string;
@@ -183,7 +183,7 @@ export class ConfigLoader {
    * Resolve the config file path. Total: never throws, always returns a
    * non-empty path.
    *
-   * PORT DELTA: v3 uses CDK_STAGE and a `config/local.*` fallback, and accepts
+   * PORT DELTA: zero-touch uses CDK_STAGE and a `config/local.*` fallback, and accepts
    * .json/.yaml/.yml. This reference uses ENVIRONMENT → config/<env>.json → dev.
    */
   static resolvePath(env: NodeJS.ProcessEnv): string {
@@ -291,4 +291,4 @@ export class ConfigLoader {
 - Conditional group: absent parent → passes; present-but-incomplete parent → `MISSING_ATTRIBUTE`.
 - `resolvePath` totality: `CONFIG_FILE` wins; else stage-derived; else `local`. Never throws.
 - Blank/whitespace strings and empty arrays count as missing (`isMissing`).
-- v3-added: JSON and YAML inputs validate identically.
+- zero-touch-added: JSON and YAML inputs validate identically.
