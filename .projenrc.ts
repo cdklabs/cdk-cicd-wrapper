@@ -7,8 +7,8 @@ import { CLIConfig } from './projenrc/CLIConfig';
 
 const root = new RootConfig();
 
-new PipelineConfig(root);
+const pipeline = new PipelineConfig(root);
 
-new CLIConfig(root);
+new CLIConfig(root, pipeline);
 
 root.synth();
