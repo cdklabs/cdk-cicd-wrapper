@@ -17,7 +17,7 @@ import {
   resolveEnvTarget,
   resolveStage,
   stageEnv,
-} from '../../src/cmds/zerotouch/ExecCommand';
+} from '../../src/cmds/autopilot/ExecCommand';
 
 describe('exec: resolveStage', () => {
   test('uses CDK_STAGE when set', () => {
@@ -175,7 +175,7 @@ describe('exec: cross-package env-flag literals match the constructs package', (
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const inject = require('@cdklabs/cdk-cicd-wrapper/lib/runtime/inject');
     // Read the literals out of the compiled ExecCommand to prove both ends agree.
-    const src = fs.readFileSync(path.join(__dirname, '../../src/cmds/zerotouch/ExecCommand.ts'), 'utf-8');
+    const src = fs.readFileSync(path.join(__dirname, '../../src/cmds/autopilot/ExecCommand.ts'), 'utf-8');
     expect(src).toContain(`const EXEC_FLAG = '${inject.EXEC_FLAG}'`);
     expect(src).toContain(`const DEPLOY_ROLE_FLAG = '${inject.DEPLOY_ROLE_FLAG}'`);
     expect(src).toContain(`const CFN_EXEC_ROLE_FLAG = '${inject.CFN_EXEC_ROLE_FLAG}'`);

@@ -3,7 +3,7 @@
 
 import { SpawnSyncReturns } from 'child_process';
 import { ResolvedDeploymentConfig } from '@cdklabs/cdk-cicd-wrapper';
-import { dockerRunArgs, resolveTargetImage, runFromImage, targetRuns } from '../../src/cmds/zerotouch/DeployFromImage';
+import { dockerRunArgs, resolveTargetImage, runFromImage, targetRuns } from '../../src/cmds/autopilot/DeployFromImage';
 
 const IMAGE = 'acct.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2';
 

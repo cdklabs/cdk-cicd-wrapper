@@ -1,22 +1,22 @@
-# v3 pipelines — the config-driven CDK CI/CD Wrapper
+# Zero-touch pipelines — the config-driven CDK CI/CD Wrapper
 
-This workshop walks through the **v3** usage patterns of the CDK CI/CD Wrapper. v3 is a redesign around
+This workshop walks through the **zero-touch** usage patterns of the CDK CI/CD Wrapper. Zero-touch is a redesign around
 one idea:
 
 > **Your app stays ordinary CDK. One `cicd.config.ts` turns it into a pipeline — no wrapper code in your
 > app, no builder chain.**
 
-Where Blueprint built the pipeline *inside* your app with `PipelineBlueprint.builder()…synth(app)`, v3 keeps
+Where Blueprint built the pipeline *inside* your app with `PipelineBlueprint.builder()…synth(app)`, zero-touch keeps
 your `bin/` exactly as `cdk init` produced it and reads a separate config file. The pipeline is one flat
 CodePipeline (source → CI → self-update → one deploy action per stage), not the 100+ CodeBuild projects
 Blueprint's CDK-Pipelines footprint grew.
 
-## Why v3 — what you get
+## Why zero-touch — what you get
 
-v3 is a breaking major, so it earns its keep in concrete, end-user terms. The wins are about *your* app
+Zero-touch is a breaking major, so it earns its keep in concrete, end-user terms. The wins are about *your* app
 and *your* pipeline, not the wrapper's internals:
 
-| You want to… | Blueprint made you… | v3 gives you… |
+| You want to… | Blueprint made you… | zero-touch gives you… |
 |---|---|---|
 | Keep your app portable | Wrap `bin/` in `PipelineBlueprint.builder()…synth(app)` — wrapper code you own forever | An ordinary `cdk init` app. Zero wrapper imports in `bin/` for the basic flow |
 | Describe stages & accounts | Encode them in builder calls + `ACCOUNT_*` env vars | Declare them as data in `cicd.config.ts` — read, diff, and review a plain object |
@@ -51,8 +51,8 @@ with a **cleanup** you should run to avoid leaving billable resources behind.
 
 Software / DevOps / Cloud engineers comfortable with AWS CDK. **Expected time:** ~1 hour.
 
-!!! note "v3 is pre-release"
-    v3 develops on a dedicated branch and is **not yet on the public npm `latest` tag**. Where a chapter
+!!! note "zero-touch is pre-release"
+    Zero-touch develops on a dedicated branch and is **not yet on the public npm `latest` tag**. Where a chapter
     says `npm install @cdklabs/cdk-cicd-wrapper`, use your pre-release channel (or the private CodeArtifact
-    repo your team publishes to) until v3 ships under an alpha tag. The commands and config are otherwise
-    exactly what a released v3 uses.
+    repo your team publishes to) until zero-touch ships under an alpha tag. The commands and config are otherwise
+    exactly what a released zero-touch uses.

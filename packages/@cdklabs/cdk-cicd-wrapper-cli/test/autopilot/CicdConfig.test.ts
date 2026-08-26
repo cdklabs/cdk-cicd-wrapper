@@ -4,7 +4,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { discover, load, loadDeployment, stageByName } from '../../src/cmds/zerotouch/CicdConfig';
+import { discover, load, loadDeployment, stageByName } from '../../src/cmds/autopilot/CicdConfig';
 
 function tempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'cicd-config-'));

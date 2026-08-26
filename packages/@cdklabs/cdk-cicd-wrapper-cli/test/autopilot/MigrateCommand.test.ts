@@ -1,9 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Unit tests for the Blueprint->v3 migration analyzer. Pure over source text -- no filesystem, no spawn.
+// Unit tests for the Blueprint->zero-touch migration analyzer. Pure over source text -- no filesystem, no spawn.
 
-import { analyzeV2Source, renderCicdConfig } from '../../src/cmds/zerotouch/MigrateCommand';
+import { analyzeV2Source, renderCicdConfig } from '../../src/cmds/autopilot/MigrateCommand';
 
 describe('m5-codemod: analyzeV2Source', () => {
   test('extracts an explicit string-array defineStages', () => {
@@ -11,7 +11,7 @@ describe('m5-codemod: analyzeV2Source', () => {
       PipelineBlueprint.builder().defineStages(['RES', 'DEV', 'PROD']).synth(app);
     `);
     expect(plan.foundBuilder).toBe(true);
-    expect(plan.stages).toEqual(['res', 'dev', 'prod']); // lowercased for v3
+    expect(plan.stages).toEqual(['res', 'dev', 'prod']); // lowercased for zero-touch
   });
 
   test('reads Stage.X enum refs and { stage: "INT" } object forms', () => {

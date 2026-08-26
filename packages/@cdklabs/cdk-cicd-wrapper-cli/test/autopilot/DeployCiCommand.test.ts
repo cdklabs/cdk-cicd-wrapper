@@ -5,7 +5,7 @@
 // which spawns `cdk-cicd pipeline-app`) is proven end to end by the m4-verify real-AWS gate.
 
 import { EngineType } from '@cdklabs/cdk-cicd-wrapper';
-import { deployCiArgs, pipelineAppCommand } from '../../src/cmds/zerotouch/DeployCiCommand';
+import { deployCiArgs, pipelineAppCommand } from '../../src/cmds/autopilot/DeployCiCommand';
 
 describe('m4-approval-selfupdate: deployCiArgs', () => {
   test('deploys the pipeline by pointing cdk at the pipeline-app command', () => {
