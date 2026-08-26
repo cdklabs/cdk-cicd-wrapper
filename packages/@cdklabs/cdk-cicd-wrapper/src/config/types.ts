@@ -11,6 +11,19 @@ import { WorkflowTriggers } from 'cdk-pipelines-github';
 import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
+/**
+ * A security plugin's stable identity (issue #241). Serializable, so it is what `cicd.config.ts`
+ * carries (through CDK context) to select a built-in plugin or declare a custom one. A custom
+ * plugin's actual `IAspect` instance is supplied separately in `bin/` via `CdkCicd.addPlugin`, since
+ * a live object cannot cross the context boundary.
+ */
+export interface PluginRef {
+  /** Stable plugin name. Built-in names are fixed; a custom name must match a `bin/` `addPlugin`. */
+  readonly name: string;
+  /** Plugin version, recorded for inventory and divergence warnings. */
+  readonly version: string;
+}
+
 /** Order in which a stage's regions are rolled out. */
 export enum RegionOrder {
   /** One region after another (default). */
@@ -340,6 +353,13 @@ export interface ResolvedCicdConfig {
    * deployments. Off by default.
    */
   readonly express?: boolean;
+  /**
+   * Security plugins (hardening Aspects) to apply tree-wide, by `{ name, version }` (issue #241).
+   * Omitted keeps the default-on set; an empty list opts out of all; a non-empty list COMPLETELY
+   * overrides the defaults. A name that is not a built-in is a custom plugin and MUST be registered
+   * in `bin/` via `CdkCicd.addPlugin` -- the config carries only its identity, not the instance.
+   */
+  readonly plugins?: PluginRef[];
 }
 
 /**

@@ -11,7 +11,7 @@
 
 import { existsSync } from 'fs';
 import * as path from 'path';
-import { ResolvedCicdConfig, ResolvedDeploymentConfig, ResolvedStage } from '@cdklabs/cdk-cicd-wrapper';
+import type { ResolvedCicdConfig, ResolvedDeploymentConfig, ResolvedStage } from '@cdklabs/cdk-cicd-wrapper';
 
 // Probe order. TypeScript is the primary authoring path (D-config-authoring); .js supports an
 // already-compiled config. YAML pipeline config is a later addition (it needs a Repository

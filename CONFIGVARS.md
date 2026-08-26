@@ -6,7 +6,9 @@
 > (Autopilot) line**, which is configured entirely in `cicd.config.ts` via `defineCICD({ ... })` — every
 > variable below maps to a field there (for example `ACCOUNT_<STAGE>` → a stage's `env.account`,
 > `CDK_QUALIFIER` → `qualifier`, `repositoryName`/`repositoryType` → `repository`, `CICD_VPC_*` → `vpc`,
-> `PROXY_SECRET_ARN` → `proxy`). See the [Migration Guide](./MIGRATION.md) for the full mapping.
+> `PROXY_SECRET_ARN` → `proxy`). See the
+> [Configuration Reference](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/configuration.html)
+> for the `1.x` fields and the [Migration Guide](./MIGRATION.md) for the full mapping.
 
 CDK CI/CD Wrapper `0.x` uses environment variables, to set up the CDK projects with multi-stage deployment.
 
