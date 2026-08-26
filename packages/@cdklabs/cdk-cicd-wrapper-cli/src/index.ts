@@ -4,11 +4,6 @@
 /* eslint-disable no-console */
 
 import * as yargs from 'yargs';
-import checkDependencies from './cmds/CheckDependenciesCommand';
-import complianceBucket from './cmds/ComplianceBucketCommand';
-import configure from './cmds/ConfigureCommand';
-import license from './cmds/LicenseCommand';
-import security from './cmds/SecurityCommand';
 import check from './cmds/autopilot/CheckCommand';
 import deployCi from './cmds/autopilot/DeployCiCommand';
 import deploy from './cmds/autopilot/DeployCommand';
@@ -17,6 +12,11 @@ import exec from './cmds/autopilot/ExecCommand';
 import migrate from './cmds/autopilot/MigrateCommand';
 import pipelineApp from './cmds/autopilot/PipelineAppCommand';
 import synth from './cmds/autopilot/SynthCommand';
+import checkDependencies from './cmds/CheckDependenciesCommand';
+import complianceBucket from './cmds/ComplianceBucketCommand';
+import configure from './cmds/ConfigureCommand';
+import license from './cmds/LicenseCommand';
+import security from './cmds/SecurityCommand';
 import validate from './cmds/ValidateCommand';
 import { logger } from './utils/Logging';
 
