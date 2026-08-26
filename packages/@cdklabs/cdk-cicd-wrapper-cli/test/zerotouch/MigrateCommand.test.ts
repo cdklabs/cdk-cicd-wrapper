@@ -3,7 +3,7 @@
 //
 // Unit tests for the Blueprint->v3 migration analyzer. Pure over source text -- no filesystem, no spawn.
 
-import { analyzeV2Source, renderCicdConfig } from '../../src/cmds/v3/MigrateCommand';
+import { analyzeV2Source, renderCicdConfig } from '../../src/cmds/zerotouch/MigrateCommand';
 
 describe('m5-codemod: analyzeV2Source', () => {
   test('extracts an explicit string-array defineStages', () => {

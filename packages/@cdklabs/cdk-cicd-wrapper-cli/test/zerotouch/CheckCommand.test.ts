@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { CHECK_NAMES, CheckPlan, planChecks, runPlans } from '../../src/cmds/v3/CheckCommand';
+import { CHECK_NAMES, CheckPlan, planChecks, runPlans } from '../../src/cmds/zerotouch/CheckCommand';
 import { CliHelpers } from '../../src/utils/CliHelpers';
 
 const dirs: string[] = [];

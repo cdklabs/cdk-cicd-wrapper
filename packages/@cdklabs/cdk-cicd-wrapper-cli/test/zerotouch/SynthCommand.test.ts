@@ -3,7 +3,7 @@
 
 import * as path from 'path';
 import { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
-import { synthTargets } from '../../src/cmds/v3/SynthCommand';
+import { synthTargets } from '../../src/cmds/zerotouch/SynthCommand';
 
 // A minimal resolved config: one single-region stage, one multi-region stage.
 const CONFIG = {

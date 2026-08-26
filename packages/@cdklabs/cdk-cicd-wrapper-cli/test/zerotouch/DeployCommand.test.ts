@@ -5,7 +5,7 @@
 // and aws) is proven end to end by the m3-verify real-AWS gate.
 
 import * as path from 'path';
-import { assertPromotedAssembly, deployArgs, planFromAssembly } from '../../src/cmds/v3/DeployCommand';
+import { assertPromotedAssembly, deployArgs, planFromAssembly } from '../../src/cmds/zerotouch/DeployCommand';
 
 describe('m3-deploy: deployArgs', () => {
   test('deploys the assembly with no approval prompt and no role when none is configured', () => {

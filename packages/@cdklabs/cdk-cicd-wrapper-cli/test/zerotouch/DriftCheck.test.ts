@@ -4,7 +4,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { analyzeManifest, checkAssembly } from '../../src/cmds/v3/DriftCheck';
+import { analyzeManifest, checkAssembly } from '../../src/cmds/zerotouch/DriftCheck';
 
 function manifestWith(environment: string): any {
   return { artifacts: { TheStack: { type: 'aws:cloudformation:stack', environment } } };
