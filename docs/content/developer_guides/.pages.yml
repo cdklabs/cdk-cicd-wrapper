@@ -1,6 +1,7 @@
 ---
 nav:
   - index.md
+  - 'Configuration Reference': 'configuration.md'
   - 'Continuous Integration': 'ci.md'
   - 'Continuous Deployment': 'cd.md'
   - 'Container Mode': 'container_mode.md'
