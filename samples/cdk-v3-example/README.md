@@ -1,8 +1,7 @@
 # cdk-v3-example
 
-The v3 shape of the CDK CI/CD Wrapper, side by side with the v2 `cdk-ts-example`. The contrast is the
-point: **the app is ordinary CDK with no wrapper code**, and one `cicd.config.ts` turns it into a
-pipeline.
+The v3 shape of the CDK CI/CD Wrapper. The point: **the app is ordinary CDK with no wrapper code**,
+and one `cicd.config.ts` turns it into a pipeline.
 
 ```
 bin/app.ts        plain `new App()` + your stacks — no PipelineBlueprint, no builder chain
@@ -11,8 +10,9 @@ cicd.config.ts    defineCICD({ application, repository, stages }) — the only w
 cdk.json          "app": "npx cdk-cicd exec bin/app.ts"  — the wrapper injects config/tags around the app
 ```
 
-Compare with `../cdk-ts-example` (v2): there the pipeline is built *inside* `src/main.ts` via
-`PipelineBlueprint.builder()…synth(app)`, and the projen `CdkCICDWrapper` generates the scaffolding.
+Compare with the v2 shape — `PipelineBlueprint.builder()…synth(app)` built inside `src/main.ts`, with
+the projen `CdkCICDWrapper` generating the scaffolding — preserved, untouched, on the `legacy-blueprint`
+branch (its `cdk-ts-example` sample was removed from `main` in `m8-remove-v2`).
 
 ## Use it
 
