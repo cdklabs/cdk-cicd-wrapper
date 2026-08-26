@@ -6,6 +6,10 @@
 // This package tracks the 0.x (PipelineBlueprint) maintenance line, published from the
 // `legacy-blueprint` branch under the npm `latest` dist-tag. The v3 rewrite develops
 // separately and publishes under the `next` dist-tag until it reaches 1.0.0.
+//
+// main still auto-publishes under this same 0.x/latest line on every releasable commit (see
+// task.md D6), so it will keep overwriting latest with v3 content until main's release config
+// is split onto its own major version. Releasing again from here is a recurring stopgap.
 
 import * as yargs from 'yargs';
 import checkDependencies from './cmds/CheckDependenciesCommand';
