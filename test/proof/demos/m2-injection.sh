@@ -80,4 +80,4 @@ say "the single runtime symbol on the public API:"
 run_sh 'grep -n "CdkCicd" '"${REPO_ROOT}"'/packages/@cdklabs/cdk-cicd-wrapper/src/v3/index.ts'
 say "The user adds one line in bin/ -- CdkCicd.attach(app) -- and the same Aspects and tags apply."
 
-outro "M2 injection: zero-touch by default, an explicit escape hatch when bundling defeats it. Next: the real deploy (demo #1) at the m2-verify gate."
+outro "M2 injection: Autopilot by default, an explicit escape hatch when bundling defeats it. Next: the real deploy (demo #1) at the m2-verify gate."

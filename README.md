@@ -19,13 +19,14 @@
 </p>
 
 > [!WARNING]
-> **Experimental — pre-release (`1.x` alpha), not yet published.** The developer experience
-> documented below is the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** —
-> the newest published version is `0.3.9`, on the stable `0.x` (Blueprint) line. So `npm install`
-> today gives you `0.x`, whose API is *not* the one described here: see the
+> **Experimental — pre-release, not yet published.** The developer experience documented below is
+> the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** — the newest published
+> version is `0.4.1`, on the stable `0.x` (Blueprint) line. **`0.4.0` is deprecated — do not use it**;
+> install `0.4.1` or later. So `npm install` today gives you `0.x`, whose API is *not* the one
+> described here: see the
 > [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/) for that, and
 > the [Migration Guide](./MIGRATION.md) for the mapping between the two. To try the flow below now,
-> work from this repository — `samples/cdk-v3-example/` is a complete example. The public API is not
+> work from this repository — `samples/cdk-cicd-wrapper-example/` is a complete example. The public API is not
 > frozen and may change before `1.0`.
 
 # Welcome to the CDK CI/CD Wrapper
@@ -50,7 +51,7 @@ This repository is organized as a monorepo containing multiple packages and tool
 
 - **`mcp-servers/debugger-mcp/`** - MCP (Model Context Protocol) server for AI-powered debugging assistance
 - **`samples/`** - Example projects demonstrating CDK CI/CD Wrapper usage
-  - `cdk-v3-example/` - TypeScript CDK example
+  - `cdk-cicd-wrapper-example/` - TypeScript CDK example
   - `cdk-python-example/` - Python CDK example
 - **`docs/`** - Documentation source files and build scripts
 - **`projenrc/`** - Projen configuration files for managing project structure
@@ -72,9 +73,10 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
 > [!IMPORTANT]
 > As noted above, the `1.x` line these steps describe is **unreleased**, so the command below
-> currently resolves to `0.3.9` on the `0.x` line — which does not have `defineCICD` or
-> `cdk-cicd exec`. Until the first `1.x` alpha is published, follow these steps against a checkout of
-> this repository (start from `samples/cdk-v3-example/`) rather than a fresh `npm install`.
+> currently resolves to `0.4.1` on the `0.x` line (avoid `0.4.0`, which is deprecated) — which does
+> not have `defineCICD` or `cdk-cicd exec`. Until the first `1.x` release is published, follow these
+> steps against a checkout of this repository (start from `samples/cdk-cicd-wrapper-example/`) rather than a
+> fresh `npm install`.
 
 ```bash
 npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
@@ -120,7 +122,7 @@ new MyStack(app, 'my-project', {
 
 **Optional**: use the `stageStackName` helper to control the CloudFormation stack name per stage (`my-project-dev`/`my-project-prod`). Migrating from a previous major? Matching the old stack name is what makes the migration an in-place update instead of a resource replacement — see the [Migration Guide](./MIGRATION.md).
 
-`samples/cdk-v3-example/` is this exact shape as a working project. For a non-Node app entry (for example Python), the preload cannot attach, so use the explicit `CdkCicd.attach(app)` call instead.
+`samples/cdk-cicd-wrapper-example/` is this exact shape as a working project. For a non-Node app entry (for example Python), the preload cannot attach, so use the explicit `CdkCicd.attach(app)` call instead.
 
 **Note**: Refer to the [Getting Started guide](https://cdklabs.github.io/cdk-cicd-wrapper/getting_started/index.html) for the full stage shape, repository sources, and CI configuration.
 

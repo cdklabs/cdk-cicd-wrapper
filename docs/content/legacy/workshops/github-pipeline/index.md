@@ -5,7 +5,7 @@
 
     This workshop uses Blueprint's `GitHubPipelinePlugin` (0.x). The Autopilot (1.x) equivalent is the
     `GitHubActionsEngine` (`engine: EngineType.GITHUB_ACTIONS` in `cicd.config.ts`) — see the
-    [v3 pipelines workshop](../../../workshops/v3-pipeline/index.md).
+    [Autopilot pipelines workshop](../../../workshops/autopilot-pipeline/index.md).
 
 ## Welcome
 

@@ -73,7 +73,7 @@ function envArn(value: string | undefined): string | undefined {
 }
 
 /**
- * The synthesizer the wrapper installs. `DefaultStackSynthesizer` is the v3 default (app-staging is
+ * The synthesizer the wrapper installs. `DefaultStackSynthesizer` is the Autopilot default (app-staging is
  * opt-in, still alpha). When the CLI has exported forced deployer / CloudFormation-execution role ARNs
  * for the active stage (m3-forced-roles), they are threaded into the synthesizer here -- read from the
  * environment, not from config, so the wrapper stays decoupled from cicd.config parsing.
@@ -97,7 +97,7 @@ export function applyWrapper(app: App, config: Record<string, unknown>): void {
   // right hook -- no need to monkeypatch synth().
   Aspects.of(app).add(new AwsSolutionsChecks());
 
-  // v2's default CloudWatch log-retention (m9-migrate-log-retention), tree-wide, same as cdk-nag
+  // Blueprint's default CloudWatch log-retention (m9-migrate-log-retention), tree-wide, same as cdk-nag
   // above. Falls back to the wrapper's own default rather than relying solely on the app-config
   // default: a stage with no config file at all is injected with `{}` (m2-exec's `loadConfig`), which
   // must still get the default retention -- "un-configured" is not "un-wrapped".
@@ -105,7 +105,7 @@ export function applyWrapper(app: App, config: Record<string, unknown>): void {
     typeof config.logRetentionInDays === 'number' ? config.logRetentionInDays : DEFAULT_LOG_RETENTION_DAYS;
   Aspects.of(app).add(new LogRetentionAspect({ retentionInDays }));
 
-  // v2's other default-on security-hardening plugins (m9-migrate-security-plugins), tree-wide, same
+  // Blueprint's other default-on security-hardening plugins (m9-migrate-security-plugins), tree-wide, same
   // as cdk-nag and log retention above. Each needs no extra config or resource, unlike the
   // compliance-bucket-gated `AccessLogsForBucketAspect` or the key-requiring
   // `EncryptCloudWatchLogGroupsAspect` -- those stay opt-in until their dependencies land.

@@ -1,11 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// v2 shipped this as `LambdaDLQPlugin` (m9-migrate-security-plugins), opt-in (not in v2's default
+// Blueprint shipped this as `LambdaDLQPlugin` (m9-migrate-security-plugins), opt-in (not in Blueprint's default
 // plugin set), which lazily created its own dedicated stack + SQS queue the first time it visited a
-// Lambda function with no DLQ/DLT set. v3 has no per-stage-plugin-hook to create that sibling stack
+// Lambda function with no DLQ/DLT set. Autopilot has no per-stage-plugin-hook to create that sibling stack
 // from inside the aspect, so the queue is the caller's construct instead -- construct it however you
-// like (e.g. with `enforceSSL: true`, matching v2's queue) and pass it in.
+// like (e.g. with `enforceSSL: true`, matching Blueprint's queue) and pass it in.
 
 import { IAspect } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -21,7 +21,7 @@ export interface LambdaDLQAspectProps {
 
 /**
  * Wires every L2 Lambda `Function` it visits that has no dead-letter queue/topic already set to a
- * shared dead-letter queue, matching v2's opt-in `LambdaDLQPlugin`.
+ * shared dead-letter queue, matching Blueprint's opt-in `LambdaDLQPlugin`.
  */
 export class LambdaDLQAspect implements IAspect {
   private readonly deadLetterQueue: IQueue;

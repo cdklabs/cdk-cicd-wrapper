@@ -12,7 +12,7 @@ function stack(): Stack {
 }
 
 describe('m9-migrate-vpc: resolveVpcNetworking', () => {
-  test('undefined config is v2 NoVPCStack -- no VPC created, nothing returned', () => {
+  test('undefined config is Blueprint NoVPCStack -- no VPC created, nothing returned', () => {
     const s = stack();
     expect(resolveVpcNetworking(s, undefined, false)).toBeUndefined();
     Template.fromStack(s).resourceCountIs('AWS::EC2::VPC', 0);
@@ -56,7 +56,7 @@ describe('m9-migrate-vpc: resolveVpcNetworking', () => {
     });
   });
 
-  test('managedVpc fields override the v2 defaults', () => {
+  test('managedVpc fields override the Blueprint defaults', () => {
     const s = stack();
     resolveVpcNetworking(s, { managedVpc: { cidrBlock: '10.0.0.0/16', subnetCidrMask: 26, maxAzs: 1 } }, false);
 
@@ -66,7 +66,7 @@ describe('m9-migrate-vpc: resolveVpcNetworking', () => {
     template.resourceCountIs('AWS::EC2::Subnet', 2);
   });
 
-  test('restrictDefaultSecurityGroup and allowAllOutbound can both be turned off (v2 always forced them on)', () => {
+  test('restrictDefaultSecurityGroup and allowAllOutbound can both be turned off (Blueprint always forced them on)', () => {
     const s = stack();
     const networking = resolveVpcNetworking(
       s,

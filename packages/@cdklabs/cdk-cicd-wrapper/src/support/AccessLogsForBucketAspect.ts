@@ -1,10 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// v2 shipped this as `AccessLogsForBucketPlugin` (m9-migrate-security-plugins), on by default but a
+// Blueprint shipped this as `AccessLogsForBucketPlugin` (m9-migrate-security-plugins), on by default but a
 // no-op unless `complianceLogBucketName` was configured (it read the name off
 // `PipelineBlueprintProps.deploymentDefinition` and initialized `GlobalResources.COMPLIANCE_BUCKET`
-// as a side effect). v3 has no compliance-bucket resource or config field yet
+// as a side effect). Autopilot has no compliance-bucket resource or config field yet
 // (m9-migrate-compliance-bucket, a separate migration item), so this aspect takes the destination
 // bucket name explicitly instead -- not wired into the runtime injection hook until the compliance
 // bucket and its config field land; attach it directly once they do.
@@ -21,14 +21,14 @@ export interface AccessLogsForBucketAspectProps {
   /**
    * The region the compliance log bucket lives in. When a visited bucket's stack is deployed to a
    * different region, `complianceLogBucketName` is rewritten by substituting `mainRegion` for that
-   * stack's region -- same cross-region name convention as v2.
+   * stack's region -- same cross-region name convention as Blueprint.
    */
   readonly mainRegion: string;
 }
 
 /**
  * Configures S3 server access logging (destination + prefix) on every L1 `CfnBucket` it visits that
- * does not already set a logging destination, matching v2's default-on `AccessLogsForBucketPlugin`.
+ * does not already set a logging destination, matching Blueprint's default-on `AccessLogsForBucketPlugin`.
  */
 export class AccessLogsForBucketAspect implements IAspect {
   private readonly complianceLogBucketName: string;

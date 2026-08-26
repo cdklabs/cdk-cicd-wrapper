@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# A "where we are" tour of the v3 redesign so far: the proof harness (Wave 0) and
+# A "where we are" tour of the Autopilot redesign so far: the proof harness (Wave 0) and
 # the app-config layer (Wave 1 / M1). It is a catch-up walkthrough, not a milestone
 # gate -- it makes NO AWS calls and needs no credentials, so it can be recorded
 # anywhere. The one real deploy demo comes with M2.
@@ -28,14 +28,14 @@ run_sh 'git status --porcelain | head'
 say "The work so far, one commit per verified unit -- the evolution is reviewable."
 run_sh 'git log --oneline -4'
 
-step "The v3 public surface (jsii-safe)"
-say "v3 is additive: it hangs off the existing package entry point, so the published"
+step "The Autopilot public surface (jsii-safe)"
+say "Autopilot is additive: it hangs off the existing package entry point, so the published"
 say "0.x surface keeps working. Only a curated set of types crosses the jsii boundary."
 run_sh 'sed -n "1,40p" packages/@cdklabs/cdk-cicd-wrapper/src/v3/index.ts | grep -vE "^//|^$" | head -20'
 say "jsii SILENTLY drops exported free functions, so the machinery (the generic loader,"
 say "the ConfigError class, the bare helpers) stays internal and only classes/structs/enums"
 say "are exported. We verify that against the generated assembly rather than trusting it:"
-run_sh 'node -e '"'"'const a=JSON.parse(require("fs").readFileSync("packages/@cdklabs/cdk-cicd-wrapper/.jsii","utf8")); const v3=Object.keys(a.types).filter(k=>(a.types[k].locationInModule||{}).filename?.includes("src/v3")); console.log(v3.length+" v3 types in the assembly:"); v3.forEach(k=>console.log("  "+a.types[k].kind.padEnd(9)+" "+k.split(".").pop()));'"'"''
+run_sh 'node -e '"'"'const a=JSON.parse(require("fs").readFileSync("packages/@cdklabs/cdk-cicd-wrapper/.jsii","utf8")); const v3=Object.keys(a.types).filter(k=>(a.types[k].locationInModule||{}).filename?.includes("src/v3")); console.log(v3.length+" Autopilot types in the assembly:"); v3.forEach(k=>console.log("  "+a.types[k].kind.padEnd(9)+" "+k.split(".").pop()));'"'"''
 note "11 types, and AppConfig is the one class a user actually calls."
 
 step "M1: the config layer, through the API a user calls"

@@ -3,7 +3,7 @@
 !!! warning "Blueprint (0.x) only"
 
     This workshop builds its pipeline with `PipelineBlueprint.builder()`, the Blueprint (0.x) API. For
-    the current major version, see the [v3 pipelines workshop](../../../workshops/v3-pipeline/index.md) instead.
+    the current major version, see the [Autopilot pipelines workshop](../../../workshops/autopilot-pipeline/index.md) instead.
 
 **Welcome, and thank you for joining us!**
 

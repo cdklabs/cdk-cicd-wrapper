@@ -24,7 +24,7 @@ export default defineCICD({
 
 ## Local ad hoc deploys (no pipeline)
 
-Blueprint (0.x) had a `.workbench()` section for deploying a feature branch's stacks directly from a developer's machine, without a pipeline. There is no equivalent construct in v3 — you don't need one, because `cdk.json`'s `app` command (`npx cdk-cicd exec bin/my-app.ts`) already runs *every* `cdk` invocation through the wrapper, pipeline or not. Deploy ad hoc straight from your branch:
+Blueprint (0.x) had a `.workbench()` section for deploying a feature branch's stacks directly from a developer's machine, without a pipeline. There is no equivalent construct in Autopilot — you don't need one, because `cdk.json`'s `app` command (`npx cdk-cicd exec bin/my-app.ts`) already runs *every* `cdk` invocation through the wrapper, pipeline or not. Deploy ad hoc straight from your branch:
 
 ```bash
 npx cdk deploy --all
@@ -69,4 +69,4 @@ Run `cdk-cicd deploy-ci` from that branch's checkout to provision the feature pi
 
 ## Developer sandbox pipelines
 
-The same feature-pipeline pattern also covers a per-developer sandbox: point `repository` at the developer's branch and `stages` at their personal sandbox account. Unlike Blueprint (0.x) — where the compliance/access-log bucket was on by default and had to be explicitly disabled (`GlobalResources.COMPLIANCE_BUCKET`) to run a pipeline and its deployment target in the same account — v3's compliance bucket is opt-in (`complianceLogBucketName` in `cicd.config.ts`), so simply leaving it unset avoids the conflict; there is nothing to disable.
+The same feature-pipeline pattern also covers a per-developer sandbox: point `repository` at the developer's branch and `stages` at their personal sandbox account. Unlike Blueprint (0.x) — where the compliance/access-log bucket was on by default and had to be explicitly disabled (`GlobalResources.COMPLIANCE_BUCKET`) to run a pipeline and its deployment target in the same account — Autopilot's compliance bucket is opt-in (`complianceLogBucketName` in `cicd.config.ts`), so simply leaving it unset avoids the conflict; there is nothing to disable.

@@ -21,4 +21,4 @@ Some Blueprint features have no Autopilot equivalent yet, and some were dropped 
 - [Modularizing Stacks](modularizing_stacks.md) — Blueprint's `BaseStackProvider`/`DefaultStackProvider` abstraction. Autopilot has no equivalent construct; organize plain CDK classes/functions however your project needs.
 - [Advanced Pipeline Configuration Options](pipeline_options.md) — Blueprint's `.pipelineOptions()` (self-mutation, parallel asset publishing, Docker credentials, change sets) for the CDK Pipelines-based engine. Not yet confirmed present on Autopilot's `CdkPipelinesEngine`.
 - [Variables](variables.md) — Blueprint's environment-variable-driven configuration. Autopilot configures the equivalent settings as fields on `cicd.config.ts` instead.
-- [Workshops](workshops/index.md) — the GenerativeAI Image Generation and GitHub Actions Blueprint workshops. See [the v3 pipelines workshop](../workshops/v3-pipeline/index.md) for the Autopilot equivalent.
+- [Workshops](workshops/index.md) — the GenerativeAI Image Generation and GitHub Actions Blueprint workshops. See [the Autopilot pipelines workshop](../workshops/autopilot-pipeline/index.md) for the Autopilot equivalent.

@@ -7,7 +7,7 @@ dependency (or run it via `npx`) and run any command with `--help` to see its fu
 npx cdk-cicd <command> --help
 ```
 
-> **Experimental.** The `v3` pipeline commands below are pre-release and still evolving; flags and
+> **Experimental.** The Autopilot pipeline commands below are pre-release and still evolving; flags and
 > behaviour may change before the `1.0` release.
 
 ## Project setup & checks
@@ -21,7 +21,7 @@ npx cdk-cicd <command> --help
 | `security-scan` | Run the security scanners (`--bandit`, `--semgrep`, `--shellcheck`). |
 | `compliance-bucket` | Configure the compliance log bucket (creates/updates it and its bucket policy; does not delete anything). |
 
-## v3 pipeline (experimental)
+## Autopilot pipeline (experimental)
 
 | Command | Description |
 | --- | --- |
@@ -30,7 +30,7 @@ npx cdk-cicd <command> --help
 | `deploy` | Synth, drift-check, and deploy a stage across its regions. |
 | `deploy-ci` | Provision the pipeline itself into the hub account, from `cicd.config.ts` alone (the one command a user runs by hand; everything after it is the pipeline deploying the application). `--disposable` deletes the pipeline's artifact bucket and key together with the stack (for throwaway pipelines). |
 | `check` | Run the default-on CI checks (`validate`, `audit`, `license`, `security`). |
-| `migrate` | Generate a v3 `cicd.config.ts` from an existing v2 `PipelineBlueprint` entry file (`--entry`, `--application`, `--dry-run`). |
+| `migrate` | Generate an Autopilot `cicd.config.ts` from an existing 0.4.x `PipelineBlueprint` entry file (`--entry`, `--application`, `--dry-run`). |
 
 Some commands (for example the pipeline app / deployment-CI handlers) are invoked by the pipeline
 itself rather than run directly by users.

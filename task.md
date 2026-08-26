@@ -1,7 +1,7 @@
 # Task Board
 
 A living, schema-driven board for work in this repo. It is **not** tied to any one initiative —
-current tasks happen to be the v3 effort, but the format outlives it.
+current tasks happen to be the Autopilot effort, but the format outlives it.
 
 - **Schema:** `.claude/schemas/tasks.schema.json` — the field contract each task conforms to.
   Machine-readable so an agent can be constrained to it when adding a task.
@@ -50,10 +50,16 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **D3 — Demo medium** ✅ Use the **`asciinema-recorder` skill**; **target = mp4**. Command-line
   walkthrough of the resources is fine, but every step must carry **explanatory comments** so a viewer
   understands what's happening. mp4 needs `agg` + `ffmpeg` (both absent) → the recorder task installs
-  them; if the environment blocks install, fall back to `.cast` and flag it.
+  them; if the environment blocks install, fall back to `.cast` and flag it. ⚠️ **AMENDED by the
+  maintainer (2026-08-25, then again 2026-08-26)** — recordings are no longer committed, full stop.
+  `test/proof/record-demo.sh` still produces `.cast`/`.mp4` into `docs/proof/`, but that whole path
+  is now gitignored; a milestone's recorded proof is generated and reviewed locally/in CI artifacts,
+  never checked in. Everything previously tracked there (six recordings, then the README index too)
+  was removed from git (`git rm --cached`) — kept on disk, not deleted, but nothing in `docs/proof/`
+  ships in the repository anymore.
 - **D4 — Deferred scope** ✅ Container two-repo mode + GitHub Actions engine are iteration 2. Keep
   `IEngine` honest so they slot in without a rewrite.
-- **D5 — Package consolidation (3→2)** ✅ Retire `@cdklabs/cdk-cicd-wrapper-projen` (v3 `cdk-cicd
+- **D5 — Package consolidation (3→2)** ✅ Retire `@cdklabs/cdk-cicd-wrapper-projen` (Autopilot `cdk-cicd
   configure` replaces it; deprecate then remove at the major). CLI stays its own package but depends
   on the wrapper (one install). Do NOT fold the CLI into the jsii package (multi-language bloat). The
   repo's own projen build stays.
@@ -63,7 +69,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   against the injected config, for both the CodePipeline engine and Docker mode. Docker image is
   config-agnostic (no `cdk.out` baked), runs offline.* The amendment defines **two CodePipeline
   implementations**, guiding principle **efficiency first**:
-  1. **Default — assembly promotion (the v2 CodePipeline way):** the synth/Build phase synths
+  1. **Default — assembly promotion (the Blueprint CodePipeline way):** the synth/Build phase synths
      **everything once** and **keeps `cdk.out`**; that assembly is promoted as the pipeline artifact and
      the deploy stages **consume** it rather than re-synthesizing.
   2. **Second option — deploy-time synth** (what M4 actually built), subject to two efficiency rules:
@@ -77,11 +83,11 @@ Not tasks — resolved/open design decisions that tasks reference.
   2026-08-20) A deploy action must not bill CodeBuild compute while it merely waits for CloudFormation.
   Kick off the deployment, then let a **stateful Lambda** observe deployment state and drive the action's
   completion. Applies to both implementations above.
-- **D6 — v3 versioning & isolation** ✅ v3 develops on a dedicated **`v3` branch** (created) that is
+- **D6 — Autopilot versioning & isolation** ✅ Autopilot develops on a dedicated **`v3` branch** (created) that is
   **not a declared release branch**, so it cannot publish — the strongest guard against accidental
   use. When we first want alpha exposure it releases as **`1.0.0-alpha.N` under npm dist-tag `next`**
-  (never `latest`); `main`/`latest` stays on the current 0.x line. "v3" is the **initiative codename**;
-  the released artifact is `1.0.0`. **On hold (user decision):** making v3 `1.0.0`
+  (never `latest`); `main`/`latest` stays on the current 0.x line. "Autopilot" is the **initiative codename**;
+  the released artifact is `1.0.0`. **On hold (user decision):** making Autopilot `1.0.0`
   requires main's `majorVersion` → `0` (projen has main at `1` but nothing 1.x ever shipped — live
   `latest` is `0.3.8`); the user chose **not to touch main's config** for now, so the version-config
   is staged only. Branch isolation remains the active guard. See finding
@@ -94,7 +100,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   |---|---|---|
   | `test/fixtures/` | yes | fixture CDK apps every gate deploys against |
   | `test/proof/` | yes | harness + recorder **tooling** (scripts must be reviewable) |
-  | `docs/proof/` | yes | the delivered proof: `.cast` source + `.mp4` + index |
+  | `docs/proof/` | no (gitignored), entirely | the delivered proof (recordings + index), generated and kept locally only, per D3 |
   | `development/v3-proof/` | no (gitignored) | scratch run logs, raw build output |
   Repo-root `test/` is safe because the build only reaches into `packages/@cdklabs/*`: root `lint` =
   `yarn workspaces run eslint`, root `test` = jest `projects` (3 workspaces), root `fmt` = eslint over
@@ -105,7 +111,7 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 ## Wave 0 — Test & proof harness  *(foundational; build the loop before the features)*
 
-- **`v3-version-isolation`** — Isolate + version the v3 line (first step, D6)  ·  blocked · wave 0 · infra · chore · breaking
+- **`v3-version-isolation`** — Isolate + version the Autopilot line (first step, D6)  ·  blocked · wave 0 · infra · chore · breaking
   - **desc:** Prevent anyone from accidentally consuming the in-progress redesign, and version it as
     the next major. **Isolation ACHIEVED:** `v3` branch created and not a declared release branch →
     it cannot publish, so the anti-accidental-use goal is already met. **Deferred by decision:** the
@@ -114,14 +120,14 @@ Not tasks — resolved/open design decisions that tasks reference.
     than touch main's existing line.
   - **spec:** D6          - **depends-on:** —
   - **acceptance:** (when unblocked) `npm i @cdklabs/cdk-cicd-wrapper` still returns the 0.x line; the
-    v3 line only resolves via `@next`; nothing publishes from the `v3` branch until enabled.
+    Autopilot line only resolves via `@next`; nothing publishes from the `v3` branch until enabled.
   - **notes:** BLOCKER = maintainer decision on main's line (finding
     `planning-projen-majorversion-mismatch`). Until then, branch isolation is the guard; do NOT change
     release config, push, or publish.
 - **`harness-baseline`** — Repo-green baseline  ·  done · wave 0 · infra · chore
   - **desc:** Establish the pre-change baseline so regressions are visible.
   - **acceptance:** `npm run build` green on clean `main` (logged); test count + timing recorded;
-    `npx projen compat` passes (the v2 API-break tripwire).
+    `npx projen compat` passes (the Blueprint API-break tripwire).
   - **produces:** `development/v3-proof/baseline.log`
   - **notes:** ✅ `npm run build` exit 0 on `v3` @ 6c3bf14 (tree = main + untracked planning docs
     only). Wrapper: **21 suites / 81 tests / 71.0 s**; CLI+projen: 1 suite / 2 tests / 6.4 s.
@@ -151,7 +157,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Prove the real install path: publish to CodeArtifact, install from a clean dir.
   - **acceptance:** `task codeartifact:publish` then `npm install @cdklabs/cdk-cicd-wrapper` from
     CodeArtifact in a temp dir imports cleanly. (M1 may use a workspace link; M2+ must use this.) ✅
-    Verified repeatedly M4+: the pipeline-app fixture, the v3 sample, and a clean-dir check all install
+    Verified repeatedly M4+: the pipeline-app fixture, the Autopilot sample, and a clean-dir check all install
     @cdklabs/*@0.0.0 from CodeArtifact and import cleanly (defineCICD/stageStackName/PipelineApp/DeployModel
     resolve, cdk-cicd bin present). Published via `npm publish` of `dist/js` (the JS consumer path); the
     Taskfile's twine/python leg is unused and out of scope for the JS loop.
@@ -212,7 +218,7 @@ Not tasks — resolved/open design decisions that tasks reference.
 
 - **`m1-base-schema`** — Base EnvConfig schema  ·  done · wave 1 · wrapper · feature
   - **desc:** Keep it tiny: `aws.accountId`/`aws.region`, `tags`, `removalPolicies`, `application`.
-    Networking deliberately excluded (user-land in v3).
+    Networking deliberately excluded (user-land in Autopilot).
   - **spec:** `docs/design/v3-devops-experience.md` #Application configuration management
   - **produces:** `packages/@cdklabs/cdk-cicd-wrapper/src/v3/appconfig/schema.ts`
   - **notes:** ✅ `BaseConfig` / `AwsEnvironment` / `RemovalPolicies` / `RemovalPolicyValue`, all four in
@@ -342,8 +348,8 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **acceptance:** stock-env app resolves the stage account/region; env-agnostic app stays
     region-agnostic; `CDK_CONTEXT_JSON` replicates the CLI's `cdk.json`+`cdk.context.json` merge
     (does not clobber user context).
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/ExecCommand.ts`, registered in the
-    CLI's `src/index.ts`; `test/v3/ExecCommand.test.ts`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/ExecCommand.ts`, registered in the
+    CLI's `src/index.ts`; `test/autopilot/ExecCommand.test.ts`.
   - **notes:** ✅ `cdk-cicd exec <app>` loads the stage config (tolerating a stage with no file → runs
     uninjected), exports the stage account/region into both env pairs (absent values left alone, so an
     env-agnostic app stays agnostic), merges `cicd:config` into `CDK_CONTEXT_JSON` WITHOUT clobbering a
@@ -424,14 +430,14 @@ Not tasks — resolved/open design decisions that tasks reference.
     it — intended, the authoring path is ts-node in-process) and its input interfaces stay internal
     because they use unions jsii can't express. **Name collision fixed:** the enum is
     `RepositorySourceType`, not `RepositoryType` — the latter is a distinct TS-only union alias already
-    on the published v2 surface, and `export * from './v3'` made the duplicate ambiguous (JSII3000).
+    on the published Blueprint surface, and `export * from './v3'` made the duplicate ambiguous (JSII3000).
     Scope trimmed to what the deploy path consumes (stages/env/roles/repo/application/qualifier/
     synthesizer type); engine/ci/plugins/compliance deferred to M4. 96/96, and the fixture's previously
     dormant `cicd.config.ts` now loads and normalizes (dev@us-west-2, prod@us-west-1 [approval]).
 - **`m3-config-discovery`** — cicd.config.ts/.yaml discovery  ·  done · wave 3 · cli · feature
   - **depends-on:** m3-definecicd
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/CicdConfig.ts` (`discover`/`load`/
-    `stageByName`); `test/v3/CicdConfig.test.ts`; the fixture `cicd.config.ts` header refreshed (F2).
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts` (`discover`/`load`/
+    `stageByName`); `test/autopilot/CicdConfig.test.ts`; the fixture `cicd.config.ts` header refreshed (F2).
   - **notes:** ✅ `discover(cwd)` probes `cicd.config.ts` → `.js` next to `cdk.json`; missing = Level 0
     (returns undefined, no error). `load(cwd)` loads the `.ts` in-process via ts-node (the same
     transpiler the app entry uses — one config file, no build step) and returns its `default` export
@@ -446,8 +452,8 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Synth into `cdk.out/<stage>/<region>` at deploy time against the target config;
     `cdk-cicd synth --all` for CI validation only.
   - **depends-on:** m2-exec, m3-config-discovery
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/SynthCommand.ts` (registered in the
-    CLI); the `exec` env-resolution refactor (`resolveEnvTarget` fill-not-override); `test/v3/SynthCommand.test.ts`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/SynthCommand.ts` (registered in the
+    CLI); the `exec` env-resolution refactor (`resolveEnvTarget` fill-not-override); `test/autopilot/SynthCommand.test.ts`.
   - **notes:** ✅ `cdk-cicd synth [--stage s | --all]` enumerates (stage × region) from the discovered
     cicd.config and synths each into `cdk.out/<stage>/<region>`. Proven: `synth --all` on level1 →
     `cdk.out/dev/us-west-2` AND `cdk.out/prod/us-west-1` from ONE invocation, each manifest's stack
@@ -464,8 +470,8 @@ Not tasks — resolved/open design decisions that tasks reference.
     region mismatch = **warn**; account mismatch = **error + abort that stage**.
   - **spec:** D-deploy; D3-Q9          - **depends-on:** m3-synth
   - **acceptance:** fires correctly on `hardcoded-env-app`.
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DriftCheck.ts`
-    (`analyzeManifest` pure + `checkAssembly` io); `test/v3/DriftCheck.test.ts`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/DriftCheck.ts`
+    (`analyzeManifest` pure + `checkAssembly` io); `test/autopilot/DriftCheck.test.ts`.
   - **notes:** ✅ Lives in the CLI as a post-synth manifest reader (the resolved `aws://acct/region`
     only exists in the synthesized assembly), NOT a preload or Aspect. Rules: env-agnostic
     (`unknown-account`/`unknown-region`) = OK; region mismatch = warn+continue; account mismatch =
@@ -495,8 +501,8 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Synth the stage against its config at deploy time, then deploy (assets via cdk-assets).
     Promoted unit is code+deps (sha), not a prebuilt assembly.
   - **depends-on:** m3-synth
-  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/v3/DeployCommand.ts` (registered);
-    `test/v3/DeployCommand.test.ts`.
+  - **produces:** `packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/DeployCommand.ts` (registered);
+    `test/autopilot/DeployCommand.test.ts`.
   - **notes:** ✅ `cdk-cicd deploy --stage <name> [--yes]`. Per region of the stage: synth the assembly,
     run the drift check against the account we will ACTUALLY deploy into (STS get-caller-identity, per
     finding `code-review-driftcheck-undefined-account-bypasses-guard` — never the possibly-undefined
@@ -523,7 +529,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     the guard (which requires that tag) can tear down stacks `cdk-cicd deploy` created without the
     harness's own `--tags`. **Wave 3 (M3) complete.**
 
-## Wave 4 — CodePipeline engine (M4)  *(v2 parity bar; demo #2)*
+## Wave 4 — CodePipeline engine (M4)  *(Blueprint parity bar; demo #2)*
 
 - **`m4-iengine`** — IEngine interface  ·  done · wave 4 · wrapper · feature
   - **desc:** Engine-neutral so iteration-2 engines slot in (D4).          - **spec:** D4
@@ -541,10 +547,10 @@ Not tasks — resolved/open design decisions that tasks reference.
     --stage <name> --yes`. The region fan-out lives inside the M3 CLI, so a multi-region stage is ONE
     action and there are NO per-asset publishing projects. **Flat-footprint locked by test**:
     `AWS::CodePipeline::Pipeline`=1 and `AWS::CodeBuild::Project`=1+stages (3 for dev[2 regions]+prod) —
-    the direct measurement vs v2's 100+. Source mapping covers S3 (bucket/key split, the m4-verify
+    the direct measurement vs Blueprint's 100+. Source mapping covers S3 (bucket/key split, the m4-verify
     source), CodeCommit (by name), CodeStar/GitHub (requires a connection ARN — else a clear error;
     `Repository.github` has no ARN param so GitHub needs `Repository.codestarConnection`). 6/6 engine
-    tests, wrapper v3 110→112/... green. **Three follow-ups logged that BLOCK m4-verify's real deploy**:
+    tests, wrapper Autopilot 110→112/... green. **Three follow-ups logged that BLOCK m4-verify's real deploy**:
     the deploy CodeBuild role has no deploy IAM (`code-review-codepipeline-deploy-role-lacks-iam`); no
     cdk-nag suppressions on the pipeline's own resources (`code-review-codepipeline-no-cdknag-suppressions`);
     and `stage.manualApproval` is not yet read (`code-review-codepipeline-manualapproval-ignored`, owned
@@ -557,9 +563,9 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **depends-on:** m4-iengine
   - **produces:** `src/v3/support/SupportResources.ts` (curated `SupportResources`/`SupportResourcesProps`);
     `test/v3/support/SupportResources.test.ts`; deploy IAM in `CodePipelineEngine.grantDeployPermissions`.
-  - **notes:** ✅ **Deviation, deliberate**: v2's `ResourceContext`/`ScopedStorage` service locator was
-    *not* ported. It is ~200 lines of string-keyed `any` coupled to `IPipelineBlueprintProps` and the v2
-    `Stage`, for two resources. v3 keeps the *on-demand* concept and drops both the singleton and the
+  - **notes:** ✅ **Deviation, deliberate**: Blueprint's `ResourceContext`/`ScopedStorage` service locator was
+    *not* ported. It is ~200 lines of string-keyed `any` coupled to `IPipelineBlueprintProps` and the Blueprint
+    `Stage`, for two resources. Autopilot keeps the *on-demand* concept and drops both the singleton and the
     untyped registry: typed lazy getters on a `Construct` — the design doc's own wording ("keep the
     concept; drop the singleton; type the lookups", `v3-devops-experience.md`). Shipped `encryptionKey`
     (rotating CMK, **no alias** — an alias is unique per account/region and would collide with a second
@@ -572,7 +578,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     generated one. **Unblocks m4-verify** by resolving `code-review-codepipeline-deploy-role-lacks-iam`:
     each stage's deploy project may `sts:AssumeRole` the four CDK bootstrap roles per (account, region)
     of that stage plus any forced `deployRole`, and read the bootstrap version SSM parameter — zero
-    wildcards, tighter than aws-cdk-lib's own `pipelines` module. Verified: 123/123 v3 tests (13 suites),
+    wildcards, tighter than aws-cdk-lib's own `pipelines` module. Verified: 123/123 Autopilot tests (13 suites),
     `projen compile` + `eslint` green, `.jsii` carries both new types. 7 follow-ups appended to
     `findings.json`, two of them medium and worth reading before `m4-verify`: the bootstrap qualifier has
     three unreconciled sources (`code-review-bootstrap-qualifier-not-single-source-of-truth`) and the CI
@@ -588,7 +594,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     `stage.manualApproval` and emits a `ManualApprovalAction` at `runOrder: 1` with that stage's deploy at
     `runOrder: 2` in the **same** pipeline stage, so a gate costs no extra stage, no CodeBuild project and
     no SNS topic — the flat-footprint claim `m4-verify` measures is unchanged, and an ungated stage renders
-    bit-identically to before. Resolves `code-review-codepipeline-manualapproval-ignored`. 128/128 v3 tests,
+    bit-identically to before. Resolves `code-review-codepipeline-manualapproval-ignored`. 128/128 Autopilot tests,
     `.jsii` 151 → 151. **2/3 done — provisioning.** `PipelineApp` (a one-stack `aws-cdk-lib.App` subclass
     that renders the config through the engine and applies `AwsSolutionsChecks`) lives in the **wrapper**
     package, not the CLI — reversing the earlier CLI-hosted assumption, because the CLI declares neither
@@ -598,7 +604,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     `cdk deploy --app "npx cdk-cicd pipeline-app" --all --require-approval never`, so provisioning needs
     **zero wrapper files in the user's repo**. Stack env comes from ambient `CDK_DEFAULT_*` (no config
     field for it). `--disposable` threads `RemovalPolicy.DESTROY` to the artifact bucket/key for teardown;
-    default RETAIN. 134/134 wrapper v3 + 56/56 CLI tests, `.jsii` 151 → 153 (exactly `PipelineApp`/
+    default RETAIN. 134/134 wrapper Autopilot + 56/56 CLI tests, `.jsii` 151 → 153 (exactly `PipelineApp`/
     `PipelineAppProps`); end-to-end synth from a bare `cicd.config.ts` produced one stack, the right
     stage/action shape and 3 CodeBuild projects, and `--disposable` flipped the bucket to `Delete`. The nag
     test asserts only that the aspect is **registered**, because this workspace's duplicate `aws-cdk-lib`
@@ -608,7 +614,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     definition from `cicd.config.ts` on every run (`restartExecutionOnUpdate: true` restarts under the new
     one). `grantDeployPermissions` refactored to `(project, account, regions, forcedDeployRole?)` so the
     self-update stage grants bootstrap roles for the pipeline's OWN account/region; deploy path unchanged.
-    Footprint grows by exactly one fixed project (still flat vs v2's 100+). Review caught a real defect, fixed
+    Footprint grows by exactly one fixed project (still flat vs Blueprint's 100+). Review caught a real defect, fixed
     before commit: a disposable pipeline's self-update ran a bare `deploy-ci` and re-emitted itself with
     RETAIN, un-disposing its own bucket/key on the first run — now the flag threads through when
     `removalPolicy === DESTROY`, with a test; 2 more review follow-ups appended to `findings.json`. Carry into
@@ -617,19 +623,19 @@ Not tasks — resolved/open design decisions that tasks reference.
 - **`m4-ci-checks`** — default-on CI checks via CLI  ·  done · wave 4 · cli · feature
   - **desc:** validate/audit/license/security run by the CLI in CI — fresh project passes with no
     npm-script surgery.
-  - **produces:** `cdk-cicd-wrapper-cli/src/cmds/v3/CheckCommand.ts` (`cdk-cicd check [checks..]`, exporting
-    `CHECK_NAMES`/`CheckPlan`/`planChecks`/`runPlans`); `test/v3/CheckCommand.test.ts` (13 tests);
+  - **produces:** `cdk-cicd-wrapper-cli/src/cmds/autopilot/CheckCommand.ts` (`cdk-cicd check [checks..]`, exporting
+    `CHECK_NAMES`/`CheckPlan`/`planChecks`/`runPlans`); `test/autopilot/CheckCommand.test.ts` (13 tests);
     `DEFAULT_CI_COMMANDS` in `CodePipelineEngine` now runs `npx cdk-cicd check`, which is what makes the
     checks default-on; `ts-node` declared in `projenrc/CLIConfig.ts`.
-  - **notes:** Each check **delegates** to the v2 command that already implements it, spawned as a child
-    `cdk-cicd <cmd>` — deliberate, because most v2 handlers signal failure with `process.exit`/`yargs.exit`,
+  - **notes:** Each check **delegates** to the Blueprint command that already implements it, spawned as a child
+    `cdk-cicd <cmd>` — deliberate, because most Blueprint handlers signal failure with `process.exit`/`yargs.exit`,
     which in-process would kill the umbrella mid-run; as children the exit codes are just data, so one pass
     reports every failure. A check with no baseline (or no dependency manifest) is **skipped, not failed**,
     so a fresh `cdk init` project passes; every skip is logged and the summary names what ran vs what was
     skipped, so a skip can never read as a pass. The skip discriminator is the mere *existence* of
     `package-verification.json`, not its contents: the review caught that keying on individual JSON keys
     made each gate disable-able by deleting the very key it guards, and turned an unparseable file into a
-    skip — both converting a v2 `exit 1` into a green `check`. Fixed before commit, with regression tests;
+    skip — both converting a Blueprint `exit 1` into a green `check`. Fixed before commit, with regression tests;
     the fix deleted code. Verified: 13/13 unit tests, `projen compile` green, `.jsii` types 151 → 151
     (CLI-only, no public surface change), and the real built CLI re-run on the two former false-greens
     (corrupt file → exit 1, key deleted → exit 1) plus fresh project → exit 0 and unknown check → exit 1.
@@ -650,7 +656,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     `instanceof` rules match. `test/v3/engine/codepipeline/nag-compliance.test.ts` then asserts BOTH a
     control (a deliberately non-compliant bucket MUST yield an `AwsSolutions-*` finding — fails first if
     the copies ever drift apart again) AND zero unsuppressed findings on the rendered pipeline. All 164
-    wrapper v3 tests pass with nag now live suite-wide, so the v2 compliance tests are no longer vacuous
+    wrapper Autopilot tests pass with nag now live suite-wide, so the Blueprint compliance tests are no longer vacuous
     either. Suppressions themselves shipped earlier (engine IAM5/S1 + driver IAM4/IAM5/L1) and are now
     verified live. Resolves all three spec findings.
   - **depends-on:** m4-approval-selfupdate
@@ -660,7 +666,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     resource MUST produce ≥1 `AwsSolutions-*` finding in the same run — no "expect zero" test without
     it, or a false green is indistinguishable from compliance); the rendered pipeline stack then has
     zero unsuppressed findings under `AwsSolutionsChecks`. ✅ — with each suppression justified from the
-    rendered template rather than copied from v2's CDK-Pipelines-shaped paths; v2's existing compliance
+    rendered template rather than copied from Blueprint's CDK-Pipelines-shaped paths; Blueprint's existing compliance
     tests are re-pointed at real assertions and whatever they now surface is triaged.
 - **`m4-private-registry`** — codeArtifact login in the buildspec  ·  done · wave 4 · wrapper · feature
   - **desc:** Opt-in `codeArtifact` config so the pipeline's builds authenticate to a private npm repo.
@@ -672,15 +678,15 @@ Not tasks — resolved/open design decisions that tasks reference.
     build project (CI Build, UpdatePipeline, each Deploy-<stage>) runs `aws codeartifact login --tool npm
     …` in a `pre_build` phase before `npm ci`, and its role gets the three read grants
     (`GetAuthorizationToken` on the domain, `GetRepositoryEndpoint`+`ReadFromRepository` on the repo,
-    `sts:GetServiceBearerToken` service-scoped). Reshaped from v2's `CodeArtifactPlugin`; ARNs now use
-    `stack.partition`. Strictly opt-in — a default pipeline is byte-identical. 141/141 v3 tests, `.jsii`
+    `sts:GetServiceBearerToken` service-scoped). Reshaped from Blueprint's `CodeArtifactPlugin`; ARNs now use
+    `stack.partition`. Strictly opt-in — a default pipeline is byte-identical. 141/141 Autopilot tests, `.jsii`
     153 → 154 (`CodeArtifactConfig`), lint clean. Login command validated against real AWS (writes the
     `@cdklabs:registry` + token an `npm ci` uses). Review clean, no fix-now; 3 low follow-ups appended
     to `findings.json`, and the untested no-`npmScope` branch was closed with a test rather than deferred.
   - **acceptance:** with `codeArtifact` set, every CodeBuild project's buildspec logs in before `npm ci`
     and its role can read the repo; with it unset, no login and no grant. ✅
 - **`m4-assembly-promotion`** — the DEFAULT deploy model: synth once, promote cdk.out  ·  done · wave 4 · wrapper · feature
-  - **desc:** Make the v2 CodePipeline way the default: the Build/synth phase synths every stage once and
+  - **desc:** Make the Blueprint CodePipeline way the default: the Build/synth phase synths every stage once and
     **keeps `cdk.out`**, which is promoted as the pipeline output artifact; each deploy stage consumes that
     artifact and runs `cdk deploy --app <assembly>` with **no synth of its own**.
   - **spec:** `task.md` D-deploy (amended) — this is implementation 1 of 2.
@@ -691,7 +697,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     CLI half is close; what is missing is not synthesizing first). Keep the existing deploy-time-synth
     path working as the opt-in second implementation — additive, per ground rule 1.
     **The open sub-question resolved itself cheaply:** the worry was how one promoted assembly carries
-    per-stage config when v3 injects config at synth time. It does not have to — `cdk-cicd synth --all`
+    per-stage config when Autopilot injects config at synth time. It does not have to — `cdk-cicd synth --all`
     already writes a **separate** assembly per stage×region (`cdk.out/<stage>/<region>`, each synthed with
     that stage's injected env), so promotion just keeps the directory that was already being produced and
     thrown away. No `Stage`-wrapping, no stack renaming, no change to the injection model. That is why
@@ -748,7 +754,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     **Constraint discovered while designing, and it is the reason a Lambda is the right answer:** the
     obvious cheaper design — emit one native `CloudFormationCreateUpdateStackAction` per stack, which
     CodePipeline waits on for free, as CDK Pipelines v1 did — is **not available to us**. Those actions
-    must be enumerated when the *pipeline* is rendered, but in v3 the app is synthesized **inside** the
+    must be enumerated when the *pipeline* is rendered, but in Autopilot the app is synthesized **inside** the
     pipeline, so the stack set of a stage is unknown until run time. Only something that discovers stacks
     at run time can do this, i.e. a Lambda.
     Consequence: the Lambda cannot merely *watch* — `cdk deploy` blocks, so to stop paying for the wait the
@@ -831,18 +837,18 @@ Not tasks — resolved/open design decisions that tasks reference.
     scanned account-id-free. Adversarial review of the promotion + driver commits completed and
     dispositioned (17 defects; fixed or logged).
     **Done as the M4 GATE** — the milestone is proven: a real pipeline from a bare `cicd.config.ts`,
-    dev→prod through a real manual approval, footprint asserted at 4 (vs v2's 100+), full teardown, demo.
+    dev→prod through a real manual approval, footprint asserted at 4 (vs Blueprint's 100+), full teardown, demo.
     Follow-on live runs that are NOT gate-blocking are tracked on their own tasks: the current
     deploy-time-synth one-env-reuse path (`m4-synth-efficiency`, unit-proven) and the async
     compute-saving / nested / cross-stack cases (`m4-deploy-observer` + findings).
   - **acceptance:** `deploy-ci` provisions a working pipeline in the test account; a commit flows
-    dev→prod with approval; **CodeBuild project count asserted (not merely logged) and compared to v2**;
+    dev→prod with approval; **CodeBuild project count asserted (not merely logged) and compared to Blueprint**;
     full teardown. **Recorded demo #2.** ✅
 
 ## Wave 5 — Migration (M5)
 
-- **`m5-migration-doc`** — MIGRATION.md v2→v3  ·  done · wave 5 · docs · docs
-  - **spec:** `docs/design/v3-devops-experience.md` #v2 → v3 mapping
+- **`m5-migration-doc`** — MIGRATION.md Blueprint→Autopilot  ·  done · wave 5 · docs · docs
+  - **spec:** `docs/design/v3-devops-experience.md` #Blueprint → v3 mapping
 - **`m5-codemod`** — cdk-cicd migrate codemod  ·  done · wave 5 · cli · feature
   - **notes:** paired with `stageStackName` (stack-name control) and a MIGRATION.md "preserve deployed
     resources" section. Continuity PROVEN on AWS by `test/proof/migration-continuity.sh`: a same-name
@@ -850,15 +856,15 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Rewrite mechanical `PipelineBlueprint.builder()...synth(app)` into `cicd.config.ts` +
     `cdk.json` app command.          - **depends-on:** m3-definecicd
 - **`m5-sample-migrate`** — migrate the TS sample  ·  done · wave 5 · infra · migration
-  - **notes:** delivered as a SIBLING `samples/cdk-v3-example/` (plain CDK app + one `cicd.config.ts`,
-    no wrapper code in the app, `stageStackName` for names), leaving `cdk-ts-example` as the untouched v2
-    copy. Converting the v2 sample IN PLACE was declined: it is built by the deprecated
+  - **notes:** delivered as a SIBLING `samples/cdk-cicd-wrapper-example/` (plain CDK app + one `cicd.config.ts`,
+    no wrapper code in the app, `stageStackName` for names), leaving `cdk-ts-example` as the untouched Blueprint
+    copy. Converting the Blueprint sample IN PLACE was declined: it is built by the deprecated
     `@cdklabs/cdk-cicd-wrapper-projen` type (D5), so an in-place flip is entangled with the major-gated
     projen removal and would churn/break its build. Smoke-tested against CodeArtifact: installs, the app
     synths via `cdk-cicd exec` (stageStackName resolves), and `cdk-cicd pipeline-app` renders
     Source->Build->UpdatePipeline->dev->prod with 4 projects. Full pipeline deploy not re-run (redundant
     with the pipeline-app fixture / m4-verify).
-  - **desc:** Move `samples/cdk-ts-example` to the v3 shape as a living smoke test; keep a v2 copy
+  - **desc:** Move `samples/cdk-ts-example` to the Autopilot shape as a living smoke test; keep a Blueprint copy
     until the flip.          - **depends-on:** m4-verify
 - **`m5-deprecate-projen`** — deprecate the projen product (D5a)  ·  done · wave 5 · projen · chore
   - **desc:** Mark `@cdklabs/cdk-cicd-wrapper-projen` deprecated; document that `cdk-cicd configure` +
@@ -884,7 +890,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     grants per target, in-build cred materialization, cross-account ECR login, nag parity).
     **Remaining:** end-to-end AWS proof of the CD pipeline (provision from a config repo + a CI-built image
     + run) -- the executor and CI-pipeline-provisioning are each AWS-proven; the CD-pipeline-in-CodePipeline
-    round trip is the open gate. Also proven this wave: the v2->v3 migration of a real app (tef-ivms,
+    round trip is the open gate. Also proven this wave: the Blueprint->Autopilot migration of a real app (tef-ivms,
     deployed both with & without pipeline into the sandbox, see development/) and a multi-region global
     DynamoDB gate (`test/proof/global-ddb-verify.sh`, PASSED us-west-2 + us-west-1 replica). · cli · feature
   - **desc:** `BuildImage.docker` (repo 1 build/push of a **config-agnostic** image = code + vendored
@@ -897,7 +903,7 @@ Not tasks — resolved/open design decisions that tasks reference.
     CFN stack, so it needs a non-CFN provisioning path (emit + commit) and GHA-auth (OIDC) config that
     `ResolvedCicdConfig` lacks. See finding `planning-iengine-provisioning-is-cfn-shaped` — settle that
     before building this.
-  - **desc:** Render from the model directly (replaces v2 buildspec reverse-engineering).
+  - **desc:** Render from the model directly (replaces Blueprint buildspec reverse-engineering).
   - **depends-on:** m4-iengine
 - **`spike-python-hook`** — Python injection path  ·  done · wave 6
   - **notes:** Conclusion (finding `spike-python-injection-is-node-preload-only`): zero-touch injection
@@ -910,7 +916,7 @@ Not tasks — resolved/open design decisions that tasks reference.
   - **desc:** Is the import hook acceptable in Python, or is `CdkCicd.attach(app)` the primary path?
     (jsii can't ship a Python import hook cleanly.) Written outcome.
 - **`spike-naming`** — CLI/API naming pass  ·  done · wave 6
-  - **notes:** Reviewed the full v3 surface (7 CLI commands + 39 jsii types + 3 TS-authoring free
+  - **notes:** Reviewed the full Autopilot surface (7 CLI commands + 39 jsii types + 3 TS-authoring free
     functions). Verdict: largely consistent; the naming issues found are ALL breaking renames, so batch
     them for a single pre-alpha rename pass rather than churn the API now (ground rule 1). Recorded as
     findings `planning-naming-deploy-vs-deployci-confusable` (medium -- the one real footgun: `deploy`
@@ -931,54 +937,54 @@ Not tasks — resolved/open design decisions that tasks reference.
     feature later. Decide: default-on vs opt-in, where it sits relative to `m4-ci-checks` (likely
     another default-on CI check via the CLI), and whether the SARIF output feeds anything.
 
-## Wave 7 — The v3 major (breaking)
+## Wave 7 — The Autopilot major (breaking)
 
-- **`m8-remove-v2`** — Remove v2 + the projen product  ·  done · wave 7 · shared · migration · breaking
-  - **desc:** Delete v2 (`PipelineBlueprint`) and `@cdklabs/cdk-cicd-wrapper-projen` — **only** once
+- **`m8-remove-v2`** — Remove Blueprint + the projen product  ·  done · wave 7 · shared · migration · breaking
+  - **desc:** Delete Blueprint (`PipelineBlueprint`) and `@cdklabs/cdk-cicd-wrapper-projen` — **only** once
     parity + migration are proven and the deprecation period has elapsed.
   - **depends-on:** m4-verify, m5-migration-doc, m5-codemod, m5-deprecate-projen
   - **acceptance:** all four dependencies were `done`, so the gate was satisfied by branch split
-    rather than in-place deprecation: Blueprint/v2 keeps publishing untouched from `legacy-blueprint`
+    rather than in-place deprecation: Blueprint keeps publishing untouched from `legacy-blueprint`
     (own `releaseOptions`, still 0.x/`latest`), so `main`/`v3` could take a clean break instead of
     waiting out a deprecation window. See `docs/design/v3-rollout-plan.md` Q1–Q16.
   - **notes:** `npx projen compat` flagged the break as expected; re-baselined via
-    `packages/@cdklabs/cdk-cicd-wrapper/.compatignore` (122 removed v2 symbols). Done in two commits:
-    v2 source tree + `src/projen/**` deleted (flatten `src/v3`→`src`); then the
+    `packages/@cdklabs/cdk-cicd-wrapper/.compatignore` (122 removed Blueprint symbols). Done in two commits:
+    Blueprint source tree + `src/projen/**` deleted (flatten `src/v3`→`src`); then the
     `@cdklabs/cdk-cicd-wrapper-projen` package itself deleted (workspaces/jest/tsconfig refs
-    regenerated via `npx projen`), plus its v2-exclusive `samples/cdk-ts-example` (superseded by
-    `samples/cdk-v3-example`, m5-sample-migrate).
-  - **v2 source note:** the v2 tree this wave's tasks cite by path was last present at commit
+    regenerated via `npx projen`), plus its Blueprint-exclusive `samples/cdk-ts-example` (superseded by
+    `samples/cdk-cicd-wrapper-example`, m5-sample-migrate).
+  - **Blueprint source note:** the Blueprint tree this wave's tasks cite by path was last present at commit
     `58d312a~1`; it no longer exists on `v3`/`main` but is untouched on `legacy-blueprint`.
 
-## Wave 8 — v2 feature migration backlog (gates 1.0.0/`latest`, NOT the `main`-branch flip — Q4/Q15/Q16)
+## Wave 8 — Blueprint feature migration backlog (gates 1.0.0/`latest`, NOT the `main`-branch flip — Q4/Q15/Q16)
 
-Each task ports one v2 feature into the v3 shape, keeping the v3 API **familiar** (similar
+Each task ports one Blueprint feature into the Autopilot shape, keeping the Autopilot API **familiar** (similar
 types/props) per Q8, plus a `MIGRATION.md` mapping-table row. Independent of each other (same wave);
 all gate `m9-migration-gate` below, which is what blocks flipping the `1.0.0`/`latest` npm dist-tag —
 not this branch reaching `main`.
 
-- **`m9-migrate-security-plugins`** — port the v2 security-hardening plugins  ·  done · wave 8 ·
+- **`m9-migrate-security-plugins`** — port the Blueprint security-hardening plugins  ·  done · wave 8 ·
   wrapper · migration
   - **desc:** Bucket SSL/encryption, CloudWatch-log & SNS encryption, KMS key rotation, Lambda DLQ,
-    EC2 public-IP block. v2 source (see Wave 7 note): `src/plugins/security/AccessLogsForBucketPlugin.ts`,
+    EC2 public-IP block. Blueprint source (see Wave 7 note): `src/plugins/security/AccessLogsForBucketPlugin.ts`,
     `EncryptBucketOnTransitPlugin.ts`, `EncryptCloudWatchLogGroupsPlugin.ts`,
     `EncryptSNSTopicOnTransitPlugin.ts`, `RotateEncryptionKeysPlugin.ts`,
     `DisablePublicIPAssignmentForEC2Plugin.ts`, `src/plugins/optimization/DestroyEncryptionKeysOnDeletePlugin.ts`.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 1
-  - **acceptance:** each plugin has a v3 equivalent (aspect or engine hook) + a passing unit test +
+  - **acceptance:** each plugin has a Autopilot equivalent (aspect or engine hook) + a passing unit test +
     a `MIGRATION.md` row.
-  - **notes:** the v2 source list above is missing one file the desc line still names --
+  - **notes:** the Blueprint source list above is missing one file the desc line still names --
     `src/plugins/security/LambdaDLQPlugin.ts` -- ported too (`LambdaDLQAspect`), same as the seven
-    listed. Each v2 plugin is now a standalone `IAspect` under `src/support/`: the four with no extra
+    listed. Each Blueprint plugin is now a standalone `IAspect` under `src/support/`: the four with no extra
     config/resource dependency (bucket/SNS transit encryption, KMS key rotation, EC2 public-IP block)
-    are wired tree-wide into the runtime injection hook (`applyWrapper`), matching v2's default-on
+    are wired tree-wide into the runtime injection hook (`applyWrapper`), matching Blueprint's default-on
     behaviour and the `LogRetentionAspect` precedent. Three stay opt-in-only, each blocked on a
-    dependency v3 doesn't provision by default (yet): `AccessLogsForBucketAspect` needs the
+    dependency Autopilot doesn't provision by default (yet): `AccessLogsForBucketAspect` needs the
     not-yet-ported compliance-log bucket (`m9-migrate-compliance-bucket`); `EncryptCloudWatchLogGroupsAspect`
-    needs a KMS key (v2 pulled one implicitly from a default per-stage `EncryptionProvider` that has no
-    v3 equivalent -- out of scope here, so the aspect takes the key as an explicit prop instead);
+    needs a KMS key (Blueprint pulled one implicitly from a default per-stage `EncryptionProvider` that has no
+    Autopilot equivalent -- out of scope here, so the aspect takes the key as an explicit prop instead);
     `LambdaDLQAspect` takes a caller-constructed `IQueue` rather than lazily creating its own stack +
-    queue (v2's per-stage-plugin-hook that did that has no v3 equivalent either, and v2 itself shipped
+    queue (Blueprint's per-stage-plugin-hook that did that has no Autopilot equivalent either, and Blueprint itself shipped
     this one opt-in, not default-on). `npx projen compile`/`test`/`compat` all green.
     Blocked because the architect's real-AWS deploy-verify pass found 2 of the 4 tree-wide-wired
     aspects silently inert, the exact same cross-`aws-cdk-lib`-module-copy failure mode
@@ -1036,7 +1042,7 @@ not this branch reaching `main`.
     addresses, and -- a genuinely new discovery, logged as
     `migration-encryptbuckettransit-s10-action-scope` in findings.json -- `AwsSolutions-S10` can never
     pass for `EncryptBucketOnTransitAspect` regardless of this fix, because cdk-nag's S10 rule
-    requires the Deny statement's action to be `s3:*`/`*` while the aspect (matching v2's exact
+    requires the Deny statement's action to be `s3:*`/`*` while the aspect (matching Blueprint's exact
     scope) denies only `s3:PutObject`; `AwsSolutions-SNS3`, by contrast, now passes cleanly on the
     same probe, since `EncryptSNSTopicOnTransitAspect`'s `HttpsOnly` statement already includes
     `SNS:Publish`. Remaining gap, deliberately out of scope for this fix (narrowed to exactly the two
@@ -1048,23 +1054,23 @@ not this branch reaching `main`.
     until a session scoped to fix them lands. `MIGRATION.md`'s row for these aspects (line ~69)
     already describes the port at the design level with no mechanism detail, so it needed no edit.
 
-- **`m9-migrate-compliance-bucket`** — port the v2 compliance/access-log bucket  ·  done · wave 8 ·
+- **`m9-migrate-compliance-bucket`** — port the Blueprint compliance/access-log bucket  ·  done · wave 8 ·
   wrapper · migration
-  - **desc:** v2 source: `src/resource-providers/ComplianceBucketProvider.ts`,
+  - **desc:** Blueprint source: `src/resource-providers/ComplianceBucketProvider.ts`,
     `src/stacks/compliance-bucket/ComplianceBucketStack.ts`. **Fold in** the skipped Stage-1 fix
-    `0b7ae02` (v2 compliance-bucket TLS/SSE policy correctness) while porting — don't reintroduce
-    that bug in the v3 shape.
+    `0b7ae02` (Blueprint compliance-bucket TLS/SSE policy correctness) while porting — don't reintroduce
+    that bug in the Autopilot shape.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 2
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row; TLS/SSE policy correctness
+  - **acceptance:** Autopilot equivalent + passing unit test + `MIGRATION.md` row; TLS/SSE policy correctness
     verified (the thing `0b7ae02` fixed).
-  - **notes:** v3 equivalent is `SupportResources.complianceLogBucket` -- a plain CDK-managed `Bucket`
-    (not v2's custom-resource Lambda; the "bucket already exists" tolerance that Lambda existed for
+  - **notes:** Autopilot equivalent is `SupportResources.complianceLogBucket` -- a plain CDK-managed `Bucket`
+    (not Blueprint's custom-resource Lambda; the "bucket already exists" tolerance that Lambda existed for
     doesn't arise, since this construct's own stack owns the bucket for the pipeline's lifetime),
     provisioned lazily on first read from `SupportResourcesProps.complianceLogBucketName`. Added the
     missing config surface: `complianceLogBucketName` on `CicdConfigProps`/`ResolvedCicdConfig`
     (`defineCICD`), threaded into `CodePipelineEngine.render()`'s `SupportResources` construction; the
     engine force-reads the lazy getter whenever the field is set, so configuring the name alone is
-    enough to get the bucket in the synthesized template -- matching v2's default-on-when-configured
+    enough to get the bucket in the synthesized template -- matching Blueprint's default-on-when-configured
     `ComplianceBucketProvider`, not left as dead plumbing nobody reads. `0b7ae02`'s TLS/SSE fix: the
     `DenyUnencryptedTraffic` half is `enforceSSL: true` (a plain `Bool` on `aws:SecureTransport` works
     there because that key is always present); the `EnforceEncryptionAtRest` half denies `s3:PutObject`
@@ -1084,12 +1090,12 @@ not this branch reaching `main`.
     (`MIGRATION.md` row + TLS/SSE correctness), and the one thing that would need a real deploy to
     validate for real (`AccessLogsForBucketAspect`) is exactly what stayed unwired above.
 
-- **`m9-migrate-vpc`** — port v2 VPC support  ·  done · wave 8 · wrapper · migration
-  - **desc:** v2 source: `src/resource-providers/VPCProvider.ts`, `src/stacks/vpc/ManagedVPCStack.ts`,
+- **`m9-migrate-vpc`** — port Blueprint VPC support  ·  done · wave 8 · wrapper · migration
+  - **desc:** Blueprint source: `src/resource-providers/VPCProvider.ts`, `src/stacks/vpc/ManagedVPCStack.ts`,
     `NoVPCStack.ts`, `VPCFromLookUpStack.ts`.
   - **notes:** ✅ The real-AWS deploy-verify blocker is fixed: the default (unset `flowLogsBucketName`)
     managed-VPC config was failing synthesis outright on `AwsSolutions-VPC7`. Suppressed it on that
-    resource (v2 shipped flow logs opt-in the same way, so forcing them on by default would be a
+    resource (Blueprint shipped flow logs opt-in the same way, so forcing them on by default would be a
     behaviour change, not just a nag fix) and added a nag-compliance test proving the suppression fires
     for the default case and stays a no-op once `flowLogsBucketName` is set -- using the same "cdk-nag is
     genuinely live here" control pattern this package's other nag-compliance tests use. The underlying
@@ -1097,7 +1103,7 @@ not this branch reaching `main`.
     `flowLogsBucketName` set (teardown clean, no orphans); this fix only needed synthesis-level (unit
     test) verification, not a second full deploy, since it changes no deployed resource shape.
     `resolveVpcNetworking` (`src/support/Vpc.ts`) ports `ManagedVPCStack`/`NoVPCStack`/
-    `VPCFromLookUpStack` as a plain function rather than v2's per-stage stack -- v3 attaches the VPC
+    `VPCFromLookUpStack` as a plain function rather than Blueprint's per-stage stack -- Autopilot attaches the VPC
     directly to the pipeline's own construct tree, since the CodeBuild projects that consume it already
     live in the stack this resolves against. New `VpcConfig`/`ManagedVpcConfig` (`config/types.ts`),
     threaded through `defineCICD`'s `vpc` prop. Wired into every CodeBuild project both engines create:
@@ -1105,8 +1111,8 @@ not this branch reaching `main`.
     the container-mode `BuildImage` project); `CdkPipelinesEngine` via `codeBuildDefaults` directly
     (synth + self-mutation), since that engine doesn't use `SupportResources`. `useProxy` (from
     `config.proxy !== undefined`) selects isolated subnets + the default CodeBuild interface endpoints,
-    matching v2's `VPCProvider` reading `GlobalResources.PROXY`. Ports the `restrictDefaultSecurityGroup`/
-    `allowAllOutbound` fix forward as `??` instead of v2's `props.x || true` (which forced both on even
+    matching Blueprint's `VPCProvider` reading `GlobalResources.PROXY`. Ports the `restrictDefaultSecurityGroup`/
+    `allowAllOutbound` fix forward as `??` instead of Blueprint's `props.x || true` (which forced both on even
     when a caller explicitly passed `false`) -- a defect, not a behaviour to preserve. cdk-nag IAM5
     suppressions on both engines extended to cover the VPC-attached CodeBuild role's network-interface
     permissions. Added engine-level wiring tests (`CodePipelineEngine.test.ts`,
@@ -1122,10 +1128,10 @@ not this branch reaching `main`.
     `vpc: { managedVpc: {} }` config and reusing that bundling is the likely path, or a small isolated
     fixture if the architect prefers not to grow `pipeline-app`'s deploy time with a NAT gateway.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 3
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **acceptance:** Autopilot equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-http-proxy`** — port v2 HTTP proxy support  ·  done · wave 8 · wrapper · migration
-  - **desc:** v2 source: `src/resource-providers/ProxyProvider.ts` (`IProxyConfig`/`ProxyProps`).
+- **`m9-migrate-http-proxy`** — port Blueprint HTTP proxy support  ·  done · wave 8 · wrapper · migration
+  - **desc:** Blueprint source: `src/resource-providers/ProxyProvider.ts` (`IProxyConfig`/`ProxyProps`).
   - **notes:** ✅ `ProxyConfig` ported into `src/config/types.ts`/`define.ts` and wired into
     `CodePipelineEngine.project()` (build/self-update/per-stage-deploy CodeBuild projects) and
     `CdkPipelinesEngine`'s synth step. The gap this task was blocked on —
@@ -1152,21 +1158,21 @@ not this branch reaching `main`.
     Synth step; CDK Pipelines' own self-mutation/asset-publishing projects have no per-step hook and stay
     uncovered) — no further doc correction needed.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 4
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
+  - **acceptance:** Autopilot equivalent + passing unit test + `MIGRATION.md` row. ✅
 
-- **`m9-migrate-codebuild-customization`** — port v2 CodeBuild env customization  ·  done · wave 8 ·
+- **`m9-migrate-codebuild-customization`** — port Blueprint CodeBuild env customization  ·  done · wave 8 ·
   wrapper · migration
-  - **desc:** Privileged mode, compute type, env vars. v2 source:
+  - **desc:** Privileged mode, compute type, env vars. Blueprint source:
     `src/resource-providers/CodeBuildFactoryProvider.ts` (`ICodeBuildFactory`/`BuildOptions`),
     `src/code-pipeline/CDKPipeline.ts`.
   - **notes:** ✅ Ported as `codeBuildEnvSettings?: codebuild.BuildEnvironment` on
-    `ResolvedCicdConfig`/`CicdConfigProps` — v2's exact field name, reusing CDK's own `BuildEnvironment`
+    `ResolvedCicdConfig`/`CicdConfigProps` — Blueprint's exact field name, reusing CDK's own `BuildEnvironment`
     type verbatim rather than a bespoke wrapper (Q8 keep-API-familiar), so no new export was needed.
     Applied uniformly to every CodeBuild project in both engines: `CodePipelineEngine`'s `buildEnvironment()`
     helper (Build, UpdatePipeline, each Deploy-`<stage>`, and the container-mode `BuildImage` project,
     where `privileged` stays force-true for Docker but `computeType`/`environmentVariables` still flow
     through) and `CdkPipelinesEngine`'s `codeBuildDefaults` passthrough to `pipelines.CodePipeline`, which
-    fans it out to synth/self-mutation/asset-publishing projects — matching v2's uniform-application
+    fans it out to synth/self-mutation/asset-publishing projects — matching Blueprint's uniform-application
     semantics. `npx projen compile`/`test`/`compat` all green; unit tests cover both engines plus the
     `define.ts` pass-through/default case, including the container-mode path. **Architect real-AWS
     deploy-verify** (fresh run, this reconciliation pass): a disposable single-stage pipeline deployed
@@ -1177,15 +1183,15 @@ not this branch reaching `main`.
     custom env var; pipeline stack + source bucket torn down and confirmed deleted (`describe-stacks`
     404 after), no orphans left in the test account.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 5
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
+  - **acceptance:** Autopilot equivalent + passing unit test + `MIGRATION.md` row. ✅
 
-- **`m9-migrate-private-registry-auth`** — port v2 private-npm-registry basic-auth  ·  done · wave 8 ·
+- **`m9-migrate-private-registry-auth`** — port Blueprint private-npm-registry basic-auth  ·  done · wave 8 ·
   shared · migration
-  - **desc:** Not CodeArtifact (that's already in v3 — `m4-private-registry`, done): generic private
-    npm registry basic-auth. v2 source: `src/plugins/utils/CodeArtifactPlugin.ts` and the
+  - **desc:** Not CodeArtifact (that's already in Autopilot — `m4-private-registry`, done): generic private
+    npm registry basic-auth. Blueprint source: `src/plugins/utils/CodeArtifactPlugin.ts` and the
     `NPMRegistryConfig` interface (`src/common/types/Types.ts`) — confirm during migration which of
-    the two actually carried the basic-auth path, since CodeArtifact itself has its own v3 story.
-  - **notes:** ✅ `NpmRegistryConfig` ported additively into `src/config/types.ts` with v2's field
+    the two actually carried the basic-auth path, since CodeArtifact itself has its own Autopilot story.
+  - **notes:** ✅ `NpmRegistryConfig` ported additively into `src/config/types.ts` with Blueprint's field
     names, wired through `define.ts` and all three pipeline-rendering engines; `npx projen
     compile`/`test`/`compat` all green (30 suites, 260 tests). Ground rule 2's real-AWS deploy gate
     (previously unmet — no fixture configured `npmRegistry`): added an opt-in `M4_NPM_REGISTRY=true`
@@ -1215,37 +1221,37 @@ not this branch reaching `main`.
     actually been committed; committed for real in a follow-up pass, along with the `MIGRATION.md` row
     this task's own acceptance line required and which had also never landed.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 6
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **acceptance:** Autopilot equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-phase-command-model`** — port the v2 phase/command model  ·  done · wave 8 ·
+- **`m9-migrate-phase-command-model`** — port the Blueprint phase/command model  ·  done · wave 8 ·
   wrapper · migration
-  - **desc:** v2 source: `src/resource-providers/PhaseCommandProvider.ts` (`IPhaseCommand`,
+  - **desc:** Blueprint source: `src/resource-providers/PhaseCommandProvider.ts` (`IPhaseCommand`,
     `IPhaseCommandSettings`) and its command implementations (shell/NPM/Python/inline-shell/script).
-    v3 already has `ci.steps` (a command map) — decide whether this backlog item is fully subsumed by
+    Autopilot already has `ci.steps` (a command map) — decide whether this backlog item is fully subsumed by
     `ci.steps` or whether a familiar-API shim is still owed per Q8.
-  - **notes:** ✅ Resolved as "fully subsumed by `ci.steps`, no v3 equivalent needed" — a plain string
-    is strictly more general than v2's typed command-builder classes, so no shim is owed per Q8. Decision
+  - **notes:** ✅ Resolved as "fully subsumed by `ci.steps`, no Autopilot equivalent needed" — a plain string
+    is strictly more general than Blueprint's typed command-builder classes, so no shim is owed per Q8. Decision
     independently traced and confirmed correct by both the architect and a code-review pass. The prior
     submission was blocked on process, not substance: its task.md edit was taken from a stale snapshot
     and, alongside the intended entry, silently reverted the unrelated `m9-migrate-security-plugins`
     entry — caught before commit. This edit is scoped to exactly this entry. `MIGRATION.md`'s
-    `definePhase`/`PhaseCommand` row records the full v2→v3 phase-wiring mapping.
+    `definePhase`/`PhaseCommand` row records the full Blueprint→Autopilot phase-wiring mapping.
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 7
-  - **acceptance:** either a documented "subsumed by `ci.steps`" `MIGRATION.md` row, or a v3
+  - **acceptance:** either a documented "subsumed by `ci.steps`" `MIGRATION.md` row, or a Autopilot
     equivalent + passing unit test + row.
 
-- **`m9-migrate-custom-buildspec`** — port the v2 custom BuildSpec escape hatch  ·  done · wave 8 ·
+- **`m9-migrate-custom-buildspec`** — port the Blueprint custom BuildSpec escape hatch  ·  done · wave 8 ·
   wrapper · migration
-  - **desc:** v2 source: `src/code-pipeline/CDKPipeline.ts` /
+  - **desc:** Blueprint source: `src/code-pipeline/CDKPipeline.ts` /
     `src/resource-providers/CodeBuildFactoryProvider.ts` — pin down the exact escape-hatch surface
-    during migration (not a single dedicated v2 file).
+    during migration (not a single dedicated Blueprint file).
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 8
-  - **notes:** ✅ v2's escape hatch was `CDKPipelineProps.ciBuildSpec`, merged only into the Synth
+  - **notes:** ✅ Blueprint's escape hatch was `CDKPipelineProps.ciBuildSpec`, merged only into the Synth
     `CodeBuildStep`'s `partialBuildSpec` (not `CodeBuildFactoryProvider`'s pipeline-wide
     `codeBuildEnvSettings`, which is a separate migration item). Ported as `CiConfig.partialBuildSpec` /
     `CiConfigInput.partialBuildSpec` (`codebuild.BuildSpec`), deep-merged via `codebuild.mergeBuildSpecs`
     into the CI build project's generated spec in `CodePipelineEngine.project()` — scoped the same way
-    v2 scoped it (CI build only, not self-update or per-stage deploy projects). `npx projen
+    Blueprint scoped it (CI build only, not self-update or per-stage deploy projects). `npx projen
     compile`/`test`/`compat` all green; 3 new unit tests in `CodePipelineEngine.test.ts` cover the merge
     augmenting rather than replacing the engine's own phases, the CI-only scope, and the unchanged
     default (no `partialBuildSpec`) case. **Architect real-AWS deploy-verify** (fresh run, this
@@ -1256,11 +1262,11 @@ not this branch reaching `main`.
     UpdatePipeline's and Deploy-dev's — proving both that the merge really lands on a deployed project
     and that the CI-only scope holds on real AWS, not just in the unit tests. Same run, same teardown
     (see above) — nothing orphaned.
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row. ✅
+  - **acceptance:** Autopilot equivalent + passing unit test + `MIGRATION.md` row. ✅
 
-- **`m9-migrate-log-retention`** — port v2 CloudWatch log-retention control  ·  done · wave 8 ·
+- **`m9-migrate-log-retention`** — port Blueprint CloudWatch log-retention control  ·  done · wave 8 ·
   wrapper · migration
-  - **desc:** v2 source: `src/resource-providers/LoggingProvider.ts` (`ILogger`) and
+  - **desc:** Blueprint source: `src/resource-providers/LoggingProvider.ts` (`ILogger`) and
     `EncryptCloudWatchLogGroupsPlugin.ts` — this item is retention specifically, distinct from the
     encryption plugin already covered by `m9-migrate-security-plugins`.
   - **notes:** Was blocked because `LogRetentionAspect.visit()`'s `node instanceof CfnLogGroup` check
@@ -1276,12 +1282,12 @@ not this branch reaching `main`.
     `RetentionInDays: 365` via `aws logs describe-log-groups`, then `harness.sh destroy level1-app`
     tore down clean (no orphaned resources).
   - **spec:** docs/design/v3-rollout-plan.md #Migration backlog item 11
-  - **acceptance:** v3 equivalent + passing unit test + `MIGRATION.md` row.
+  - **acceptance:** Autopilot equivalent + passing unit test + `MIGRATION.md` row.
 
-- **`m9-migrate-github-actions-engine`** — port GitHub Actions pipeline rendering to a v3 engine  ·
+- **`m9-migrate-github-actions-engine`** — port GitHub Actions pipeline rendering to a Autopilot engine  ·
   done · wave 8 · wrapper · migration
-  - **desc:** v3 today only has GitHub-as-*source* (`Repository.github()`); the *render* capability
-    (emit a GitHub Actions workflow instead of a CodePipeline) would otherwise be lost entirely. v2
+  - **desc:** Autopilot today only has GitHub-as-*source* (`Repository.github()`); the *render* capability
+    (emit a GitHub Actions workflow instead of a CodePipeline) would otherwise be lost entirely. Blueprint
     source: `src/plugins/pipeline/GitHubPipelinePlugin.ts`,
     `src/plugins/pipeline/resources/github/GitHubPipelineProvider.ts`,
     `GitHubRepositoryProvider.ts`. Implement as a new `IEngine` (alongside `CdkPipelinesEngine`/
@@ -1362,9 +1368,9 @@ not this branch reaching `main`.
   - **acceptance:** the isolated repro (patch → real synth → restore → real synth again) succeeds on
     aws-cdk-lib 2.220.0/2.266.0 as well as 2.195.0, and the full wrapper test suite stays green. ✅
 
-- **`m9-migration-gate`** — v2 feature-migration gate  ·  done · wave 8 · shared · migration
+- **`m9-migration-gate`** — Blueprint feature-migration gate  ·  done · wave 8 · shared · migration
   - **desc:** The gate Q4/Q16 describe: once every task above is `done`, the Autopilot line has full
-    v2 feature parity for the features that were decided to migrate (not the dropped ones — see
+    Blueprint feature parity for the features that were decided to migrate (not the dropped ones — see
     `docs/design/v3-rollout-plan.md`'s "Dropped" list, all already reflected in `MIGRATION.md`'s
     mapping table). This is what unblocks flipping the npm `1.0.0`/`latest` dist-tag — it does **not**
     block `v3`→`main` (that's `m8-remove-v2`, already done) or the docs/review stages (5–7).

@@ -16,9 +16,9 @@
 !!! note "Amazon CodeGuru"
 
     Blueprint (0.x) included Amazon CodeGuru Reviewer (CodeCommit pull-request review) and Amazon
-    CodeGuru Security (build-stage SAST scanning). Neither is part of v3 — `cdk-cicd security-scan`
-    (Bandit/Semgrep/ShellCheck) and `cdk-cicd check-dependencies` (CVE scanning) are the v3 replacement
-    for the vulnerability-scanning half; there is no v3 replacement for CodeGuru's pull-request-review
+    CodeGuru Security (build-stage SAST scanning). Neither is part of Autopilot — `cdk-cicd security-scan`
+    (Bandit/Semgrep/ShellCheck) and `cdk-cicd check-dependencies` (CVE scanning) are the Autopilot replacement
+    for the vulnerability-scanning half; there is no Autopilot replacement for CodeGuru's pull-request-review
     automation specifically.
 
 ## Tools description

@@ -55,7 +55,7 @@ export default defineCICD({
 });
 ```
 
-`cdk-cicd deploy-ci` only deploys the OIDC role (`GitHubActionRole`) the generated workflow assumes — the workflow itself is what runs the pipeline once you push it. See the [`v3 pipelines` workshop](../workshops/v3-pipeline/index.md) for a walkthrough.
+`cdk-cicd deploy-ci` only deploys the OIDC role (`GitHubActionRole`) the generated workflow assumes — the workflow itself is what runs the pipeline once you push it. See the [`Autopilot pipelines` workshop](../workshops/autopilot-pipeline/index.md) for a walkthrough.
 
 **Current limitations:**
 

@@ -1,9 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Resolves the pipeline's own VPC networking (v2 `VPCProvider`/`ManagedVPCStack`/`VPCFromLookUpStack`,
-// migrated). v2 provisioned this as its own per-stage CloudFormation stack, driven by a resource
-// provider; v3 attaches it directly to the pipeline's construct tree instead -- there is no separate
+// Resolves the pipeline's own VPC networking (Blueprint `VPCProvider`/`ManagedVPCStack`/`VPCFromLookUpStack`,
+// migrated). Blueprint provisioned this as its own per-stage CloudFormation stack, driven by a resource
+// provider; Autopilot attaches it directly to the pipeline's construct tree instead -- there is no separate
 // stack, because the CodeBuild projects that consume it already live in the same stack this resolves
 // against. `SupportResources.vpcNetworking` is the lazy entry point engines read; `resolveVpcNetworking`
 // is exported separately for `CdkPipelinesEngine`, which does not use `SupportResources`.
@@ -14,7 +14,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { ManagedVpcConfig, VpcConfig } from '../config/types';
 
-/** The default CodeBuild VPC interface endpoints (v2 `ManagedVPCStack.codeBuildVPCInterfaces` default). */
+/** The default CodeBuild VPC interface endpoints (Blueprint `ManagedVPCStack.codeBuildVPCInterfaces` default). */
 const DEFAULT_CODEBUILD_VPC_INTERFACES: ec2.InterfaceVpcEndpointAwsService[] = [
   ec2.InterfaceVpcEndpointAwsService.SSM,
   ec2.InterfaceVpcEndpointAwsService.STS,
@@ -36,9 +36,9 @@ export interface VpcNetworking {
 
 /**
  * Resolve a `VpcConfig` into the networking an engine attaches to its CodeBuild projects. Returns
- * `undefined` for the (default) no-VPC case -- v2's `NoVPCStack`.
+ * `undefined` for the (default) no-VPC case -- Blueprint's `NoVPCStack`.
  *
- * @param useProxy Same flag v2's `VPCProvider` read off `GlobalResources.PROXY`: a managed VPC gets
+ * @param useProxy Same flag Blueprint's `VPCProvider` read off `GlobalResources.PROXY`: a managed VPC gets
  * isolated subnets (no NAT egress; the CodeBuild VPC endpoints cover AWS API calls instead) when a
  * proxy is configured, otherwise subnets with NAT egress.
  */
@@ -56,12 +56,12 @@ export function resolveVpcNetworking(
   return undefined;
 }
 
-/** v2's `ManagedVPCStack`, ported as a plain construct under the caller's own stack. */
+/** Blueprint's `ManagedVPCStack`, ported as a plain construct under the caller's own stack. */
 function buildManagedVpc(scope: Construct, managed: ManagedVpcConfig, useProxy: boolean): VpcNetworking {
   const cidrBlock = managed.cidrBlock ?? '172.31.0.0/20';
   const subnetCidrMask = managed.subnetCidrMask ?? 24;
   const maxAzs = managed.maxAzs ?? 2;
-  // v2 read these with `props.x || true`, which evaluates to `true` even when the caller explicitly
+  // Blueprint read these with `props.x || true`, which evaluates to `true` even when the caller explicitly
   // passed `false` -- a defect ported forward here as `??` so a caller CAN turn either flag off.
   const restrictDefaultSecurityGroup = managed.restrictDefaultSecurityGroup ?? true;
   const allowAllOutbound = managed.allowAllOutbound ?? true;
@@ -110,13 +110,13 @@ function buildManagedVpc(scope: Construct, managed: ManagedVpcConfig, useProxy: 
       trafficType: ec2.FlowLogTrafficType.ALL,
     });
   } else {
-    // v2 shipped flow logs opt-in via flowLogsBucketName (unset by default) -- this is the pipeline's
+    // Blueprint shipped flow logs opt-in via flowLogsBucketName (unset by default) -- this is the pipeline's
     // own internal networking, not a customer workload, and forcing on a flow-log bucket + storage
-    // cost by default would be a behaviour change from v2, not just a nag-compliance fix.
+    // cost by default would be a behaviour change from Blueprint, not just a nag-compliance fix.
     NagSuppressions.addResourceSuppressions(vpc, [
       {
         id: 'AwsSolutions-VPC7',
-        reason: 'Flow logs are opt-in via vpc.managedVpc.flowLogsBucketName (v2 parity); set it to enable them.',
+        reason: 'Flow logs are opt-in via vpc.managedVpc.flowLogsBucketName (Blueprint parity); set it to enable them.',
       },
     ]);
   }
@@ -124,7 +124,7 @@ function buildManagedVpc(scope: Construct, managed: ManagedVpcConfig, useProxy: 
   return { vpc, securityGroups: [securityGroup], subnetSelection: { subnetType } };
 }
 
-/** v2's `VPCFromLookUpStack`: look up an existing VPC by id, optionally resolved from SSM first. */
+/** Blueprint's `VPCFromLookUpStack`: look up an existing VPC by id, optionally resolved from SSM first. */
 function lookupVpc(scope: Construct, vpcId: string): VpcNetworking {
   const resolvedId = vpcId.startsWith('resolve:ssm:')
     ? StringParameter.valueFromLookup(scope, vpcId.replace('resolve:ssm:', ''))

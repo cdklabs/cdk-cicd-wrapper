@@ -26,7 +26,7 @@ export default defineCICD({
 
 `Repository.s3`'s `branch` argument (unlike `codecommit`/`github`) is not read by the S3 source action — the object key alone determines what the pipeline watches, so it is only informational here.
 
-**Note**: unlike Blueprint (0.x)'s `RepositorySource.s3({ bucketName, prefix, roles })`, v3's `Repository.s3(...)` has no `roles` option to scope down bucket access — grant access to the bucket separately if you need to restrict who can push.
+**Note**: unlike Blueprint (0.x)'s `RepositorySource.s3({ bucketName, prefix, roles })`, Autopilot's `Repository.s3(...)` has no `roles` option to scope down bucket access — grant access to the bucket separately if you need to restrict who can push.
 
 ## Cloning the Repository
 

@@ -69,7 +69,7 @@ export class PipelineApp extends App {
 
     engineFor(config, props.disposable ?? false).render(this.pipelineStack, { config, pipelineName: name });
 
-    // Same check and verbosity v2 applies to its pipeline stack. NOTE: in this repository the rules
+    // Same check and verbosity Blueprint applies to its pipeline stack. NOTE: in this repository the rules
     // are inert for the reason given in the file header, so nag findings here can only be measured
     // once that duplication is fixed (task `m4-nag-compliance`) -- do not read a clean run as proof.
     Aspects.of(this).add(new AwsSolutionsChecks({ verbose: false }));

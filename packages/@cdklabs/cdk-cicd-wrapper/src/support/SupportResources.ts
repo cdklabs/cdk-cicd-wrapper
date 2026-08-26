@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The wrapper's own support resources -- the things the PIPELINE needs to exist, as opposed to
-// anything the user's workload declares. v2 provisioned these eagerly from a set of resource
+// anything the user's workload declares. Blueprint provisioned these eagerly from a set of resource
 // providers behind a `ResourceContext` singleton, so every pipeline paid for every support resource
 // whether or not it was used.
 //
-// v3 keeps the concept and drops both the singleton and the string-keyed provider registry: this is
+// Autopilot keeps the concept and drops both the singleton and the string-keyed provider registry: this is
 // an ordinary Construct whose resources are created lazily, on first property read. Nothing here is
 // provisioned unless something asks for it, and the lookups are typed instead of `any` off a map.
-// The remaining v2 support resources (compliance/log bucket, SSM parameters, VPC, proxy) slot in as
+// The remaining Blueprint support resources (compliance/log bucket, SSM parameters, VPC, proxy) slot in as
 // further lazy properties when a milestone needs them.
 
 import { RemovalPolicy, aws_kms as kms, aws_s3 as s3 } from 'aws-cdk-lib';
@@ -30,13 +30,13 @@ export interface SupportResourcesProps {
   readonly vpc?: VpcConfig;
   /**
    * Whether an HTTP(S) proxy is configured (`ResolvedCicdConfig.proxy`). A managed VPC uses isolated
-   * subnets when true, matching v2's `VPCProvider`.
+   * subnets when true, matching Blueprint's `VPCProvider`.
    */
   readonly useProxy?: boolean;
   /**
-   * The name of the compliance/access-log bucket -- v2's `IComplianceBucket.bucketName`
+   * The name of the compliance/access-log bucket -- Blueprint's `IComplianceBucket.bucketName`
    * (`ComplianceBucketProvider`). Required only if `complianceLogBucket` is read; an explicit,
-   * predictable name is what lets other buckets' S3 server-access-logging destination (and v2's
+   * predictable name is what lets other buckets' S3 server-access-logging destination (and Blueprint's
    * cross-region name-substitution convention for multi-region deployments) point at it.
    */
   readonly complianceLogBucketName?: string;
@@ -98,7 +98,7 @@ export class SupportResources extends Construct {
 
   /**
    * VPC + security groups + subnet selection for the pipeline's own CodeBuild projects, if `vpc` was
-   * configured (v2 `VPCProvider`, migrated). `undefined` when not configured. Resolved on first read,
+   * configured (Blueprint `VPCProvider`, migrated). `undefined` when not configured. Resolved on first read,
    * same as every other property here -- a pipeline that never reads this creates no VPC.
    */
   public get vpcNetworking(): VpcNetworking | undefined {
@@ -110,18 +110,18 @@ export class SupportResources extends Construct {
   }
 
   /**
-   * The compliance/access-log destination bucket (v2 `ComplianceBucketProvider` +
+   * The compliance/access-log destination bucket (Blueprint `ComplianceBucketProvider` +
    * `ComplianceLogBucketStack`) -- other buckets' S3 server access logs land here. Created on first
    * read, same as every other property here. Requires `complianceLogBucketName`: unlike
    * `artifactBucket`, this bucket's name must be explicit and predictable so other buckets' logging
-   * configuration (and, cross-region, v2's name-substitution convention) can reference it.
+   * configuration (and, cross-region, Blueprint's name-substitution convention) can reference it.
    *
-   * v2 provisioned this bucket via a custom-resource Lambda so a redeploy could tolerate the bucket
-   * already existing (`BucketAlreadyOwnedByYou`); v3 provisions it as a plain, CloudFormation-managed
-   * `Bucket` instead -- simpler, and the "already exists" case v2 tolerated doesn't arise here since
+   * Blueprint provisioned this bucket via a custom-resource Lambda so a redeploy could tolerate the bucket
+   * already existing (`BucketAlreadyOwnedByYou`); Autopilot provisions it as a plain, CloudFormation-managed
+   * `Bucket` instead -- simpler, and the "already exists" case Blueprint tolerated doesn't arise here since
    * this construct's stack owns the bucket for the life of the pipeline.
    *
-   * Folds in the TLS/SSE policy fix v2's Stage-1 change (`0b7ae02`) made and v3 must not regress:
+   * Folds in the TLS/SSE policy fix Blueprint's Stage-1 change (`0b7ae02`) made and Autopilot must not regress:
    * enforcing encryption-in-transit works with a plain `Bool` condition on `aws:SecureTransport`
    * (`enforceSSL`, below) because that key is always present on every request. Enforcing encryption
    * *at rest* does not: `s3:x-amz-server-side-encryption` is only present in the request context when

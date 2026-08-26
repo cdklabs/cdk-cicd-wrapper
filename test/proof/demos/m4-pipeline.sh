@@ -4,7 +4,7 @@
 #
 # M4 milestone proof: the CodePipeline engine. From a tiny cicd.config.ts and ZERO wrapper code in the
 # app, the wrapper renders ONE flat pipeline -- source, build, a self-updating stage, and one deploy
-# action per stage, with manual-approval gates -- where v2's CDK Pipelines grew 100+ CodeBuild projects.
+# action per stage, with manual-approval gates -- where Blueprint's CDK Pipelines grew 100+ CodeBuild projects.
 #
 #   test/proof/record-demo.sh m4-pipeline
 #
@@ -36,7 +36,7 @@ say "The engine turns the config into a single CodePipeline. Source, a CI Build,
 say "stage that re-deploys the pipeline from config each run, then ONE deploy action per stage."
 say "A non-dev stage is gated: a manual approval is ordered ahead of its deploy."
 run node "${TOUR}" default
-note "4 CodeBuild projects total -- 1 CI, 1 self-update, 1 per stage. v2 grew 100+."
+note "4 CodeBuild projects total -- 1 CI, 1 self-update, 1 per stage. Blueprint grew 100+."
 
 step "The prod gate is fail-closed"
 say "prod's approval runs at run-order 1 and its deploy at 2, so the deploy cannot start until a"
@@ -55,4 +55,4 @@ say "codepipeline put-approval-result), asserts both stage stacks, then tears ev
 say "It has PASSED end to end in the default assembly-promotion model on the test account; every AWS"
 say "call there is redacted, so no account id leaks into this recording."
 
-outro "M4: one config, zero wrapper code in the app, one flat pipeline with gates and self-update -- where v2 grew 100+ projects."
+outro "M4: one config, zero wrapper code in the app, one flat pipeline with gates and self-update -- where Blueprint grew 100+ projects."

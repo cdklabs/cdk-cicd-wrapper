@@ -11,6 +11,13 @@ cd "$(dirname "$0")/.."
 ROOT_DIR="$(pwd)"
 echo "Installing CDK CI/CD Wrapper Debugger MCP server requirements in $ROOT_DIR"
 
+# Require python3 up front with a clear message, rather than letting venv creation
+# fail with a bare "command not found" further down.
+if ! command -v python3 &> /dev/null; then
+    echo "python3 is required to initialize the Debugger MCP server but was not found on PATH." >&2
+    exit 1
+fi
+
 # Create virtual environment if it doesn't exist
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."

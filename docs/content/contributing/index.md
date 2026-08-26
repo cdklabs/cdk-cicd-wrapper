@@ -228,16 +228,16 @@ The available samples can be listed, with the `task samples:list` command.
 !!! warning "The `task samples:dev:*` devloop below is Blueprint (0.x)-era and currently broken"
 
     `Taskfile.sample-app.yml`'s `dev:init`/`dev:build`/`dev:synth`/`dev:deploy` steps assume an
-    npm + [Projen](https://projen.io/)-scaffolded sample (the deleted v2/Blueprint TS sample). Neither
-    sample that remains is one: `samples/cdk-v3-example` (the `SAMPLE_APP` default) has no `.projenrc`
+    npm + [Projen](https://projen.io/)-scaffolded sample (the deleted Blueprint TS sample). Neither
+    sample that remains is one: `samples/cdk-cicd-wrapper-example` (the `SAMPLE_APP` default) has no `.projenrc`
     and no npm `scripts` at all, and `samples/cdk-python-example` has no `package.json` (it's Python) —
     so `task samples:dev:init` fails at its `npm run projen`/`npm run default` step for either.
     Tracked as `migration-sample-app-taskfile-assumes-projen` in `findings.json`. Until that's fixed,
-    use each sample's own README directly instead of the Taskfile — for `cdk-v3-example`:
+    use each sample's own README directly instead of the Taskfile — for `cdk-cicd-wrapper-example`:
 
     ```bash
-    cd samples/cdk-v3-example
-    npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while v3 is pre-release)
+    cd samples/cdk-cicd-wrapper-example
+    npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while Autopilot is pre-release)
     npx cdk-cicd deploy-ci            # provisions the pipeline into the hub account, from cicd.config.ts alone
     ```
 

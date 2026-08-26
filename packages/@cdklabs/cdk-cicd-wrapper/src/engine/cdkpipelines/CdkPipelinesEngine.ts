@@ -1,16 +1,16 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The v2-compatible CD engine: builds the pipeline with **CDK Pipelines** (`aws-cdk-lib/pipelines`), the
-// same construct v2's PipelineBlueprint used. It produces a pipeline that looks like v2's -- a self-
+// The Blueprint-compatible CD engine: builds the pipeline with **CDK Pipelines** (`aws-cdk-lib/pipelines`), the
+// same construct Blueprint's PipelineBlueprint used. It produces a pipeline that looks like Blueprint's -- a self-
 // mutating CodePipeline with a Synth step, an Assets stage, and one wave per deployment stage (with
-// optional pre-approval) -- so a team migrating from v2 gets a familiar shape.
+// optional pre-approval) -- so a team migrating from Blueprint gets a familiar shape.
 //
 // It sits ALONGSIDE the flat CodePipelineEngine (raw aws-codepipeline), not instead of it: the flat
-// engine is the lightweight default; this one is the opt-in for v2 parity. Because CDK Pipelines needs
+// engine is the lightweight default; this one is the opt-in for Blueprint parity. Because CDK Pipelines needs
 // the application's stacks IN the pipeline's own synth (it wraps them as `cdk.Stage`s and self-mutates),
 // this engine cannot be zero-touch like the flat one -- the caller supplies a `stages` factory that
-// builds the app's stacks for a given stage, exactly as v2's `.addStack(...)` did. So it is used from an
+// builds the app's stacks for a given stage, exactly as Blueprint's `.addStack(...)` did. So it is used from an
 // explicit `bin/` (the documented opt-in path), not the `deploy-ci` zero-touch flow.
 
 import { Arn, ArnFormat, Environment, Stack, Stage } from 'aws-cdk-lib';
@@ -34,20 +34,20 @@ export interface CdkPipelinesStageContext {
 }
 
 /**
- * Builds the application's stacks for one deployment stage into the given `cdk.Stage`. This is the v2
+ * Builds the application's stacks for one deployment stage into the given `cdk.Stage`. This is the Blueprint
  * `IStackProvider` equivalent: CDK Pipelines deploys whatever stacks the provider adds to the stage. A
- * behavioural interface (not a bare function) so it crosses the jsii boundary like v2's providers did.
+ * behavioural interface (not a bare function) so it crosses the jsii boundary like Blueprint's providers did.
  */
 export interface IStageProvider {
   /** Add the app's stacks for `context.stageName` into `stage`. */
   stacks(stage: Stage, context: CdkPipelinesStageContext): void;
 }
 
-/** Props for the CDK Pipelines (v2-compatible) engine. */
+/** Props for the CDK Pipelines (Blueprint-compatible) engine. */
 export interface CdkPipelinesEngineProps {
   /** The resolved pipeline configuration (`defineCICD`). */
   readonly config: ResolvedCicdConfig;
-  /** Builds the app's stacks per stage (the v2-compat opt-in — CDK Pipelines needs the stacks in-synth). */
+  /** Builds the app's stacks per stage (the Blueprint-compat opt-in — CDK Pipelines needs the stacks in-synth). */
   readonly stages: IStageProvider;
   /** Pipeline name; defaults to `<application>-pipeline`. */
   readonly pipelineName?: string;
@@ -88,9 +88,9 @@ function sourceFor(scope: Construct, repository: Repository): pipelines.CodePipe
 }
 
 /**
- * A CDK Pipelines pipeline rendered from a v3 config + a stage factory. Reproduces the v2 shape:
+ * A CDK Pipelines pipeline rendered from an Autopilot config + a stage factory. Reproduces the Blueprint shape:
  * Source -> Synth (self-mutating) -> Assets -> one wave per stage (with a pre-approval when the stage is
- * gated). Cross-account keys are on (v2 default) so multi-account stages work.
+ * gated). Cross-account keys are on (Blueprint default) so multi-account stages work.
  */
 export class CdkPipelinesEngine extends Construct {
   public readonly pipeline: pipelines.CodePipeline;
@@ -117,18 +117,18 @@ export class CdkPipelinesEngine extends Construct {
         : []),
     ];
     const ciSteps = Object.values(config.ci.steps);
-    // v2 `VPCProvider`, applied by CDK Pipelines itself to EVERY CodeBuild project it creates (synth,
-    // self-mutation, asset publishing) -- the uniform application v2 had.
+    // Blueprint `VPCProvider`, applied by CDK Pipelines itself to EVERY CodeBuild project it creates (synth,
+    // self-mutation, asset publishing) -- the uniform application Blueprint had.
     const vpcNetworking = resolveVpcNetworking(this, config.vpc, config.proxy !== undefined);
 
     this.pipeline = new pipelines.CodePipeline(this, 'Pipeline', {
       pipelineName: name,
       crossAccountKeys: true,
       enableKeyRotation: true,
-      // v2 `codeBuildEnvSettings` (privileged mode, compute type, environment variables --
+      // Blueprint `codeBuildEnvSettings` (privileged mode, compute type, environment variables --
       // `CodeBuildFactoryProvider` parity) + `vpc` above, both applied by CDK Pipelines itself to EVERY
       // CodeBuild project it creates (synth, self-mutation, asset publishing) -- the uniform application
-      // v2 had.
+      // Blueprint had.
       codeBuildDefaults:
         config.codeBuildEnvSettings !== undefined || vpcNetworking !== undefined
           ? {
@@ -163,8 +163,8 @@ export class CdkPipelinesEngine extends Construct {
     });
 
     // One wave per (stage x region), in config order, wrapping the app stacks the provider builds. A gated
-    // stage gets a manual-approval step ahead of its FIRST region -- the fail-closed promotion gate v2 had.
-    // A multi-region stage becomes one wave per region (v2 deployed each region), not a single dropped one.
+    // stage gets a manual-approval step ahead of its FIRST region -- the fail-closed promotion gate Blueprint had.
+    // A multi-region stage becomes one wave per region (Blueprint deployed each region), not a single dropped one.
     for (const stage of config.stages) {
       const regions = stage.env.regions.length > 0 ? stage.env.regions : [region];
       regions.forEach((stageRegion, i) => {
@@ -188,9 +188,9 @@ export class CdkPipelinesEngine extends Construct {
   /**
    * Suppress the cdk-nag findings on the infrastructure **CDK Pipelines generates for itself** -- the
    * pipeline/synth/self-mutation/assets roles' unavoidable wildcards and the internal artifact and
-   * cross-region replication buckets. This engine runs `AwsSolutionsChecks` (as v2's blueprint did) so the
+   * cross-region replication buckets. This engine runs `AwsSolutionsChecks` (as Blueprint did) so the
    * user's app stacks are still judged on their own merits; only the wrapper-owned pipeline plumbing is
-   * exempted here, with evidence, mirroring v2's `CDKPipeline` suppressions.
+   * exempted here, with evidence, mirroring Blueprint's `CDKPipeline` suppressions.
    */
   private suppressGeneratedPipelineNag(): void {
     // The pipeline construct is entirely wrapper-generated plumbing; its roles read/write the pipeline's

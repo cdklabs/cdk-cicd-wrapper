@@ -14,7 +14,7 @@ function stack(): Stack {
 describe('m9-migrate-log-retention: LogRetentionAspect', () => {
   test('forces the default retention on an L1 log group with none set', () => {
     // The L2 `LogGroup` always sets an explicit retention at synth (defaulting to TWO_YEARS), so it
-    // can never observe "unset" -- exactly the v2 aspect's own limitation, since it also only visits
+    // can never observe "unset" -- exactly the Blueprint aspect's own limitation, since it also only visits
     // `CfnLogGroup` and only fills in a retention that is still `undefined`.
     const s = stack();
     Aspects.of(s).add(new LogRetentionAspect());

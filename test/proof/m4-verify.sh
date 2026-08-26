@@ -11,7 +11,7 @@
 #      dev deploy -> prod approval -> prod deploy. The gate drives the approval via
 #      `aws codepipeline put-approval-result`.
 #   4. Assert the dev (us-west-2) and prod (us-west-1) app stacks really deployed,
-#      and record the CodeBuild project count -- the flat-footprint claim vs v2's 100+.
+#      and record the CodeBuild project count -- the flat-footprint claim vs Blueprint's 100+.
 #   5. Tear everything down: the app stacks, the pipeline stack (its --disposable
 #      bucket/key go with it), and the S3 source bucket. Nothing left behind.
 #
@@ -452,11 +452,11 @@ main_m4() {
   fi
 
   if [ "$rc" = 0 ]; then
-    # --- record the footprint: the whole point vs v2's 100+ CodeBuild projects -------------------
+    # --- record the footprint: the whole point vs Blueprint's 100+ CodeBuild projects -------------------
     local projects
     projects="$(aws_masked cloudformation list-stack-resources --stack-name "$pstack" --region "$DEV_REGION" \
                   --query "length(StackResourceSummaries[?ResourceType=='AWS::CodeBuild::Project'])" --output text)" || true
-    log "FOOTPRINT: the pipeline stack has $projects CodeBuild project(s) (v2 grew 100+)"
+    log "FOOTPRINT: the pipeline stack has $projects CodeBuild project(s) (Blueprint grew 100+)"
     # ASSERT it, do not merely print it: 1 CI + 1 self-update + 1 per stage. Logging alone means a
     # regression that drops the self-update project, or reintroduces per-asset sprawl, still passes the
     # gate whose whole purpose is the flat footprint.

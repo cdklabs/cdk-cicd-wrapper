@@ -1,16 +1,16 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The GitHub Actions engine (v2 `GitHubPipelinePlugin`/`GitHubPipelineProvider`/`GitHubRepositoryProvider`,
+// The GitHub Actions engine (Blueprint `GitHubPipelinePlugin`/`GitHubPipelineProvider`/`GitHubRepositoryProvider`,
 // migrated). It renders a `.github/workflows/deploy.yml` (via `cdk-pipelines-github`'s `GitHubWorkflow`)
-// instead of an AWS-hosted pipeline -- v3's only other engines (`CodePipelineEngine`/`CdkPipelinesEngine`)
+// instead of an AWS-hosted pipeline -- Autopilot's only other engines (`CodePipelineEngine`/`CdkPipelinesEngine`)
 // both provision a real CodePipeline/CodeBuild footprint; this one deploys nothing of its own except the
 // OIDC role the workflow assumes. It mechanically mirrors `CdkPipelinesEngine`, not the flat engine: GitHub
 // Actions needs every stage built as a `cdk.Stage` inside one synth (the same CDK Pipelines constraint), so
 // it takes the same `stages: IStageProvider` the CDK Pipelines engine does, and `cdk-cicd exec` assembles it
 // the same way (replaying the plain `bin` once per configured stage -- see runtime/pipeline-assembler).
 //
-// Unlike v2, the OIDC role's ARN is never read off the constructed `iam.Role` (a CDK token): the workflow
+// Unlike Blueprint, the OIDC role's ARN is never read off the constructed `iam.Role` (a CDK token): the workflow
 // file is a plain-text YAML `cdk-pipelines-github` writes to disk at synth time, NOT a CloudFormation
 // template, so it cannot resolve a token -- only a literal string ends up in the file as-is. `roleName` is
 // therefore always literal (explicit or a derived default). The partition is looked up from the stack's
@@ -44,10 +44,10 @@ export interface GitHubActionsEngineProps {
 }
 
 /**
- * A GitHub Actions workflow rendered from a v3 config + a stage factory. Reproduces the v2 shape: a
+ * A GitHub Actions workflow rendered from an Autopilot config + a stage factory. Reproduces the Blueprint shape: a
  * `GitHubActionRole` the workflow assumes over OIDC, a Synth job, and one job (with a GitHub Environment,
  * so an environment protection rule set up on GitHub's side gates it) per deployment stage. Manual-approval
- * config is NOT translated into a CDK step here -- as in v2, GitHub Environments are the gate; every stage
+ * config is NOT translated into a CDK step here -- as in Blueprint, GitHub Environments are the gate; every stage
  * gets its own environment regardless of `manualApproval`, and gating is configured in the GitHub UI.
  */
 export class GitHubActionsEngine extends Construct {
@@ -104,7 +104,7 @@ export class GitHubActionsEngine extends Construct {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'Wildcard required for the GitHubActionRole trust/permission policy (cdk-pipelines-github generated), mirroring v2.',
+            'Wildcard required for the GitHubActionRole trust/permission policy (cdk-pipelines-github generated), mirroring Blueprint.',
         },
       ],
       true,
@@ -145,7 +145,7 @@ export class GitHubActionsEngine extends Construct {
     // jobs, `cdk-pipelines-github` does not inject them into the Synth job automatically (see the Synth
     // job's own comment in `pipeline.js`: "does not use the GitHub Action Role on its own"). Patched in
     // right after the checkout step (index 1), ahead of the install/build commands that need it -- same
-    // fixed job/step addressing v2 used (the synth step is always named 'Synth', so the job is always
+    // fixed job/step addressing Blueprint used (the synth step is always named 'Synth', so the job is always
     // `Build-Synth`, and checkout is always the first step `cdk-pipelines-github` emits).
     // Inserted in order, each patch computed against the array as it will look once the ones before it
     // have applied -- so the credential step (when present) always lands ahead of the login step.

@@ -21,7 +21,7 @@ export enum RegionOrder {
 
 /** Which stack synthesizer the wrapper installs. */
 export enum SynthesizerType {
-  /** `DefaultStackSynthesizer` -- the v3 default. */
+  /** `DefaultStackSynthesizer` -- the Autopilot default. */
   DEFAULT = 'default',
   /** `AppStagingSynthesizer` -- opt-in, still alpha. */
   APP_STAGING = 'app_staging',
@@ -30,19 +30,19 @@ export enum SynthesizerType {
 /** Which CI/CD engine renders the pipeline. */
 export enum EngineType {
   /**
-   * The lightweight flat engine on raw `aws-cdk-lib/aws-codepipeline` -- the v3 default. Its deploy
+   * The lightweight flat engine on raw `aws-cdk-lib/aws-codepipeline` -- the Autopilot default. Its deploy
    * stages re-invoke the app per stage, so the user's `bin` stays a plain single-stage app.
    */
   CODEPIPELINE = 'codepipeline',
   /**
-   * The v2-compatible self-mutating pipeline on `aws-cdk-lib/pipelines` (Source -> Synth -> Assets ->
+   * The Blueprint-compatible self-mutating pipeline on `aws-cdk-lib/pipelines` (Source -> Synth -> Assets ->
    * one wave per stage). `cdk-cicd exec` assembles it by replaying the plain `bin` once per configured
    * stage (see runtime/pipeline-assembler), so the user's `bin` still needs no wrapper code.
    */
   CDK_PIPELINES = 'cdk-pipelines',
   /**
-   * Renders a GitHub Actions workflow (`cdk-pipelines-github`) instead of an AWS-hosted pipeline (v2
-   * `GitHubPipelinePlugin`, migrated). Like `CDK_PIPELINES`, it needs every stage built as a `cdk.Stage`
+   * Renders a GitHub Actions workflow (`cdk-pipelines-github`) instead of an AWS-hosted pipeline
+   * (Blueprint `GitHubPipelinePlugin`, migrated). Like `CDK_PIPELINES`, it needs every stage built as a `cdk.Stage`
    * inside one synth, so `cdk-cicd exec` assembles it the same way -- replaying the plain `bin` once per
    * configured stage.
    */
@@ -51,7 +51,7 @@ export enum EngineType {
 
 /**
  * GitHub Actions engine configuration: the OIDC role the workflow assumes plus the workflow file's own
- * identity (v2 `GitHubPipelinePluginOptions`, migrated). Only read when `engine` is `GITHUB_ACTIONS`;
+ * identity (Blueprint `GitHubPipelinePluginOptions`, migrated). Only read when `engine` is `GITHUB_ACTIONS`;
  * `repository` must be `Repository.github(...)` in that case (the workflow runs where GitHub already
  * checked the source out, so there is no CodeStar-connection source action to build).
  */
@@ -90,7 +90,7 @@ export interface GitHubActionsConfig {
  */
 export enum DeployModel {
   /**
-   * The default, and what v2 did: the CI/build phase synthesizes every stage **once** and keeps
+   * The default, and what Blueprint did: the CI/build phase synthesizes every stage **once** and keeps
    * `cdk.out`, which is promoted as the pipeline artifact. Each deploy stage consumes that assembly and
    * performs no synth of its own -- one synth per pipeline run.
    */
@@ -120,9 +120,9 @@ export interface CiConfig {
   /** Optional CodeBuild image override. */
   readonly image?: string;
   /**
-   * Escape hatch (v2 `CDKPipelineProps.ciBuildSpec`, migrated): deep-merged into the CI build project's
+   * Escape hatch (Blueprint `CDKPipelineProps.ciBuildSpec`, migrated): deep-merged into the CI build project's
    * generated buildspec via `codebuild.mergeBuildSpecs`, augmenting rather than replacing the engine's
-   * own phases. Scoped the same way v2 scoped it -- the CI build project only, not self-update or
+   * own phases. Scoped the same way Blueprint scoped it -- the CI build project only, not self-update or
    * per-stage deploy projects.
    */
   readonly partialBuildSpec?: codebuild.BuildSpec;
@@ -148,7 +148,7 @@ export interface CodeArtifactConfig {
 }
 
 /**
- * HTTP(S) proxy configuration for the pipeline's CodeBuild projects (v2 `IProxyConfig`, migrated).
+ * HTTP(S) proxy configuration for the pipeline's CodeBuild projects (Blueprint `IProxyConfig`, migrated).
  * When set, every build project reads proxy credentials from Secrets Manager, exports
  * `HTTP(S)_PROXY` before running its install commands, and curls `proxyTestUrl` to prove the tunnel
  * works before the real install runs.
@@ -169,8 +169,8 @@ export interface ProxyConfig {
 }
 
 /**
- * A generic private npm registry the pipeline's builds authenticate against with a bearer token (v2
- * `NPMRegistryConfig`, migrated). Unlike `CodeArtifactConfig` (an `aws codeartifact login`), this covers
+ * A generic private npm registry the pipeline's builds authenticate against with a bearer token
+ * (Blueprint `NPMRegistryConfig`, migrated). Unlike `CodeArtifactConfig` (an `aws codeartifact login`), this covers
  * any npm-compatible registry: when set, every build project writes a `.npmrc` -- scoped to `scope` when
  * given, otherwise overriding the default registry -- with an auth token read from Secrets Manager.
  */
@@ -184,8 +184,8 @@ export interface NpmRegistryConfig {
 }
 
 /**
- * VPC configuration for a wrapper-managed VPC (v2 `IManagedVpcConfig`, migrated from `VPCProvider`).
- * Every field is optional; an unset field takes v2's original default.
+ * VPC configuration for a wrapper-managed VPC (Blueprint `IManagedVpcConfig`, migrated from `VPCProvider`).
+ * Every field is optional; an unset field takes Blueprint's original default.
  */
 export interface ManagedVpcConfig {
   /** CIDR block for the VPC. @default '172.31.0.0/20' */
@@ -197,7 +197,7 @@ export interface ManagedVpcConfig {
   /**
    * The subnets the VPC's CodeBuild projects run in. Defaults to `PRIVATE_ISOLATED` when a `proxy`
    * is configured (no NAT egress; the CodeBuild VPC endpoints below cover AWS API calls instead) and
-   * `PRIVATE_WITH_EGRESS` otherwise -- the rule v2's `VPCProvider` applied.
+   * `PRIVATE_WITH_EGRESS` otherwise -- the rule Blueprint's `VPCProvider` applied.
    */
   readonly subnetType?: ec2.SubnetType;
   /**
@@ -208,8 +208,8 @@ export interface ManagedVpcConfig {
   /** Allow all outbound traffic by default from the security group the wrapper creates. @default true */
   readonly allowAllOutbound?: boolean;
   /**
-   * S3 bucket to send VPC flow logs to. v2 always used the RES stage's compliance-log bucket
-   * implicitly; v3 has not migrated that bucket yet (`m9-migrate-compliance-bucket`), so this is an
+   * S3 bucket to send VPC flow logs to. Blueprint always used the RES stage's compliance-log bucket
+   * implicitly; Autopilot has not migrated that bucket yet (`m9-migrate-compliance-bucket`), so this is an
    * explicit prop instead -- omit to skip flow logs.
    */
   readonly flowLogsBucketName?: string;
@@ -221,7 +221,7 @@ export interface ManagedVpcConfig {
 }
 
 /**
- * VPC configuration for the pipeline's own CodeBuild projects (v2 `IVpcConfig`, migrated from
+ * VPC configuration for the pipeline's own CodeBuild projects (Blueprint `IVpcConfig`, migrated from
  * `VPCProvider`). Set `managedVpc` to have the wrapper create a VPC, or `vpcId` to look up an
  * existing one; setting neither -- the default -- runs every CodeBuild project without a VPC.
  */
@@ -230,7 +230,7 @@ export interface VpcConfig {
   readonly managedVpc?: ManagedVpcConfig;
   /**
    * Look up an existing VPC by id. A value starting with `resolve:ssm:` is resolved from the named
-   * SSM parameter at synth time instead of being used literally (v2 `VPCFromLookUpStack` parity).
+   * SSM parameter at synth time instead of being used literally (Blueprint `VPCFromLookUpStack` parity).
    */
   readonly vpcId?: string;
 }
@@ -295,19 +295,19 @@ export interface ResolvedCicdConfig {
   readonly npmRegistry?: NpmRegistryConfig;
   /** HTTP(S) proxy every build project routes through, if any. */
   readonly proxy?: ProxyConfig;
-  /** VPC every CodeBuild project the pipeline creates runs in, if configured (v2 `VPCProvider`, migrated). */
+  /** VPC every CodeBuild project the pipeline creates runs in, if configured (Blueprint `VPCProvider`, migrated). */
   readonly vpc?: VpcConfig;
   /**
-   * The name of the compliance/access-log destination bucket, if configured (v2
+   * The name of the compliance/access-log destination bucket, if configured (Blueprint
    * `ComplianceBucketProvider`/`ComplianceLogBucketStack`, migrated). Threaded into
    * `SupportResources.complianceLogBucket`; see there for the bucket's shape.
    */
   readonly complianceLogBucketName?: string;
   /**
    * CodeBuild environment overrides -- privileged mode, compute type, environment variables -- applied
-   * to every CodeBuild project the pipeline creates (v2 `codeBuildEnvSettings`, migrated from
+   * to every CodeBuild project the pipeline creates (Blueprint `codeBuildEnvSettings`, migrated from
    * `CodeBuildFactoryProvider`/`PipelineBlueprint.codeBuildEnvSettings(...)`). Reuses CDK's own
-   * `BuildEnvironment` rather than a bespoke type, so it stays a drop-in for v2 callers. `buildImage`
+   * `BuildEnvironment` rather than a bespoke type, so it stays a drop-in for Blueprint callers. `buildImage`
    * here is a full `IBuildImage` (e.g. an ARM or GPU managed image); it is distinct from the engines'
    * own `buildImage` constructor prop, which takes a Docker-registry image string -- that prop wins
    * when both are set.

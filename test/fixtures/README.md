@@ -1,4 +1,4 @@
-# v3 test fixtures
+# Autopilot test fixtures
 
 CDK apps that the proof harness (`test/proof/harness.sh`) deploys, asserts and destroys against the
 real test account. They are deliberately shaped like output a *user* would have, not like code this

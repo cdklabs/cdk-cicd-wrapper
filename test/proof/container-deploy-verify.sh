@@ -10,7 +10,7 @@
 # This is the slice-2 companion to container-verify.sh (which proves slice-1: build+push an image to ECR).
 # Here the image is built locally (slice-1 already proved the ECR push) and RUN to deploy. Uses the
 # gitignored .env + ambient creds; every AWS call redacted; the deployed stack is torn down on exit.
-# Requires docker and the locally packed v3 tarballs (development/v3-tgz/*.tgz -- `npm pack` per package).
+# Requires docker and the locally packed Autopilot tarballs (development/v3-tgz/*.tgz -- `npm pack` per package).
 # =============================================================================
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -35,13 +35,13 @@ main_deploy() {
   local wrapper_tgz cli_tgz
   wrapper_tgz="$(ls "$tgz_dir"/cdklabs-cdk-cicd-wrapper-*.tgz 2>/dev/null | grep -v -- '-cli-' | head -1)"
   cli_tgz="$(ls "$tgz_dir"/cdklabs-cdk-cicd-wrapper-cli-*.tgz 2>/dev/null | head -1)"
-  [ -f "$wrapper_tgz" ] && [ -f "$cli_tgz" ] || die "missing v3 tarballs in $tgz_dir (run: npm pack per package)"
+  [ -f "$wrapper_tgz" ] && [ -f "$cli_tgz" ] || die "missing Autopilot tarballs in $tgz_dir (run: npm pack per package)"
 
   local bundle rc=0
   bundle="$(mktemp -d)"
 
   # --- bundle: level1 fixture + vendored deps (wrapper CLI from the local tgz) ----------------------
-  log 'leg 1: assemble the deployer bundle (level1 fixture + vendored v3 deps)'
+  log 'leg 1: assemble the deployer bundle (level1 fixture + vendored Autopilot deps)'
   cp -r "$(fixture_dir "$FIXTURE")/." "$bundle/"
   cp "$wrapper_tgz" "$bundle/wrapper.tgz"
   cp "$cli_tgz" "$bundle/cli.tgz"

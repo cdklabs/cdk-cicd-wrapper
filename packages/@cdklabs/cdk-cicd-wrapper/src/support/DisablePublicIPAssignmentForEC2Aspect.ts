@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// v2 shipped this as `DisablePublicIPAssignmentForEC2Plugin`, on by default
-// (m9-migrate-security-plugins). v3 has no plugin registry -- it is a plain `IAspect`, wired
+// Blueprint shipped this as `DisablePublicIPAssignmentForEC2Plugin`, on by default
+// (m9-migrate-security-plugins). Autopilot has no plugin registry -- it is a plain `IAspect`, wired
 // tree-wide by the runtime injection hook (m2-attach/m2-register) alongside cdk-nag, tags and log
 // retention.
 //
@@ -18,7 +18,7 @@ import { IConstruct } from 'constructs';
 const SUBNET_RESOURCE_TYPE = 'AWS::EC2::Subnet';
 
 /**
- * Forces `MapPublicIpOnLaunch: false` on every VPC subnet it visits, matching v2's default-on
+ * Forces `MapPublicIpOnLaunch: false` on every VPC subnet it visits, matching Blueprint's default-on
  * `DisablePublicIPAssignmentForEC2Plugin`.
  */
 export class DisablePublicIPAssignmentForEC2Aspect implements IAspect {

@@ -45,7 +45,6 @@ export class RootConfig extends yarn.Monorepo {
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
       projenrcTs: true,
       defaultReleaseBranch: 'main',
-      majorVersion: 1,
       // Floor required by cdklabs-projen-project-types 0.5.x
       projenVersion: '^0.99.68',
       devDeps: [
@@ -111,6 +110,14 @@ export class RootConfig extends yarn.Monorepo {
         releaseTrigger: pj.release.ReleaseTrigger.continuous({
           paths: ['packages/*', 'package.json'],
         }),
+        // Must live here, not as a top-level project option: yarn.Monorepo always passes
+        // `release: false` to the underlying TypeScriptProject regardless of this class's own
+        // `release` flag, so a top-level `majorVersion`/`minMajorVersion` builds no Release/Version
+        // component at all and has zero effect anywhere -- which is exactly how the Autopilot breaking
+        // release shipped as 0.4.0 instead of 1.0.0. Set here, in `releaseOptions`, it reaches the
+        // internal MonorepoRelease component and is inherited by every workspace (PipelineConfig,
+        // CLIConfig).
+        minMajorVersion: 1,
       },
       githubOptions: {
         dependencyReview: true,
@@ -125,7 +132,6 @@ export class RootConfig extends yarn.Monorepo {
           },
         },
       },
-      prerelease: 'alpha',
       stability: 'experimental',
       gitignore: [
         'docs/build',
@@ -180,6 +186,17 @@ export class RootConfig extends yarn.Monorepo {
 
     this.configureHusky();
     this.configureContributors();
+
+    this.ignoreProofArtifacts();
+  }
+
+  /**
+   * D3 (task.md), amended twice on 2026-08-26: docs/proof/ is generated and reviewed locally,
+   * never committed -- not the recordings, not its README index. Everything previously tracked
+   * there was removed from git (`git rm --cached`); kept on disk, not deleted.
+   */
+  private ignoreProofArtifacts() {
+    this.addGitIgnore('docs/proof/');
   }
 
   /**

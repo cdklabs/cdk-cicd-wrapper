@@ -28,7 +28,7 @@
           "type": "string"
         },
         "component": {
-          "description": "Ownership axis — the two published packages in packages/@cdklabs/ (see CLAUDE.md -> 'Toolchain'), plus 'shared' for findings that genuinely span more than one (e.g. a type exported by cdk-cicd-wrapper and consumed by the CLI, or the register hook contract the CLI's exec depends on). Findings about process, tooling, samples, or docs that aren't about a specific package (e.g. this schema file, projen config, the test harness) go under 'infra'. 'wrapper' = @cdklabs/cdk-cicd-wrapper (the jsii constructs library). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. There was a third value, 'projen' (@cdklabs/cdk-cicd-wrapper-projen); v3 removed that package (task.md D5, consolidation 3→2) and no finding used the value, so it was retired with it.",
+          "description": "Ownership axis — the two published packages in packages/@cdklabs/ (see CLAUDE.md -> 'Toolchain'), plus 'shared' for findings that genuinely span more than one (e.g. a type exported by cdk-cicd-wrapper and consumed by the CLI, or the register hook contract the CLI's exec depends on). Findings about process, tooling, samples, or docs that aren't about a specific package (e.g. this schema file, projen config, the test harness) go under 'infra'. 'wrapper' = @cdklabs/cdk-cicd-wrapper (the jsii constructs library). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. There was a third value, 'projen' (@cdklabs/cdk-cicd-wrapper-projen); Autopilot removed that package (task.md D5, consolidation 3→2) and no finding used the value, so it was retired with it.",
           "type": "string",
           "enum": ["wrapper", "cli", "shared", "infra"]
         },
@@ -38,7 +38,7 @@
           "enum": ["static", "dynamic", "production"]
         },
         "producer": {
-          "description": "What emitted the finding, named for the durable role rather than today's specific tool so the value survives past any one effort. 'qa' = jest (each package's test/**) or the real-AWS deploy harness failures/gaps. 'code-review' = the security-review or code-review skill run against pending changes. 'migration' = gaps found while carrying out whichever large structural migration is currently underway — today, the v2->v3 rework (see docs/design/v3-devops-experience.md, task.md); update this description, not the enum value, when a different migration takes its place. 'planning' = design/spec gaps surfaced before implementation starts (design-doc authoring, a grilling session, resolving a task.md D<n> decision).",
+          "description": "What emitted the finding, named for the durable role rather than today's specific tool so the value survives past any one effort. 'qa' = jest (each package's test/**) or the real-AWS deploy harness failures/gaps. 'code-review' = the security-review or code-review skill run against pending changes. 'migration' = gaps found while carrying out whichever large structural migration is currently underway — today, the Blueprint->v3 rework (see docs/design/v3-devops-experience.md, task.md); update this description, not the enum value, when a different migration takes its place. 'planning' = design/spec gaps surfaced before implementation starts (design-doc authoring, a grilling session, resolving a task.md D<n> decision).",
           "type": "string",
           "enum": ["qa", "code-review", "migration", "planning"]
         },

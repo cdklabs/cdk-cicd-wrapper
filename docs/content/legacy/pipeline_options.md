@@ -1,13 +1,13 @@
 # Advanced Pipeline Configuration Options
 
-!!! warning "Blueprint (0.x) only — dropped in v3"
+!!! warning "Blueprint (0.x) only — dropped in Autopilot"
 
     `.pipelineOptions()` (`selfMutation`/`publishAssetsInParallel`/`dockerCredentials`/`useChangeSets`)
     configured the CDK Pipelines-based engine directly. Confirmed against source:
     `CdkPipelinesEngineProps` (`packages/@cdklabs/cdk-cicd-wrapper/src/engine/cdkpipelines/CdkPipelinesEngine.ts`)
-    exposes only `config`, `stages`, and `pipelineName` — none of these four knobs exist in v3's
+    exposes only `config`, `stages`, and `pipelineName` — none of these four knobs exist in Autopilot's
     `CdkPipelinesEngine`, and there is no other config surface (`cicd.config.ts`) that reaches them.
-    They are dropped, not deferred; there is no v3 equivalent today.
+    They are dropped, not deferred; there is no Autopilot equivalent today.
 
 These new options allow you to configure the [AWS CDK CodePipeline](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.pipelines.CodePipeline.html) values.
 
