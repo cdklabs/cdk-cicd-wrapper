@@ -14,9 +14,25 @@
 set -u
 
 missing=''
-for tool in node yarn jq python3; do
+for tool in node yarn jq; do
   command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
 done
+
+# Accept either interpreter name -- `python3` is the common case, but `python` is what
+# resolves on some machines/containers. There's no directory-encoded version to parse off
+# the resolved path (unlike node below), so the version has to be queried by running it.
+py_bin=''
+for cand in python3 python; do
+  command -v "$cand" >/dev/null 2>&1 && { py_bin="$cand"; break; }
+done
+py_ok='no'
+if [[ -n "$py_bin" ]]; then
+  py_ver="$("$py_bin" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null)"
+  py_major="${py_ver%%.*}"
+  py_minor="${py_ver#*.}"
+  if (( ${py_major:-0} > 3 || (${py_major:-0} == 3 && ${py_minor:-0} >= 12) )); then py_ok='yes'; fi
+fi
+[[ "$py_ok" == 'yes' ]] || missing="$missing python3.12+"
 
 # What major does CI build on? Read it out of the workflows rather than hardcoding a number that goes
 # stale the moment CI bumps. Pure builtins: `read` on a file, glob matching via `case`. `lts/*` carries
@@ -79,7 +95,7 @@ fi
 case "$node_bin" in *'"'*|*'\'*) node_bin='' ;; esac
 
 if [[ -z "$missing" ]]; then
-  msg='Toolchain preflight: node, yarn, jq and python3 all resolve on PATH. Nothing to do.'
+  msg='Toolchain preflight: node, yarn and jq resolve on PATH, and python 3.12+ is available. Nothing to do.'
 else
   msg="Toolchain preflight: not on PATH ->$missing."
   if [[ -n "$node_bin" ]]; then
