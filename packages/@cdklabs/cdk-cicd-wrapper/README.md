@@ -4,6 +4,12 @@
 
 The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper/) is a comprehensive solution that streamlines the delivery of your AWS Cloud Development Kit (CDK) applications. It provides a robust and standardized multi-stage CI/CD pipeline, ensuring high quality and confidence throughout the development and deployment process.
 
+> **Note:** This is the actively maintained **0.x (`PipelineBlueprint`) line**, published from the
+> `legacy-blueprint` branch under the npm `latest` dist-tag — `npm install @cdklabs/cdk-cicd-wrapper`
+> without a version pin continues to resolve here. A ground-up v3 rewrite is developed separately and
+> publishes under the `next` dist-tag until it reaches 1.0.0; the docs site linked above tracks v3, not
+> this package version.
+
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -59,7 +65,7 @@ For developing Python Lambdas, you'll also need:
 1. Clone the CDK CI/CD Wrapper repository:
 
    ```bash
-   git clone https://github.com/your-repo/cdk-cicd-wrapper.git
+   git clone https://github.com/cdklabs/cdk-cicd-wrapper.git
    cd cdk-cicd-wrapper
    ```
 

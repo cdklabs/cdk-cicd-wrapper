@@ -3,6 +3,10 @@
 
 /* eslint-disable no-console */
 
+// This package tracks the 0.x (PipelineBlueprint) maintenance line, published from the
+// `legacy-blueprint` branch under the npm `latest` dist-tag. The v3 rewrite develops
+// separately and publishes under the `next` dist-tag until it reaches 1.0.0.
+
 import * as yargs from 'yargs';
 import checkDependencies from './cmds/CheckDependenciesCommand';
 import complianceBucket from './cmds/ComplianceBucketCommand';

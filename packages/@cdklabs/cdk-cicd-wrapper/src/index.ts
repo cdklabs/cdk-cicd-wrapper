@@ -3,6 +3,10 @@
 
 /**
  * This file exports various modules from other files within the project.
+ *
+ * This package tracks the 0.x (PipelineBlueprint) maintenance line, published from the
+ * `legacy-blueprint` branch under the npm `latest` dist-tag. The v3 rewrite develops
+ * separately and publishes under the `next` dist-tag until it reaches 1.0.0.
  */
 
 // Exporting all exports from the './common' file
