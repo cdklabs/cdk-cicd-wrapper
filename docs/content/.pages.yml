@@ -4,6 +4,7 @@ nav:
   - Getting started: getting_started
   - Developer Guides: developer_guides
   - CLI Reference: cli
+  - API Reference: https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/API.md
   - MCP Servers: mcp
   - FAQs: faqs
   - Contributing: contributing
