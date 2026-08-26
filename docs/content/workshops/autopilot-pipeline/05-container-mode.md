@@ -1,11 +1,8 @@
 # Container mode: build once, deploy many
 
-!!! abstract "What you'll build"
-    - **Repo 1 — CI pipeline:** runs CI and pushes a config-agnostic deployer image to ECR — it deploys
-      nothing.
-    - **Repo 2 — CD pipeline:** a config-only `deploy.config.ts` whose pipeline pulls that image and
-      deploys each target (or run the same executor locally with `cdk-cicd deploy --from-image`).
-    - An understanding of the "one image → many deployments" scale-out and rollback-by-retag.
+!!! abstract "What you'll build" - **Repo 1 — CI pipeline:** runs CI and pushes a config-agnostic deployer image to ECR — it deploys
+nothing. - **Repo 2 — CD pipeline:** a config-only `deploy.config.ts` whose pipeline pulls that image and
+deploys each target (or run the same executor locally with `cdk-cicd deploy --from-image`). - An understanding of the "one image → many deployments" scale-out and rollback-by-retag.
 
 For an enterprise / "Automation Framework" flow, Autopilot supports a **two-repo split**:
 
@@ -27,7 +24,7 @@ export default defineCICD({
   application: 'my-app',
   repository: Repository.github('my-org/my-app'),
   deployerImage: BuildImage.docker({
-    dockerfile: 'Dockerfile',      // default; the image payload is your app + deps, NOT cdk.out
+    dockerfile: 'Dockerfile', // default; the image payload is your app + deps, NOT cdk.out
     // repositoryName: 'my-app-deployer',   // reference an existing ECR repo; omit to provision one
     // tagStrategy: ImageTagStrategy.GIT_SHA,  // default: tag by commit; or LATEST
   }),
@@ -72,15 +69,19 @@ export default defineDeployment({
 
   // Targets say WHERE (account/region/role) + gating. The VERSION each runs comes from config/<stage>.json.
   targets: [
-    { stage: 'dev',  env: { account: '111111111111', region: 'eu-west-1' } },
-    { stage: 'int',  env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
-    { stage: 'prod', env: { account: '222222222222', regions: ['eu-west-1', 'us-east-1'] },
-      manualApproval: true, deployment: { deployRole: 'arn:aws:iam::222222222222:role/automation-deployer' } },
+    { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } },
+    { stage: 'int', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
+    {
+      stage: 'prod',
+      env: { account: '222222222222', regions: ['eu-west-1', 'us-east-1'] },
+      manualApproval: true,
+      deployment: { deployRole: 'arn:aws:iam::222222222222:role/automation-deployer' },
+    },
   ],
 });
 ```
 
-Each stage's **version lives in its own config file** in the CD repo (a hash or semver) — *not* baked in
+Each stage's **version lives in its own config file** in the CD repo (a hash or semver) — _not_ baked in
 the image:
 
 ```jsonc
@@ -103,50 +104,47 @@ This renders a second CodePipeline with **one Deploy action per target**. Each a
   `dev` can run a newer version than `prod`, and the version is plain config, reviewable in a PR.
 - **Parallel deploys:** ungated targets deploy in parallel; a gated target (e.g. `int`/`prod`) waits on its
   **manual-approval** action, then runs — so `int` and `prod` promote in parallel once approved.
-- **Two pipelines total:** the CI pipeline (Repo 1) *pushes* the image; the CD pipeline (Repo 2) *pulls* it.
+- **Two pipelines total:** the CI pipeline (Repo 1) _pushes_ the image; the CD pipeline (Repo 2) _pulls_ it.
 
 <!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (per-target actions) -->
 
 <!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (CodeBuild) -->
 
 !!! tip "Run it locally without a pipeline"
-    The CodeBuild step is just the `cdk-cicd deploy --from-image --yes` executor, which you can also run
-    from any machine or CI runner (it pulls the image and deploys each target). Omit `repository` from
-    `deploy.config.ts` to use only the local executor with no CD pipeline. On a runner whose default docker
-    network can't reach AWS, add `--docker-network host`.
+The CodeBuild step is just the `cdk-cicd deploy --from-image --yes` executor, which you can also run
+from any machine or CI runner (it pulls the image and deploys each target). Omit `repository` from
+`deploy.config.ts` to use only the local executor with no CD pipeline. On a runner whose default docker
+network can't reach AWS, add `--docker-network host`.
 
 Either way, the pinned image runs **once per (target × region)**: for each run the container synthesizes
 that stage against the target's injected environment — offline, inside the image — and deploys the result.
-One build produces one image, and that image drives *N* deploys.
+One build produces one image, and that image drives _N_ deploys.
 
 !!! info "Division of authority: WHAT vs WHERE"
-    The **image** is authoritative for *what* to deploy — the app code and its stage definitions are baked
-    in at build time. The **`deploy.config.ts` target** is authoritative for *where* — the account,
-    region(s), and role for each stage. A target's `deployment.deployRole` (chapter 2's shape) is threaded
-    through to each target's deploy.
+The **image** is authoritative for _what_ to deploy — the app code and its stage definitions are baked
+in at build time. The **`deploy.config.ts` target** is authoritative for _where_ — the account,
+region(s), and role for each stage. A target's `deployment.deployRole` (chapter 2's shape) is threaded
+through to each target's deploy.
 
-!!! warning "Manual-approval gates today"
-    A target's `manualApproval: true` is honored by the **local executor** (`cdk-cicd deploy --from-image`
-    is fail-closed — it refuses a gated target unless you pass `--yes`). The **CD pipeline** currently runs
-    every target in one CodeBuild pass, so it does not yet render per-target Manual Approval actions —
-    per-target pipeline gates are a planned refinement. Until then, gate at the pipeline level (e.g. a
-    separate approval before the CD pipeline) or use the local executor for gated targets.
+!!! info "Manual-approval gates"
+A target's `manualApproval: true` is honored on both paths. The **CD pipeline** renders two deploy
+stages: a `Deploy` stage runs every ungated target in parallel, then a `DeployGated` stage places each
+gated target behind its own manual-approval action (so `int` and `prod` each wait on their own
+approval, then deploy). The **local executor** (`cdk-cicd deploy --from-image`) is fail-closed — it
+refuses a gated target unless you pass `--yes`.
 
 !!! tip "Rollback is a retag"
-    To roll back, point `image:` at the previous version tag (e.g. `:1.4.1`) and re-run
-    `cdk-cicd deploy --from-image`. Because the image pins code + deps and config supplies the lookups,
-    the same image + same config always synthesizes the same template — a deterministic rollback with no
-    rebuild.
+To roll back, point `image:` at the previous version tag (e.g. `:1.4.1`) and re-run
+`cdk-cicd deploy --from-image`. Because the image pins code + deps and config supplies the lookups,
+the same image + same config always synthesizes the same template — a deterministic rollback with no
+rebuild.
 
 ## Verify
 
-!!! success "Verify"
-    - **Repo 1 (CI pipeline):** renders as `Source → BuildImage` (no deploy stages), and after a run the
-      tagged image is present in ECR (`aws ecr describe-images --repository-name my-app-deployer`).
-    - **Repo 2 (CD pipeline):** `deploy-ci` provisions a `Source → Deploy` CodePipeline; a config change
-      triggers the CodeBuild that pulls the image and creates/updates each target's CloudFormation stack.
-    - Change nothing but the `image:` tag and re-run — the deploy reproduces the pinned version, proving
-      one image serves many deployments and rollbacks.
+!!! success "Verify" - **Repo 1 (CI pipeline):** renders as `Source → BuildImage` (no deploy stages), and after a run the
+tagged image is present in ECR (`aws ecr describe-images --repository-name my-app-deployer`). - **Repo 2 (CD pipeline):** `deploy-ci` provisions a `Source → Deploy` CodePipeline; a config change
+triggers the CodeBuild that pulls the image and creates/updates each target's CloudFormation stack. - Change nothing but the `image:` tag and re-run — the deploy reproduces the pinned version, proving
+one image serves many deployments and rollbacks.
 
 ## Recap
 
