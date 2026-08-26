@@ -5,7 +5,6 @@
   </a>
 </p>
 
-
 <p align="center">
   <a href="https://cdklabs.github.io/cdk-cicd-wrapper/"><strong>Documentation</strong></a> ·
   <a href="https://github.com/cdklabs/cdk-cicd-wrapper/releases"><strong>Changelog</strong></a> ·
@@ -22,7 +21,7 @@
 > **Experimental — pre-release, not yet published.** The developer experience documented below is
 > the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** — the newest published
 > version is `0.4.1`, on the stable `0.x` (Blueprint) line. **`0.4.0` is deprecated — do not use it**;
-> install `0.4.1` or later. So `npm install` today gives you `0.x`, whose API is *not* the one
+> install `0.4.1` or later. So `npm install` today gives you `0.x`, whose API is _not_ the one
 > described here: see the
 > [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/) for that, and
 > the [Migration Guide](./MIGRATION.md) for the mapping between the two. To try the flow below now,
@@ -59,6 +58,7 @@ This repository is organized as a monorepo containing multiple packages and tool
 ### Development Workflow
 
 The project uses:
+
 - **Projen** for project management and code generation
 - **Yarn workspaces** for monorepo dependency management
 - **Jest** for testing across all packages
@@ -130,16 +130,19 @@ new MyStack(app, 'my-project', {
 
 By default the pipeline's build step runs `npx cdk-cicd check`, which covers `validate` (lock-file integrity), `audit` (dependency CVEs), `license` (open-source license checking) and `security` (Bandit/Semgrep/ShellCheck) — each **skipped rather than failed** when your project has no baseline for it yet. You do not need to define any scripts to get started.
 
-Setting `ci.steps` in `cicd.config.ts` *replaces* that default rather than adding to it, so include `check` explicitly if you still want those checks alongside your own `build`/`test`. If you would rather drive the same checks from `package.json`, add the definitions below:
+Setting `ci.steps` in `cicd.config.ts` _replaces_ that default rather than adding to it, so include `check` explicitly if you still want those checks alongside your own `build`/`test`. If you would rather drive the same checks from `package.json`, add the definitions below:
 
 #### 4.1. Adding validate script
+
 ```bash
 jq --arg key "validate" --arg val "cdk-cicd validate" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
 jq --arg key "validate:fix" --arg val "cdk-cicd validate --fix" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
 ```
 
 #### 4.2. Adding lint script
+
 We recommend using eslint and you can initialize it:
+
 ```bash
 npm init @eslint/config
 
@@ -148,6 +151,7 @@ jq --arg key "lint:fix" --arg val "eslint . --ext .ts --fix" '.scripts[$key] = $
 ```
 
 #### 4.3. Adding audit scripts
+
 ```bash
 npm install --save -D concurrently
 jq --arg key "audit" --arg val "concurrently 'npm:audit:*(\!fix)'" '.scripts[$key] = $val' package.json | jq . > package.json.tmp; mv package.json.tmp package.json;
@@ -161,6 +165,7 @@ jq --arg key "license:fix" --arg val "cdk-cicd license --fix" '.scripts[$key] = 
 ```
 
 **Example package.json scripts section:**
+
 ```json
 {
   ...
@@ -223,6 +228,27 @@ Supporting resources — the encryption key, VPC networking for the pipeline's o
 
 **Note**: Check the [networking documentation](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/networking.html) for VPC configurations, and the [Migration Guide](./MIGRATION.md) if you are coming from the previous major, where the pipeline was assembled from a set of named stacks in your own `bin/`.
 
+#### Choosing an engine
+
+The `engine` field in `cicd.config.ts` selects how the pipeline is rendered. There are three, and the default suits most projects:
+
+- **`EngineType.CODEPIPELINE`** (default) — a lightweight, flat AWS CodePipeline. Deploy stages re-invoke your app per stage, so `bin/` stays a plain single-stage app. Smallest footprint, and the only engine that supports [container mode](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/container_mode.html).
+- **`EngineType.CDK_PIPELINES`** — the Blueprint-compatible self-mutating pipeline built on `aws-cdk-lib/pipelines` (Source → Synth → Assets → one wave per stage). Choose it when you want a pipeline shaped like a Blueprint (`0.x`) one, e.g. to keep a migration's topology familiar.
+- **`EngineType.GITHUB_ACTIONS`** — renders a GitHub Actions workflow instead of an AWS-hosted pipeline. Requires `repository: Repository.github(...)` and a `githubActions` config block.
+
+```typescript
+import { defineCICD, Repository, EngineType } from '@cdklabs/cdk-cicd-wrapper';
+
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.github('my-org/my-app'),
+  engine: EngineType.CDK_PIPELINES, // omit for the default CODEPIPELINE
+  stages: ['dev', 'prod'],
+});
+```
+
+See the [Configuration Reference](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/configuration.html) for the full engine and field surface.
+
 Visit our [documentation](https://cdklabs.github.io/cdk-cicd-wrapper/) to learn more.
 
 ## Use cases
@@ -247,7 +273,7 @@ You should not fork this repository and expect to reproduce the same in your AWS
 - :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
 - :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions (`0.x` only; `1.x` has no pipeline equivalent — use a direct `cdk deploy`, see [MIGRATION.md](./MIGRATION.md))
 - :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
-- :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
+- :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go
 - :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
 
 ### MCP Debugger Server
@@ -300,8 +326,11 @@ The CDK CI/CD Wrapper community can be found within the #cdk-cicd-wrapper channe
 ## Contributors
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+
 [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
