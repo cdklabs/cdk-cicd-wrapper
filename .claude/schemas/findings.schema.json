@@ -38,7 +38,7 @@
           "enum": ["static", "dynamic", "production"]
         },
         "producer": {
-          "description": "What emitted the finding, named for the durable role rather than today's specific tool so the value survives past any one effort. 'qa' = jest (each package's test/**) or the real-AWS deploy harness failures/gaps. 'code-review' = the security-review or code-review skill run against pending changes. 'migration' = gaps found while carrying out whichever large structural migration is currently underway — today, the v2->v3 rework (see docs/design/v3-devops-experience.md, task.md); update this description, not the enum value, when a different migration takes its place. 'planning' = design/spec gaps surfaced before implementation starts (design-doc authoring, a grilling session, resolving a task.md D<n> decision).",
+          "description": "What emitted the finding, named for the durable role rather than today's specific tool so the value survives past any one effort. 'qa' = jest (each package's test/**) or the real-AWS deploy harness failures/gaps. 'code-review' = the security-review or code-review skill run against pending changes. 'migration' = gaps found while carrying out whichever large structural migration is currently underway — today, the Blueprint->v3 rework (see docs/design/v3-devops-experience.md, task.md); update this description, not the enum value, when a different migration takes its place. 'planning' = design/spec gaps surfaced before implementation starts (design-doc authoring, a grilling session, resolving a task.md D<n> decision).",
           "type": "string",
           "enum": ["qa", "code-review", "migration", "planning"]
         },

@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Unit tests for the v2->v3 migration analyzer. Pure over source text -- no filesystem, no spawn.
+// Unit tests for the Blueprint->v3 migration analyzer. Pure over source text -- no filesystem, no spawn.
 
 import { analyzeV2Source, renderCicdConfig } from '../../src/cmds/v3/MigrateCommand';
 
@@ -23,7 +23,7 @@ describe('m5-codemod: analyzeV2Source', () => {
     expect(plan.stages).toEqual(['res', 'int', 'prod']);
   });
 
-  test('falls back to v2 default stages (with a warning) when defineStages is absent', () => {
+  test('falls back to Blueprint default stages (with a warning) when defineStages is absent', () => {
     const plan = analyzeV2Source(`PipelineBlueprint.builder().addStack({ provide(c){} }).synth(app);`);
     expect(plan.stages).toEqual(['res', 'dev', 'int']);
     expect(plan.warnings.join(' ')).toMatch(/default/);
@@ -54,10 +54,10 @@ describe('m5-codemod: analyzeV2Source', () => {
     expect(analyzeV2Source(`const app = new App(); new MyStack(app, 'x'); app.synth();`).foundBuilder).toBe(false);
   });
 
-  test('works on a real-world-shaped v2 app (workbench + addStack, no defineStages)', () => {
-    // Verbatim shape of the retired samples/cdk-ts-example/src/main.ts (deleted alongside the v2
+  test('works on a real-world-shaped Blueprint app (workbench + addStack, no defineStages)', () => {
+    // Verbatim shape of the retired samples/cdk-ts-example/src/main.ts (deleted alongside the Blueprint
     // sample + the projen product, m8-remove-v2) -- kept inline so the analyzer is still exercised
-    // against genuine v2 source, not just synthetic snippets.
+    // against genuine Blueprint source, not just synthetic snippets.
     const sample = `
       import { PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
       import { App, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';

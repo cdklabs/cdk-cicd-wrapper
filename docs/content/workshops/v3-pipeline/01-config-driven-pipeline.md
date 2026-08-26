@@ -62,7 +62,7 @@ Source → Build (checks + synth) → UpdatePipeline (re-deploys itself from con
 
 ![The flat v3 pipeline in the CodePipeline console: Source → Build → UpdatePipeline → deploy](images/flat-pipeline.png)
 
-*The flat v3 pipeline in the CodePipeline console — one linear pipeline, not v2's 100+ CodeBuild projects.*
+*The flat v3 pipeline in the CodePipeline console — one linear pipeline, not Blueprint's 100+ CodeBuild projects.*
 
 The **UpdatePipeline** stage means you never run `deploy-ci` again by hand: change `cicd.config.ts`, push,
 and the pipeline re-synthesizes its own definition on the next run and applies the change before the
@@ -145,7 +145,7 @@ chapter 3.
     - In the **CodePipeline** console, your pipeline shows the flat
       `Source → Build → UpdatePipeline → deploy dev → deploy prod` shape.
     - The most recent execution reaches **Succeeded** on every stage.
-    - Compare the CodeBuild project count to a v2 pipeline: v3 provisions a small, constant set — not one
+    - Compare the CodeBuild project count to a Blueprint pipeline: v3 provisions a small, constant set — not one
       per asset or per stage.
 
     You can also validate the config locally before pushing:

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /** Where a v3 pipeline's source lives. (Named `RepositorySourceType` rather than `RepositoryType`
- * because the latter is a distinct TS-only union alias already on the published v2 surface.) */
+ * because the latter is a distinct TS-only union alias already on the published Blueprint surface.) */
 export enum RepositorySourceType {
   /** GitHub, via a CodeStar (CodeConnections) connection. */
   GITHUB = 'github',

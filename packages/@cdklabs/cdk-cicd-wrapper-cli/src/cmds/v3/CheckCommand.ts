@@ -1,13 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// `cdk-cicd check [checks..]` -- the v2 default-on CI checks (validate, audit, license, security)
+// `cdk-cicd check [checks..]` -- the Blueprint default-on CI checks (validate, audit, license, security)
 // behind ONE command, so a CI job runs `npx cdk-cicd check` instead of the user project having to
-// define the matching npm scripts first (v2 needed `npm run validate` / `audit:deps` / `license` and
+// define the matching npm scripts first (Blueprint needed `npm run validate` / `audit:deps` / `license` and
 // package.json surgery to create them).
 //
-// Every check DELEGATES to the published v2 command that already implements it, run as a child
-// `cdk-cicd <v2 command>` process. Spawning rather than calling the v2 handler in-process is
+// Every check DELEGATES to the published Blueprint command that already implements it, run as a child
+// `cdk-cicd <Blueprint command>` process. Spawning rather than calling the Blueprint handler in-process is
 // deliberate: most of those handlers signal failure with `yargs.exit`/`process.exit`, which in-process
 // would take the umbrella down mid-run; as children their exit codes are just data, so `check` can run
 // all of them and report every failure at once.
@@ -27,7 +27,7 @@ import { logger } from '../../utils/Logging';
 /** The checks `cdk-cicd check` runs when no name is given, in execution order. */
 export const CHECK_NAMES = ['validate', 'audit', 'license', 'security'];
 
-/** What one check will do in this project: the v2 argv to run, or the reason it does not apply. */
+/** What one check will do in this project: the Blueprint argv to run, or the reason it does not apply. */
 export interface CheckPlan {
   /** The check name, one of CHECK_NAMES. */
   readonly name: string;
@@ -45,8 +45,8 @@ export interface CheckPlan {
  *
  * Looking inside it instead -- skipping when a particular key is missing -- would make each gate
  * disable-able by deleting the very key it guards, and would turn an unparseable file into a skip. In
- * both cases the v2 command exits 1 and `check` would have gone green: a false pass on a project that
- * IS configured, which is strictly worse than a noisy failure. So the content is v2's business.
+ * both cases the Blueprint command exits 1 and `check` would have gone green: a false pass on a project that
+ * IS configured, which is strictly worse than a noisy failure. So the content is Blueprint's business.
  */
 const VERIFICATION_FILE = 'package-verification.json';
 
@@ -104,7 +104,7 @@ function planAudit(cwd: string): CheckPlan {
  * run `cdk-cicd license --fix` yet. Without a verification file there is nothing to compare, so skip.
  *
  * Note the deliberate strictness: a project that ran `validate --fix` but never `license --fix` HAS a
- * verification file, so `license` runs and fails. That is exactly what v2 does, and it is the point --
+ * verification file, so `license` runs and fails. That is exactly what Blueprint does, and it is the point --
  * the alternative silently drops the licence gate on a half-configured project.
  */
 function planLicense(cwd: string): CheckPlan {
@@ -114,7 +114,7 @@ function planLicense(cwd: string): CheckPlan {
 }
 
 /**
- * `security` needs no project baseline, so it always runs; its scanners are opt-in flags in v2, so
+ * `security` needs no project baseline, so it always runs; its scanners are opt-in flags in Blueprint, so
  * turn them all on. It does need python at run time (venv creation, then bandit/semgrep install), so
  * probe for it and skip with a reason rather than let a toolchain gap read as a security finding.
  * Registry access for the actual installs is still not something a file probe can establish.

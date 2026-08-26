@@ -154,4 +154,4 @@ Container mode splits build from deploy into **two pipelines**: the CI pipeline 
 one config-agnostic, offline-capable image; the CD pipeline (Repo 2, config-only) pulls that image and
 deploys as many targets as you like — the same `cdk-cicd deploy --from-image` executor you can also run
 locally. Targets are config rows, not pipeline resources — that's the scale-out win — and rollback is just
-pointing at a previous image tag. Next: migrating an existing v2 app to any of these v3 patterns.
+pointing at a previous image tag. Next: migrating an existing Blueprint app to any of these v3 patterns.

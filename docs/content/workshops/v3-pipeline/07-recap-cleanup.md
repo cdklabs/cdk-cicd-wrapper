@@ -17,7 +17,7 @@ Across the workshop you took a stock `cdk init` app and, with no wrapper code in
 - **Authenticated builds to a private CodeArtifact registry** with one config block.
 - **Ran container mode** — Repo 1 builds a config-agnostic image; Repo 2's `defineDeployment` deploys it
   to many targets with `cdk-cicd deploy --from-image`.
-- **Saw how to migrate from v2** without recreating deployed stacks.
+- **Saw how to migrate from Blueprint** without recreating deployed stacks.
 
 The through-line: fewer moving parts you own, and a pipeline you can read.
 
@@ -73,4 +73,4 @@ was a throwaway sandbox you're fully decommissioning.
 
 You've completed the v3 pipeline workshop and cleaned up after it. You can now take any ordinary CDK app,
 add one config file, and get a readable, config-driven pipeline — scaling out to container mode or
-migrating from v2 when you need to.
+migrating from Blueprint when you need to.

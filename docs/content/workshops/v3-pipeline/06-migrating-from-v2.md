@@ -1,11 +1,11 @@
-# Migrating from v2
+# Migrating from Blueprint
 
 !!! abstract "What you'll build"
-    - A `cicd.config.ts` generated from your existing v2 entry with the `cdk-cicd migrate` codemod.
+    - A `cicd.config.ts` generated from your existing Blueprint entry with the `cdk-cicd migrate` codemod.
     - A flattened `bin/` and a repointed `cdk.json`.
     - Most importantly: a switchover that **updates deployed stacks in place** instead of recreating them.
 
-Moving an app from v2 (`PipelineBlueprint.builder()…synth(app)`) to v3 is: generate a `cicd.config.ts`,
+Moving an app from Blueprint (`PipelineBlueprint.builder()…synth(app)`) to v3 is: generate a `cicd.config.ts`,
 flatten your `bin/`, and repoint `cdk.json`.
 
 ## Scaffold the config with the codemod
@@ -14,7 +14,7 @@ flatten your `bin/`, and repoint `cdk.json`.
 npx cdk-cicd migrate --entry src/main.ts --application my-app   # add --dry-run to preview
 ```
 
-`migrate` reads your v2 entry, extracts the stage list, and writes a `cicd.config.ts` — flagging the
+`migrate` reads your Blueprint entry, extracts the stage list, and writes a `cicd.config.ts` — flagging the
 repository, `workbench`, and any phases/hooks as TODOs for you to fill in. It deliberately **does not**
 rewrite your entry file's stack construction (that's where a codemod silently corrupts code), and prints
 the remaining manual steps.
@@ -32,23 +32,23 @@ the remaining manual steps.
 
 ## Keep already-deployed resources (no recreate!)
 
-This is the part to get right. CloudFormation keys resources to a stack by **name**. v2 nested your stacks
+This is the part to get right. CloudFormation keys resources to a stack by **name**. Blueprint nested your stacks
 in an `AppStage` (a `cdk.Stage`), so it deployed `<stageId>-<name>` (e.g. `DEV-my-app`). v3's plain `bin/`
-deploys just `<name>`. **A different name means a new stack — a full recreate.** Match v2's name and it's
+deploys just `<name>`. **A different name means a new stack — a full recreate.** Match Blueprint's name and it's
 an in-place update instead:
 
 ```ts
 import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
 
-// Reproduces v2's `DEV-my-app`, so CloudFormation UPDATES the existing stack.
+// Reproduces Blueprint's `DEV-my-app`, so CloudFormation UPDATES the existing stack.
 new MyStack(app, 'my-app', {
   stackName: stageStackName('my-app', { stageFirst: true, uppercaseStage: true }),
 });
 ```
 
-`uppercaseStage` matches v2's *default* stages (`RES`/`DEV`/`INT` — no `PROD` unless you called
-`.defineStages(...)` yourself). If your v2 stages were
-lowercase or custom-case, drop it (the stage is used verbatim), or set `stackName` to your literal v2
+`uppercaseStage` matches Blueprint's *default* stages (`RES`/`DEV`/`INT` — no `PROD` unless you called
+`.defineStages(...)` yourself). If your Blueprint stages were
+lowercase or custom-case, drop it (the stage is used verbatim), or set `stackName` to your literal Blueprint
 name.
 
 ## Verify before switching the pipeline over
@@ -66,7 +66,7 @@ name.
     **not** switch the pipeline over until the diff is clean.
 
 !!! warning "A wrong stack name recreates production"
-    If the migrated stack name doesn't match the v2 name, the first pipeline run deletes the old stack and
+    If the migrated stack name doesn't match the Blueprint name, the first pipeline run deletes the old stack and
     creates a new one — a full recreate of production resources. The `cdk diff` above is the gate that
     catches this before it happens.
 
@@ -75,6 +75,6 @@ The full detail (and the RETAIN + `cdk import` fallback) is in the repo's `MIGRA
 ## Recap
 
 The codemod scaffolds your `cicd.config.ts` and lists the manual steps; you flatten `bin/` and repoint
-`cdk.json`. The one thing you must get right is stack naming — `stageStackName` reproduces v2's exact
+`cdk.json`. The one thing you must get right is stack naming — `stageStackName` reproduces Blueprint's exact
 names so CloudFormation updates in place, and `cdk diff` proves it before you flip the pipeline. That's
 the whole migration.

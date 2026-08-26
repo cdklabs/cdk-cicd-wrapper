@@ -228,7 +228,7 @@ The available samples can be listed, with the `task samples:list` command.
 !!! warning "The `task samples:dev:*` devloop below is Blueprint (0.x)-era and currently broken"
 
     `Taskfile.sample-app.yml`'s `dev:init`/`dev:build`/`dev:synth`/`dev:deploy` steps assume an
-    npm + [Projen](https://projen.io/)-scaffolded sample (the deleted v2/Blueprint TS sample). Neither
+    npm + [Projen](https://projen.io/)-scaffolded sample (the deleted Blueprint TS sample). Neither
     sample that remains is one: `samples/cdk-v3-example` (the `SAMPLE_APP` default) has no `.projenrc`
     and no npm `scripts` at all, and `samples/cdk-python-example` has no `package.json` (it's Python) —
     so `task samples:dev:init` fails at its `npm run projen`/`npm run default` step for either.

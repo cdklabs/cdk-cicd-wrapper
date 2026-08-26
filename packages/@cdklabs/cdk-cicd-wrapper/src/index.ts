@@ -60,7 +60,7 @@ export { defineCICD } from './config/define';
 // `cdk-cicd deploy --from-image`. TS-only like `defineCICD`; only the resolved structs are jsii-modeled.
 export { defineDeployment } from './config/define';
 // Stack-name control for `bin/` (TS-authoring, like `defineCICD`): a stage-qualified name, and the option
-// to reproduce v2's `<STAGE>-<base>` so a migration updates the existing stack in place. See naming.ts.
+// to reproduce Blueprint's `<STAGE>-<base>` so a migration updates the existing stack in place. See naming.ts.
 export { stageStackName, StageStackNameOptions } from './config/naming';
 
 // The engine abstraction (m4-iengine). `IEngine`/`EngineRenderProps` are the seam CodePipeline (M4)
@@ -70,7 +70,7 @@ export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeli
 // Container mode (Repo 2) CD pipeline: consumes the pushed image and deploys each target. The deploy-side
 // twin of the CI CodePipeline; `cdk-cicd deploy-ci` provisions it from a `deploy.config.ts` with a `repository`.
 export { DeploymentPipeline, DeploymentPipelineProps } from './engine/codepipeline/DeploymentPipeline';
-// The v2-compatible engine: builds the pipeline with CDK Pipelines (`aws-cdk-lib/pipelines`), like v2 did,
+// The Blueprint-compatible engine: builds the pipeline with CDK Pipelines (`aws-cdk-lib/pipelines`), like Blueprint did,
 // for teams that want a pipeline shaped like their old one. Activated by `cdk-cicd exec` (engine:
 // CDK_PIPELINES in cicd.config), which assembles it by replaying the plain bin per stage -- so bin/ stays
 // a plain app, no factory. The construct + IStageProvider are exported for advanced/explicit use.
@@ -81,7 +81,7 @@ export {
   IStageProvider,
 } from './engine/cdkpipelines/CdkPipelinesEngine';
 // The GitHub Actions engine (m9-migrate-github-actions-engine): renders a `.github/workflows/deploy.yml`
-// instead of an AWS-hosted pipeline (v2 `GitHubPipelinePlugin`, migrated). Same self-mutating shape as
+// instead of an AWS-hosted pipeline (Blueprint `GitHubPipelinePlugin`, migrated). Same self-mutating shape as
 // `CdkPipelinesEngine` -- activated by `engine: GITHUB_ACTIONS` in `cicd.config.ts`, assembled the same
 // way (replaying the plain bin per stage).
 export { GitHubActionsEngine, GitHubActionsEngineProps } from './engine/github/GitHubActionsEngine';
@@ -93,7 +93,7 @@ export { PipelineApp, PipelineAppProps } from './app/PipelineApp';
 export { DeploymentPipelineApp, DeploymentPipelineAppProps } from './app/DeploymentPipelineApp';
 
 // The wrapper's own support resources (m4-support-resources) -- lazily provisioned, so a pipeline
-// only pays for what it references. This is v2's resource-provider concept with the singleton and the
+// only pays for what it references. This is Blueprint's resource-provider concept with the singleton and the
 // untyped registry removed.
 export { SupportResources, SupportResourcesProps } from './support/SupportResources';
 // VPC networking for the pipeline's own CodeBuild projects (m9-migrate-vpc); `VpcNetworking` is
@@ -102,7 +102,7 @@ export { VpcNetworking } from './support/Vpc';
 // Default CloudWatch log-retention (m9-migrate-log-retention), applied tree-wide by the runtime
 // injection hook; exported for a narrower, explicit `Aspects.of(scope).add(...)` use.
 export { LogRetentionAspect, LogRetentionAspectProps } from './support/LogRetentionAspect';
-// v2's other default-on security-hardening plugins (m9-migrate-security-plugins). The four with no
+// Blueprint's other default-on security-hardening plugins (m9-migrate-security-plugins). The four with no
 // extra config/resource dependency are, like log retention above, applied tree-wide by the runtime
 // injection hook; exported here too for a narrower, explicit use.
 export { EncryptBucketOnTransitAspect } from './support/EncryptBucketOnTransitAspect';

@@ -141,7 +141,7 @@ git push -u origin "${CURRENT_BRANCH}:main"
 
 For GitHub, add the remote the normal way and push — the CodeStar connection ARN you passed to `Repository.codestarConnection(...)` is what lets the pipeline read it. See [GitHub Integration](../developer_guides/vcs_github.md) for the connection setup and why `Repository.github(...)` alone is not enough outside the GitHub Actions engine.
 
-## Migrating an existing v2 (Blueprint) project
+## Migrating an existing Blueprint project
 
 If you have an existing `PipelineBlueprint.builder()…synth(app)` project, `cdk-cicd migrate` scaffolds the `cicd.config.ts` for you:
 
@@ -149,7 +149,7 @@ If you have an existing `PipelineBlueprint.builder()…synth(app)` project, `cdk
 npx cdk-cicd migrate --entry src/main.ts --application my-project   # add --dry-run to preview
 ```
 
-It extracts your stage list (falling back to v2's default `RES`/`DEV`/`INT` when no `.defineStages(...)` call is found), flags anything it can't safely determine — the repository is always flagged as unresolved today (set `repository: Repository.*(...)` yourself), plus hooks/phases, `workbench`, … — and prints the remaining manual steps. It deliberately does not rewrite your entry file's stack construction. Read the full mapping table and the **Preserving already-deployed resources** section in the repository's [`MIGRATION.md`](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/MIGRATION.md) before switching a production pipeline over — getting the CloudFormation stack name right is what decides whether your existing resources are updated in place or recreated.
+It extracts your stage list (falling back to Blueprint's default `RES`/`DEV`/`INT` when no `.defineStages(...)` call is found), flags anything it can't safely determine — the repository is always flagged as unresolved today (set `repository: Repository.*(...)` yourself), plus hooks/phases, `workbench`, … — and prints the remaining manual steps. It deliberately does not rewrite your entry file's stack construction. Read the full mapping table and the **Preserving already-deployed resources** section in the repository's [`MIGRATION.md`](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/MIGRATION.md) before switching a production pipeline over — getting the CloudFormation stack name right is what decides whether your existing resources are updated in place or recreated.
 
 ## Next steps
 

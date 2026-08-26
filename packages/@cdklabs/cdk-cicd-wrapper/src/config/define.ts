@@ -126,7 +126,7 @@ function normalizeCi(ci: CiConfigInput | undefined, stageNames: string[]): CiCon
   };
 }
 
-/** Normalize the permissive proxy input, defaulting `noProxy`/`proxyTestUrl` like v2's `defaultProxy` did. */
+/** Normalize the permissive proxy input, defaulting `noProxy`/`proxyTestUrl` like Blueprint's `defaultProxy` did. */
 function normalizeProxy(proxy: ProxyConfigInput | undefined): ProxyConfig | undefined {
   if (proxy === undefined) return undefined;
   return {

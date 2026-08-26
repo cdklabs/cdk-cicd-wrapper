@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Unit tests for the `cdk-cicd check` umbrella: planning (which v2 command each check delegates to,
+// Unit tests for the `cdk-cicd check` umbrella: planning (which Blueprint command each check delegates to,
 // and when a check is skipped instead) and running (failure collection). The actual check execution is
 // injected, so nothing here shells out to npm/python/semgrep.
 
@@ -32,7 +32,7 @@ const CONFIGURED = {
 };
 
 describe('m4-ci-checks: planChecks', () => {
-  test('a configured npm project runs all four checks, each delegating to its v2 command', () => {
+  test('a configured npm project runs all four checks, each delegating to its Blueprint command', () => {
     const plans = planChecks(CHECK_NAMES, project(CONFIGURED));
 
     expect(plans.map((p) => p.name)).toEqual(['validate', 'audit', 'license', 'security']);
@@ -73,8 +73,8 @@ describe('m4-ci-checks: planChecks', () => {
 
   test('a gate is NOT disable-able by deleting the key it guards from the verification file', () => {
     // The false green this replaced: keying the skip on an individual key meant removing
-    // 'npm-lock-file' (or the 'license' section) turned a v2 exit-1 into a green `check`, on a project
-    // that plainly IS configured. Presence of the file is the opt-in; its content is v2's business.
+    // 'npm-lock-file' (or the 'license' section) turned a Blueprint exit-1 into a green `check`, on a project
+    // that plainly IS configured. Presence of the file is the opt-in; its content is Blueprint's business.
     const noLockKey = project({
       'package-lock.json': '{}',
       'package-verification.json': JSON.stringify({ license: {} }),
@@ -110,7 +110,7 @@ describe('m4-ci-checks: planChecks', () => {
     ]);
   });
 
-  test('audit skips the manifests the v2 tools cannot audit (yarn.lock, requirements.txt)', () => {
+  test('audit skips the manifests the Blueprint tools cannot audit (yarn.lock, requirements.txt)', () => {
     // `npm audit` refuses a yarn-only project and the python script only ever resolves Pipfiles, so
     // both would otherwise be an error or a green run that audited nothing.
     const [yarnOnly] = planChecks(['audit'], project({ 'yarn.lock': '' }));
@@ -119,8 +119,8 @@ describe('m4-ci-checks: planChecks', () => {
     expect(planChecks(['audit'], project({ 'requirements.txt': '' }))[0].args).toBeUndefined();
   });
 
-  test('a corrupt verification file still runs the checks, so v2 reports the corruption', () => {
-    // Skipping here would convert two v2 exit-1s into a green run. `check` does not parse the file at
+  test('a corrupt verification file still runs the checks, so Blueprint reports the corruption', () => {
+    // Skipping here would convert two Blueprint exit-1s into a green run. `check` does not parse the file at
     // all now, so the malformed content reaches the tool whose job it is to complain about it.
     const dir = project({ 'package-lock.json': '{}', 'package-verification.json': '{"npm-lock-file": "abc",' });
     expect(planChecks(['validate', 'license'], dir).map((p) => p.args)).toEqual([['validate'], ['license']]);

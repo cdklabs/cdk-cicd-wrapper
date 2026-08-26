@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Empirical proof of the migration-continuity claim: matching v2's stack name makes a v3 deploy an
+# Empirical proof of the migration-continuity claim: matching Blueprint's stack name makes a v3 deploy an
 # in-place UPDATE (stateful resource PRESERVED); a mismatched name is a new stack (resource RECREATED).
 # Uses the real stageStackName helper to generate the names. Sandbox only; every stack is cdkcicdtest-
 # prefixed + tagged and torn down. No account id is printed.
@@ -34,7 +34,7 @@ NAMING=./packages/@cdklabs/cdk-cicd-wrapper/lib/v3/config/naming.js
 # The two names the helper produces for base `cdkcicdtest-<run>-mig`, stage dev:
 V2NAME=$(CDK_STAGE=dev node -e "console.log(require('$NAMING').stageStackName('cdkcicdtest-${RUN}-mig',{stageFirst:true,uppercaseStage:true}))")
 V3NAME=$(CDK_STAGE=dev node -e "console.log(require('$NAMING').stageStackName('cdkcicdtest-${RUN}-mig'))")
-echo "v2-match name : $V2NAME"
+echo "Blueprint-match name : $V2NAME"
 echo "v3-default name: $V3NAME"
 
 # Scratch stays in the repo's .gitignored .tmp/ -- `mktemp --suffix` is GNU-only (fails on macOS) and
@@ -47,7 +47,7 @@ echo '{"Resources":{"Data":{"Type":"AWS::S3::Bucket","Properties":{}},"Marker":{
 phys(){ aws cloudformation describe-stack-resources --stack-name "$1" --region "$R" --query "StackResources[?LogicalResourceId=='Data'].PhysicalResourceId" --output text 2>/dev/null; }
 status(){ aws cloudformation describe-stacks --stack-name "$1" --region "$R" --query 'Stacks[0].StackStatus' --output text 2>/dev/null; }
 
-echo "== step 1: deploy the 'v2' stack ($V2NAME) with a stateful bucket"
+echo "== step 1: deploy the 'Blueprint' stack ($V2NAME) with a stateful bucket"
 aws cloudformation deploy --stack-name "$V2NAME" --template-file "$TA" --region "$R" --tags "$TAG=$RUN" >/dev/null 2>&1
 B1=$(phys "$V2NAME"); echo "   bucket physical id: $B1  (status $(status "$V2NAME"))"
 

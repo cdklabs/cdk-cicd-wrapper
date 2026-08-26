@@ -75,7 +75,7 @@ new MyStack(app, 'my-app', {
 ```
 
 This is the one place you'd import the wrapper in `bin/`, and it's opt-in. It reads the stage from
-`CDK_STAGE` (which `cdk-cicd exec` sets). Migrating from v2? The same helper reproduces v2's exact stack
+`CDK_STAGE` (which `cdk-cicd exec` sets). Migrating from Blueprint? The same helper reproduces Blueprint's exact stack
 name so you **update in place instead of recreating** — see the migration chapter.
 
 ## Verify

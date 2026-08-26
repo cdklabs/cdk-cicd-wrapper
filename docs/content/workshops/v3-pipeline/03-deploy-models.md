@@ -41,7 +41,7 @@ list or `'all'`), and any stage CI already synthesized is **reused**, not synthe
 !!! tip "Which model?"
     Stick with the default **assembly promotion** unless you specifically need per-stage synth (for
     example, when a stage's template must be produced against that stage's injected config at deploy
-    time). Promotion is one synth per run and is the closest match to v2's behavior.
+    time). Promotion is one synth per run and is the closest match to Blueprint's behavior.
 
 ## Async deploy — don't pay build compute to wait
 

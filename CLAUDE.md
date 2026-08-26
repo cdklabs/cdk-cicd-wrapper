@@ -71,7 +71,7 @@ cycle, and a rolled-back stack is a slower teacher than five minutes of the Clou
 1. **Dependencies and update semantics.** What must exist first, what the resource requires vs. accepts
    as optional, and above all *what an update does* — many properties are `Update requires: Replacement`,
    so an innocuous edit destroys and recreates. This repo already learned it the expensive way: a stack
-   name that doesn't match v2's makes a migration a new stack instead of an in-place update, and the
+   name that doesn't match Blueprint's makes a migration a new stack instead of an in-place update, and the
    stateful resource is recreated (`MIGRATION.md` §stack names, proven in
    `test/proof/migration-continuity.sh`, warned in `docs/content/workshops/v3-pipeline/06-*.md`). Record
    replacement-triggering properties in a comment **where someone would edit them**, not in a doc.
@@ -218,7 +218,7 @@ cd packages/@cdklabs/cdk-cicd-wrapper && npx projen compile   # or: npx projen t
 - Prettier + eslint; run `task fix` rather than reformatting by hand.
 - Tests live in each package's `test/`, mirroring `src/`. `test/integration/` holds the heavier ones.
 - Samples in `samples/cdk-v3-example` and `samples/cdk-python-example` double as smoke tests — keep
-  them working. They are what users copy. (`cdk-ts-example`, the Blueprint/v2 sample, was deleted
+  them working. They are what users copy. (`cdk-ts-example`, the Blueprint sample, was deleted
   alongside the projen product in `m8-remove-v2` — it lives on, untouched, on `legacy-blueprint`.)
 
 ## AWS / test account

@@ -6,17 +6,17 @@ one idea:
 > **Your app stays ordinary CDK. One `cicd.config.ts` turns it into a pipeline — no wrapper code in your
 > app, no builder chain.**
 
-Where v2 built the pipeline *inside* your app with `PipelineBlueprint.builder()…synth(app)`, v3 keeps
+Where Blueprint built the pipeline *inside* your app with `PipelineBlueprint.builder()…synth(app)`, v3 keeps
 your `bin/` exactly as `cdk init` produced it and reads a separate config file. The pipeline is one flat
 CodePipeline (source → CI → self-update → one deploy action per stage), not the 100+ CodeBuild projects
-v2's CDK-Pipelines footprint grew.
+Blueprint's CDK-Pipelines footprint grew.
 
 ## Why v3 — what you get
 
 v3 is a breaking major, so it earns its keep in concrete, end-user terms. The wins are about *your* app
 and *your* pipeline, not the wrapper's internals:
 
-| You want to… | v2 made you… | v3 gives you… |
+| You want to… | Blueprint made you… | v3 gives you… |
 |---|---|---|
 | Keep your app portable | Wrap `bin/` in `PipelineBlueprint.builder()…synth(app)` — wrapper code you own forever | An ordinary `cdk init` app. Zero wrapper imports in `bin/` for the basic flow |
 | Describe stages & accounts | Encode them in builder calls + `ACCOUNT_*` env vars | Declare them as data in `cicd.config.ts` — read, diff, and review a plain object |
@@ -44,7 +44,7 @@ with a **cleanup** you should run to avoid leaving billable resources behind.
 4. **Private npm registry** — authenticating the pipeline's builds to a private CodeArtifact repo.
 5. **Container mode** — building a config-agnostic deployer image (Repo 1) and deploying it against
    per-target config (Repo 2): one image → many deployments.
-6. **Migrating from v2** — the `cdk-cicd migrate` codemod, and keeping already-deployed resources.
+6. **Migrating from Blueprint** — the `cdk-cicd migrate` codemod, and keeping already-deployed resources.
 7. **Recap and cleanup** — what you built, and how to tear it all down.
 
 ## Target audience

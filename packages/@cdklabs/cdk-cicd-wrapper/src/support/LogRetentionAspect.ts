@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// v2 forced a log-retention default across the whole pipeline tree from
+// Blueprint forced a log-retention default across the whole pipeline tree from
 // `EncryptCloudWatchLogGroupsPlugin`'s aspect, which set retention AND KMS encryption together off a
 // single `PipelineBlueprintProps.logRetentionInDays`. v3 splits retention out on its own -- CloudWatch
 // log-group encryption is a separate migration item -- and wires it into the same tree-wide hook
@@ -13,14 +13,14 @@ import { IConstruct } from 'constructs';
 
 const LOG_GROUP_RESOURCE_TYPE = 'AWS::Logs::LogGroup';
 
-/** The wrapper's default log retention when the app config does not set one, matching v2's default. */
+/** The wrapper's default log retention when the app config does not set one, matching Blueprint's default. */
 export const DEFAULT_LOG_RETENTION_DAYS = 365;
 
 /** Options for {@link LogRetentionAspect}. */
 export interface LogRetentionAspectProps {
   /**
    * Retention period, in days, applied to every CloudWatch Log Group the aspect visits that does not
-   * already have an explicit retention set. Defaults to 365 (matching v2).
+   * already have an explicit retention set. Defaults to 365 (matching Blueprint).
    */
   readonly retentionInDays?: number;
 }

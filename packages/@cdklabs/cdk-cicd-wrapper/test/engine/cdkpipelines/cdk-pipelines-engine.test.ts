@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The v2-compatible CDK Pipelines engine: reproduces the v2 pipeline shape (Source -> Build/Synth ->
+// The Blueprint-compatible CDK Pipelines engine: reproduces the Blueprint pipeline shape (Source -> Build/Synth ->
 // UpdatePipeline self-mutation -> Assets -> one wave per stage, with a manual-approval gate on gated stages).
 
 import { App, Aspects, Stack, Stage } from 'aws-cdk-lib';
@@ -18,7 +18,7 @@ import {
 } from '../../../src/engine/cdkpipelines/CdkPipelinesEngine';
 
 // A stand-in app-stack provider: puts one trivial stack (a bucket) into each stage so CDK Pipelines has
-// something to deploy -- the v2 IStackProvider role.
+// something to deploy -- the Blueprint IStackProvider role.
 class StubStages implements IStageProvider {
   public stacks(stage: Stage, context: CdkPipelinesStageContext): void {
     const stack = new Stack(stage, 'App');
@@ -41,14 +41,14 @@ function render(): Template {
   return Template.fromStack(stack);
 }
 
-describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
+describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
   test('builds a self-mutating CDK Pipelines pipeline with a Source, Synth, and one wave per stage', () => {
     const t = render();
     // Exactly one CDK Pipelines pipeline.
     t.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
     const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
     const stageNames = (pipeline.Properties.Stages as any[]).map((s) => s.Name);
-    // v2 shape: Source, Build (Synth), UpdatePipeline (self-mutate), then a wave per deployment stage.
+    // Blueprint shape: Source, Build (Synth), UpdatePipeline (self-mutate), then a wave per deployment stage.
     // (CDK Pipelines only adds an `Assets` stage when the app has assets to publish -- the real app does.)
     expect(stageNames).toEqual(expect.arrayContaining(['Source', 'Build', 'UpdatePipeline', 'dev', 'prod']));
     expect(stageNames.indexOf('dev')).toBeLessThan(stageNames.indexOf('prod')); // promotion order
@@ -140,7 +140,7 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     void engine;
 
     const projects = Object.values(Template.fromStack(stack).findResources('AWS::CodeBuild::Project'));
-    // Synth + self-mutation: v2's uniform-application semantics, achieved here via CDK Pipelines' own
+    // Synth + self-mutation: Blueprint's uniform-application semantics, achieved here via CDK Pipelines' own
     // `codeBuildDefaults` (not a per-step wire-up), so it reaches projects this engine does not build itself.
     expect(projects).toHaveLength(2);
     for (const p of projects as any[]) {
@@ -216,7 +216,7 @@ describe('v2-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
   });
 
   test('emits no cdk-nag errors on its OWN generated infra (pipeline stack + cross-region support stack)', () => {
-    // AwsSolutionsChecks (as v2's blueprint ran it) flags CDK Pipelines' generated roles/buckets. The engine
+    // AwsSolutionsChecks (as Blueprint ran it) flags CDK Pipelines' generated roles/buckets. The engine
     // must suppress those on the wrapper-owned plumbing only. A cross-region stage (us-east-1 != the pipeline's
     // us-west-2) also forces a cross-region *support* stack, so this covers the replication bucket + its key.
     const app = new App();

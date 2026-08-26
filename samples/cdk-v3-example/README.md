@@ -10,7 +10,7 @@ cicd.config.ts    defineCICD({ application, repository, stages }) — the only w
 cdk.json          "app": "npx cdk-cicd exec bin/app.ts"  — the wrapper injects config/tags around the app
 ```
 
-Compare with the v2 shape — `PipelineBlueprint.builder()…synth(app)` built inside `src/main.ts`, with
+Compare with the Blueprint shape — `PipelineBlueprint.builder()…synth(app)` built inside `src/main.ts`, with
 the projen `CdkCICDWrapper` generating the scaffolding — preserved, untouched, on the `legacy-blueprint`
 branch (its `cdk-ts-example` sample was removed from `main` in `m8-remove-v2`).
 
@@ -25,9 +25,9 @@ The pipeline then runs Source → Build (checks + synth) → self-update → dep
 gated on a manual approval. `dev` deploys `cdk-v3-example-dev`, `prod` deploys `cdk-v3-example-prod` —
 `bin/app.ts` uses `stageStackName` to name them.
 
-## Migrating an existing v2 app
+## Migrating an existing Blueprint app
 
 `cdk-cicd migrate --entry src/main.ts` scaffolds the `cicd.config.ts`. To keep already-deployed resources
-(update in place instead of recreating), name your stacks to match what v2 deployed —
-`stageStackName('app', { stageFirst: true, uppercaseStage: true })` reproduces v2's `DEV-app`. See the
+(update in place instead of recreating), name your stacks to match what Blueprint deployed —
+`stageStackName('app', { stageFirst: true, uppercaseStage: true })` reproduces Blueprint's `DEV-app`. See the
 repo `MIGRATION.md` (*Preserving already-deployed resources*).

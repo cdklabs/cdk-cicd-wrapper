@@ -41,7 +41,7 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         // rather than floated, for the reason yargs is pinned above.
         // Resolves finding code-review-cli-ts-node-not-declared.
         'ts-node@^10.9.2',
-        // `cdk-cicd migrate` parses a v2 entry file with the TypeScript compiler API at RUNTIME, so
+        // `cdk-cicd migrate` parses a Blueprint entry file with the TypeScript compiler API at RUNTIME, so
         // typescript must be a runtime dep, not just a devDep (a global CLI install would not otherwise
         // resolve it). ts-node peer-depends on it too.
         'typescript@^5.9.3',

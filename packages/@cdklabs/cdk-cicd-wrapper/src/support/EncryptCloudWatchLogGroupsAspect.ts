@@ -1,10 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// v2 shipped this as `EncryptCloudWatchLogGroupsPlugin` (m9-migrate-security-plugins), on by
+// Blueprint shipped this as `EncryptCloudWatchLogGroupsPlugin` (m9-migrate-security-plugins), on by
 // default, setting retention AND KMS encryption together off a single
 // `PipelineBlueprintProps.logRetentionInDays` and a KMS key it pulled implicitly from
-// `GlobalResources.ENCRYPTION` (a per-stage key v2 provisioned for every app by default). v3 split
+// `GlobalResources.ENCRYPTION` (a per-stage key Blueprint provisioned for every app by default). v3 split
 // retention out on its own (`LogRetentionAspect`, m9-migrate-log-retention) and has no default
 // per-stage encryption key provider, so this aspect takes the key explicitly instead of reaching
 // for one implicitly -- not wired into the runtime injection hook until a default key provider
@@ -25,7 +25,7 @@ export interface EncryptCloudWatchLogGroupsAspectProps {
 
 /**
  * Sets the KMS key on every CloudWatch Log Group it visits that does not already have one, matching
- * the encryption half of v2's `EncryptCloudWatchLogGroupsPlugin` (the retention half is
+ * the encryption half of Blueprint's `EncryptCloudWatchLogGroupsPlugin` (the retention half is
  * `LogRetentionAspect`).
  *
  * Checks the CloudFormation resource type structurally (`CfnResource.isCfnResource` +

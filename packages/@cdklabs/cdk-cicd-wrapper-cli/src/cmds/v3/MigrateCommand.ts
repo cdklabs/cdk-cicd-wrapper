@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// `cdk-cicd migrate` -- assist a v2 -> v3 migration. It does the SAFE, mechanical part: read the v2
-// entry file, extract the stage list and repository from the `PipelineBlueprint.builder()...synth(app)`
+// `cdk-cicd migrate` -- assist a Blueprint -> v3 migration. It does the SAFE, mechanical part: read the
+// Blueprint entry file, extract the stage list and repository from the `PipelineBlueprint.builder()...synth(app)`
 // chain, and generate a `cicd.config.ts` scaffold. It deliberately does NOT rewrite the user's entry
 // file: pulling stack construction out of `.addStack({ provide(ctx){ new X(ctx.scope, ...) } })`
 // callbacks and into a plain `App` is exactly the kind of transform that silently corrupts code when the
@@ -15,7 +15,7 @@ import * as ts from 'typescript';
 import * as yargs from 'yargs';
 import { logger } from '../../utils/Logging';
 
-/** What the analyzer could extract from a v2 entry file. */
+/** What the analyzer could extract from a Blueprint entry file. */
 export interface MigrationPlan {
   /** Stage names for `defineCICD`, lowercased. Empty if none could be found. */
   readonly stages: string[];
@@ -27,11 +27,11 @@ export interface MigrationPlan {
   readonly foundBuilder: boolean;
 }
 
-/** v2's builder default when `.defineStages(...)` is absent (see PipelineBlueprint). */
+/** Blueprint's builder default when `.defineStages(...)` is absent (see PipelineBlueprint). */
 const V2_DEFAULT_STAGES = ['res', 'dev', 'int'];
 
 /**
- * Analyze a v2 entry file's source. Pure (no I/O) so it is unit-testable. Extracts the stage list and,
+ * Analyze a Blueprint entry file's source. Pure (no I/O) so it is unit-testable. Extracts the stage list and,
  * best-effort, the repository; records a warning for anything it cannot safely determine.
  */
 export function analyzeV2Source(source: string): MigrationPlan {
@@ -94,9 +94,11 @@ export function analyzeV2Source(source: string): MigrationPlan {
 
   if (foundBuilder && stages === undefined) {
     stages = [...V2_DEFAULT_STAGES];
-    warnings.push(`no defineStages(...) found; used v2's default (${V2_DEFAULT_STAGES.join(', ')}) -- confirm it`);
+    warnings.push(
+      `no defineStages(...) found; used Blueprint's default (${V2_DEFAULT_STAGES.join(', ')}) -- confirm it`,
+    );
   }
-  // Repository extraction from the v2 source is not yet implemented, so it is always reported as unresolved.
+  // Repository extraction from the Blueprint source is not yet implemented, so it is always reported as unresolved.
   warnings.push('no repository could be determined -- set `repository: Repository.*(...)` in the config');
   if (sawWorkbench) warnings.push('workbench(...) has no pipeline equivalent -- use a direct `cdk deploy` for it');
   if (sawHooksOrPhases) warnings.push('phases/hooks found -- re-express them as `ci.steps` and stage hooks');
@@ -122,11 +124,11 @@ export default defineCICD({
 
 class Command implements yargs.CommandModule {
   public command = 'migrate';
-  public describe = 'Scaffold a v3 cicd.config.ts from a v2 PipelineBlueprint entry file';
+  public describe = 'Scaffold a v3 cicd.config.ts from a Blueprint PipelineBlueprint entry file';
 
   public builder(args: yargs.Argv) {
     return args
-      .option('entry', { type: 'string', describe: 'The v2 entry file (default: read from cdk.json)' })
+      .option('entry', { type: 'string', describe: 'The Blueprint entry file (default: read from cdk.json)' })
       .option('application', { type: 'string', describe: 'Application name for defineCICD', default: 'my-app' })
       .option('dry-run', { type: 'boolean', default: false, describe: 'Print the config instead of writing it' });
   }
@@ -167,9 +169,9 @@ class Command implements yargs.CommandModule {
     logger.info('cdk-cicd migrate: next, do these by hand (see MIGRATION.md):');
     logger.info('  1. In your entry file, drop the PipelineBlueprint.builder()...synth(app) chain and');
     logger.info('     construct your stacks directly on a plain `new App()` (keep the App at the end).');
-    logger.info("  2. To KEEP already-deployed resources, match v2's stack name so CloudFormation updates");
+    logger.info("  2. To KEEP already-deployed resources, match Blueprint's stack name so CloudFormation updates");
     logger.info('     in place instead of recreating: stackName: stageStackName(base, { stageFirst: true,');
-    logger.info("     uppercaseStage: true }) reproduces v2's `DEV-<name>`. Verify with `cdk diff` first.");
+    logger.info("     uppercaseStage: true }) reproduces Blueprint's `DEV-<name>`. Verify with `cdk diff` first.");
     logger.info('  3. Point cdk.json\'s "app" at: npx cdk-cicd exec <entry>');
     logger.info('  4. Provision the pipeline once: npx cdk-cicd deploy-ci');
   }
