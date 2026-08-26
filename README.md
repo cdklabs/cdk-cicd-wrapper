@@ -19,10 +19,11 @@
 </p>
 
 > [!WARNING]
-> **Experimental — pre-release (`1.x` alpha), not yet published.** The developer experience
-> documented below is the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** —
-> the newest published version is `0.3.9`, on the stable `0.x` (Blueprint) line. So `npm install`
-> today gives you `0.x`, whose API is *not* the one described here: see the
+> **Experimental — pre-release, not yet published.** The developer experience documented below is
+> the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** — the newest published
+> version is `0.4.1`, on the stable `0.x` (Blueprint) line. **`0.4.0` is deprecated — do not use it**;
+> install `0.4.1` or later. So `npm install` today gives you `0.x`, whose API is *not* the one
+> described here: see the
 > [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/) for that, and
 > the [Migration Guide](./MIGRATION.md) for the mapping between the two. To try the flow below now,
 > work from this repository — `samples/cdk-v3-example/` is a complete example. The public API is not
@@ -72,9 +73,10 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
 > [!IMPORTANT]
 > As noted above, the `1.x` line these steps describe is **unreleased**, so the command below
-> currently resolves to `0.3.9` on the `0.x` line — which does not have `defineCICD` or
-> `cdk-cicd exec`. Until the first `1.x` alpha is published, follow these steps against a checkout of
-> this repository (start from `samples/cdk-v3-example/`) rather than a fresh `npm install`.
+> currently resolves to `0.4.1` on the `0.x` line (avoid `0.4.0`, which is deprecated) — which does
+> not have `defineCICD` or `cdk-cicd exec`. Until the first `1.x` release is published, follow these
+> steps against a checkout of this repository (start from `samples/cdk-v3-example/`) rather than a
+> fresh `npm install`.
 
 ```bash
 npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli

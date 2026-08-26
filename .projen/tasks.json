@@ -200,7 +200,8 @@
       "name": "release",
       "description": "Prepare a release from all monorepo packages",
       "env": {
-        "RELEASE": "true"
+        "RELEASE": "true",
+        "MIN_MAJOR": "1"
       },
       "steps": [
         {

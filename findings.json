@@ -7,9 +7,9 @@
       "layer": "static",
       "producer": "planning",
       "severity": "medium",
-      "status": "open",
+      "status": "resolved",
       "title": "projen majorVersion is 1 but the package has only ever published 0.x (latest 0.3.8)",
-      "detail": "RootConfig.ts sets majorVersion: 1 and prerelease: 'alpha', yet npm shows 50 published versions all in 0.x with no 1.x, no alpha, and only a 'latest' dist-tag. The config has never produced a shipped release. To make the v3 redesign version 1.0.0-alpha (decision D6), main's majorVersion must move to 0 to avoid a release-branch major collision \u2014 which also aligns the config with the actually-published 0.x line. Confirm the maintainer's intent for the current line before changing main's release config or enabling the v3 release branch.",
+      "detail": "RootConfig.ts sets majorVersion: 1 and prerelease: 'alpha', yet npm shows 50 published versions all in 0.x with no 1.x, no alpha, and only a 'latest' dist-tag. The config has never produced a shipped release. Root cause (found 2026-08-26): majorVersion/prerelease were passed as top-level project options, but yarn.Monorepo always passes release: false to the underlying TypeScriptProject, so no Release/Version component ever reads them -- they had zero effect anywhere. The D6 branch-isolation plan this finding referenced also didn't hold in practice: v3 (f152318) merged straight to main and released as 0.4.0 on latest before this was caught, so there is no 0.x/1.x isolation left to protect. Fix: moved to `minMajorVersion: 1` inside RootConfig's `releaseOptions` (reaches MonorepoRelease, inherited by every workspace) and dropped `prerelease: 'alpha'` -- the next release computes as a stable 1.0.0 on latest, not an alpha.",
       "location": {
         "path": "projenrc/RootConfig.ts",
         "line": 37
