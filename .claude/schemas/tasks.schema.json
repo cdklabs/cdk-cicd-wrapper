@@ -36,9 +36,9 @@
           "type": "string"
         },
         "component": {
-          "description": "Ownership axis — the package/area the task touches (same axis as findings.schema.json). 'wrapper' = @cdklabs/cdk-cicd-wrapper (jsii constructs). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. 'projen' = @cdklabs/cdk-cicd-wrapper-projen. 'shared' = spans packages. 'infra' = tooling/docs/samples/test-harness/schema.",
+          "description": "Ownership axis — the package/area the task touches (same axis as findings.schema.json). 'wrapper' = @cdklabs/cdk-cicd-wrapper (jsii constructs). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. 'shared' = spans packages. 'infra' = tooling/docs/samples/test-harness/schema. A third value, 'projen' (@cdklabs/cdk-cicd-wrapper-projen), was retired when v3 removed that package (D5, consolidation 3→2) — no task used it.",
           "type": "string",
-          "enum": ["wrapper", "cli", "projen", "shared", "infra"]
+          "enum": ["wrapper", "cli", "shared", "infra"]
         },
         "type": {
           "description": "Work kind — drives the conventional-commit type and separates build-work from verify-work. 'spike' = time-boxed investigation with a written outcome.",

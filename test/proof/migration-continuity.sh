@@ -3,10 +3,31 @@
 # in-place UPDATE (stateful resource PRESERVED); a mismatched name is a new stack (resource RECREATED).
 # Uses the real stageStackName helper to generate the names. Sandbox only; every stack is cdkcicdtest-
 # prefixed + tagged and torn down. No account id is printed.
+# Deliberately does NOT source harness.sh: that file sets `-e` at file scope, and the verdict
+# comparisons plus the `phys`/`status` helpers below need non-zero exits to stay survivable. It mirrors
+# the harness's pattern instead -- git-derived repo root, CDK_CICD_REPO_ROOT/CDK_CICD_ENV_FILE
+# overrides, guarded .env.
 set -uo pipefail
-export PATH=/home/gyalai/.nvm/versions/node/v24.19.0/bin:/usr/bin:/bin:$PATH
-cd /home/gyalai/.workspace/src/cdk-cicd-wrapper; set -a; . ./.env; set +a
-R=us-west-2; RUN="r$(date -u +%Y%m%d%H%M%S)"; TAG="cdk-cicd-wrapper-test"
+
+# Test the toolchain before using it; PATH belongs to the invoking shell, never to this script (see
+# CLAUDE.md -> Toolchain). A hardcoded nvm dir here made the script unrunnable on any other machine.
+for tool in git node aws; do
+  command -v "$tool" >/dev/null 2>&1 || { printf 'FAIL: %s is not on PATH -- see CLAUDE.md -> Toolchain\n' "$tool" >&2; exit 1; }
+done
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${CDK_CICD_REPO_ROOT:-$(git -C "$HERE" rev-parse --show-toplevel)}"
+cd "$REPO_ROOT" || { printf 'FAIL: cannot cd to repo root %s\n' "$REPO_ROOT" >&2; exit 1; }
+
+ENV_FILE="${CDK_CICD_ENV_FILE:-$REPO_ROOT/.env}"
+[ -f "$ENV_FILE" ] || { printf 'FAIL: no env file at %s (see CLAUDE.md -> AWS / test account)\n' "$ENV_FILE" >&2; exit 1; }
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+[ -n "${CDK_CICD_TEST_ACCOUNT:-}" ] || { printf 'FAIL: CDK_CICD_TEST_ACCOUNT is unset\n' >&2; exit 1; }
+
+R="${CDK_CICD_TEST_REGION_PRIMARY:-us-west-2}"; RUN="r$(date -u +%Y%m%d%H%M%S)"; TAG="cdk-cicd-wrapper-test"
 redact(){ sed -E "s/${CDK_CICD_TEST_ACCOUNT}/<account>/g"; }
 NAMING=./packages/@cdklabs/cdk-cicd-wrapper/lib/v3/config/naming.js
 
@@ -16,7 +37,10 @@ V3NAME=$(CDK_STAGE=dev node -e "console.log(require('$NAMING').stageStackName('c
 echo "v2-match name : $V2NAME"
 echo "v3-default name: $V3NAME"
 
-TA=$(mktemp --suffix=.json); TB=$(mktemp --suffix=.json)
+# Scratch stays in the repo's .gitignored .tmp/ -- `mktemp --suffix` is GNU-only (fails on macOS) and
+# system temp is refused by the tmp-confinement guard in .claude/hooks/.
+SCRATCH="$REPO_ROOT/.tmp"; mkdir -p "$SCRATCH"
+TA="$SCRATCH/mig-$RUN-a.json"; TB="$SCRATCH/mig-$RUN-b.json"
 echo '{"Resources":{"Data":{"Type":"AWS::S3::Bucket","Properties":{}}}}' > "$TA"
 echo '{"Resources":{"Data":{"Type":"AWS::S3::Bucket","Properties":{}},"Marker":{"Type":"AWS::SSM::Parameter","Properties":{"Type":"String","Value":"migrated"}}}}' > "$TB"
 

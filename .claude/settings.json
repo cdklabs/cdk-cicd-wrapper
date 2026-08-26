@@ -1,7 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "PATH": "/home/gyalai/.nvm/versions/node/v24.19.0/bin:${PATH}",
     "NODE_OPTIONS": "--max-old-space-size=6144",
     "GIT_PAGER": "cat"
   },
@@ -34,13 +33,24 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/preflight-toolchain.sh\"",
+            "statusMessage": "toolchain preflight"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-tmp-confinement.sh\"",
+            "command": "/bin/bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-tmp-confinement.sh\"",
             "statusMessage": "tmp-confinement guard"
           }
         ]

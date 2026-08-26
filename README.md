@@ -19,9 +19,14 @@
 </p>
 
 > [!WARNING]
-> **Experimental — pre-release (v3 `alpha`).** The public API is not yet frozen and may change
-> before the `1.0` release. The versions published to npm today are the stable `0.x` (v2) line;
-> the v3 developer experience described on the `v3` branch is under active development.
+> **Experimental — pre-release (`1.x` alpha), not yet published.** The developer experience
+> documented below is the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** —
+> the newest published version is `0.3.9`, on the stable `0.x` (Blueprint) line. So `npm install`
+> today gives you `0.x`, whose API is *not* the one described here: see the
+> [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/) for that, and
+> the [Migration Guide](./MIGRATION.md) for the mapping between the two. To try the flow below now,
+> work from this repository — `samples/cdk-v3-example/` is a complete example. The public API is not
+> frozen and may change before `1.0`.
 
 # Welcome to the CDK CI/CD Wrapper
 
@@ -34,12 +39,12 @@ This repository is organized as a monorepo containing multiple packages and tool
 
 ### Core Packages
 
-- **`packages/@cdklabs/cdk-cicd-wrapper`** - Main CDK constructs and pipeline blueprint library containing:
-  - **Pipeline Stacks** - Core infrastructure components (EncryptionStack, PipelineStack, WorkbenchStack)
-  - **Repository Stacks** - Version control integration (CodeCommitRepositoryStack, CodeStarConnectRepositoryStack, S3RepositoryStack)
-  - **Supporting Stacks** - Additional infrastructure (SSMParameterStack, PostDeployExecutorStack, ComplianceBucketStack)
-  - **VPC Stacks** - Network configuration options (ManagedVPCStack, NoVPCStack, VPCFromLookUpStack)
-- **`packages/@cdklabs/cdk-cicd-wrapper-cli`** - Command-line interface for validation, security scanning, and project management
+- **`packages/@cdklabs/cdk-cicd-wrapper`** - CDK constructs library (jsii — published to npm, PyPI, Maven and NuGet), containing:
+  - **Config authoring** - the `cicd.config.ts` surface: `defineCICD`, `Repository`, `AppConfig`
+  - **Engines** - what renders the pipeline: `CodePipelineEngine`, `CdkPipelinesEngine`, `GitHubActionsEngine`
+  - **Runtime injection** - `CdkCicd.attach` for explicit opt-in, plus the preload that `cdk-cicd exec` uses to wrap a plain CDK app at synth time
+  - **Support resources** - `SupportResources` (lazily provisioned), VPC networking for the pipeline's own CodeBuild projects, log retention, and the default-on security-hardening aspects
+- **`packages/@cdklabs/cdk-cicd-wrapper-cli`** - the `cdk-cicd` CLI: `deploy-ci`, `exec`, `synth`, `check` and `migrate`, plus `validate`, `license`, `security-scan` and `check-dependencies`
 
 ### Additional Components
 
@@ -65,58 +70,65 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 
 ### 1. Installation
 
-Install the CDK CI/CD Wrapper pipeline package by running the following command:
+> [!IMPORTANT]
+> As noted above, the `1.x` line these steps describe is **unreleased**, so the command below
+> currently resolves to `0.3.9` on the `0.x` line — which does not have `defineCICD` or
+> `cdk-cicd exec`. Until the first `1.x` alpha is published, follow these steps against a checkout of
+> this repository (start from `samples/cdk-v3-example/`) rather than a fresh `npm install`.
 
 ```bash
 npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
 ```
 
-### 2. Basic Setup
+### 2. Describe the pipeline in `cicd.config.ts`
 
-Open your entry file, typically located at `bin/<your-main-file>.ts` (where `your-main-file` is the name of your root project directory).
-
-Include the `PipelineBlueprint.builder().synth(app)` statement in your entry file:
+Create `cicd.config.ts` next to your `cdk.json`. This is the only file the wrapper needs:
 
 ```typescript
-import * as cdk from 'aws-cdk-lib';
-import { PipelineBlueprint } from '@cdklabs/cdk-cicd-wrapper';
+import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
-const app = new cdk.App();
-
-PipelineBlueprint.builder().synth(app);
+export default defineCICD({
+  application: 'my-project',
+  repository: Repository.codecommit('my-project'), // or Repository.s3(...), or Repository.codestarConnection(...) for GitHub
+  // 'dev' auto-approves (inner loop); 'prod' is gated by a manual approval by default.
+  stages: ['dev', { name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }],
+});
 ```
 
-This will deploy the CI/CD pipeline with its default configuration without deploying any stacks into the staging accounts.
+### 3. Point `cdk.json` at `cdk-cicd exec`
 
-### 3. Adding Your Application Stacks (Optional)
+**There is no wrapper code in your app.** Your `bin/` entry point stays exactly what `cdk init` produced; `cdk.json`'s `app` command is what wraps it:
 
-If you want to include additional stacks in the CI/CD pipeline, modify your entry file as follows:
+```json
+{
+  "app": "npx cdk-cicd exec bin/my-project.ts"
+}
+```
+
+`cdk-cicd exec` resolves the active stage's config, exports its account/region so a stock `env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION }` resolves correctly, and runs your entry file under a preload that applies the wrapper's runtime hooks (tagging, default security aspects). Add application stacks to the plain `App` as you normally would — no provider registry, no wrapper imports:
 
 ```typescript
+// bin/my-project.ts — ordinary CDK
 import * as cdk from 'aws-cdk-lib';
-import { PipelineBlueprint, GlobalResources } from '@cdklabs/cdk-cicd-wrapper';
+import { MyStack } from '../lib/my-stack';
 
 const app = new cdk.App();
-
-PipelineBlueprint.builder().addStack({
-provide: (context) => {
-   // Create your stacks here
-   new YourStack(context.scope, `${context.blueprintProps.applicationName}YourStack`, {
-      applicationName: context.blueprintProps.applicationName,
-      stageName: context.stage,
-   });
-   new YourOtherStack(context.scope, `${context.blueprintProps.applicationName}YourOtherStack`, {
-      applicationQualifier: context.blueprintProps.applicationQualifier,
-      encryptionKey: context.get(GlobalResources.ENCRYPTION)!.kmsKey,
-   });
-}}).synth(app);
+new MyStack(app, 'my-project', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+});
 ```
 
-**Note**: Refer to the [Developer Guide](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/index.html) for more information on the `PipelineBlueprint`.
+**Optional**: use the `stageStackName` helper to control the CloudFormation stack name per stage (`my-project-dev`/`my-project-prod`). Migrating from a previous major? Matching the old stack name is what makes the migration an in-place update instead of a resource replacement — see the [Migration Guide](./MIGRATION.md).
 
-### 4. Required Scripts Configuration
+`samples/cdk-v3-example/` is this exact shape as a working project. For a non-Node app entry (for example Python), the preload cannot attach, so use the explicit `CdkCicd.attach(app)` call instead.
 
-The CDK CI/CD Wrapper expects to have the `validate`, `lint`, `test`, `audit` scripts defined. If you are missing any of the `npm run` scripts, or want to use the provided CLI tool for one or more actions, you can add the following definitions to your `package.json` file:
+**Note**: Refer to the [Getting Started guide](https://cdklabs.github.io/cdk-cicd-wrapper/getting_started/index.html) for the full stage shape, repository sources, and CI configuration.
+
+### 4. Optional Scripts Configuration
+
+By default the pipeline's build step runs `npx cdk-cicd check`, which covers `validate` (lock-file integrity), `audit` (dependency CVEs), `license` (open-source license checking) and `security` (Bandit/Semgrep/ShellCheck) — each **skipped rather than failed** when your project has no baseline for it yet. You do not need to define any scripts to get started.
+
+Setting `ci.steps` in `cicd.config.ts` *replaces* that default rather than adding to it, so include `check` explicitly if you still want those checks alongside your own `build`/`test`. If you would rather drive the same checks from `package.json`, add the definitions below:
 
 #### 4.1. Adding validate script
 ```bash
@@ -184,46 +196,30 @@ npm run audit:fix:license
 - `npm run validate:fix` will create the required `package-verification.json` file for you.
 - `npm run audit:fix:license` will generate a valid Notice file for you.
 
-### 6. Deploy the CI/CD Pipeline
+### 6. Bootstrap and deploy the CI/CD Pipeline
 
-Deploy all the stacks by running the following command:
+Bootstrap every account/region a stage targets, trusting the account the pipeline itself runs in:
 
 ```bash
-npx dotenv-cli -- npm run cdk deploy -- --all --region ${AWS_REGION} --profile $RES_ACCOUNT_AWS_PROFILE --qualifier ${CDK_QUALIFIER}
+npx cdk bootstrap aws://<STAGE_ACCOUNT>/<STAGE_REGION> --trust <PIPELINE_ACCOUNT> \
+  --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
-Once the command finishes, the following CDK Stacks will be deployed into your RES Account:
+Then, from the account and region the pipeline should run in:
 
-#### Core Infrastructure Stacks
+```bash
+npx cdk-cicd deploy-ci
+```
 
-- **EncryptionStack**: Creates and manages KMS keys for encrypting CloudWatch Log Groups and other AWS resources. Features automatic key rotation and proper service principal permissions.
+This provisions the pipeline from `cicd.config.ts` alone — nothing else needs to exist yet. From there the pipeline **self-updates from `cicd.config.ts` on every run**, so `deploy-ci` is a one-time manual command (and again only if you need to recover a deleted pipeline stack).
 
-- **PipelineStack**: The main orchestration stack that creates the CodePipeline with all CodeBuild steps, manages deployment stages, and coordinates the entire CI/CD workflow.
+#### What the pipeline does
 
-- **SSMParameterStack**: Creates and manages parameters in AWS Systems Manager Parameter Store, including account IDs, configuration values, and cross-stage references.
+**Source** → **Build** (`npm ci`, then your `ci.steps` or the default `npx cdk-cicd check`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, each gated by a manual approval except your inner-loop stages (`dev`/`res`) unless you set `manualApproval` explicitly.
 
-#### Repository Integration Stacks (One of the following based on your configuration)
+Supporting resources — the encryption key, VPC networking for the pipeline's own CodeBuild projects, a compliance bucket — are **lazily provisioned**, so a pipeline only pays for what its configuration actually references.
 
-- **CodeCommitRepositoryStack**: Sets up AWS CodeCommit repository with automated pull request workflows, CodeGuru scanning integration, and branch protection rules.
-
-- **CodeStarConnectRepositoryStack**: Establishes secure connection between your AWS RES Account and external Git repositories (GitHub, Bitbucket, etc.) via AWS CodeStar connections.
-
-- **S3RepositoryStack**: Configures S3-based artifact storage for scenarios where direct repository integration isn't suitable.
-
-#### Optional Infrastructure Stacks
-
-- **VPC Stacks** (deployed based on your networking configuration):
-  - **ManagedVPCStack**: Creates a fully managed VPC with subnets, NAT gateways, and routing for isolated pipeline execution
-  - **VPCFromLookUpStack**: Uses existing VPC infrastructure by looking up VPC resources in your account
-  - **NoVPCStack**: Default configuration for pipelines that don't require VPC isolation
-
-- **WorkbenchStack**: Provides isolated development and testing environment that allows developers to deploy and test stacks independently from the main CI/CD pipeline.
-
-- **PostDeployExecutorStack**: Handles post-deployment actions such as integration tests, notifications, and cleanup tasks.
-
-- **ComplianceBucketStack**: Creates S3 buckets and Lambda functions for compliance logging and audit trail management.
-
-**Note**: VPC stacks are only created when specifically configured. Check the [networking documentation](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/networking.html) for more information on networking configurations.
+**Note**: Check the [networking documentation](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/networking.html) for VPC configurations, and the [Migration Guide](./MIGRATION.md) if you are coming from the previous major, where the pipeline was assembled from a set of named stacks in your own `bin/`.
 
 Visit our [documentation](https://cdklabs.github.io/cdk-cicd-wrapper/) to learn more.
 
@@ -247,7 +243,7 @@ On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged
 You should not fork this repository and expect to reproduce the same in your AWS Accounts, this repository is only used for preparing, testing and shipping all the packages used by the CDK CI/CD Wrapper. Using the CDK CI/CD Wrapper gives you the following benefits:
 
 - :white_check_mark: FOSS (Free and open-source software) scanning – built-in checks against a pre-defined adjustable list of licenses
-- :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions
+- :white_check_mark: Workbench – isolated test environment for developers which enables parallel testing in the same AWS Account without collisions (`0.x` only; `1.x` has no pipeline equivalent — use a direct `cdk deploy`, see [MIGRATION.md](./MIGRATION.md))
 - :white_check_mark: Automated security scanners – enabled by default bandit, shellcheck, npm audit, pip audit, etc)
 - :white_check_mark: AWS CDK Language agnostic – support for TypeScript and Python, on the works to fully support Java / C# / Go 
 - :white_check_mark: Built for many project types - facilitating MLOps usecase, Web App development (UIs), GenAI usecases
