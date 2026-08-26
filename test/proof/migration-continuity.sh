@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Empirical proof of the migration-continuity claim: matching Blueprint's stack name makes a zero-touch deploy an
+# Empirical proof of the migration-continuity claim: matching Blueprint's stack name makes an Autopilot deploy an
 # in-place UPDATE (stateful resource PRESERVED); a mismatched name is a new stack (resource RECREATED).
 # Uses the real stageStackName helper to generate the names. Sandbox only; every stack is cdkcicdtest-
 # prefixed + tagged and torn down. No account id is printed.
@@ -35,7 +35,7 @@ NAMING=./packages/@cdklabs/cdk-cicd-wrapper/lib/v3/config/naming.js
 V2NAME=$(CDK_STAGE=dev node -e "console.log(require('$NAMING').stageStackName('cdkcicdtest-${RUN}-mig',{stageFirst:true,uppercaseStage:true}))")
 V3NAME=$(CDK_STAGE=dev node -e "console.log(require('$NAMING').stageStackName('cdkcicdtest-${RUN}-mig'))")
 echo "Blueprint-match name : $V2NAME"
-echo "zero-touch-default name: $V3NAME"
+echo "Autopilot-default name: $V3NAME"
 
 # Scratch stays in the repo's .gitignored .tmp/ -- `mktemp --suffix` is GNU-only (fails on macOS) and
 # system temp is refused by the tmp-confinement guard in .claude/hooks/.
@@ -55,7 +55,7 @@ echo "== step 2: 'migrate' -- SAME name, changed template (adds a param)"
 aws cloudformation deploy --stack-name "$V2NAME" --template-file "$TB" --region "$R" --tags "$TAG=$RUN" >/dev/null 2>&1
 B2=$(phys "$V2NAME"); echo "   bucket physical id: $B2  (status $(status "$V2NAME"))"
 
-echo "== step 3: NEGATIVE -- deploy under the mismatched zero-touch-default name ($V3NAME)"
+echo "== step 3: NEGATIVE -- deploy under the mismatched Autopilot-default name ($V3NAME)"
 aws cloudformation deploy --stack-name "$V3NAME" --template-file "$TA" --region "$R" --tags "$TAG=$RUN" >/dev/null 2>&1
 B3=$(phys "$V3NAME"); echo "   bucket physical id: $B3  (status $(status "$V3NAME"))"
 

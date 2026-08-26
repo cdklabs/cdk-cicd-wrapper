@@ -3,7 +3,7 @@
 !!! warning "Blueprint (0.x) only"
 
     This dependency-injection system (`GlobalResources`/resource providers, reached through
-    `context.get(...)` inside an `addStack` callback) has no v3 equivalent. Autopilot's `bin/` is
+    `context.get(...)` inside an `addStack` callback) has no Autopilot equivalent. Autopilot's `bin/` is
     plain CDK — construct whatever you need directly (a KMS key, an SSM lookup, …) instead of pulling
     it from a shared registry. See [Getting Started](../getting_started/index.md).
 

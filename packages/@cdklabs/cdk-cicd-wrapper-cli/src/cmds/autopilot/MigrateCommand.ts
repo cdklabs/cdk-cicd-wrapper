@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// `cdk-cicd migrate` -- assist a Blueprint -> v3 migration. It does the SAFE, mechanical part: read the
+// `cdk-cicd migrate` -- assist a Blueprint -> Autopilot migration. It does the SAFE, mechanical part: read the
 // Blueprint entry file, extract the stage list and repository from the `PipelineBlueprint.builder()...synth(app)`
 // chain, and generate a `cicd.config.ts` scaffold. It deliberately does NOT rewrite the user's entry
 // file: pulling stack construction out of `.addStack({ provide(ctx){ new X(ctx.scope, ...) } })`
@@ -124,7 +124,7 @@ export default defineCICD({
 
 class Command implements yargs.CommandModule {
   public command = 'migrate';
-  public describe = 'Scaffold a v3 cicd.config.ts from a Blueprint PipelineBlueprint entry file';
+  public describe = 'Scaffold an Autopilot cicd.config.ts from a Blueprint PipelineBlueprint entry file';
 
   public builder(args: yargs.Argv) {
     return args

@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Blueprint shipped this as `RotateEncryptionKeysPlugin`, on by default (m9-migrate-security-plugins). v3
+// Blueprint shipped this as `RotateEncryptionKeysPlugin`, on by default (m9-migrate-security-plugins). Autopilot
 // has no plugin registry -- it is a plain `IAspect`, wired tree-wide by the runtime injection hook
 // (m2-attach/m2-register) alongside cdk-nag, tags and log retention.
 //

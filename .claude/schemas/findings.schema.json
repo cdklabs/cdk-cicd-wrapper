@@ -28,7 +28,7 @@
           "type": "string"
         },
         "component": {
-          "description": "Ownership axis — the two published packages in packages/@cdklabs/ (see CLAUDE.md -> 'Toolchain'), plus 'shared' for findings that genuinely span more than one (e.g. a type exported by cdk-cicd-wrapper and consumed by the CLI, or the register hook contract the CLI's exec depends on). Findings about process, tooling, samples, or docs that aren't about a specific package (e.g. this schema file, projen config, the test harness) go under 'infra'. 'wrapper' = @cdklabs/cdk-cicd-wrapper (the jsii constructs library). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. There was a third value, 'projen' (@cdklabs/cdk-cicd-wrapper-projen); v3 removed that package (task.md D5, consolidation 3→2) and no finding used the value, so it was retired with it.",
+          "description": "Ownership axis — the two published packages in packages/@cdklabs/ (see CLAUDE.md -> 'Toolchain'), plus 'shared' for findings that genuinely span more than one (e.g. a type exported by cdk-cicd-wrapper and consumed by the CLI, or the register hook contract the CLI's exec depends on). Findings about process, tooling, samples, or docs that aren't about a specific package (e.g. this schema file, projen config, the test harness) go under 'infra'. 'wrapper' = @cdklabs/cdk-cicd-wrapper (the jsii constructs library). 'cli' = @cdklabs/cdk-cicd-wrapper-cli. There was a third value, 'projen' (@cdklabs/cdk-cicd-wrapper-projen); Autopilot removed that package (task.md D5, consolidation 3→2) and no finding used the value, so it was retired with it.",
           "type": "string",
           "enum": ["wrapper", "cli", "shared", "infra"]
         },

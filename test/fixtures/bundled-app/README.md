@@ -9,7 +9,7 @@ first bundle pays a one-time download; `dist/` is build output and is gitignored
 
 ## What it is for
 
-The v3 zero-touch path is a `node -r @cdklabs/cdk-cicd-wrapper/register` preload that swaps the `App`
+The Autopilot preload path is a `node -r @cdklabs/cdk-cicd-wrapper/register` preload that swaps the `App`
 class on the live module object of `aws-cdk-lib/core/lib/app`. Bundling inlines `aws-cdk-lib` into
 `dist/app.js`, so at run time there is no module object left to patch and the preload becomes a no-op —
 **silently**. That silence is the bug; `m2-bundled-diagnostic` (wave 2) must turn it into a clear

@@ -31,7 +31,7 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         '@aws-sdk/client-s3',
         '@aws-sdk/credential-providers',
         'tslog',
-        // zero-touch `cdk-cicd exec` resolves the register preload and reuses the config loader from the
+        // Autopilot `cdk-cicd exec` resolves the register preload and reuses the config loader from the
         // constructs package. Kept a workspace dependency, NOT folded into the jsii package (D5).
         '@cdklabs/cdk-cicd-wrapper',
         // A TypeScript `cicd.config.ts` is the primary authoring path, and both `CicdConfig.load`
@@ -46,7 +46,7 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         // resolve it). ts-node peer-depends on it too.
         'typescript@^5.9.3',
       ],
-      // Enabled for zero-touch: `cdk-cicd exec`'s pure logic (stage->env resolution, the non-clobbering
+      // Enabled for Autopilot: `cdk-cicd exec`'s pure logic (stage->env resolution, the non-clobbering
       // CDK_CONTEXT_JSON merge) is unit-tested here; the spawn itself is proven by the harness.
       jest: true,
     });

@@ -4,7 +4,7 @@ This documentation provides a step-by-step guide for setting up the necessary pr
 
 ## AWS Account
 
-- You need access to an AWS account for each stage you define in `cicd.config.ts` (v3 has no reserved stage names — `RES`/`DEV`/`INT`/`PROD` are just an example naming, not a requirement).
+- You need access to an AWS account for each stage you define in `cicd.config.ts` (Autopilot has no reserved stage names — `RES`/`DEV`/`INT`/`PROD` are just an example naming, not a requirement).
 
 ## Operating System
 

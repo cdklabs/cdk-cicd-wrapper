@@ -3,7 +3,7 @@
 //
 // Blueprint shipped this as `LambdaDLQPlugin` (m9-migrate-security-plugins), opt-in (not in Blueprint's default
 // plugin set), which lazily created its own dedicated stack + SQS queue the first time it visited a
-// Lambda function with no DLQ/DLT set. v3 has no per-stage-plugin-hook to create that sibling stack
+// Lambda function with no DLQ/DLT set. Autopilot has no per-stage-plugin-hook to create that sibling stack
 // from inside the aspect, so the queue is the caller's construct instead -- construct it however you
 // like (e.g. with `enforceSSL: true`, matching Blueprint's queue) and pass it in.
 

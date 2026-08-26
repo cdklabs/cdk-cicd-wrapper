@@ -3,7 +3,7 @@
 //
 // The GitHub Actions engine (Blueprint `GitHubPipelinePlugin`/`GitHubPipelineProvider`/`GitHubRepositoryProvider`,
 // migrated). It renders a `.github/workflows/deploy.yml` (via `cdk-pipelines-github`'s `GitHubWorkflow`)
-// instead of an AWS-hosted pipeline -- zero-touch's only other engines (`CodePipelineEngine`/`CdkPipelinesEngine`)
+// instead of an AWS-hosted pipeline -- Autopilot's only other engines (`CodePipelineEngine`/`CdkPipelinesEngine`)
 // both provision a real CodePipeline/CodeBuild footprint; this one deploys nothing of its own except the
 // OIDC role the workflow assumes. It mechanically mirrors `CdkPipelinesEngine`, not the flat engine: GitHub
 // Actions needs every stage built as a `cdk.Stage` inside one synth (the same CDK Pipelines constraint), so
@@ -44,7 +44,7 @@ export interface GitHubActionsEngineProps {
 }
 
 /**
- * A GitHub Actions workflow rendered from a zero-touch config + a stage factory. Reproduces the Blueprint shape: a
+ * A GitHub Actions workflow rendered from an Autopilot config + a stage factory. Reproduces the Blueprint shape: a
  * `GitHubActionRole` the workflow assumes over OIDC, a Synth job, and one job (with a GitHub Environment,
  * so an environment protection rule set up on GitHub's side gates it) per deployment stage. Manual-approval
  * config is NOT translated into a CDK step here -- as in Blueprint, GitHub Environments are the gate; every stage

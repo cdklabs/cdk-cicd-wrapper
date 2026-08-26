@@ -62,7 +62,7 @@ CloudFormation execution role — the wrapper threads them into synth and deploy
 
 ## Controlling the CloudFormation stack name
 
-zero-touch synthesizes the same `bin/` once per stage, so a bare `new MyStack(app, 'my-app')` deploys the same
+Autopilot synthesizes the same `bin/` once per stage, so a bare `new MyStack(app, 'my-app')` deploys the same
 name in every stage. Use the opt-in `stageStackName` helper to qualify it by stage:
 
 ```ts

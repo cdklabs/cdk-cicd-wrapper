@@ -88,7 +88,7 @@ function sourceFor(scope: Construct, repository: Repository): pipelines.CodePipe
 }
 
 /**
- * A CDK Pipelines pipeline rendered from a v3 config + a stage factory. Reproduces the Blueprint shape:
+ * A CDK Pipelines pipeline rendered from an Autopilot config + a stage factory. Reproduces the Blueprint shape:
  * Source -> Synth (self-mutating) -> Assets -> one wave per stage (with a pre-approval when the stage is
  * gated). Cross-account keys are on (Blueprint default) so multi-account stages work.
  */

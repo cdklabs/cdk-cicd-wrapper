@@ -8,7 +8,7 @@ The CI functionality of the {{ project_name }} can be used in any software devel
 
 ## How the CI build is assembled
 
-There is no `PhaseCommand`/`definePhase` model in v3. The CI build's commands, per `CiConfig` (the `ci` field on `cicd.config.ts`), are:
+There is no `PhaseCommand`/`definePhase` model in Autopilot. The CI build's commands, per `CiConfig` (the `ci` field on `cicd.config.ts`), are:
 
 ```
 npm ci

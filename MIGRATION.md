@@ -6,22 +6,22 @@ This document outlines the notable migration and cleanup tasks involved in upgra
 
 Each section details the changes introduced between specific version ranges (e.g., [0.0.0] - [0.0.6]).
 
-### [0.2.x] → [1.0 / zero-touch] Migration — config-driven pipelines, zero wrapper code in your app
+### [0.2.x] → [1.0 / Autopilot] Migration — config-driven pipelines, zero wrapper code in your app
 
-> **Status:** zero-touch develops on the `v3` branch and, when first exposed, ships as `1.0.0-alpha.N` under the
+> **Status:** Autopilot develops on the `v3` branch and, when first exposed, ships as `1.0.0-alpha.N` under the
 > npm dist-tag `next` — **not** `latest`. The 0.x (`PipelineBlueprint`) line keeps working and publishing
 > until the 1.0 major. This chapter is the mapping you follow when you move; it is additive, so you can
-> adopt zero-touch on a branch while 0.x stays in production. Some Blueprint capabilities are not in zero-touch yet — those rows
+> adopt Autopilot on a branch while 0.x stays in production. Some Blueprint capabilities are not in Autopilot yet — those rows
 > are marked **(roadmap)** below, and you should not migrate a project that depends on them yet.
 
 **The one big change.** In Blueprint you *wrote wrapper code in your `bin/`* — `PipelineBlueprint.builder()…
-.synth(app)`. In zero-touch your `bin/` stays exactly what `cdk init` produced (a plain `App` with your stacks),
+.synth(app)`. In Autopilot your `bin/` stays exactly what `cdk init` produced (a plain `App` with your stacks),
 and the pipeline is described in a separate **`cicd.config.ts`** next to `cdk.json`. The wrapper is
 injected at synth time via `cdk.json`'s app command (`npx cdk-cicd exec bin/app.ts`); with no
 `cicd.config.ts` present the wrapper is inert and your app deploys as stock CDK. You provision the
 pipeline once with `cdk-cicd deploy-ci`, and it self-updates from `cicd.config.ts` on every run.
 
-#### Before (Blueprint) → After (zero-touch)
+#### Before (Blueprint) → After (Autopilot)
 
 ```TypeScript
 // Blueprint — bin/app.ts
@@ -33,13 +33,13 @@ PipelineBlueprint.builder()
 ```
 
 ```TypeScript
-// zero-touch — bin/app.ts stays plain CDK; cdk.json runs `npx cdk-cicd exec bin/app.ts`
+// Autopilot — bin/app.ts stays plain CDK; cdk.json runs `npx cdk-cicd exec bin/app.ts`
 const app = new App();
 new MyStack(app, 'my-app');
 ```
 
 ```TypeScript
-// zero-touch — cicd.config.ts (new file, next to cdk.json)
+// Autopilot — cicd.config.ts (new file, next to cdk.json)
 import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 export default defineCICD({
   application: 'my-app',
@@ -50,7 +50,7 @@ export default defineCICD({
 
 #### Mapping table
 
-| Blueprint | zero-touch |
+| Blueprint | Autopilot |
 |---|---|
 | `PipelineBlueprint.builder().defineStages(...).addStack(...).synth(app)` | `defineCICD({ stages, ... })` in `cicd.config.ts`; your stacks stay in `bin/` |
 | stack names auto-prefixed by the stage (`DEV-myapp`) via `AppStage` | you name stacks in `bin/` — full control; use `stageStackName(base, { stageFirst: true, uppercaseStage: true })` to reproduce Blueprint's name and update in place (see **Preserving already-deployed resources**) |
@@ -63,8 +63,8 @@ export default defineCICD({
 | `CodeArtifactPlugin` / `NPMRegistryConfig` (generic private-registry basic-auth, not CodeArtifact -- see `codeArtifact` below for that) | `npmRegistry` field (`NpmRegistryConfig`: `url`/`basicAuthSecretArn`/`scope`) in `cicd.config.ts`; writes a scoped `.npmrc` (`registry=`/`_authToken=` lines) before `npm ci` in the CI build project and, for container mode (Repo 2), the deploy build project -- the bearer token resolves from Secrets Manager at CodeBuild container-start time, never appears in a log |
 | `ciBuildSpec` (`CDKPipelineProps`) / `CodeBuildFactoryProvider`'s `partialBuildSpec` | `ci.partialBuildSpec` (`CiConfig`) in `cicd.config.ts`; a `codebuild.BuildSpec` deep-merged (via `codebuild.mergeBuildSpecs`) into the CI build project's generated spec — same escape-hatch shape, scoped to the CI build project the way Blueprint scoped it to Synth |
 | `PipelineBlueprint.codeBuildEnvSettings(...)` / `CodeBuildFactoryProvider` | `codeBuildEnvSettings` field (reuses CDK's own `codebuild.BuildEnvironment` — `privileged`/`computeType`/`environmentVariables`/etc.) in `cicd.config.ts`; applied to every CodeBuild project by both engines, same as Blueprint's uniform application |
-| `PipelineBlueprint.pipelineOptions(...)` (`selfMutation`/`publishAssetsInParallel`/`dockerCredentials`/`useChangeSets`) | dropped, no zero-touch equivalent — confirmed against source: `CdkPipelinesEngineProps` exposes only `config`/`stages`/`pipelineName` |
-| `definePhase` / `PhaseCommand` (`IPhaseCommand`, `NPMPhaseCommand`, `ShellScriptPhaseCommand`, `PythonPhaseCommand`, `InlineShellPhaseCommand`, `ShellCommandPhaseCommand`/`sh()`) | Subsumed by `ci.steps` — a plain string is strictly more general than a typed command-builder class, so the builder classes themselves have no zero-touch equivalent. Blueprint's built-in phase wiring maps as: `INITIALIZE` (proxy/npm-login commands) → the `proxy`/`npmRegistry`/`codeArtifact` config fields; `PRE_BUILD`/`BUILD`/`TESTING` (npm ci, validate, audit, lint, build, test, synth) → `ci.steps` plus the default-on `cdk-cicd check`; `PRE_DEPLOY`/`POST_DEPLOY` → dropped (deploy hooks, not migrated) |
+| `PipelineBlueprint.pipelineOptions(...)` (`selfMutation`/`publishAssetsInParallel`/`dockerCredentials`/`useChangeSets`) | dropped, no Autopilot equivalent — confirmed against source: `CdkPipelinesEngineProps` exposes only `config`/`stages`/`pipelineName` |
+| `definePhase` / `PhaseCommand` (`IPhaseCommand`, `NPMPhaseCommand`, `ShellScriptPhaseCommand`, `PythonPhaseCommand`, `InlineShellPhaseCommand`, `ShellCommandPhaseCommand`/`sh()`) | Subsumed by `ci.steps` — a plain string is strictly more general than a typed command-builder class, so the builder classes themselves have no Autopilot equivalent. Blueprint's built-in phase wiring maps as: `INITIALIZE` (proxy/npm-login commands) → the `proxy`/`npmRegistry`/`codeArtifact` config fields; `PRE_BUILD`/`BUILD`/`TESTING` (npm ci, validate, audit, lint, build, test, synth) → `ci.steps` plus the default-on `cdk-cicd check`; `PRE_DEPLOY`/`POST_DEPLOY` → dropped (deploy hooks, not migrated) |
 | default-on validate/audit/license/security | same, run by `cdk-cicd check` in the CI build (no npm-script surgery needed) |
 | manual approval steps | `manualApproval` per stage; non-`dev`/`res` stages are gated by default |
 | `deployment.deployRole` / forced synth roles | `deployment.deployRole` on a stage (unchanged concept) |
@@ -75,11 +75,11 @@ export default defineCICD({
 | container / two-repo image mode | `defineDeployment` (Repo 2, config-only) + `deployerImage`/`BuildImage` (Repo 1) in `cicd.config.ts`; `deploy-ci` auto-routes `cicd.config.ts`→CI-image-build pipeline, `deploy.config.ts`→CD pipeline, `cdk-cicd deploy --from-image` runs the pinned image once per (target × region). Repo 1 build/push and the Repo 2 executor are both real-AWS-proven (`test/proof/container-verify.sh`/`container-deploy-verify.sh`); the CD-pipeline-in-CodePipeline round trip (task `m6-container`) is unit-tested but its own end-to-end AWS proof is still open |
 | `@cdklabs/cdk-cicd-wrapper-projen` project type | replaced by `cicd.config.ts` (+ `cdk-cicd` CLI); the projen product is deprecated and removed at the major |
 
-#### Notable zero-touch behaviours worth knowing
+#### Notable Autopilot behaviours worth knowing
 
 - **Flat footprint.** The CodePipeline engine builds ONE pipeline: source → one CI build → a
   self-update stage → one deploy action per stage. Where Blueprint (CDK Pipelines) grew a CodeBuild project per
-  asset per stage (100+ on a real app), zero-touch is `1 + 1 + <stage count>`.
+  asset per stage (100+ on a real app), Autopilot is `1 + 1 + <stage count>`.
 - **Deploy model (default: assembly promotion).** The CI build synthesizes every stage once, keeps
   `cdk.out`, and promotes it; deploy stages consume that assembly and do not re-synthesize. A second
   model, `DeployModel.DEPLOY_TIME_SYNTH`, synthesizes per stage at deploy time (with CI synthesizing one
@@ -92,7 +92,7 @@ export default defineCICD({
 #### Preserving already-deployed resources (migrate without a redeploy)
 
 **This is the part to get right first.** CloudFormation keys resources to a stack by its **name**, so a
-zero-touch deploy only *updates* your existing stack (keeping its resources) if it uses the **same stack name**
+Autopilot deploy only *updates* your existing stack (keeping its resources) if it uses the **same stack name**
 Blueprint deployed. Deploy a different name and CloudFormation creates a brand-new stack and leaves the old one
 orphaned — a full recreate, exactly what you want to avoid for stateful resources.
 
@@ -101,16 +101,16 @@ The naming differs by default, and it is measurable:
 | | CloudFormation stack name |
 |---|---|
 | **Blueprint** (your stacks were nested in an `AppStage`, i.e. a `cdk.Stage`) | `<stageId>-myapp` — the stage id prefixed **verbatim**; `DEV-myapp` with Blueprint's default `RES`/`DEV`/`INT` stages (no `PROD` unless you called `.defineStages(...)` yourself), but `staging-myapp` if you defined lowercase/custom stages |
-| **zero-touch** (plain `new MyStack(app, 'myapp')` in `bin/`) | `myapp` — just the construct id |
+| **Autopilot** (plain `new MyStack(app, 'myapp')` in `bin/`) | `myapp` — just the construct id |
 
-The **logical IDs inside the stack are unchanged** between Blueprint and zero-touch, so once the names match it is a
-clean in-place update, not a resource replacement. To match Blueprint's name, use `stageStackName` (a zero-touch
+The **logical IDs inside the stack are unchanged** between Blueprint and Autopilot, so once the names match it is a
+clean in-place update, not a resource replacement. To match Blueprint's name, use `stageStackName` (an Autopilot
 TS-authoring helper) in your `bin/`:
 
 ```ts
 import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
 
-// Reproduces Blueprint's `DEV-myapp` / `PROD-myapp`, so zero-touch UPDATES the existing stack in place.
+// Reproduces Blueprint's `DEV-myapp` / `PROD-myapp`, so Autopilot UPDATES the existing stack in place.
 new MyStack(app, 'myapp', { stackName: stageStackName('myapp', { stageFirst: true, uppercaseStage: true }) });
 ```
 
@@ -121,7 +121,7 @@ new MyStack(app, 'myapp', { stackName: stageStackName('myapp', { stageFirst: tru
 you will deploy a differently-cased name and recreate resources. If your Blueprint stack set an explicit
 `stackName` (no stage prefix at all), just reuse that literal string.
 
-For a **new** zero-touch project (no existing stacks to preserve) drop the options for the cleaner `myapp-dev` /
+For a **new** Autopilot project (no existing stacks to preserve) drop the options for the cleaner `myapp-dev` /
 `myapp-prod`, or set `stackName` to whatever you like — you have full control. `stageStackName` reads the
 stage from `CDK_STAGE`, which `cdk-cicd exec` sets per stage.
 
@@ -139,7 +139,7 @@ update. Fix the name until the diff shows in-place changes only.
 
 If names genuinely cannot be matched (you renamed stacks, or want a different scheme), the fallback for
 stateful resources is: set `RemovalPolicy.RETAIN` on them, **delete the Blueprint stacks** (RETAIN leaves the
-resources behind, un-owned), then adopt those resources into the zero-touch stack with `cdk import`. Note the Blueprint
+resources behind, un-owned), then adopt those resources into the Autopilot stack with `cdk import`. Note the Blueprint
 stacks must be deleted first — `cdk import` adopts *unmanaged* resources, so it conflicts if the Blueprint stack
 still owns them. Prefer name-matching: it is a single in-place update and needs no import.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# cdk-cicd-wrapper zero-touch proof harness -- deploy -> assert -> destroy against the
+# cdk-cicd-wrapper Autopilot proof harness -- deploy -> assert -> destroy against the
 # real test account.
 #
 # The governing rule for this repo is "nothing untested reaches GitHub". This is

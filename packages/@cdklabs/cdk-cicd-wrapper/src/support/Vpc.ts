@@ -3,7 +3,7 @@
 //
 // Resolves the pipeline's own VPC networking (Blueprint `VPCProvider`/`ManagedVPCStack`/`VPCFromLookUpStack`,
 // migrated). Blueprint provisioned this as its own per-stage CloudFormation stack, driven by a resource
-// provider; v3 attaches it directly to the pipeline's construct tree instead -- there is no separate
+// provider; Autopilot attaches it directly to the pipeline's construct tree instead -- there is no separate
 // stack, because the CodeBuild projects that consume it already live in the same stack this resolves
 // against. `SupportResources.vpcNetworking` is the lazy entry point engines read; `resolveVpcNetworking`
 // is exported separately for `CdkPipelinesEngine`, which does not use `SupportResources`.

@@ -3,7 +3,7 @@
 //
 // Blueprint shipped this as `DestroyEncryptionKeysOnDeletePlugin` (m9-migrate-security-plugins), on by
 // default, deciding per stage via its own `Stage` enum + `ResourceContext` whether to add itself
-// (skipping stages in a `stagesToRetain` list, defaulting to `[Stage.PROD]`). v3 dropped the
+// (skipping stages in a `stagesToRetain` list, defaulting to `[Stage.PROD]`). Autopilot dropped the
 // Stage-enum + per-stage-plugin-hook model, so there is nothing to decide internally any more: the
 // caller attaches this aspect only to the scope(s) that should get `RemovalPolicy.DESTROY` (e.g. a
 // non-prod `Stage`/`Stack`), the same way any other CDK aspect is scoped. Not wired into the runtime

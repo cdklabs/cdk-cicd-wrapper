@@ -4,7 +4,7 @@
 // Blueprint shipped this as `EncryptCloudWatchLogGroupsPlugin` (m9-migrate-security-plugins), on by
 // default, setting retention AND KMS encryption together off a single
 // `PipelineBlueprintProps.logRetentionInDays` and a KMS key it pulled implicitly from
-// `GlobalResources.ENCRYPTION` (a per-stage key Blueprint provisioned for every app by default). v3 split
+// `GlobalResources.ENCRYPTION` (a per-stage key Blueprint provisioned for every app by default). Autopilot split
 // retention out on its own (`LogRetentionAspect`, m9-migrate-log-retention) and has no default
 // per-stage encryption key provider, so this aspect takes the key explicitly instead of reaching
 // for one implicitly -- not wired into the runtime injection hook until a default key provider

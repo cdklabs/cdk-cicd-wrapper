@@ -22,7 +22,7 @@ Pass a second argument to track a different branch:
 repository: Repository.codecommit('my-repo', 'trunk'),
 ```
 
-`Repository.codecommit(...)` is a bare source selector — it only names the CodeCommit repository the pipeline reads from. Unlike Blueprint (0.x)'s `RepositorySource.codecommit(...)`, there is no `enableCodeGuruReviewer`/`enablePullRequestChecks` option: Amazon CodeGuru Reviewer pull-request automation is **not** part of v3. If you relied on that, `cdk-cicd security-scan`/`cdk-cicd check` (Bandit, Semgrep, ShellCheck, dependency audit — see the [Security guide](./security.md)) run in the pipeline's CI build instead, but they are not PR-time checks against a CodeCommit pull request specifically.
+`Repository.codecommit(...)` is a bare source selector — it only names the CodeCommit repository the pipeline reads from. Unlike Blueprint (0.x)'s `RepositorySource.codecommit(...)`, there is no `enableCodeGuruReviewer`/`enablePullRequestChecks` option: Amazon CodeGuru Reviewer pull-request automation is **not** part of Autopilot. If you relied on that, `cdk-cicd security-scan`/`cdk-cicd check` (Bandit, Semgrep, ShellCheck, dependency audit — see the [Security guide](./security.md)) run in the pipeline's CI build instead, but they are not PR-time checks against a CodeCommit pull request specifically.
 
 ## Pushing to the repository
 

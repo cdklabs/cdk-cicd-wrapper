@@ -1,11 +1,11 @@
-# A config-driven pipeline (zero-touch)
+# A config-driven pipeline (Autopilot)
 
 !!! abstract "What you'll build"
     - A working CodePipeline for a stock CDK app, provisioned from a single `cicd.config.ts`.
     - An understanding of **every** `defineCICD` field and when to reach for it.
     - A customized CI phase — your own named build steps and, optionally, a custom build image.
 
-The whole zero-touch opt-in is two things: a `cicd.config.ts`, and pointing `cdk.json` at `cdk-cicd exec`.
+The whole Autopilot opt-in is two things: a `cicd.config.ts`, and pointing `cdk.json` at `cdk-cicd exec`.
 
 ## 1. Your app stays plain CDK
 
@@ -60,9 +60,9 @@ This deploys **one** pipeline into your hub account from `cicd.config.ts` alone.
 Source → Build (checks + synth) → UpdatePipeline (re-deploys itself from config) → deploy dev → deploy prod
 ```
 
-![The flat zero-touch pipeline in the CodePipeline console: Source → Build → UpdatePipeline → deploy](images/flat-pipeline.png)
+![The flat Autopilot pipeline in the CodePipeline console: Source → Build → UpdatePipeline → deploy](images/flat-pipeline.png)
 
-*The flat zero-touch pipeline in the CodePipeline console — one linear pipeline, not Blueprint's 100+ CodeBuild projects.*
+*The flat Autopilot pipeline in the CodePipeline console — one linear pipeline, not Blueprint's 100+ CodeBuild projects.*
 
 The **UpdatePipeline** stage means you never run `deploy-ci` again by hand: change `cicd.config.ts`, push,
 and the pipeline re-synthesizes its own definition on the next run and applies the change before the
@@ -145,7 +145,7 @@ chapter 3.
     - In the **CodePipeline** console, your pipeline shows the flat
       `Source → Build → UpdatePipeline → deploy dev → deploy prod` shape.
     - The most recent execution reaches **Succeeded** on every stage.
-    - Compare the CodeBuild project count to a Blueprint pipeline: zero-touch provisions a small, constant set — not one
+    - Compare the CodeBuild project count to a Blueprint pipeline: Autopilot provisions a small, constant set — not one
       per asset or per stage.
 
     You can also validate the config locally before pushing:

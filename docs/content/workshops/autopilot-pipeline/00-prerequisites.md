@@ -1,7 +1,7 @@
 # Prerequisites
 
 !!! abstract "In this chapter"
-    - Confirm the accounts, tooling, and source you need before building a v3 pipeline.
+    - Confirm the accounts, tooling, and source you need before building an Autopilot pipeline.
     - Scaffold a stock CDK app and install the wrapper — **without** touching `bin/`.
 
 ## What you'll need
@@ -26,7 +26,7 @@ npm install --include=dev --save @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wra
 ```
 
 `@cdklabs/cdk-cicd-wrapper` is the constructs library; `@cdklabs/cdk-cicd-wrapper-cli` provides the
-`cdk-cicd` command you'll run. (See the pre-release note on the overview page while v3 is unreleased.)
+`cdk-cicd` command you'll run. (See the pre-release note on the overview page while Autopilot is unreleased.)
 
 You will **not** import the wrapper in your `bin/` in the basic flow — the next chapter shows why.
 

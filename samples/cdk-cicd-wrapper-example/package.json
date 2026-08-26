@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "zero-touch sample: a plain CDK app turned into a pipeline by one cicd.config.ts (no wrapper code in the app)",
+  "description": "Autopilot sample: a plain CDK app turned into a pipeline by one cicd.config.ts (no wrapper code in the app)",
   "dependencies": {
     "@cdklabs/cdk-cicd-wrapper": "0.0.0",
     "@cdklabs/cdk-cicd-wrapper-cli": "0.0.0",

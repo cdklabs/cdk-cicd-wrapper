@@ -3,7 +3,7 @@
 //
 // Blueprint forced a log-retention default across the whole pipeline tree from
 // `EncryptCloudWatchLogGroupsPlugin`'s aspect, which set retention AND KMS encryption together off a
-// single `PipelineBlueprintProps.logRetentionInDays`. v3 splits retention out on its own -- CloudWatch
+// single `PipelineBlueprintProps.logRetentionInDays`. Autopilot splits retention out on its own -- CloudWatch
 // log-group encryption is a separate migration item -- and wires it into the same tree-wide hook
 // (`applyWrapper`, m2-attach/m2-register) that already carries cdk-nag and tags.
 

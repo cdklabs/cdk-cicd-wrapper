@@ -5,7 +5,7 @@
     - A flattened `bin/` and a repointed `cdk.json`.
     - Most importantly: a switchover that **updates deployed stacks in place** instead of recreating them.
 
-Moving an app from Blueprint (`PipelineBlueprint.builder()…synth(app)`) to zero-touch is: generate a `cicd.config.ts`,
+Moving an app from Blueprint (`PipelineBlueprint.builder()…synth(app)`) to Autopilot is: generate a `cicd.config.ts`,
 flatten your `bin/`, and repoint `cdk.json`.
 
 ## Scaffold the config with the codemod
@@ -33,7 +33,7 @@ the remaining manual steps.
 ## Keep already-deployed resources (no recreate!)
 
 This is the part to get right. CloudFormation keys resources to a stack by **name**. Blueprint nested your stacks
-in an `AppStage` (a `cdk.Stage`), so it deployed `<stageId>-<name>` (e.g. `DEV-my-app`). zero-touch's plain `bin/`
+in an `AppStage` (a `cdk.Stage`), so it deployed `<stageId>-<name>` (e.g. `DEV-my-app`). Autopilot's plain `bin/`
 deploys just `<name>`. **A different name means a new stack — a full recreate.** Match Blueprint's name and it's
 an in-place update instead:
 

@@ -1,22 +1,22 @@
-# Zero-touch pipelines — the config-driven CDK CI/CD Wrapper
+# Autopilot pipelines — the config-driven CDK CI/CD Wrapper
 
-This workshop walks through the **zero-touch** usage patterns of the CDK CI/CD Wrapper. Zero-touch is a redesign around
+This workshop walks through the **Autopilot** usage patterns of the CDK CI/CD Wrapper. Autopilot is a redesign around
 one idea:
 
 > **Your app stays ordinary CDK. One `cicd.config.ts` turns it into a pipeline — no wrapper code in your
 > app, no builder chain.**
 
-Where Blueprint built the pipeline *inside* your app with `PipelineBlueprint.builder()…synth(app)`, zero-touch keeps
+Where Blueprint built the pipeline *inside* your app with `PipelineBlueprint.builder()…synth(app)`, Autopilot keeps
 your `bin/` exactly as `cdk init` produced it and reads a separate config file. The pipeline is one flat
 CodePipeline (source → CI → self-update → one deploy action per stage), not the 100+ CodeBuild projects
 Blueprint's CDK-Pipelines footprint grew.
 
-## Why zero-touch — what you get
+## Why Autopilot — what you get
 
-Zero-touch is a breaking major, so it earns its keep in concrete, end-user terms. The wins are about *your* app
+Autopilot is a breaking major, so it earns its keep in concrete, end-user terms. The wins are about *your* app
 and *your* pipeline, not the wrapper's internals:
 
-| You want to… | Blueprint made you… | zero-touch gives you… |
+| You want to… | Blueprint made you… | Autopilot gives you… |
 |---|---|---|
 | Keep your app portable | Wrap `bin/` in `PipelineBlueprint.builder()…synth(app)` — wrapper code you own forever | An ordinary `cdk init` app. Zero wrapper imports in `bin/` for the basic flow |
 | Describe stages & accounts | Encode them in builder calls + `ACCOUNT_*` env vars | Declare them as data in `cicd.config.ts` — read, diff, and review a plain object |
@@ -35,7 +35,7 @@ Each chapter is a distinct usage pattern; they build on the first but can be rea
 chapter opens with what you'll build, ends with a **Verify** step and a recap, and the workshop closes
 with a **cleanup** you should run to avoid leaving billable resources behind.
 
-1. **A config-driven pipeline** — the core zero-touch flow, and a field-by-field tour of `cicd.config.ts`
+1. **A config-driven pipeline** — the core Autopilot flow, and a field-by-field tour of `cicd.config.ts`
    (`defineCICD`) including how to customize CI.
 2. **Stages, approvals, and stack names** — dev→prod, manual-approval gates, per-stage regions and
    accounts, forced deployment roles, and controlling CloudFormation stack names with `stageStackName`.
@@ -51,8 +51,8 @@ with a **cleanup** you should run to avoid leaving billable resources behind.
 
 Software / DevOps / Cloud engineers comfortable with AWS CDK. **Expected time:** ~1 hour.
 
-!!! note "zero-touch is pre-release"
-    Zero-touch develops on a dedicated branch and is **not yet on the public npm `latest` tag**. Where a chapter
+!!! note "Autopilot is pre-release"
+    Autopilot develops on a dedicated branch and is **not yet on the public npm `latest` tag**. Where a chapter
     says `npm install @cdklabs/cdk-cicd-wrapper`, use your pre-release channel (or the private CodeArtifact
-    repo your team publishes to) until zero-touch ships under an alpha tag. The commands and config are otherwise
-    exactly what a released zero-touch uses.
+    repo your team publishes to) until Autopilot ships under an alpha tag. The commands and config are otherwise
+    exactly what a released Autopilot uses.

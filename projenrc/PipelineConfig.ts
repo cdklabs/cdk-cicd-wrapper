@@ -15,7 +15,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       description:
         'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
-      // v3's public API is still evolving post-1.0; keep the jsii surface experimental so non-TS
+      // Autopilot's public API is still evolving post-1.0; keep the jsii surface experimental so non-TS
       // consumers get the maturity signal and jsii-diff/compat does not treat an evolving API as
       // breaking a 'stable' contract.
       stability: 'experimental',

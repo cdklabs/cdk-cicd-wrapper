@@ -3,10 +3,10 @@
 !!! warning "Blueprint (0.x) only"
 
     This environment-variable-driven configuration model (`ACCOUNT_<STAGE>`, `CDK_QUALIFIER`,
-    `CICD_VPC_*`, …) is replaced in v3 by fields on `cicd.config.ts` — a stage's `env.account`/
+    `CICD_VPC_*`, …) is replaced in Autopilot by fields on `cicd.config.ts` — a stage's `env.account`/
     `env.region`, the top-level `qualifier`, the `vpc`/`proxy` fields, and so on. See
     [Getting Started](../getting_started/index.md), [Continuous Deployment](../developer_guides/cd.md),
-    and [Networking](../developer_guides/networking.md) for the v3 equivalents.
+    and [Networking](../developer_guides/networking.md) for the Autopilot equivalents.
 
 ## {{ project_name }} Variables
 

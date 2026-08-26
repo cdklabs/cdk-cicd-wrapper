@@ -237,7 +237,7 @@ The available samples can be listed, with the `task samples:list` command.
 
     ```bash
     cd samples/cdk-cicd-wrapper-example
-    npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while zero-touch is pre-release)
+    npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while Autopilot is pre-release)
     npx cdk-cicd deploy-ci            # provisions the pipeline into the hub account, from cicd.config.ts alone
     ```
 

@@ -7,7 +7,7 @@
       deploys each target (or run the same executor locally with `cdk-cicd deploy --from-image`).
     - An understanding of the "one image → many deployments" scale-out and rollback-by-retag.
 
-For an enterprise / "Automation Framework" flow, zero-touch supports a **two-repo split**:
+For an enterprise / "Automation Framework" flow, Autopilot supports a **two-repo split**:
 
 - **Repo 1 (CI pipeline)** — the CDK app repo. Its pipeline runs CI and then builds & pushes a
   **config-agnostic deployer image** (your CDK code + its npm deps + the wrapper tooling) to ECR. It
@@ -154,4 +154,4 @@ Container mode splits build from deploy into **two pipelines**: the CI pipeline 
 one config-agnostic, offline-capable image; the CD pipeline (Repo 2, config-only) pulls that image and
 deploys as many targets as you like — the same `cdk-cicd deploy --from-image` executor you can also run
 locally. Targets are config rows, not pipeline resources — that's the scale-out win — and rollback is just
-pointing at a previous image tag. Next: migrating an existing Blueprint app to any of these zero-touch patterns.
+pointing at a previous image tag. Next: migrating an existing Blueprint app to any of these Autopilot patterns.

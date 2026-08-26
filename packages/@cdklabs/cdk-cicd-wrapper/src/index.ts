@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// The zero-touch **public** surface. This barrel is re-exported from the package entry point, so everything
+// The Autopilot **public** surface. This barrel is re-exported from the package entry point, so everything
 // named here lands in the jsii assembly and ships to Python/Java/.NET as well as npm. It is curated
 // rather than a `export *` on purpose — several members of `./appconfig` cannot cross the jsii
 // boundary and are internal-only:
@@ -109,7 +109,7 @@ export { EncryptBucketOnTransitAspect } from './support/EncryptBucketOnTransitAs
 export { EncryptSNSTopicOnTransitAspect } from './support/EncryptSNSTopicOnTransitAspect';
 export { RotateEncryptionKeysAspect } from './support/RotateEncryptionKeysAspect';
 export { DisablePublicIPAssignmentForEC2Aspect } from './support/DisablePublicIPAssignmentForEC2Aspect';
-// Opt-in only (not wired into the runtime injection hook): each needs a dependency zero-touch does not
+// Opt-in only (not wired into the runtime injection hook): each needs a dependency Autopilot does not
 // provision by default yet -- a compliance-log bucket, a KMS key, or a caller-owned dead-letter queue.
 export { DestroyEncryptionKeysOnDeleteAspect } from './support/DestroyEncryptionKeysOnDeleteAspect';
 export {

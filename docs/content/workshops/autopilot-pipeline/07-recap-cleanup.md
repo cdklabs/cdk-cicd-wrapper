@@ -71,6 +71,6 @@ was a throwaway sandbox you're fully decommissioning.
 
 ## Recap
 
-You've completed the zero-touch pipeline workshop and cleaned up after it. You can now take any ordinary CDK app,
+You've completed the Autopilot pipeline workshop and cleaned up after it. You can now take any ordinary CDK app,
 add one config file, and get a readable, config-driven pipeline — scaling out to container mode or
 migrating from Blueprint when you need to.

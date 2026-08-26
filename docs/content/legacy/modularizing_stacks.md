@@ -2,7 +2,7 @@
 
 !!! warning "Blueprint (0.x) only"
 
-    `BaseStackProvider`/`DefaultStackProvider` have no v3 equivalent. Autopilot's `bin/` is plain
+    `BaseStackProvider`/`DefaultStackProvider` have no Autopilot equivalent. Autopilot's `bin/` is plain
     CDK, so organize your stacks however plain TypeScript classes/functions/modules would — there is
     no wrapper-specific base class to extend. See [Getting Started](../getting_started/index.md).
 

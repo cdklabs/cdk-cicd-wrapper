@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# M3 milestone proof: the v3 deploy model on real AWS. One `cdk-cicd deploy` builds a stage
+# M3 milestone proof: the Autopilot deploy model on real AWS. One `cdk-cicd deploy` builds a stage
 # once and rolls it out to TWO regions, and the drift rule refuses a deploy whose synthesized
 # account does not match where it is headed.
 #

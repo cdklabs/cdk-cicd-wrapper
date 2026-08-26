@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Stack-name control for zero-touch apps. zero-touch synthesizes the SAME `bin/` once per stage (deploy-time), so a bare
+// Stack-name control for Autopilot apps. Autopilot synthesizes the SAME `bin/` once per stage (deploy-time), so a bare
 // `new MyStack(app, 'myapp')` deploys under the identical CloudFormation name in every stage -- fine when
 // stages differ by account/region, but it gives no stage in the name and, more importantly, does NOT
 // match what Blueprint deployed. Blueprint nested stacks in an `AppStage extends cdk.Stage`, which prefixes the stack
@@ -40,7 +40,7 @@ export interface StageStackNameOptions {
 /**
  * A stage-qualified CloudFormation stack name.
  *
- * New zero-touch projects: `stageStackName('myapp')` -> `myapp-dev` / `myapp-prod`.
+ * New Autopilot projects: `stageStackName('myapp')` -> `myapp-dev` / `myapp-prod`.
  *
  * Migrating from Blueprint without recreating resources: Blueprint prefixed the stack name with the stage id verbatim,
  * so with its default (uppercase) stages `stageStackName('myapp', { stageFirst: true, uppercaseStage:

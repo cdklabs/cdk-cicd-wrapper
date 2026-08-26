@@ -43,7 +43,7 @@ From the maintainer; these override convenience.
    release, with a migration guide and a deprecation period. `npx projen compat` is the tripwire.
 2. **Nothing untested reaches GitHub.** A change passes build → unit tests → **real AWS deploy** →
    teardown before it is pushed. Harness and per-milestone gates live in `task.md`.
-3. **Minimise wrapper code in the user's app.** Zero-touch is the default face; an explicit opt-in API
+3. **Minimise wrapper code in the user's app.** Autopilot is the default face; an explicit opt-in API
    is the documented fallback for cases where implicit injection cannot work. Every symbol we require
    in a user's `bin/` is a migration cost we own forever.
 4. **Key milestones ship a recorded, narrated proof** — `test/proof/record-demo.sh <demo>` records a
@@ -73,7 +73,7 @@ cycle, and a rolled-back stack is a slower teacher than five minutes of the Clou
    so an innocuous edit destroys and recreates. This repo already learned it the expensive way: a stack
    name that doesn't match Blueprint's makes a migration a new stack instead of an in-place update, and the
    stateful resource is recreated (`MIGRATION.md` §stack names, proven in
-   `test/proof/migration-continuity.sh`, warned in `docs/content/workshops/zerotouch-pipeline/06-*.md`). Record
+   `test/proof/migration-continuity.sh`, warned in `docs/content/workshops/autopilot-pipeline/06-*.md`). Record
    replacement-triggering properties in a comment **where someone would edit them**, not in a doc.
 2. **Name, title and description limits come from the reference, not from a guess.** Charsets and
    lengths, looked up. An EC2 description field allows only `a-zA-Z0-9`, spaces and
@@ -164,7 +164,7 @@ Yarn 1 workspaces over two packages in `packages/@cdklabs/`:
 | `cdk-cicd-wrapper` | the constructs library — **jsii**, published to npm/PyPI/Maven/NuGet |
 | `cdk-cicd-wrapper-cli` | the `cdk-cicd` CLI (`bin/cdk-cicd`), plain TS |
 
-`cdk-cicd-wrapper-projen` was the third package; zero-touch removed it (task.md **D5**, package consolidation
+`cdk-cicd-wrapper-projen` was the third package; Autopilot removed it (task.md **D5**, package consolidation
 3→2). Its migration path is `cicd.config.ts` + the `cdk-cicd` CLI — see `MIGRATION.md`.
 
 ## This repo is projen-managed

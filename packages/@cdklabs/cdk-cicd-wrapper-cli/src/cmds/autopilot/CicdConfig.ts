@@ -3,7 +3,7 @@
 //
 // Discovery + loading of the pipeline config file (cicd.config.ts) that a user authors with
 // defineCICD. This is the CICD-config layer -- the pipeline's stages/repo/roles -- consumed by the
-// v3 CLI commands (synth/deploy). It is independent of the app-config layer (config/<stage>.json)
+// Autopilot CLI commands (synth/deploy). It is independent of the app-config layer (config/<stage>.json)
 // that AppConfig injects into the construct tree.
 //
 // A missing file is not an error: it means Level 0 (a plain app with no pipeline), so callers get

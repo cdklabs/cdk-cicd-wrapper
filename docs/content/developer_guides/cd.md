@@ -8,7 +8,7 @@ This iterative process helps reduce the chance that you develop new code based o
 
 ### Stage
 
-A stage is a [deployment environment](https://en.wikipedia.org/wiki/Deployment_environment) the solution is deployed to — for example `dev`, `int`, `prod`. Unlike Blueprint (0.x), v3 has no reserved stage names (no forced `RES`, no built-in `DEV`/`INT`/`PROD`): every stage you list in `cicd.config.ts`'s `stages` array is deployed, in the order listed, by the pipeline running in whichever account/region your ambient credentials point at when you run `cdk-cicd deploy-ci`.
+A stage is a [deployment environment](https://en.wikipedia.org/wiki/Deployment_environment) the solution is deployed to — for example `dev`, `int`, `prod`. Unlike Blueprint (0.x), Autopilot has no reserved stage names (no forced `RES`, no built-in `DEV`/`INT`/`PROD`): every stage you list in `cicd.config.ts`'s `stages` array is deployed, in the order listed, by the pipeline running in whichever account/region your ambient credentials point at when you run `cdk-cicd deploy-ci`.
 
 ### Stack
 
@@ -46,7 +46,7 @@ A stage's `deployment` field can force a specific deploy role / CloudFormation e
 
 ## Deploying different stacks per stage
 
-There is no `addStack()`/provider-callback API in v3 — `bin/` is plain CDK, so you construct whichever stacks you want directly. `cdk-cicd exec` sets `CDK_STAGE` to the active stage's name (also readable through `stageStackName`'s default), so conditional stacks are ordinary TypeScript:
+There is no `addStack()`/provider-callback API in Autopilot — `bin/` is plain CDK, so you construct whichever stacks you want directly. `cdk-cicd exec` sets `CDK_STAGE` to the active stage's name (also readable through `stageStackName`'s default), so conditional stacks are ordinary TypeScript:
 
 ```typescript
 // bin/my-app.ts

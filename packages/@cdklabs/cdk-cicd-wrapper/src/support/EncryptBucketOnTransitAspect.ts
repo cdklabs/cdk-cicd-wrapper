@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Blueprint shipped this as `EncryptBucketOnTransitPlugin`, on by default (m9-migrate-security-plugins).
-// v3 has no plugin registry -- it is a plain `IAspect`, wired tree-wide by the runtime injection
+// Autopilot has no plugin registry -- it is a plain `IAspect`, wired tree-wide by the runtime injection
 // hook (m2-attach/m2-register) alongside cdk-nag, tags and log retention.
 
 import { CfnResource, IAspect, Resource } from 'aws-cdk-lib';

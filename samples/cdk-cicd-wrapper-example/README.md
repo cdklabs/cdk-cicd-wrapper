@@ -1,6 +1,6 @@
 # cdk-cicd-wrapper-example
 
-The zero-touch shape of the CDK CI/CD Wrapper. The point: **the app is ordinary CDK with no wrapper code**,
+The Autopilot shape of the CDK CI/CD Wrapper. The point: **the app is ordinary CDK with no wrapper code**,
 and one `cicd.config.ts` turns it into a pipeline.
 
 ```
@@ -17,7 +17,7 @@ branch (its `cdk-ts-example` sample was removed from `main` in `m8-remove-v2`).
 ## Use it
 
 ```bash
-npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while zero-touch is pre-release)
+npm install                       # resolves @cdklabs/* from your registry (CodeArtifact while Autopilot is pre-release)
 npx cdk-cicd deploy-ci            # provisions the pipeline into the hub account, from cicd.config.ts alone
 ```
 

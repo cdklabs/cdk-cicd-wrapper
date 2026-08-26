@@ -1,6 +1,6 @@
 # Getting Started with the {{ project_name }}
 
-This guide walks through turning a plain AWS CDK app into a CI/CD pipeline with the {{ project_name }}: install two packages, write one `cicd.config.ts` file, and run one CLI command. It follows the same shape as the [`cdk-v3-example`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/samples/cdk-v3-example) sample in the repository — clone that sample if you want a working starting point instead of typing this out.
+This guide walks through turning a plain AWS CDK app into a CI/CD pipeline with the {{ project_name }}: install two packages, write one `cicd.config.ts` file, and run one CLI command. It follows the same shape as the [`cdk-cicd-wrapper-example`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/samples/cdk-cicd-wrapper-example) sample in the repository — clone that sample if you want a working starting point instead of typing this out.
 
 ## Overview
 

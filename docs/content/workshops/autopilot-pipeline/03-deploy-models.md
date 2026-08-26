@@ -5,7 +5,7 @@
     - An async deploy that hands the CloudFormation wait to a Lambda instead of billing build compute.
     - The config-as-data tuning knobs: manual approval, forced deploy roles, and disposable pipelines.
 
-zero-touch offers two CodePipeline deploy models. Guiding principle: **efficiency first.**
+Autopilot offers two CodePipeline deploy models. Guiding principle: **efficiency first.**
 
 ## Default — assembly promotion
 
