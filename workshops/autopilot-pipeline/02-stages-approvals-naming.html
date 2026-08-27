@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/v3-pipeline/06-migrating-from-v2.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/autopilot-pipeline/02-stages-approvals-naming.html">
       
       
-        <link rel="prev" href="05-container-mode.html">
+        <link rel="prev" href="01-config-driven-pipeline.html">
       
       
-        <link rel="next" href="07-recap-cleanup.html">
+        <link rel="next" href="03-deploy-models.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Migrating from v2 - CDK CI/CD Wrapper</title>
+        <title>Stages, approvals, and stack names - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#migrating-from-v2" class="md-skip">
+        <a href="#stages-approvals-and-stack-names" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Migrating from v2
+              Stages, approvals, and stack names
             
           </span>
         </div>
@@ -256,6 +256,23 @@
         </a>
       </li>
     
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/API.md" class="md-tabs__link">
+        
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
   
 
       
@@ -616,6 +633,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -664,6 +685,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../../developer_guides/configuration.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuration Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../developer_guides/ci.html" class="md-nav__link">
         
   
@@ -690,6 +732,27 @@
   
   <span class="md-ellipsis">
     Continuous Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer_guides/container_mode.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Container Mode
   </span>
   
 
@@ -764,10 +827,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
         
           
-          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -778,8 +841,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
             <span class="md-nav__icon md-icon"></span>
             Python Dependencies
           </label>
@@ -858,10 +921,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
         
           
-          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -872,8 +935,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
             <span class="md-nav__icon md-icon"></span>
             NPM Dependencies
           </label>
@@ -954,10 +1017,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
         
           
-          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -968,8 +1031,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
             <span class="md-nav__icon md-icon"></span>
             GIT Integrations
           </label>
@@ -1277,6 +1340,26 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/API.md" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    API Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
       
@@ -1296,7 +1379,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
           
@@ -1312,14 +1395,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             MCP Servers
           </label>
@@ -1378,7 +1461,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           
@@ -1395,8 +1478,8 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             FAQs
           </label>
@@ -1434,7 +1517,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           
@@ -1451,8 +1534,8 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             Contributing
           </label>
@@ -1497,7 +1580,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
         
           
           
@@ -1513,14 +1596,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="">
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             Workshops
           </label>
@@ -1532,330 +1615,18 @@
                 
   
   
-    
   
   
-  
-    
-    
-      
+    <li class="md-nav__item">
+      <a href="../../v3-pipeline" class="md-nav__link">
         
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_2" checked>
-        
-          
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="index.html" class="md-nav__link ">
-              
   
   <span class="md-ellipsis">
     v3 pipelines
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_8_2" id="__nav_8_2_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_8_2">
-            <span class="md-nav__icon md-icon"></span>
-            v3 pipelines
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="00-prerequisites.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Prerequisites
-  </span>
-  
-
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="01-config-driven-pipeline.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    A config-driven pipeline (zero-touch)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="02-stages-approvals-naming.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Stages, approvals, and stack names
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="03-deploy-models.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Deploy models and pipeline tuning
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="04-private-registry.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Private npm registry (CodeArtifact)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="05-container-mode.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Container mode: build once, deploy many
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Migrating from v2
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="06-migrating-from-v2.html" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    Migrating from v2
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#scaffold-the-config-with-the-codemod" class="md-nav__link">
-    <span class="md-ellipsis">
-      Scaffold the config with the codemod
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#do-the-rest-by-hand" class="md-nav__link">
-    <span class="md-ellipsis">
-      Do the rest by hand
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#keep-already-deployed-resources-no-recreate" class="md-nav__link">
-    <span class="md-ellipsis">
-      Keep already-deployed resources (no recreate!)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verify-before-switching-the-pipeline-over" class="md-nav__link">
-    <span class="md-ellipsis">
-      Verify before switching the pipeline over
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recap" class="md-nav__link">
-    <span class="md-ellipsis">
-      Recap
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="07-recap-cleanup.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Recap and cleanup
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
     </li>
   
 
@@ -1905,7 +1676,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
         
           
           
@@ -1921,14 +1692,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10" id="__nav_10_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             Legacy (Blueprint 0.x)
           </label>
@@ -2085,10 +1856,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8" >
         
           
-          <label class="md-nav__link" for="__nav_9_8" id="__nav_9_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_10_8" id="__nav_10_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2099,8 +1870,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8">
             <span class="md-nav__icon md-icon"></span>
             Workshops
           </label>
@@ -2151,7 +1922,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8_1" >
         
           
           
@@ -2167,14 +1938,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9_8_1" id="__nav_9_8_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_8_1" id="__nav_10_8_1_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_8_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8_1">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_8_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8_1">
             <span class="md-nav__icon md-icon"></span>
             GenerativeAI Image Generation
           </label>
@@ -2460,7 +2231,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8_2" >
         
           
           
@@ -2476,14 +2247,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9_8_2" id="__nav_9_8_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_8_2" id="__nav_10_8_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_8_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8_2">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_8_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8_2">
             <span class="md-nav__icon md-icon"></span>
             GitHub Action pipeline
           </label>
@@ -2729,36 +2500,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#scaffold-the-config-with-the-codemod" class="md-nav__link">
+  <a href="#stages-are-config-rows-not-pipeline-code" class="md-nav__link">
     <span class="md-ellipsis">
-      Scaffold the config with the codemod
+      Stages are config rows, not pipeline code
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#do-the-rest-by-hand" class="md-nav__link">
+  <a href="#manual-approval-gates-are-fail-closed" class="md-nav__link">
     <span class="md-ellipsis">
-      Do the rest by hand
+      Manual-approval gates are fail-closed
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#keep-already-deployed-resources-no-recreate" class="md-nav__link">
+  <a href="#forced-deployment-roles" class="md-nav__link">
     <span class="md-ellipsis">
-      Keep already-deployed resources (no recreate!)
+      Forced deployment roles
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#verify-before-switching-the-pipeline-over" class="md-nav__link">
+  <a href="#controlling-the-cloudformation-stack-name" class="md-nav__link">
     <span class="md-ellipsis">
-      Verify before switching the pipeline over
+      Controlling the CloudFormation stack name
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify
     </span>
   </a>
   
@@ -2791,75 +2571,94 @@
   
 
 
-<h1 id="migrating-from-v2">Migrating from v2</h1>
+<h1 id="stages-approvals-and-stack-names">Stages, approvals, and stack names</h1>
 <div class="admonition abstract">
 <p class="admonition-title">What you'll build</p>
 <ul>
-<li>A <code>cicd.config.ts</code> generated from your existing v2 entry with the <code>cdk-cicd migrate</code> codemod.</li>
-<li>A flattened <code>bin/</code> and a repointed <code>cdk.json</code>.</li>
-<li>Most importantly: a switchover that <strong>updates deployed stacks in place</strong> instead of recreating them.</li>
+<li>A dev → prod promotion path expressed as config data, with a fail-closed approval gate.</li>
+<li>Multi-region stages that fan out — without growing the pipeline.</li>
+<li>Forced deployment roles for controlled (Automation Framework) accounts.</li>
+<li>Stack names you control per stage with <code>stageStackName</code>.</li>
 </ul>
 </div>
-<p>Moving an app from v2 (<code>PipelineBlueprint.builder()…synth(app)</code>) to v3 is: generate a <code>cicd.config.ts</code>,
-flatten your <code>bin/</code>, and repoint <code>cdk.json</code>.</p>
-<h2 id="scaffold-the-config-with-the-codemod">Scaffold the config with the codemod</h2>
-<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>migrate<span class="w"> </span>--entry<span class="w"> </span>src/main.ts<span class="w"> </span>--application<span class="w"> </span>my-app<span class="w">   </span><span class="c1"># add --dry-run to preview</span>
-</code></pre></div>
-<p><code>migrate</code> reads your v2 entry, extracts the stage list, and writes a <code>cicd.config.ts</code> — flagging the
-repository, <code>workbench</code>, and any phases/hooks as TODOs for you to fill in. It deliberately <strong>does not</strong>
-rewrite your entry file's stack construction (that's where a codemod silently corrupts code), and prints
-the remaining manual steps.</p>
-<div class="admonition tip">
-<p class="admonition-title">Preview first</p>
-<p>Always run with <code>--dry-run</code> first to see the generated config and the manual-step list before it
-writes anything.</p>
-</div>
-<h2 id="do-the-rest-by-hand">Do the rest by hand</h2>
-<ol>
-<li>In your entry, drop the <code>PipelineBlueprint.builder()…synth(app)</code> chain and construct your stacks
-   directly on a plain <code>new App()</code>.</li>
-<li>Point <code>cdk.json</code> at <code>npx cdk-cicd exec &lt;entry&gt;</code>.</li>
-<li>Provision the pipeline once: <code>npx cdk-cicd deploy-ci</code>.</li>
-</ol>
-<h2 id="keep-already-deployed-resources-no-recreate">Keep already-deployed resources (no recreate!)</h2>
-<p>This is the part to get right. CloudFormation keys resources to a stack by <strong>name</strong>. v2 nested your stacks
-in an <code>AppStage</code> (a <code>cdk.Stage</code>), so it deployed <code>&lt;stageId&gt;-&lt;name&gt;</code> (e.g. <code>DEV-my-app</code>). v3's plain <code>bin/</code>
-deploys just <code>&lt;name&gt;</code>. <strong>A different name means a new stack — a full recreate.</strong> Match v2's name and it's
-an in-place update instead:</p>
-<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">stageStackName</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
-
-<span class="c1">// Reproduces v2's `DEV-my-app`, so CloudFormation UPDATES the existing stack.</span>
-<span class="ow">new</span><span class="w"> </span><span class="nx">MyStack</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">stackName</span><span class="o">:</span><span class="w"> </span><span class="kt">stageStackName</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">stageFirst</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">uppercaseStage</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">}),</span>
+<h2 id="stages-are-config-rows-not-pipeline-code">Stages are config rows, not pipeline code</h2>
+<p>A stage is either a bare name or an object with its own environment:</p>
+<div class="highlight"><pre><span></span><code><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">),</span>
+<span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s1">'dev'</span><span class="p">,</span><span class="w">                                                        </span><span class="c1">// inner loop, auto-approved</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'333333333333'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">],</span>
 <span class="p">});</span>
 </code></pre></div>
-<p><code>uppercaseStage</code> matches v2's <em>default</em> stages (<code>RES</code>/<code>DEV</code>/<code>INT</code> — no <code>PROD</code> unless you called
-<code>.defineStages(...)</code> yourself). If your v2 stages were
-lowercase or custom-case, drop it (the stage is used verbatim), or set <code>stackName</code> to your literal v2
-name.</p>
-<h2 id="verify-before-switching-the-pipeline-over">Verify before switching the pipeline over</h2>
+<p>A multi-region stage stays <strong>one</strong> deploy action — the region fan-out happens inside <code>cdk-cicd deploy</code>
+(the regions deploy in turn), so the pipeline shape doesn't grow with regions:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'333333333333'</span><span class="p">,</span><span class="w"> </span><span class="nx">regions</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'eu-west-1'</span><span class="p">,</span><span class="w"> </span><span class="s1">'us-east-1'</span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<h2 id="manual-approval-gates-are-fail-closed">Manual-approval gates are fail-closed</h2>
+<p><code>manualApproval: true</code> puts a <strong>Manual Approval</strong> action ahead of the stage's deploy (at a lower run
+order), so the deploy cannot start until a human approves. Non-<code>dev</code>/<code>res</code> stages are gated <strong>by default</strong>;
+set <code>manualApproval: false</code> to opt a stage out. Rejection or the approval timeout fails the stage —
+nothing ships unapproved.</p>
+<!-- SCREENSHOT: CodePipeline console showing the Manual Approval action ahead of the prod deploy action -->
+
+<h2 id="forced-deployment-roles">Forced deployment roles</h2>
+<p>In controlled accounts, deploys must go through a specific, pre-provisioned role rather than the
+pipeline's own identity. Set <code>deployment</code> on the stage to force the deploy role and (optionally) the
+CloudFormation execution role — the wrapper threads them into synth and deploy for you, with no change to
+<code>bin/</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'333333333333'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">deployment</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">deployRole</span><span class="o">:</span><span class="w"> </span><span class="s1">'arn:aws:iam::333333333333:role/automation-deployer'</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">cfnExecutionRole</span><span class="o">:</span><span class="w"> </span><span class="s1">'arn:aws:iam::333333333333:role/automation-deployer'</span><span class="p">,</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">This is the Automation Framework pattern</p>
+<p>Forcing a controlled role per stage is exactly what enterprise "deploy only through role X" policies
+need. Container mode (chapter 5) uses the same <code>deployment.deployRole</code> shape on its deploy targets.</p>
+</div>
+<h2 id="controlling-the-cloudformation-stack-name">Controlling the CloudFormation stack name</h2>
+<p>Autopilot synthesizes the same <code>bin/</code> once per stage, so a bare <code>new MyStack(app, 'my-app')</code> deploys the same
+name in every stage. Use the opt-in <code>stageStackName</code> helper to qualify it by stage:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">stageStackName</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
+
+<span class="ow">new</span><span class="w"> </span><span class="nx">MyStack</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">stackName</span><span class="o">:</span><span class="w"> </span><span class="kt">stageStackName</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">),</span><span class="w">   </span><span class="c1">// -&gt; my-app-dev / my-app-prod</span>
+<span class="w">  </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.CDK_DEFAULT_ACCOUNT</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.CDK_DEFAULT_REGION</span><span class="w"> </span><span class="p">},</span>
+<span class="p">});</span>
+</code></pre></div>
+<p>This is the one place you'd import the wrapper in <code>bin/</code>, and it's opt-in. It reads the stage from
+<code>CDK_STAGE</code> (which <code>cdk-cicd exec</code> sets). Migrating from Blueprint? Pass the options object to reproduce
+Blueprint's exact stack name so you <strong>update in place instead of recreating</strong> — Blueprint prefixed the
+stage (uppercase by default), e.g. <code>DEV-my-app</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">stackName</span><span class="o">:</span><span class="w"> </span><span class="kt">stageStackName</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">stageFirst</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">uppercaseStage</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">}),</span><span class="w"> </span><span class="c1">// -&gt; DEV-my-app / PROD-my-app</span>
+</code></pre></div>
+<p><code>stageFirst</code> puts the stage before the base; <code>uppercaseStage</code> matches Blueprint's default uppercase stage
+ids (drop it if your Blueprint stages were lowercase/custom-case). See the migration chapter.</p>
+<h2 id="verify">Verify</h2>
 <div class="admonition success">
 <p class="admonition-title">Verify</p>
-<p>Synthesize the migrated app for a stage and diff it against the live stacks:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">CDK_STAGE</span><span class="o">=</span>dev<span class="w"> </span>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>synth<span class="w"> </span>--stage<span class="w"> </span>dev
-npx<span class="w"> </span>cdk<span class="w"> </span>diff<span class="w"> </span>--app<span class="w"> </span>cdk.out/dev/&lt;region&gt;
+<ul>
+<li>The pipeline shows a <strong>Manual Approval</strong> action before each gated stage's deploy; approving it lets
+  the deploy proceed, rejecting it fails the stage.</li>
+<li>For a multi-region stage, each region's stack is created in turn under the one deploy action.</li>
+<li>With <code>stageStackName</code>, the deployed CloudFormation stacks are named per stage (e.g. <code>my-app-dev</code>,
+  <code>my-app-prod</code>). Check locally:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nv">CDK_STAGE</span><span class="o">=</span>prod<span class="w"> </span>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>synth<span class="w"> </span>--stage<span class="w"> </span>prod<span class="w">   </span><span class="c1"># stack name resolves to my-app-prod</span>
 </code></pre></div>
-<p>Expect <strong>only modifications</strong> — no resources destroyed/created and no <code>(requires replacement)</code>. If the
-name doesn't match, <code>cdk diff</code> shows everything as newly-created; that's the tell you'd recreate. Do
-<strong>not</strong> switch the pipeline over until the diff is clean.</p>
 </div>
-<div class="admonition warning">
-<p class="admonition-title">A wrong stack name recreates production</p>
-<p>If the migrated stack name doesn't match the v2 name, the first pipeline run deletes the old stack and
-creates a new one — a full recreate of production resources. The <code>cdk diff</code> above is the gate that
-catches this before it happens.</p>
-</div>
-<p>The full detail (and the RETAIN + <code>cdk import</code> fallback) is in the repo's <code>MIGRATION.md</code>.</p>
 <h2 id="recap">Recap</h2>
-<p>The codemod scaffolds your <code>cicd.config.ts</code> and lists the manual steps; you flatten <code>bin/</code> and repoint
-<code>cdk.json</code>. The one thing you must get right is stack naming — <code>stageStackName</code> reproduces v2's exact
-names so CloudFormation updates in place, and <code>cdk diff</code> proves it before you flip the pipeline. That's
-the whole migration.</p>
+<p>Stages, approvals, regions, and roles are all config data on the <code>stages</code> array — the pipeline shape
+doesn't grow as you add regions, and gates are fail-closed by default. <code>stageStackName</code> gives you explicit
+control of CloudFormation stack names per stage, which is also the key to migrating without a recreate.
+Next: how and when the pipeline synthesizes, and the tuning knobs that go with it.</p>
 
 
 
@@ -2880,7 +2679,7 @@ the whole migration.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-08-25
+    2026-08-27
   </span>
 
     

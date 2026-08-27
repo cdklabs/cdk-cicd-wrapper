@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/legacy/variables.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/developer_guides/container_mode.html">
       
       
-        <link rel="prev" href="pipeline_options.html">
+        <link rel="prev" href="cd.html">
       
       
-        <link rel="next" href="workshops/basics-lvl300/index.html">
+        <link rel="next" href="cdk_context.html">
       
       
       <link rel="icon" href="../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Variables - CDK CI/CD Wrapper</title>
+        <title>Container Mode - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#variables" class="md-skip">
+        <a href="#container-mode-two-repository-docker-deploy" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Variables
+              Container Mode
             
           </span>
         </div>
@@ -222,11 +222,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../developer_guides/index.html" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
           
   
     
@@ -359,13 +361,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="index.html" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../legacy/index.html" class="md-tabs__link">
           
   
     
@@ -606,6 +606,8 @@
       
   
   
+    
+  
   
   
     
@@ -640,19 +642,22 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../developer_guides/index.html" class="md-nav__link ">
+            <a href="index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -663,13 +668,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Developer Guides
@@ -685,7 +690,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/configuration.html" class="md-nav__link">
+      <a href="configuration.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -706,7 +711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/ci.html" class="md-nav__link">
+      <a href="ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -727,7 +732,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/cd.html" class="md-nav__link">
+      <a href="cd.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -745,10 +750,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../developer_guides/container_mode.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Container Mode
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="container_mode.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -757,6 +782,110 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to use it
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repo-1-build-the-deployer-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repo 1 — build the deployer image
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Repo 1 — build the deployer image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-the-image-not-cdkout" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why the image, not cdk.out
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repo-2-deploy-the-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repo 2 — deploy the image
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Repo 2 — deploy the image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#provision-the-cd-pipeline-or-run-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      Provision the CD pipeline, or run locally
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#division-of-authority-what-vs-where" class="md-nav__link">
+    <span class="md-ellipsis">
+      Division of authority: WHAT vs WHERE
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-is-a-retag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rollback is a retag
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -769,7 +898,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/cdk_context.html" class="md-nav__link">
+      <a href="cdk_context.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -790,7 +919,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/security.html" class="md-nav__link">
+      <a href="security.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -855,7 +984,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/codeartifact.html" class="md-nav__link">
+      <a href="codeartifact.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -876,7 +1005,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/python_dependencies.html" class="md-nav__link">
+      <a href="python_dependencies.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -949,7 +1078,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/codeartifact.html" class="md-nav__link">
+      <a href="codeartifact.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -970,7 +1099,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/private_npm_registry.html" class="md-nav__link">
+      <a href="private_npm_registry.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1045,7 +1174,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/vcs_s3.html" class="md-nav__link">
+      <a href="vcs_s3.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1066,7 +1195,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/vcs_codecommit.html" class="md-nav__link">
+      <a href="vcs_codecommit.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1087,7 +1216,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/vcs_github.html" class="md-nav__link">
+      <a href="vcs_github.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1116,7 +1245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/networking.html" class="md-nav__link">
+      <a href="networking.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1137,7 +1266,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guides/gitbranchingstrategies.html" class="md-nav__link">
+      <a href="gitbranchingstrategies.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1638,8 +1767,6 @@
       
   
   
-    
-  
   
   
     
@@ -1666,22 +1793,19 @@
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="index.html" class="md-nav__link ">
+            <a href="../legacy/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1692,13 +1816,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_10" id="__nav_10_label" tabindex="">
+              <label class="md-nav__link " for="__nav_10" id="__nav_10_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             Legacy (Blueprint 0.x)
@@ -1714,7 +1838,7 @@
   
   
     <li class="md-nav__item">
-      <a href="projen.html" class="md-nav__link">
+      <a href="../legacy/projen.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1735,7 +1859,7 @@
   
   
     <li class="md-nav__item">
-      <a href="projen_with_taskfile.html" class="md-nav__link">
+      <a href="../legacy/projen_with_taskfile.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1756,7 +1880,7 @@
   
   
     <li class="md-nav__item">
-      <a href="global_resource.html" class="md-nav__link">
+      <a href="../legacy/global_resource.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1777,7 +1901,7 @@
   
   
     <li class="md-nav__item">
-      <a href="modularizing_stacks.html" class="md-nav__link">
+      <a href="../legacy/modularizing_stacks.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1798,7 +1922,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline_options.html" class="md-nav__link">
+      <a href="../legacy/pipeline_options.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1816,30 +1940,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Variables
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="variables.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../legacy/variables.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1848,35 +1952,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#cdk-cicd-wrapper-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      CDK CI/CD Wrapper Variables
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1976,7 +2051,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="workshops/basics-lvl300/index.html" class="md-nav__link ">
+            <a href="../legacy/workshops/basics-lvl300/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -2009,7 +2084,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/00-prerequisites.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2030,7 +2105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/01-create-cdk-project.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/01-create-cdk-project.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2051,7 +2126,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/02-define-quality-gates-ci.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/02-define-quality-gates-ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2072,7 +2147,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/03-create-pipeline.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/03-create-pipeline.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2093,7 +2168,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/04-develop-genai-solution.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/04-develop-genai-solution.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2114,7 +2189,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/05-deploy-stack.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/05-deploy-stack.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2135,7 +2210,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/06-develop-genai-solution-part-2.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/06-develop-genai-solution-part-2.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2156,7 +2231,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/07-deploy-solution.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/07-deploy-solution.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2177,7 +2252,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/08-summary.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/08-summary.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2198,7 +2273,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/09-clean-up.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/09-clean-up.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2219,7 +2294,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/basics-lvl300/faq.html" class="md-nav__link">
+      <a href="../legacy/workshops/basics-lvl300/faq.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2285,7 +2360,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="workshops/github-pipeline/index.html" class="md-nav__link ">
+            <a href="../legacy/workshops/github-pipeline/index.html" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -2318,7 +2393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/github-pipeline/00-prerequisites.html" class="md-nav__link">
+      <a href="../legacy/workshops/github-pipeline/00-prerequisites.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2339,7 +2414,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/github-pipeline/01-create-cdk-project.html" class="md-nav__link">
+      <a href="../legacy/workshops/github-pipeline/01-create-cdk-project.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2360,7 +2435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/github-pipeline/02-define-quality-gates-ci.html" class="md-nav__link">
+      <a href="../legacy/workshops/github-pipeline/02-define-quality-gates-ci.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2381,7 +2456,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/github-pipeline/03-create-pipeline.html" class="md-nav__link">
+      <a href="../legacy/workshops/github-pipeline/03-create-pipeline.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2402,7 +2477,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/github-pipeline/04-deploy-stack.html" class="md-nav__link">
+      <a href="../legacy/workshops/github-pipeline/04-deploy-stack.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2423,7 +2498,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/github-pipeline/05-summary.html" class="md-nav__link">
+      <a href="../legacy/workshops/github-pipeline/05-summary.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2444,7 +2519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/github-pipeline/06-clean-up.html" class="md-nav__link">
+      <a href="../legacy/workshops/github-pipeline/06-clean-up.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2465,7 +2540,7 @@
   
   
     <li class="md-nav__item">
-      <a href="workshops/github-pipeline/faq.html" class="md-nav__link">
+      <a href="../legacy/workshops/github-pipeline/faq.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2549,9 +2624,84 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#cdk-cicd-wrapper-variables" class="md-nav__link">
+  <a href="#when-to-use-it" class="md-nav__link">
     <span class="md-ellipsis">
-      CDK CI/CD Wrapper Variables
+      When to use it
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repo-1-build-the-deployer-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repo 1 — build the deployer image
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Repo 1 — build the deployer image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-the-image-not-cdkout" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why the image, not cdk.out
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repo-2-deploy-the-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repo 2 — deploy the image
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Repo 2 — deploy the image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#provision-the-cd-pipeline-or-run-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      Provision the CD pipeline, or run locally
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#division-of-authority-what-vs-where" class="md-nav__link">
+    <span class="md-ellipsis">
+      Division of authority: WHAT vs WHERE
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-is-a-retag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rollback is a retag
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
     </span>
   </a>
   
@@ -2575,148 +2725,115 @@
   
 
 
-<h1 id="variables">Variables</h1>
-<div class="admonition warning">
-<p class="admonition-title">Blueprint (0.x) only</p>
-<p>This environment-variable-driven configuration model (<code>ACCOUNT_&lt;STAGE&gt;</code>, <code>CDK_QUALIFIER</code>,
-<code>CICD_VPC_*</code>, …) is replaced in Autopilot by fields on <code>cicd.config.ts</code> — a stage's <code>env.account</code>/
-<code>env.region</code>, the top-level <code>qualifier</code>, the <code>vpc</code>/<code>proxy</code> fields, and so on. See
-<a href="../getting_started/index.html">Getting Started</a>, <a href="../developer_guides/cd.html">Continuous Deployment</a>,
-and <a href="../developer_guides/networking.html">Networking</a> for the Autopilot equivalents.</p>
+<h1 id="container-mode-two-repository-docker-deploy">Container mode (two-repository Docker deploy)</h1>
+<p>Container mode splits build from deploy into <strong>two repositories</strong>: a CI repository builds and pushes a
+config-agnostic <strong>deployer image</strong>, and a config-only CD repository runs that image against as many
+targets as you like. One image drives <em>N</em> deployments, and rollback is a retag.</p>
+<div class="admonition info">
+<p class="admonition-title">Engine support</p>
 </div>
-<h2 id="cdk-cicd-wrapper-variables">CDK CI/CD Wrapper Variables</h2>
-<table>
-<thead>
-<tr>
-<th>ENV Variable</th>
-<th>Package.json config</th>
-<th>Default Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>AWS_REGION</td>
-<td></td>
-<td></td>
-<td>deployment region</td>
-</tr>
-<tr>
-<td>ACCOUNT_RES</td>
-<td></td>
-<td></td>
-<td>account id for resources account where pipeline will run</td>
-</tr>
-<tr>
-<td>ACCOUNT_DEV</td>
-<td></td>
-<td></td>
-<td>account id for DEV environment account</td>
-</tr>
-<tr>
-<td>ACCOUNT_INT</td>
-<td></td>
-<td></td>
-<td>account id for INT environment account</td>
-</tr>
-<tr>
-<td>ACCOUNT_PROD</td>
-<td></td>
-<td></td>
-<td>account id for PROD environment account</td>
-</tr>
-<tr>
-<td>RES_ACCOUNT_AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the named profile to use for the RES account. this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td>DEV_ACCOUNT_AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the named profile to use for the DEV account. this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td>INT_ACCOUNT_AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the named profile to use for the INT account. this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td>PROD_ACCOUNT_AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the named profile to use for the PROD account. this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td>AWS_PROFILE</td>
-<td></td>
-<td></td>
-<td>sets the default named profile to use for aws cli or cdk commands when no <code>--profile</code> is provided. set to the same value as <code>RES_ACCOUNT_AWS_PROFILE</code> this profile must exist in <code>~/.aws/credentials</code> or <code>~/.aws/config</code></td>
-</tr>
-<tr>
-<td></td>
-<td>applicationName</td>
-<td>Wrapper</td>
-<td>sets the name of the Application</td>
-</tr>
-<tr>
-<td>CDK_QUALIFIER</td>
-<td>cdkQualifier</td>
-<td>wrapper</td>
-<td>used to distinguish between multiple deployments of a VP project in the same account. Good practice to customize per deployment.</td>
-</tr>
-<tr>
-<td>GIT_REPOSITORY</td>
-<td>repositoryName</td>
-<td></td>
-<td>sets the name of the Git repository in the format org/name</td>
-</tr>
-<tr>
-<td>REPOSITORY_TYPE</td>
-<td>repositoryType</td>
-<td></td>
-<td>sets the type of the repository, <code>GITHUB</code> or <code>CODECOMMIT</code></td>
-</tr>
-<tr>
-<td>CODESTAR_CONNECTION_ARN</td>
-<td></td>
-<td></td>
-<td>sets the codestar connection required for GITHUB type</td>
-</tr>
-<tr>
-<td>CICD_VPC_TYPE</td>
-<td>cicdVpcType</td>
-<td>NO_VPC</td>
-<td>sets the type of the VPC: <code>NO_VPC</code>, <code>VPC</code>, or <code>VPC_FROM_LOOK_UP</code>.</td>
-</tr>
-<tr>
-<td>CICD_VPC_ID</td>
-<td>cicdVpcId</td>
-<td></td>
-<td>for use with <code>VPC_FROM_LOOK_UP</code> to set the vpc ID</td>
-</tr>
-<tr>
-<td>CICD_VPC_CIDR</td>
-<td>cicdVpcCidr</td>
-<td>172.31.0.0/20</td>
-<td>for use with <code>VPC</code> to set the CIDR block of the VPC</td>
-</tr>
-<tr>
-<td>CICD_VPC_CIDR_MASK</td>
-<td>cicdVpcCidrMask</td>
-<td>24</td>
-<td>for use with <code>VPC</code> to set the Subnet size</td>
-</tr>
-<tr>
-<td>PROXY_SECRET_ARN</td>
-<td></td>
-<td></td>
-<td>used to set the ARN for the proxy secrets to enable proxy</td>
-</tr>
-</tbody>
-</table>
+<p>Container mode is a feature of the default <strong>CodePipeline engine</strong> (<code>EngineType.CODEPIPELINE</code>). The
+<code>CDK_PIPELINES</code> and <code>GitHubActions</code> engines deploy stages directly by replaying the app per stage;
+they do not build or consume a deployer image.</p>
+<h2 id="when-to-use-it">When to use it</h2>
+<p>Reach for container mode when you want to build the deployable artifact <strong>once</strong> and promote that exact
+artifact through stages — including across repositories or teams — rather than re-synthesizing per stage
+from source. Because the image bakes the CDK app and its npm dependencies, the CD side needs no source,
+no <code>npm install</code>, and no registry access at deploy time: it can synth-and-deploy <strong>offline</strong> against each
+target's configuration.</p>
+<h2 id="repo-1-build-the-deployer-image">Repo 1 — build the deployer image</h2>
+<p>The CI repository is your normal CDK app. Add a <code>deployerImage</code> to <code>cicd.config.ts</code> and the pipeline
+renders as <code>Source → BuildImage</code> with <strong>no deploy stages</strong> — it builds and pushes an image instead of
+deploying:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">,</span><span class="w"> </span><span class="nx">Repository</span><span class="p">,</span><span class="w"> </span><span class="nx">BuildImage</span><span class="p">,</span><span class="w"> </span><span class="nx">ImageTagStrategy</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
+
+<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.github</span><span class="p">(</span><span class="s1">'my-org/my-app'</span><span class="p">),</span>
+<span class="w">  </span><span class="nx">deployerImage</span><span class="o">:</span><span class="w"> </span><span class="kt">BuildImage.docker</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">dockerfile</span><span class="o">:</span><span class="w"> </span><span class="s1">'Dockerfile'</span><span class="p">,</span><span class="w"> </span><span class="c1">// default; the image payload is your app + deps, NOT cdk.out</span>
+<span class="w">    </span><span class="c1">// repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one</span>
+<span class="w">    </span><span class="c1">// tagStrategy: ImageTagStrategy.GIT_SHA, // default: tag by resolved commit; or ImageTagStrategy.LATEST</span>
+<span class="w">  </span><span class="p">}),</span>
+<span class="p">});</span>
+</code></pre></div>
+<p><code>cdk-cicd deploy-ci</code> provisions the CI pipeline. Its single build project:</p>
+<ol>
+<li>runs <code>npm ci</code> and <code>cdk-cicd check</code> (CI as a validation gate),</li>
+<li>logs in to ECR,</li>
+<li><code>docker build</code>s your Dockerfile and pushes the image, tagged by strategy (<code>GIT_SHA</code> by default —
+   immutable; <code>LATEST</code> is simplest but not immutable).</li>
+</ol>
+<p>If you do not name an existing repository, the pipeline <strong>provisions</strong> one named <code>&lt;application&gt;-deployer</code>;
+a disposable pipeline (<code>deploy-ci --disposable</code>) empties and deletes it on teardown.</p>
+<h3 id="why-the-image-not-cdkout">Why the image, not <code>cdk.out</code></h3>
+<p>The image bakes code + dependencies but <strong>never</strong> <code>cdk.out</code>, so the CD side can synth-and-deploy it
+offline against any target's config. That is what collapses per-target pipeline sprawl: targets become
+config rows a single image is run against, not pipeline resources.</p>
+<h2 id="repo-2-deploy-the-image">Repo 2 — deploy the image</h2>
+<p>The CD repository is a small, app-agnostic <strong>config repository</strong> (no CDK code). It declares <strong>which
+image</strong> to run and <strong>where</strong> to deploy it, via <code>defineDeployment</code> in a <code>deploy.config.ts</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// deploy.config.ts</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">defineDeployment</span><span class="p">,</span><span class="w"> </span><span class="nx">Repository</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
+
+<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineDeployment</span><span class="p">({</span>
+<span class="w">  </span><span class="c1">// The BASE deployer image repository (no tag). The per-stage version is appended at deploy time.</span>
+<span class="w">  </span><span class="nx">image</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer'</span><span class="p">,</span>
+
+<span class="w">  </span><span class="c1">// The config-only source repo this CD pipeline watches (deploy.config.ts + config/&lt;stage&gt;.json).</span>
+<span class="w">  </span><span class="c1">// Omit it to use only the local `cdk-cicd deploy --from-image` executor with no CD pipeline.</span>
+<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-app-deploy-config'</span><span class="p">),</span>
+
+<span class="w">  </span><span class="c1">// Targets say WHERE (account/region/role) + gating. The VERSION each runs comes from config/&lt;stage&gt;.json.</span>
+<span class="w">  </span><span class="nx">targets</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'dev'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'int'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'222222222222'</span><span class="p">,</span><span class="w"> </span><span class="nx">regions</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'eu-west-1'</span><span class="p">,</span><span class="w"> </span><span class="s1">'us-east-1'</span><span class="p">]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">deployment</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">deployRole</span><span class="o">:</span><span class="w"> </span><span class="s1">'arn:aws:iam::222222222222:role/automation-deployer'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="p">});</span>
+</code></pre></div>
+<p>Each stage's <strong>version lives in its own config file</strong> in the CD repository (a hash or semver) — <em>not</em>
+baked in the image:</p>
+<div class="highlight"><pre><span></span><code>// config/dev.json          config/int.json           config/prod.json
+{ "version": "1.5.0" }      { "version": "1.4.2" }     { "version": "1.4.2" }
+</code></pre></div>
+<p>The deploy resolves <code>image = &lt;base-repo&gt;:&lt;version from config/&lt;stage&gt;.json&gt;</code>, so <code>dev</code> can run a newer
+version than <code>prod</code>, and the version is plain config, reviewable in a pull request.</p>
+<h3 id="provision-the-cd-pipeline-or-run-locally">Provision the CD pipeline, or run locally</h3>
+<p>With a <code>repository</code> set, <code>cdk-cicd deploy-ci</code> provisions the CD pipeline (the deploy-side twin of the CI
+<code>deploy-ci</code>): a <code>Source</code> stage, then a <code>Deploy</code> stage with every <strong>ungated</strong> target running in parallel,
+then a <code>DeployGated</code> stage where each <strong>gated</strong> target sits behind its own manual-approval action. Each
+deploy action runs <code>cdk-cicd deploy --from-image --target &lt;stage&gt;</code>, which reads that stage's <code>version</code> at
+run time, pulls <code>&lt;base-repo&gt;:&lt;version&gt;</code>, and synth-and-deploys the stage.</p>
+<p>The same executor runs locally without any pipeline:</p>
+<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w">           </span><span class="c1"># every target (gated targets require --yes)</span>
+npx<span class="w"> </span>cdk-cicd<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w"> </span>--target<span class="w"> </span>dev
+</code></pre></div>
+<p>On a runner whose default Docker network cannot reach AWS, add <code>--docker-network host</code>. The local
+executor is fail-closed: it refuses a target with <code>manualApproval: true</code> unless you pass <code>--yes</code>.</p>
+<h2 id="division-of-authority-what-vs-where">Division of authority: WHAT vs WHERE</h2>
+<p>The <strong>image</strong> is authoritative for <em>what</em> to deploy — the app code and its stage definitions are baked in
+at build time. The <strong><code>deploy.config.ts</code> target</strong> is authoritative for <em>where</em> — the account, region(s),
+and forced role for each stage. That is why each run pins a single <code>--region</code>: the target's environment
+overrides whatever region set the image's own <code>cicd.config.ts</code> carries, so the CD repository — not the
+image — decides the deployment topology.</p>
+<h2 id="rollback-is-a-retag">Rollback is a retag</h2>
+<p>To roll back, point a stage's version file at the previous tag (e.g. <code>config/prod.json</code>'s <code>version</code> back
+to <code>1.4.1</code>) and re-run. Because the image pins code + deps and config supplies the lookups, the same image</p>
+<ul>
+<li>same config always synthesizes the same template — a deterministic rollback with no rebuild.</li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="cd.html">Continuous Deployment</a> — stages, approvals, and per-stage configuration.</li>
+<li>The workshop module <a href="../workshops/autopilot-pipeline/05-container-mode.html">Container mode: build once, deploy many</a>
+  walks the same flow end to end.</li>
+</ul>
 
 
 

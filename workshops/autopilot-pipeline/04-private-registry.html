@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/v3-pipeline/01-config-driven-pipeline.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/autopilot-pipeline/04-private-registry.html">
       
       
-        <link rel="prev" href="00-prerequisites.html">
+        <link rel="prev" href="03-deploy-models.html">
       
       
-        <link rel="next" href="02-stages-approvals-naming.html">
+        <link rel="next" href="05-container-mode.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>A config-driven pipeline (zero-touch) - CDK CI/CD Wrapper</title>
+        <title>Private npm registry (CodeArtifact) - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#a-config-driven-pipeline-zero-touch" class="md-skip">
+        <a href="#private-npm-registry-codeartifact" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              A config-driven pipeline (zero-touch)
+              Private npm registry (CodeArtifact)
             
           </span>
         </div>
@@ -256,6 +256,23 @@
         </a>
       </li>
     
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/API.md" class="md-tabs__link">
+        
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
   
 
       
@@ -616,6 +633,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -664,6 +685,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../../developer_guides/configuration.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuration Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../developer_guides/ci.html" class="md-nav__link">
         
   
@@ -690,6 +732,27 @@
   
   <span class="md-ellipsis">
     Continuous Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer_guides/container_mode.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Container Mode
   </span>
   
 
@@ -764,10 +827,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
         
           
-          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -778,8 +841,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
             <span class="md-nav__icon md-icon"></span>
             Python Dependencies
           </label>
@@ -858,10 +921,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
         
           
-          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -872,8 +935,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
             <span class="md-nav__icon md-icon"></span>
             NPM Dependencies
           </label>
@@ -954,10 +1017,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
         
           
-          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -968,8 +1031,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
             <span class="md-nav__icon md-icon"></span>
             GIT Integrations
           </label>
@@ -1277,6 +1340,26 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/API.md" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    API Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
       
@@ -1296,7 +1379,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
           
@@ -1312,14 +1395,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             MCP Servers
           </label>
@@ -1378,7 +1461,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           
@@ -1395,8 +1478,8 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             FAQs
           </label>
@@ -1434,7 +1517,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           
@@ -1451,8 +1534,8 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             Contributing
           </label>
@@ -1497,7 +1580,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
         
           
           
@@ -1513,14 +1596,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="">
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             Workshops
           </label>
@@ -1532,357 +1615,18 @@
                 
   
   
-    
   
   
-  
-    
-    
-      
+    <li class="md-nav__item">
+      <a href="../../v3-pipeline" class="md-nav__link">
         
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_2" checked>
-        
-          
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="index.html" class="md-nav__link ">
-              
   
   <span class="md-ellipsis">
     v3 pipelines
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_8_2" id="__nav_8_2_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_8_2">
-            <span class="md-nav__icon md-icon"></span>
-            v3 pipelines
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="00-prerequisites.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Prerequisites
-  </span>
-  
-
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    A config-driven pipeline (zero-touch)
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="01-config-driven-pipeline.html" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    A config-driven pipeline (zero-touch)
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-your-app-stays-plain-cdk" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Your app stays plain CDK
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-describe-the-pipeline-in-cicdconfigts" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Describe the pipeline in cicd.config.ts
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-point-cdkjson-at-the-wrappers-exec-hook" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Point cdk.json at the wrapper's exec hook
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-provision-the-pipeline-once" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Provision the pipeline — once
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#every-field-of-definecicd" class="md-nav__link">
-    <span class="md-ellipsis">
-      Every field of defineCICD
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#customizing-ci" class="md-nav__link">
-    <span class="md-ellipsis">
-      Customizing CI
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verify" class="md-nav__link">
-    <span class="md-ellipsis">
-      Verify
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recap" class="md-nav__link">
-    <span class="md-ellipsis">
-      Recap
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="02-stages-approvals-naming.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Stages, approvals, and stack names
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="03-deploy-models.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Deploy models and pipeline tuning
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="04-private-registry.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Private npm registry (CodeArtifact)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="05-container-mode.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Container mode: build once, deploy many
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="06-migrating-from-v2.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Migrating from v2
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="07-recap-cleanup.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Recap and cleanup
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
     </li>
   
 
@@ -1932,7 +1676,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
         
           
           
@@ -1948,14 +1692,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10" id="__nav_10_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             Legacy (Blueprint 0.x)
           </label>
@@ -2112,10 +1856,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8" >
         
           
-          <label class="md-nav__link" for="__nav_9_8" id="__nav_9_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_10_8" id="__nav_10_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2126,8 +1870,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8">
             <span class="md-nav__icon md-icon"></span>
             Workshops
           </label>
@@ -2178,7 +1922,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8_1" >
         
           
           
@@ -2194,14 +1938,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9_8_1" id="__nav_9_8_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_8_1" id="__nav_10_8_1_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_8_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8_1">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_8_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8_1">
             <span class="md-nav__icon md-icon"></span>
             GenerativeAI Image Generation
           </label>
@@ -2487,7 +2231,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8_2" >
         
           
           
@@ -2503,14 +2247,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9_8_2" id="__nav_9_8_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_8_2" id="__nav_10_8_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_8_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8_2">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_8_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8_2">
             <span class="md-nav__icon md-icon"></span>
             GitHub Action pipeline
           </label>
@@ -2756,60 +2500,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-your-app-stays-plain-cdk" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Your app stays plain CDK
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-describe-the-pipeline-in-cicdconfigts" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Describe the pipeline in cicd.config.ts
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-point-cdkjson-at-the-wrappers-exec-hook" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Point cdk.json at the wrapper's exec hook
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-provision-the-pipeline-once" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Provision the pipeline — once
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#every-field-of-definecicd" class="md-nav__link">
-    <span class="md-ellipsis">
-      Every field of defineCICD
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#customizing-ci" class="md-nav__link">
-    <span class="md-ellipsis">
-      Customizing CI
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#verify" class="md-nav__link">
     <span class="md-ellipsis">
       Verify
@@ -2845,193 +2535,59 @@
   
 
 
-<h1 id="a-config-driven-pipeline-zero-touch">A config-driven pipeline (zero-touch)</h1>
+<h1 id="private-npm-registry-codeartifact">Private npm registry (CodeArtifact)</h1>
 <div class="admonition abstract">
 <p class="admonition-title">What you'll build</p>
 <ul>
-<li>A working CodePipeline for a stock CDK app, provisioned from a single <code>cicd.config.ts</code>.</li>
-<li>An understanding of <strong>every</strong> <code>defineCICD</code> field and when to reach for it.</li>
-<li>A customized CI phase — your own named build steps and, optionally, a custom build image.</li>
+<li>A pipeline whose builds authenticate to a private AWS CodeArtifact repository before <code>npm ci</code>.</li>
+<li>The read permissions the build roles need, granted automatically from one config block.</li>
 </ul>
 </div>
-<p>The whole v3 opt-in is two things: a <code>cicd.config.ts</code>, and pointing <code>cdk.json</code> at <code>cdk-cicd exec</code>.</p>
-<h2 id="1-your-app-stays-plain-cdk">1. Your app stays plain CDK</h2>
-<p><code>bin/app.ts</code> is exactly what <code>cdk init</code> gave you — a plain <code>App</code> with your stacks. No <code>PipelineBlueprint</code>,
-no builder, no wrapper import:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// bin/app.ts</span>
-<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">cdk</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'aws-cdk-lib'</span><span class="p">;</span>
-<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">MyStack</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'../lib/my-stack'</span><span class="p">;</span>
-
-<span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
-<span class="ow">new</span><span class="w"> </span><span class="nx">MyStack</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.CDK_DEFAULT_ACCOUNT</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.CDK_DEFAULT_REGION</span><span class="w"> </span><span class="p">},</span>
-<span class="p">});</span>
-</code></pre></div>
-<h2 id="2-describe-the-pipeline-in-cicdconfigts">2. Describe the pipeline in <code>cicd.config.ts</code></h2>
-<div class="highlight"><pre><span></span><code><span class="c1">// cicd.config.ts</span>
-<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">,</span><span class="w"> </span><span class="nx">Repository</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
-
-<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
+<p>If your dependencies (or the wrapper itself, pre-release) live in a private AWS CodeArtifact repository,
+the pipeline's builds must authenticate before <code>npm ci</code>. Declare it once:</p>
+<div class="highlight"><pre><span></span><code><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">),</span><span class="w">   </span><span class="c1">// or .github('org/my-app', 'main') / .s3('bucket/app.zip')</span>
+<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">),</span>
 <span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'dev'</span><span class="p">,</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">],</span>
+<span class="w">  </span><span class="nx">codeArtifact</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">domain</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-domain'</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-repo'</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">npmScope</span><span class="o">:</span><span class="w"> </span><span class="s1">'mycompany'</span><span class="p">,</span><span class="w">        </span><span class="c1">// for @mycompany/* packages; omit for the default registry</span>
+<span class="w">    </span><span class="c1">// account / region default to the pipeline's own</span>
+<span class="w">  </span><span class="p">},</span>
 <span class="p">});</span>
 </code></pre></div>
-<h2 id="3-point-cdkjson-at-the-wrappers-exec-hook">3. Point <code>cdk.json</code> at the wrapper's exec hook</h2>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">"app"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx cdk-cicd exec bin/app.ts"</span>
-<span class="p">}</span>
-</code></pre></div>
-<p><code>cdk-cicd exec</code> runs your app under a preload that injects the resolved config (and tags, synthesizer, and
-compliance Aspects) around it — which is how your untouched <code>bin/</code> becomes wrapper-aware without importing
-anything.</p>
-<h2 id="4-provision-the-pipeline-once">4. Provision the pipeline — once</h2>
-<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>deploy-ci
-</code></pre></div>
-<p>This deploys <strong>one</strong> pipeline into your hub account from <code>cicd.config.ts</code> alone. On every run it:</p>
-<div class="highlight"><pre><span></span><code>Source → Build (checks + synth) → UpdatePipeline (re-deploys itself from config) → deploy dev → deploy prod
-</code></pre></div>
-<p><img alt="The flat v3 pipeline in the CodePipeline console: Source → Build → UpdatePipeline → deploy" src="images/flat-pipeline.png" /></p>
-<p><em>The flat v3 pipeline in the CodePipeline console — one linear pipeline, not v2's 100+ CodeBuild projects.</em></p>
-<p>The <strong>UpdatePipeline</strong> stage means you never run <code>deploy-ci</code> again by hand: change <code>cicd.config.ts</code>, push,
-and the pipeline re-synthesizes its own definition on the next run and applies the change before the
-stages it affects.</p>
-<h2 id="every-field-of-definecicd">Every field of <code>defineCICD</code></h2>
-<p>The two-stage example above uses three fields. Here is the full set, and <strong>why each matters</strong> — you'll
-only ever write the few you need, because the wrapper resolves sensible defaults for the rest.</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>What it does</th>
-<th>Why it matters</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>application</code></td>
-<td>Logical name for the app and its resources. Defaults from <code>package.json#name</code>.</td>
-<td>The prefix on pipeline and support-stack names — set it once so resources are recognizable.</td>
-</tr>
-<tr>
-<td><code>qualifier</code></td>
-<td>Short (≤10 char) sanitized id used to disambiguate shared resources. Derived from <code>application</code>.</td>
-<td>Only set it if two apps would otherwise collide on shared names.</td>
-</tr>
-<tr>
-<td><code>repository</code></td>
-<td>The pipeline's source: <code>Repository.github('org/repo', branch?)</code>, <code>Repository.codecommit('name', branch?)</code>, or <code>Repository.s3('bucket/key', branch?)</code>.</td>
-<td>This is <em>where</em> the pipeline reads code and <em>what</em> triggers it — the one field you almost always set explicitly.</td>
-</tr>
-<tr>
-<td><code>stages</code></td>
-<td>Ordered list of deployment stages — bare names or objects with <code>env</code>, <code>manualApproval</code>, <code>deployment</code>.</td>
-<td>Your promotion path (dev → prod). Config-as-data, not pipeline code. Covered in the next chapter.</td>
-</tr>
-<tr>
-<td><code>ci</code></td>
-<td>Customizes the CI phase: <code>steps</code>, <code>synthStages</code>, <code>image</code>.</td>
-<td>Add your own build/test steps or a custom image. See <a href="#customizing-ci">Customizing CI</a> below.</td>
-</tr>
-<tr>
-<td><code>codeArtifact</code></td>
-<td>Authenticates builds to a private CodeArtifact repo (<code>domain</code>, <code>repository</code>, <code>account?</code>, <code>region?</code>, <code>npmScope?</code>).</td>
-<td>Needed when your deps (or the wrapper itself, pre-release) live in a private registry. See chapter 4.</td>
-</tr>
-<tr>
-<td><code>deployModel</code></td>
-<td><code>DeployModel.ASSEMBLY_PROMOTION</code> (default) or <code>DeployModel.DEPLOY_TIME_SYNTH</code>.</td>
-<td>Controls when synth happens — one synth per run vs per-stage at deploy time. See chapter 3.</td>
-</tr>
-<tr>
-<td><code>asyncDeploy</code></td>
-<td><code>boolean</code> (default <code>false</code>). Hands the CloudFormation wait to a Lambda instead of holding a build.</td>
-<td>Saves build compute when the CloudFormation wait dominates. See chapter 3.</td>
-</tr>
-<tr>
-<td><code>synthesizer</code></td>
-<td><code>{ type?: SynthesizerType.DEFAULT \| SynthesizerType.APP_STAGING }</code>.</td>
-<td><code>DEFAULT</code> (<code>DefaultStackSynthesizer</code>) suits most apps; opt into <code>APP_STAGING</code> for per-app staging + roles-only bootstrap.</td>
-</tr>
-<tr>
-<td><code>engine</code></td>
-<td>Selects the CD engine (<code>EngineType</code>).</td>
-<td><code>EngineType.CODEPIPELINE</code> is the default and covers most cases — you rarely set it. Two alternates exist: <code>CDK_PIPELINES</code> (plain CDK Pipelines, no CodePipeline-specific extras) and <code>GITHUB_ACTIONS</code> (renders a <code>.github/workflows/deploy.yml</code> instead of an AWS-hosted pipeline — see <a href="../../developer_guides/vcs_github.html">GitHub as source &amp; CD engine</a>). Tuning for the default engine lives on the stages and <code>ci</code> (chapter 3), not here.</td>
-</tr>
-<tr>
-<td><code>githubActions</code></td>
-<td>GitHub Actions engine config (<code>roleName</code>, <code>subjectClaims</code>, <code>workflowTriggers</code>, etc.).</td>
-<td>Only read when <code>engine</code> is <code>EngineType.GITHUB_ACTIONS</code>.</td>
-</tr>
-<tr>
-<td><code>deployerImage</code></td>
-<td>Turns the pipeline into a config-agnostic image builder (<code>BuildImage.docker({...})</code>).</td>
-<td>The container-mode entry point. See chapter 5.</td>
-</tr>
-</tbody>
-</table>
+<p>With this set, <strong>every</strong> build project the pipeline creates — the CI build, the self-update, and each
+deploy — runs <code>aws codeartifact login --tool npm …</code> in a <code>pre_build</code> step before <code>npm ci</code>, and its role is
+granted the read permissions CodeArtifact needs (<code>GetAuthorizationToken</code>, <code>GetRepositoryEndpoint</code>,
+<code>ReadFromRepository</code>, and a service-scoped <code>sts:GetServiceBearerToken</code>).</p>
+<p>With no <code>codeArtifact</code> set, the pipeline renders exactly as before — this is purely additive.</p>
 <div class="admonition tip">
-<p class="admonition-title">Start small</p>
-<p>The minimum config is <code>repository</code> + <code>stages</code>. <code>application</code> defaults from <code>package.json#name</code>, the
-engine defaults to CodePipeline, and the synthesizer defaults to <code>DefaultStackSynthesizer</code>. Add fields
-only when a default doesn't fit.</p>
-</div>
-<h2 id="customizing-ci">Customizing CI</h2>
-<p>The <code>ci</code> block shapes the Build phase. All three sub-fields are optional; the wrapper's default-on checks
-(<code>cdk-cicd check</code> runs validate, audit, license, security) plus the synth step run whether or not you set
-anything.</p>
-<p><strong>Named build steps (<code>ci.steps</code>)</strong> — a map of <code>{ name: shell-command }</code>. Each entry becomes a named step
-in the CI build, so you add project-specific gates without editing pipeline code:</p>
-<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">,</span><span class="w"> </span><span class="nx">Repository</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
-
-<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.github</span><span class="p">(</span><span class="s1">'my-org/my-app'</span><span class="p">),</span>
-<span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'dev'</span><span class="p">,</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">],</span>
-<span class="w">  </span><span class="nx">ci</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">steps</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nx">lint</span><span class="o">:</span><span class="w"> </span><span class="s1">'npm run lint'</span><span class="p">,</span>
-<span class="w">      </span><span class="nx">test</span><span class="o">:</span><span class="w"> </span><span class="s1">'npm test'</span><span class="p">,</span>
-<span class="w">      </span><span class="nx">audit</span><span class="o">:</span><span class="w"> </span><span class="s1">'npx cdk-cicd check-dependencies'</span><span class="p">,</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="p">});</span>
-</code></pre></div>
-<p><strong>A custom build image (<code>ci.image</code>)</strong> — point CI at your own CodeBuild image (a registry reference) when
-you need tools the default image doesn't ship:</p>
-<div class="highlight"><pre><span></span><code><span class="w">  </span><span class="nx">ci</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">image</span><span class="o">:</span><span class="w"> </span><span class="s1">'public.ecr.aws/my-org/ci-node:20'</span><span class="p">,</span><span class="w">   </span><span class="c1">// custom CodeBuild image for CI steps</span>
-<span class="w">    </span><span class="nx">steps</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">test</span><span class="o">:</span><span class="w"> </span><span class="s1">'npm test'</span><span class="w"> </span><span class="p">},</span>
-<span class="w">  </span><span class="p">},</span>
-</code></pre></div>
-<p><strong>Synth scope (<code>ci.synthStages</code>)</strong> — <code>'all'</code> synthesizes every stage as a validation gate; a list narrows
-it to specific stages when synth cost matters. This interacts with the deploy model, so it's covered in
-chapter 3.</p>
-<div class="admonition info">
 <p class="admonition-title">The build image needs the AWS CLI</p>
-<p>Steps like the CodeArtifact login and asset publishing shell out to the AWS CLI, which the default
-CodeBuild image ships. If you set a custom <code>ci.image</code>, make sure the AWS CLI is on its <code>PATH</code>.</p>
+<p>The login step uses the AWS CLI, which the default CodeBuild image ships. If you pass a custom
+<code>ci.image</code> (chapter 1), make sure it has the AWS CLI on <code>PATH</code>.</p>
 </div>
 <h2 id="verify">Verify</h2>
 <div class="admonition success">
 <p class="admonition-title">Verify</p>
-<p>Confirm the pipeline exists and runs end to end:</p>
 <ul>
-<li>In the <strong>CodePipeline</strong> console, your pipeline shows the flat
-  <code>Source → Build → UpdatePipeline → deploy dev → deploy prod</code> shape.</li>
-<li>The most recent execution reaches <strong>Succeeded</strong> on every stage.</li>
-<li>Compare the CodeBuild project count to a v2 pipeline: v3 provisions a small, constant set — not one
-  per asset or per stage.</li>
+<li>In a CI build's logs, a <code>pre_build</code> step runs <code>aws codeartifact login --tool npm …</code> and the
+  subsequent <code>npm ci</code> resolves your private packages.</li>
+<li>The build fails fast with an auth error if the domain/repository names are wrong or the role lacks
+  access — a clear signal the block is misconfigured rather than a silent public-registry fallback.</li>
 </ul>
-<p>You can also validate the config locally before pushing:</p>
-<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>synth<span class="w"> </span>--all<span class="w">       </span><span class="c1"># synthesizes every stage from your config</span>
-</code></pre></div>
 </div>
 <h2 id="recap">Recap</h2>
-<p>You turned a stock CDK app into one flat CodePipeline with a single config file and a one-line <code>cdk.json</code>
-change — no wrapper code in <code>bin/</code>. You know every <code>defineCICD</code> field, and you can add your own CI steps
-and image. The next chapters go deep on the fields you'll reach for most: stages and approvals, deploy
-models and tuning, private registries, and container mode.</p>
+<p>One <code>codeArtifact</code> block wires every build project to your private registry and grants the read
+permissions automatically — no per-project buildspec edits.</p>
+<div class="admonition tip">
+<p class="admonition-title">Non-CodeArtifact registries</p>
+<p>For any npm-compatible registry that isn't CodeArtifact, use <code>npmRegistry</code> instead of <code>codeArtifact</code>:
+<code>npmRegistry: { url: 'https://npm.example.com/', basicAuthSecretArn: '&lt;secret-arn&gt;', scope: 'mycompany' }</code>.
+Each build writes a scoped <code>.npmrc</code> with a bearer token read from the given Secrets Manager secret. See
+the <a href="https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/configuration.html">Configuration Reference</a>.</p>
+</div>
+<p>Next: container mode, where a single config-agnostic image deploys to many targets.</p>
 
 
 
@@ -3052,7 +2608,7 @@ models and tuning, private registries, and container mode.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-08-25
+    2026-08-27
   </span>
 
     

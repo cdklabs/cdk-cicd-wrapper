@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/v3-pipeline/05-container-mode.html">
+        <link rel="canonical" href="https://github.com/cdklabs/cdk-cicd-wrapper/workshops/autopilot-pipeline/06-migrating-from-v2.html">
       
       
-        <link rel="prev" href="04-private-registry.html">
+        <link rel="prev" href="05-container-mode.html">
       
       
-        <link rel="next" href="06-migrating-from-v2.html">
+        <link rel="next" href="07-recap-cleanup.html">
       
       
       <link rel="icon" href="../../assets/images/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Container mode: build once, deploy many - CDK CI/CD Wrapper</title>
+        <title>Migrating from Blueprint - CDK CI/CD Wrapper</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#container-mode-build-once-deploy-many" class="md-skip">
+        <a href="#migrating-from-blueprint" class="md-skip">
           Skip to content
         </a>
       
@@ -103,7 +103,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Container mode: build once, deploy many
+              Migrating from Blueprint
             
           </span>
         </div>
@@ -256,6 +256,23 @@
         </a>
       </li>
     
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/API.md" class="md-tabs__link">
+        
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
   
 
       
@@ -616,6 +633,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -664,6 +685,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../../developer_guides/configuration.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuration Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../developer_guides/ci.html" class="md-nav__link">
         
   
@@ -690,6 +732,27 @@
   
   <span class="md-ellipsis">
     Continuous Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer_guides/container_mode.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Container Mode
   </span>
   
 
@@ -764,10 +827,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
         
           
-          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -778,8 +841,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
             <span class="md-nav__icon md-icon"></span>
             Python Dependencies
           </label>
@@ -858,10 +921,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
         
           
-          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -872,8 +935,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
             <span class="md-nav__icon md-icon"></span>
             NPM Dependencies
           </label>
@@ -954,10 +1017,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
         
           
-          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -968,8 +1031,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
             <span class="md-nav__icon md-icon"></span>
             GIT Integrations
           </label>
@@ -1277,6 +1340,26 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/API.md" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    API Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
       
@@ -1296,7 +1379,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
           
@@ -1312,14 +1395,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             MCP Servers
           </label>
@@ -1378,7 +1461,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           
@@ -1395,8 +1478,8 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             FAQs
           </label>
@@ -1434,7 +1517,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           
@@ -1451,8 +1534,8 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             Contributing
           </label>
@@ -1497,7 +1580,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
         
           
           
@@ -1513,14 +1596,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="">
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             Workshops
           </label>
@@ -1532,345 +1615,18 @@
                 
   
   
-    
   
   
-  
-    
-    
-      
+    <li class="md-nav__item">
+      <a href="../../v3-pipeline" class="md-nav__link">
         
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_2" checked>
-        
-          
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="index.html" class="md-nav__link ">
-              
   
   <span class="md-ellipsis">
     v3 pipelines
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_8_2" id="__nav_8_2_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_8_2">
-            <span class="md-nav__icon md-icon"></span>
-            v3 pipelines
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="00-prerequisites.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Prerequisites
-  </span>
-  
-
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="01-config-driven-pipeline.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    A config-driven pipeline (zero-touch)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="02-stages-approvals-naming.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Stages, approvals, and stack names
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="03-deploy-models.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Deploy models and pipeline tuning
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="04-private-registry.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Private npm registry (CodeArtifact)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Container mode: build once, deploy many
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="05-container-mode.html" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    Container mode: build once, deploy many
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#repo-1-turn-the-pipeline-into-an-image-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      Repo 1 — turn the pipeline into an image builder
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Repo 1 — turn the pipeline into an image builder">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-the-repo-1-pipeline-does" class="md-nav__link">
-    <span class="md-ellipsis">
-      What the Repo 1 pipeline does
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#why-the-image-not-cdkout" class="md-nav__link">
-    <span class="md-ellipsis">
-      Why the image, not cdk.out
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#repo-2-the-cd-pipeline-that-deploys-the-image" class="md-nav__link">
-    <span class="md-ellipsis">
-      Repo 2 — the CD pipeline that deploys the image
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verify" class="md-nav__link">
-    <span class="md-ellipsis">
-      Verify
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recap" class="md-nav__link">
-    <span class="md-ellipsis">
-      Recap
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="06-migrating-from-v2.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Migrating from v2
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="07-recap-cleanup.html" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Recap and cleanup
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
     </li>
   
 
@@ -1920,7 +1676,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
         
           
           
@@ -1936,14 +1692,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10" id="__nav_10_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             Legacy (Blueprint 0.x)
           </label>
@@ -2100,10 +1856,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8" >
         
           
-          <label class="md-nav__link" for="__nav_9_8" id="__nav_9_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_10_8" id="__nav_10_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2114,8 +1870,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8">
             <span class="md-nav__icon md-icon"></span>
             Workshops
           </label>
@@ -2166,7 +1922,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8_1" >
         
           
           
@@ -2182,14 +1938,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9_8_1" id="__nav_9_8_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_8_1" id="__nav_10_8_1_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_8_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8_1">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_8_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8_1">
             <span class="md-nav__icon md-icon"></span>
             GenerativeAI Image Generation
           </label>
@@ -2475,7 +2231,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_8_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_8_2" >
         
           
           
@@ -2491,14 +2247,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9_8_2" id="__nav_9_8_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_8_2" id="__nav_10_8_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_8_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_8_2">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_8_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_8_2">
             <span class="md-nav__icon md-icon"></span>
             GitHub Action pipeline
           </label>
@@ -2744,51 +2500,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#repo-1-turn-the-pipeline-into-an-image-builder" class="md-nav__link">
+  <a href="#scaffold-the-config-with-the-codemod" class="md-nav__link">
     <span class="md-ellipsis">
-      Repo 1 — turn the pipeline into an image builder
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Repo 1 — turn the pipeline into an image builder">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-the-repo-1-pipeline-does" class="md-nav__link">
-    <span class="md-ellipsis">
-      What the Repo 1 pipeline does
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#why-the-image-not-cdkout" class="md-nav__link">
-    <span class="md-ellipsis">
-      Why the image, not cdk.out
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#repo-2-the-cd-pipeline-that-deploys-the-image" class="md-nav__link">
-    <span class="md-ellipsis">
-      Repo 2 — the CD pipeline that deploys the image
+      Scaffold the config with the codemod
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#verify" class="md-nav__link">
+  <a href="#do-the-rest-by-hand" class="md-nav__link">
     <span class="md-ellipsis">
-      Verify
+      Do the rest by hand
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keep-already-deployed-resources-no-recreate" class="md-nav__link">
+    <span class="md-ellipsis">
+      Keep already-deployed resources (no recreate!)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-before-switching-the-pipeline-over" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify before switching the pipeline over
     </span>
   </a>
   
@@ -2821,151 +2562,75 @@
   
 
 
-<h1 id="container-mode-build-once-deploy-many">Container mode: build once, deploy many</h1>
+<h1 id="migrating-from-blueprint">Migrating from Blueprint</h1>
 <div class="admonition abstract">
 <p class="admonition-title">What you'll build</p>
 <ul>
-<li><strong>Repo 1 — CI pipeline:</strong> runs CI and pushes a config-agnostic deployer image to ECR — it deploys
-  nothing.</li>
-<li><strong>Repo 2 — CD pipeline:</strong> a config-only <code>deploy.config.ts</code> whose pipeline pulls that image and
-  deploys each target (or run the same executor locally with <code>cdk-cicd deploy --from-image</code>).</li>
-<li>An understanding of the "one image → many deployments" scale-out and rollback-by-retag.</li>
+<li>A <code>cicd.config.ts</code> generated from your existing Blueprint entry with the <code>cdk-cicd migrate</code> codemod.</li>
+<li>A flattened <code>bin/</code> and a repointed <code>cdk.json</code>.</li>
+<li>Most importantly: a switchover that <strong>updates deployed stacks in place</strong> instead of recreating them.</li>
 </ul>
 </div>
-<p>For an enterprise / "Automation Framework" flow, v3 supports a <strong>two-repo split</strong>:</p>
-<ul>
-<li><strong>Repo 1 (CI pipeline)</strong> — the CDK app repo. Its pipeline runs CI and then builds &amp; pushes a
-  <strong>config-agnostic deployer image</strong> (your CDK code + its npm deps + the wrapper tooling) to ECR. It
-  deploys nothing.</li>
-<li><strong>Repo 2 (CD pipeline)</strong> — a config-only repo (no CDK code) whose pipeline pulls that image and runs it
-  against each target's config, synthesizing per target at run time. One image → many deployments.</li>
-</ul>
-<h2 id="repo-1-turn-the-pipeline-into-an-image-builder">Repo 1 — turn the pipeline into an image builder</h2>
-<p>Add a <code>deployerImage</code> to the config. The pipeline then renders as <code>Source → BuildImage</code> — no deploy
-stages:</p>
-<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">,</span><span class="w"> </span><span class="nx">Repository</span><span class="p">,</span><span class="w"> </span><span class="nx">BuildImage</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
-
-<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.github</span><span class="p">(</span><span class="s1">'my-org/my-app'</span><span class="p">),</span>
-<span class="w">  </span><span class="nx">deployerImage</span><span class="o">:</span><span class="w"> </span><span class="kt">BuildImage.docker</span><span class="p">({</span>
-<span class="w">    </span><span class="nx">dockerfile</span><span class="o">:</span><span class="w"> </span><span class="s1">'Dockerfile'</span><span class="p">,</span><span class="w">      </span><span class="c1">// default; the image payload is your app + deps, NOT cdk.out</span>
-<span class="w">    </span><span class="c1">// repositoryName: 'my-app-deployer',   // reference an existing ECR repo; omit to provision one</span>
-<span class="w">    </span><span class="c1">// tagStrategy: ImageTagStrategy.GIT_SHA,  // default: tag by commit; or LATEST</span>
-<span class="w">  </span><span class="p">}),</span>
-<span class="p">});</span>
+<p>Moving an app from Blueprint (<code>PipelineBlueprint.builder()…synth(app)</code>) to Autopilot is: generate a <code>cicd.config.ts</code>,
+flatten your <code>bin/</code>, and repoint <code>cdk.json</code>.</p>
+<h2 id="scaffold-the-config-with-the-codemod">Scaffold the config with the codemod</h2>
+<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>migrate<span class="w"> </span>--entry<span class="w"> </span>src/main.ts<span class="w"> </span>--application<span class="w"> </span>my-app<span class="w">   </span><span class="c1"># add --dry-run to preview</span>
 </code></pre></div>
-<h3 id="what-the-repo-1-pipeline-does">What the Repo 1 pipeline does</h3>
-<p><code>cdk-cicd deploy-ci</code> provisions a <strong>secondary CodePipeline</strong> whose single build project:</p>
+<p><code>migrate</code> reads your Blueprint entry, extracts the stage list, and writes a <code>cicd.config.ts</code> — flagging the
+repository, <code>workbench</code>, and any phases/hooks as TODOs for you to fill in. It deliberately <strong>does not</strong>
+rewrite your entry file's stack construction (that's where a codemod silently corrupts code), and prints
+the remaining manual steps.</p>
+<div class="admonition tip">
+<p class="admonition-title">Preview first</p>
+<p>Always run with <code>--dry-run</code> first to see the generated config and the manual-step list before it
+writes anything.</p>
+</div>
+<h2 id="do-the-rest-by-hand">Do the rest by hand</h2>
 <ol>
-<li>runs <code>npm ci</code> and <code>cdk-cicd check</code> (CI as a validation gate),</li>
-<li>logs in to ECR (<code>aws ecr get-login-password | docker login …</code>),</li>
-<li><code>docker build</code>s your Dockerfile and pushes the image, tagged by the resolved commit.</li>
+<li>In your entry, drop the <code>PipelineBlueprint.builder()…synth(app)</code> chain and construct your stacks
+   directly on a plain <code>new App()</code>.</li>
+<li>Point <code>cdk.json</code> at <code>npx cdk-cicd exec &lt;entry&gt;</code>.</li>
+<li>Provision the pipeline once: <code>npx cdk-cicd deploy-ci</code>.</li>
 </ol>
-<!-- SCREENSHOT: CodePipeline console showing the Repo 1 pipeline as Source → BuildImage (no deploy stages) -->
+<h2 id="keep-already-deployed-resources-no-recreate">Keep already-deployed resources (no recreate!)</h2>
+<p>This is the part to get right. CloudFormation keys resources to a stack by <strong>name</strong>. Blueprint nested your stacks
+in an <code>AppStage</code> (a <code>cdk.Stage</code>), so it deployed <code>&lt;stageId&gt;-&lt;name&gt;</code> (e.g. <code>DEV-my-app</code>). Autopilot's plain <code>bin/</code>
+deploys just <code>&lt;name&gt;</code>. <strong>A different name means a new stack — a full recreate.</strong> Match Blueprint's name and it's
+an in-place update instead:</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">stageStackName</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
 
-<p>If you don't name an existing repo, the pipeline <strong>provisions</strong> one (<code>&lt;application&gt;-deployer</code>); a
-disposable pipeline empties and deletes it on teardown.</p>
-<h3 id="why-the-image-not-cdkout">Why the image, not <code>cdk.out</code></h3>
-<p>The image bakes code + deps but <strong>never</strong> <code>cdk.out</code>, so Repo 2 can synth-and-deploy it <strong>offline</strong> against
-any target's config — no <code>npm install</code> and no registry access at deploy time. That's what collapses the
-per-target pipeline sprawl: targets become config rows a single image is run against, not pipeline
-resources.</p>
-<h2 id="repo-2-the-cd-pipeline-that-deploys-the-image">Repo 2 — the CD pipeline that deploys the image</h2>
-<p>Repo 2 is a small, app-agnostic <strong>config repo</strong> (no CDK code) that says <strong>which image</strong> to run and
-<strong>where</strong> to deploy it. Describe that with <code>defineDeployment</code> in a <code>deploy.config.ts</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// deploy.config.ts</span>
-<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">defineDeployment</span><span class="p">,</span><span class="w"> </span><span class="nx">Repository</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
-
-<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineDeployment</span><span class="p">({</span>
-<span class="w">  </span><span class="c1">// The BASE deployer image repo (no tag). The per-stage version is appended at deploy time.</span>
-<span class="w">  </span><span class="nx">image</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer'</span><span class="p">,</span>
-
-<span class="w">  </span><span class="c1">// The config-only source repo this CD pipeline watches (deploy.config.ts + config/&lt;stage&gt;.json here).</span>
-<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-app-deploy-config'</span><span class="p">),</span>
-
-<span class="w">  </span><span class="c1">// Targets say WHERE (account/region/role) + gating. The VERSION each runs comes from config/&lt;stage&gt;.json.</span>
-<span class="w">  </span><span class="nx">targets</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'dev'</span><span class="p">,</span><span class="w">  </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'int'</span><span class="p">,</span><span class="w">  </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'222222222222'</span><span class="p">,</span><span class="w"> </span><span class="nx">regions</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'eu-west-1'</span><span class="p">,</span><span class="w"> </span><span class="s1">'us-east-1'</span><span class="p">]</span><span class="w"> </span><span class="p">},</span>
-<span class="w">      </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">deployment</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">deployRole</span><span class="o">:</span><span class="w"> </span><span class="s1">'arn:aws:iam::222222222222:role/automation-deployer'</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
-<span class="w">  </span><span class="p">],</span>
+<span class="c1">// Reproduces Blueprint's `DEV-my-app`, so CloudFormation UPDATES the existing stack.</span>
+<span class="ow">new</span><span class="w"> </span><span class="nx">MyStack</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">stackName</span><span class="o">:</span><span class="w"> </span><span class="kt">stageStackName</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">stageFirst</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">uppercaseStage</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">}),</span>
 <span class="p">});</span>
 </code></pre></div>
-<p>Each stage's <strong>version lives in its own config file</strong> in the CD repo (a hash or semver) — <em>not</em> baked in
-the image:</p>
-<div class="highlight"><pre><span></span><code>// config/dev.json          config/int.json           config/prod.json
-{ "version": "1.5.0" }      { "version": "1.4.2" }     { "version": "1.4.2" }
-</code></pre></div>
-<p>The deploy resolves <code>image = &lt;base-repo&gt;:&lt;version-from-config/&lt;stage&gt;.json&gt;</code>. Provision the CD pipeline —
-the deploy-side twin of <code>deploy-ci</code> for a CI pipeline:</p>
-<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>deploy-ci<span class="w">     </span><span class="c1"># sees deploy.config.ts (not cicd.config.ts) → provisions the CD pipeline</span>
-</code></pre></div>
-<p>This renders a second CodePipeline with <strong>one Deploy action per target</strong>. Each action runs
-<code>cdk-cicd deploy --from-image --target &lt;stage&gt;</code>, which reads that stage's <code>version</code> from
-<code>config/&lt;stage&gt;.json</code> <strong>at run time</strong>, pulls <code>&lt;base-repo&gt;:&lt;version&gt;</code>, and synth-and-deploys the stage. So:</p>
-<ul>
-<li><strong>Per-stage versions in config:</strong> bump <code>config/dev.json</code>'s <code>version</code>, commit → only <code>dev</code> redeploys on it.
-  <code>dev</code> can run a newer version than <code>prod</code>, and the version is plain config, reviewable in a PR.</li>
-<li><strong>Parallel deploys:</strong> ungated targets deploy in parallel; a gated target (e.g. <code>int</code>/<code>prod</code>) waits on its
-  <strong>manual-approval</strong> action, then runs — so <code>int</code> and <code>prod</code> promote in parallel once approved.</li>
-<li><strong>Two pipelines total:</strong> the CI pipeline (Repo 1) <em>pushes</em> the image; the CD pipeline (Repo 2) <em>pulls</em> it.</li>
-</ul>
-<!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (per-target actions) -->
-
-<!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (CodeBuild) -->
-
-<div class="admonition tip">
-<p class="admonition-title">Run it locally without a pipeline</p>
-<p>The CodeBuild step is just the <code>cdk-cicd deploy --from-image --yes</code> executor, which you can also run
-from any machine or CI runner (it pulls the image and deploys each target). Omit <code>repository</code> from
-<code>deploy.config.ts</code> to use only the local executor with no CD pipeline. On a runner whose default docker
-network can't reach AWS, add <code>--docker-network host</code>.</p>
-</div>
-<p>Either way, the pinned image runs <strong>once per (target × region)</strong>: for each run the container synthesizes
-that stage against the target's injected environment — offline, inside the image — and deploys the result.
-One build produces one image, and that image drives <em>N</em> deploys.</p>
-<div class="admonition info">
-<p class="admonition-title">Division of authority: WHAT vs WHERE</p>
-<p>The <strong>image</strong> is authoritative for <em>what</em> to deploy — the app code and its stage definitions are baked
-in at build time. The <strong><code>deploy.config.ts</code> target</strong> is authoritative for <em>where</em> — the account,
-region(s), and role for each stage. A target's <code>deployment.deployRole</code> (chapter 2's shape) is threaded
-through to each target's deploy.</p>
-</div>
-<div class="admonition warning">
-<p class="admonition-title">Manual-approval gates today</p>
-<p>A target's <code>manualApproval: true</code> is honored by the <strong>local executor</strong> (<code>cdk-cicd deploy --from-image</code>
-is fail-closed — it refuses a gated target unless you pass <code>--yes</code>). The <strong>CD pipeline</strong> currently runs
-every target in one CodeBuild pass, so it does not yet render per-target Manual Approval actions —
-per-target pipeline gates are a planned refinement. Until then, gate at the pipeline level (e.g. a
-separate approval before the CD pipeline) or use the local executor for gated targets.</p>
-</div>
-<div class="admonition tip">
-<p class="admonition-title">Rollback is a retag</p>
-<p>To roll back, point <code>image:</code> at the previous version tag (e.g. <code>:1.4.1</code>) and re-run
-<code>cdk-cicd deploy --from-image</code>. Because the image pins code + deps and config supplies the lookups,
-the same image + same config always synthesizes the same template — a deterministic rollback with no
-rebuild.</p>
-</div>
-<h2 id="verify">Verify</h2>
+<p><code>uppercaseStage</code> matches Blueprint's <em>default</em> stages (<code>RES</code>/<code>DEV</code>/<code>INT</code> — no <code>PROD</code> unless you called
+<code>.defineStages(...)</code> yourself). If your Blueprint stages were
+lowercase or custom-case, drop it (the stage is used verbatim), or set <code>stackName</code> to your literal Blueprint
+name.</p>
+<h2 id="verify-before-switching-the-pipeline-over">Verify before switching the pipeline over</h2>
 <div class="admonition success">
 <p class="admonition-title">Verify</p>
-<ul>
-<li><strong>Repo 1 (CI pipeline):</strong> renders as <code>Source → BuildImage</code> (no deploy stages), and after a run the
-  tagged image is present in ECR (<code>aws ecr describe-images --repository-name my-app-deployer</code>).</li>
-<li><strong>Repo 2 (CD pipeline):</strong> <code>deploy-ci</code> provisions a <code>Source → Deploy</code> CodePipeline; a config change
-  triggers the CodeBuild that pulls the image and creates/updates each target's CloudFormation stack.</li>
-<li>Change nothing but the <code>image:</code> tag and re-run — the deploy reproduces the pinned version, proving
-  one image serves many deployments and rollbacks.</li>
-</ul>
+<p>Synthesize the migrated app for a stage and diff it against the live stacks:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">CDK_STAGE</span><span class="o">=</span>dev<span class="w"> </span>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>synth<span class="w"> </span>--stage<span class="w"> </span>dev
+npx<span class="w"> </span>cdk<span class="w"> </span>diff<span class="w"> </span>--app<span class="w"> </span>cdk.out/dev/&lt;region&gt;
+</code></pre></div>
+<p>Expect <strong>only modifications</strong> — no resources destroyed/created and no <code>(requires replacement)</code>. If the
+name doesn't match, <code>cdk diff</code> shows everything as newly-created; that's the tell you'd recreate. Do
+<strong>not</strong> switch the pipeline over until the diff is clean.</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">A wrong stack name recreates production</p>
+<p>If the migrated stack name doesn't match the Blueprint name, the first pipeline run deletes the old stack and
+creates a new one — a full recreate of production resources. The <code>cdk diff</code> above is the gate that
+catches this before it happens.</p>
+</div>
+<p>The full detail (and the RETAIN + <code>cdk import</code> fallback) is in the repo's <code>MIGRATION.md</code>.</p>
 <h2 id="recap">Recap</h2>
-<p>Container mode splits build from deploy into <strong>two pipelines</strong>: the CI pipeline (Repo 1) builds and pushes
-one config-agnostic, offline-capable image; the CD pipeline (Repo 2, config-only) pulls that image and
-deploys as many targets as you like — the same <code>cdk-cicd deploy --from-image</code> executor you can also run
-locally. Targets are config rows, not pipeline resources — that's the scale-out win — and rollback is just
-pointing at a previous image tag. Next: migrating an existing v2 app to any of these v3 patterns.</p>
+<p>The codemod scaffolds your <code>cicd.config.ts</code> and lists the manual steps; you flatten <code>bin/</code> and repoint
+<code>cdk.json</code>. The one thing you must get right is stack naming — <code>stageStackName</code> reproduces Blueprint's exact
+names so CloudFormation updates in place, and <code>cdk diff</code> proves it before you flip the pipeline. That's
+the whole migration.</p>
 
 
 
@@ -2986,7 +2651,7 @@ pointing at a previous image tag. Next: migrating an existing v2 app to any of t
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-08-25
+    2026-08-27
   </span>
 
     
