@@ -43,5 +43,12 @@ With no `codeArtifact` set, the pipeline renders exactly as before — this is p
 ## Recap
 
 One `codeArtifact` block wires every build project to your private registry and grants the read
-permissions automatically — no per-project buildspec edits. Next: container mode, where a single
-config-agnostic image deploys to many targets.
+permissions automatically — no per-project buildspec edits.
+
+!!! tip "Non-CodeArtifact registries"
+    For any npm-compatible registry that isn't CodeArtifact, use `npmRegistry` instead of `codeArtifact`:
+    `npmRegistry: { url: 'https://npm.example.com/', basicAuthSecretArn: '<secret-arn>', scope: 'mycompany' }`.
+    Each build writes a scoped `.npmrc` with a bearer token read from the given Secrets Manager secret. See
+    the [Configuration Reference](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/configuration.html).
+
+Next: container mode, where a single config-agnostic image deploys to many targets.

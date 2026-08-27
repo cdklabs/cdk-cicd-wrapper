@@ -18,15 +18,16 @@
 </p>
 
 > [!WARNING]
-> **Experimental — pre-release, not yet published.** The developer experience documented below is
-> the Autopilot (`1.x`) line, which lives on `main` and has **no release yet** — the newest published
-> version is `0.4.1`, on the stable `0.x` (Blueprint) line. **`0.4.0` is deprecated — do not use it**;
-> install `0.4.1` or later. So `npm install` today gives you `0.x`, whose API is _not_ the one
-> described here: see the
-> [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/) for that, and
-> the [Migration Guide](./MIGRATION.md) for the mapping between the two. To try the flow below now,
-> work from this repository — `samples/cdk-cicd-wrapper-example/` is a complete example. The public API is not
-> frozen and may change before `1.0`.
+> [!WARNING]
+> **Experimental — pre-release.** The developer experience documented below is the Autopilot (`1.x`)
+> line, developed on `main`. Version `1.0.0` **is published to npm** but is **not** the `latest`
+> dist-tag: `npm install` still resolves the stable `0.x` (Blueprint) line (currently `0.4.3`; **`0.4.0`
+> is deprecated — do not use it**), whose API is _not_ the one described here. To install the `1.x` line
+> explicitly, pin the version (`npm i @cdklabs/cdk-cicd-wrapper@1.0.0 @cdklabs/cdk-cicd-wrapper-cli@1.0.0`).
+> For the `0.x` API see the
+> [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/), and the
+> [Migration Guide](./MIGRATION.md) for the mapping between the two. `samples/cdk-cicd-wrapper-example/`
+> is a complete `1.x` example. The public API is not frozen and may change.
 
 # Welcome to the CDK CI/CD Wrapper
 
@@ -72,14 +73,13 @@ To set up the CI/CD pipeline in your existing AWS CDK project, follow these step
 ### 1. Installation
 
 > [!IMPORTANT]
-> As noted above, the `1.x` line these steps describe is **unreleased**, so the command below
-> currently resolves to `0.4.1` on the `0.x` line (avoid `0.4.0`, which is deprecated) — which does
-> not have `defineCICD` or `cdk-cicd exec`. Until the first `1.x` release is published, follow these
-> steps against a checkout of this repository (start from `samples/cdk-cicd-wrapper-example/`) rather than a
-> fresh `npm install`.
+> As noted above, `npm install` without a version resolves to the `0.x` line (currently `0.4.3`; avoid
+> `0.4.0`, which is deprecated) — which does not have `defineCICD` or `cdk-cicd exec`. To follow the
+> `1.x` steps below, pin `@1.0.0` explicitly (the command shown), or work from a checkout of this
+> repository starting from `samples/cdk-cicd-wrapper-example/`.
 
 ```bash
-npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
+npm i @cdklabs/cdk-cicd-wrapper@1.0.0 @cdklabs/cdk-cicd-wrapper-cli@1.0.0
 ```
 
 ### 2. Describe the pipeline in `cicd.config.ts`
@@ -222,7 +222,7 @@ This provisions the pipeline from `cicd.config.ts` alone — nothing else needs 
 
 #### What the pipeline does
 
-**Source** → **Build** (`npm ci`, then your `ci.steps` or the default `npx cdk-cicd check`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, each gated by a manual approval except your inner-loop stages (`dev`/`res`) unless you set `manualApproval` explicitly.
+**Source** → **Build** (`npm ci`, then your `ci.steps` or the default `npx cdk-cicd check`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, each gated by a manual approval except the inner-loop stage names `dev` and `res` (auto-approved by default), unless you set `manualApproval` explicitly. Autopilot reserves no stage names — `dev`/`res` are simply the two that default to auto-approve; every other name is gated.
 
 Supporting resources — the encryption key, VPC networking for the pipeline's own CodeBuild projects, a compliance bucket — are **lazily provisioned**, so a pipeline only pays for what its configuration actually references.
 
@@ -264,7 +264,7 @@ On top of that the CDK CI/CD Wrapper has arbitrary scripts that can be leveraged
 - License management over NPM and Python dependencies
 - Support for private NPM registry to safely store your libraries
 - Customizable CI/CD pipeline to attach to your CDK applications which comes with built-in dependency injection
-- Workbench deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline
+- Workbench deployment feature which allows you to develop and experiment your solutions before it is introduced in the delivery pipeline, e.g: deploy and test one or multiple CDK stacks isolated from the ones deployed by the CI/CD pipeline (**`0.x` only** — `1.x` has no pipeline equivalent; use a direct `cdk deploy`, see [MIGRATION.md](./MIGRATION.md))
 
 ## Intended usage
 

@@ -14,13 +14,8 @@
 
 import * as path from 'path';
 import { App, Aspects, DefaultStackSynthesizer, IReusableStackSynthesizer, Tags } from 'aws-cdk-lib';
-import { AwsSolutionsChecks } from 'cdk-nag';
+import { configPluginRefs, registeredPlugins, resolvePlugins } from './plugins';
 import { AppConfig } from '../appconfig/accessor';
-import { DisablePublicIPAssignmentForEC2Aspect } from '../support/DisablePublicIPAssignmentForEC2Aspect';
-import { EncryptBucketOnTransitAspect } from '../support/EncryptBucketOnTransitAspect';
-import { EncryptSNSTopicOnTransitAspect } from '../support/EncryptSNSTopicOnTransitAspect';
-import { DEFAULT_LOG_RETENTION_DAYS, LogRetentionAspect } from '../support/LogRetentionAspect';
-import { RotateEncryptionKeysAspect } from '../support/RotateEncryptionKeysAspect';
 
 /**
  * Environment flag that `cdk-cicd exec` (m2-exec) sets to arm the bundled-app diagnostic. It is a
@@ -67,6 +62,8 @@ export function shouldWarnBundled(params: { armed: boolean; constructed: number;
  */
 export const DEPLOY_ROLE_FLAG = 'CDK_CICD_DEPLOY_ROLE_ARN';
 export const CFN_EXEC_ROLE_FLAG = 'CDK_CICD_CFN_EXEC_ROLE_ARN';
+/** ExternalId presented when assuming the forced deploy role (m-external-id). See `DeploymentConfig.externalId`. */
+export const DEPLOY_ROLE_EXTERNAL_ID_FLAG = 'CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID';
 
 function envArn(value: string | undefined): string | undefined {
   return value !== undefined && value.trim().length > 0 ? value.trim() : undefined;
@@ -76,13 +73,15 @@ function envArn(value: string | undefined): string | undefined {
  * The synthesizer the wrapper installs. `DefaultStackSynthesizer` is the Autopilot default (app-staging is
  * opt-in, still alpha). When the CLI has exported forced deployer / CloudFormation-execution role ARNs
  * for the active stage (m3-forced-roles), they are threaded into the synthesizer here -- read from the
- * environment, not from config, so the wrapper stays decoupled from cicd.config parsing.
+ * environment, not from config, so the wrapper stays decoupled from cicd.config parsing. A forced
+ * deploy-role ExternalId is threaded the same way (`DefaultStackSynthesizer.deployRoleExternalId`).
  */
 export function resolveSynthesizer(_config: Record<string, unknown>): IReusableStackSynthesizer {
   const deployRoleArn = envArn(process.env[DEPLOY_ROLE_FLAG]);
   const cloudFormationExecutionRole = envArn(process.env[CFN_EXEC_ROLE_FLAG]);
+  const deployRoleExternalId = envArn(process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG]);
   if (deployRoleArn !== undefined || cloudFormationExecutionRole !== undefined) {
-    return new DefaultStackSynthesizer({ deployRoleArn, cloudFormationExecutionRole });
+    return new DefaultStackSynthesizer({ deployRoleArn, cloudFormationExecutionRole, deployRoleExternalId });
   }
   return new DefaultStackSynthesizer();
 }
@@ -93,26 +92,24 @@ export function resolveSynthesizer(_config: Record<string, unknown>): IReusableS
  * is what lets `attach()` reuse it.
  */
 export function applyWrapper(app: App, config: Record<string, unknown>): void {
-  // cdk-nag across the whole tree. Aspects visit before template emission, so this is the
-  // right hook -- no need to monkeypatch synth().
-  Aspects.of(app).add(new AwsSolutionsChecks());
-
-  // Blueprint's default CloudWatch log-retention (m9-migrate-log-retention), tree-wide, same as cdk-nag
-  // above. Falls back to the wrapper's own default rather than relying solely on the app-config
-  // default: a stage with no config file at all is injected with `{}` (m2-exec's `loadConfig`), which
-  // must still get the default retention -- "un-configured" is not "un-wrapped".
-  const retentionInDays =
-    typeof config.logRetentionInDays === 'number' ? config.logRetentionInDays : DEFAULT_LOG_RETENTION_DAYS;
-  Aspects.of(app).add(new LogRetentionAspect({ retentionInDays }));
-
-  // Blueprint's other default-on security-hardening plugins (m9-migrate-security-plugins), tree-wide, same
-  // as cdk-nag and log retention above. Each needs no extra config or resource, unlike the
-  // compliance-bucket-gated `AccessLogsForBucketAspect` or the key-requiring
-  // `EncryptCloudWatchLogGroupsAspect` -- those stay opt-in until their dependencies land.
-  Aspects.of(app).add(new EncryptBucketOnTransitAspect());
-  Aspects.of(app).add(new EncryptSNSTopicOnTransitAspect());
-  Aspects.of(app).add(new RotateEncryptionKeysAspect());
-  Aspects.of(app).add(new DisablePublicIPAssignmentForEC2Aspect());
+  // Resolve which security plugins (Aspects) apply from the injected config's `plugins` selection and
+  // any custom plugins registered in bin/ via CdkCicd.addPlugin (issue #241). No `plugins` in config
+  // means the full default-on set (cdk-nag, log retention, and the bucket/SNS/key/EC2 hardening
+  // Aspects), preserving prior behaviour; an empty list opts out; a non-empty list overrides. The
+  // resolution itself is the pure `resolvePlugins` -- here we just add the result tree-wide, since
+  // Aspects visit before template emission (no need to monkeypatch synth()).
+  const { aspects, warnings } = resolvePlugins({
+    configPlugins: configPluginRefs(config),
+    registered: registeredPlugins(app),
+    config,
+  });
+  for (const aspect of aspects) {
+    Aspects.of(app).add(aspect);
+  }
+  for (const warning of warnings) {
+    // eslint-disable-next-line no-console
+    console.warn(`cdk-cicd-wrapper: ${warning.message}`);
+  }
 
   const tags = config.tags;
   if (tags !== null && typeof tags === 'object' && !Array.isArray(tags)) {

@@ -75,8 +75,16 @@ new MyStack(app, 'my-app', {
 ```
 
 This is the one place you'd import the wrapper in `bin/`, and it's opt-in. It reads the stage from
-`CDK_STAGE` (which `cdk-cicd exec` sets). Migrating from Blueprint? The same helper reproduces Blueprint's exact stack
-name so you **update in place instead of recreating** — see the migration chapter.
+`CDK_STAGE` (which `cdk-cicd exec` sets). Migrating from Blueprint? Pass the options object to reproduce
+Blueprint's exact stack name so you **update in place instead of recreating** — Blueprint prefixed the
+stage (uppercase by default), e.g. `DEV-my-app`:
+
+```ts
+stackName: stageStackName('my-app', { stageFirst: true, uppercaseStage: true }), // -> DEV-my-app / PROD-my-app
+```
+
+`stageFirst` puts the stage before the base; `uppercaseStage` matches Blueprint's default uppercase stage
+ids (drop it if your Blueprint stages were lowercase/custom-case). See the migration chapter.
 
 ## Verify
 

@@ -6,18 +6,32 @@
 // the synthesized stack's roles, read from the environment (never from cicd.config).
 
 import { App, Stack } from 'aws-cdk-lib';
-import { CFN_EXEC_ROLE_FLAG, DEPLOY_ROLE_FLAG, resolveSynthesizer } from '../../src/runtime/inject';
+import {
+  CFN_EXEC_ROLE_FLAG,
+  DEPLOY_ROLE_EXTERNAL_ID_FLAG,
+  DEPLOY_ROLE_FLAG,
+  resolveSynthesizer,
+} from '../../src/runtime/inject';
 
 const DEPLOY_ARN = 'arn:aws:iam::111111111111:role/ForcedDeploy';
 const CFN_ARN = 'arn:aws:iam::111111111111:role/ForcedCfnExec';
 
 /** Synthesize a stack whose synthesizer is resolveSynthesizer() under the given role env, return its roles. */
-function synthWithRoleEnv(env: { deploy?: string; cfn?: string }): { assumeRoleArn?: string; cfnRoleArn?: string } {
-  const prev = { d: process.env[DEPLOY_ROLE_FLAG], c: process.env[CFN_EXEC_ROLE_FLAG] };
+function synthWithRoleEnv(env: { deploy?: string; cfn?: string; externalId?: string }): {
+  assumeRoleArn?: string;
+  cfnRoleArn?: string;
+  assumeRoleExternalId?: string;
+} {
+  const prev = {
+    d: process.env[DEPLOY_ROLE_FLAG],
+    c: process.env[CFN_EXEC_ROLE_FLAG],
+    e: process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG],
+  };
   const set = (key: string, value?: string) =>
     value === undefined ? delete process.env[key] : (process.env[key] = value);
   set(DEPLOY_ROLE_FLAG, env.deploy);
   set(CFN_EXEC_ROLE_FLAG, env.cfn);
+  set(DEPLOY_ROLE_EXTERNAL_ID_FLAG, env.externalId);
   try {
     const app = new App();
     const stack = new Stack(app, 'S', {
@@ -25,10 +39,15 @@ function synthWithRoleEnv(env: { deploy?: string; cfn?: string }): { assumeRoleA
       env: { account: '111111111111', region: 'us-west-2' },
     });
     const artifact = app.synth().getStackArtifact(stack.artifactId);
-    return { assumeRoleArn: artifact.assumeRoleArn, cfnRoleArn: artifact.cloudFormationExecutionRoleArn };
+    return {
+      assumeRoleArn: artifact.assumeRoleArn,
+      cfnRoleArn: artifact.cloudFormationExecutionRoleArn,
+      assumeRoleExternalId: artifact.assumeRoleExternalId,
+    };
   } finally {
     set(DEPLOY_ROLE_FLAG, prev.d);
     set(CFN_EXEC_ROLE_FLAG, prev.c);
+    set(DEPLOY_ROLE_EXTERNAL_ID_FLAG, prev.e);
   }
 }
 
@@ -44,6 +63,16 @@ describe('m3-forced-roles: resolveSynthesizer', () => {
 
   test('CDK_CICD_CFN_EXEC_ROLE_ARN becomes the CloudFormation execution role', () => {
     expect(synthWithRoleEnv({ cfn: CFN_ARN }).cfnRoleArn).toBe(CFN_ARN);
+  });
+
+  test('CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID becomes the deploy-role assume externalId', () => {
+    const { assumeRoleArn, assumeRoleExternalId } = synthWithRoleEnv({ deploy: DEPLOY_ARN, externalId: 'ext-123' });
+    expect(assumeRoleArn).toBe(DEPLOY_ARN);
+    expect(assumeRoleExternalId).toBe('ext-123');
+  });
+
+  test('no externalId env means no assumeRoleExternalId on the artifact', () => {
+    expect(synthWithRoleEnv({ deploy: DEPLOY_ARN }).assumeRoleExternalId).toBeUndefined();
   });
 
   test('both forced roles thread through together', () => {

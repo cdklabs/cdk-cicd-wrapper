@@ -9,7 +9,7 @@
 
 import { spawnSync } from 'child_process';
 import * as path from 'path';
-import { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
+import type { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, stageByName } from './CicdConfig';
 import { stageEnv } from './ExecCommand';

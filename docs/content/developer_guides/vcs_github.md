@@ -7,7 +7,7 @@ To use a GitHub repository as your pipeline's source, an AWS CodeStar (CodeConne
 Create the connection in the account where the pipeline will run:
 
 ```bash
-aws codestar-connections create-connection --provider-type GitHub --region ${AWS_REGION} --connection-name MyConnection
+aws codeconnections create-connection --provider-type GitHub --region ${AWS_REGION} --connection-name MyConnection
 ```
 
 This initializes the connection from the AWS side. Go to the AWS CodeStar Connections [console](https://console.aws.amazon.com/codesuite/settings/connections) and finish the installation through the browser.
