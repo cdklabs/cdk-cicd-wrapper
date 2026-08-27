@@ -781,6 +781,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#github-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub Actions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ci" class="md-nav__link">
     <span class="md-ellipsis">
       CI
@@ -829,6 +838,33 @@
   <a href="#container-mode" class="md-nav__link">
     <span class="md-ellipsis">
       Container mode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-role-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline role names
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-account-externalid" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cross-account externalId
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security plugins
     </span>
   </a>
   
@@ -2684,6 +2720,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#github-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub Actions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ci" class="md-nav__link">
     <span class="md-ellipsis">
       CI
@@ -2732,6 +2777,33 @@
   <a href="#container-mode" class="md-nav__link">
     <span class="md-ellipsis">
       Container mode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-role-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline role names
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-account-externalid" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cross-account externalId
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security plugins
     </span>
   </a>
   
@@ -2864,6 +2936,24 @@ and <code>src/config/define.ts</code>.</p>
 <td>Compliance/access-log destination bucket name.</td>
 </tr>
 <tr>
+<td><code>pipelineRoleNames</code></td>
+<td><code>PipelineRoleNames</code></td>
+<td>CDK-generated names</td>
+<td>Force IAM role names on the <code>CDK_PIPELINES</code> engine's roles. See <a href="#pipeline-role-names">Pipeline role names</a>.</td>
+</tr>
+<tr>
+<td><code>codePipelineRoleNames</code></td>
+<td><code>CodePipelineRoleNames</code></td>
+<td>CDK-generated names</td>
+<td>Force IAM role names on the flat <code>CODEPIPELINE</code> engine's roles. See <a href="#pipeline-role-names">Pipeline role names</a>.</td>
+</tr>
+<tr>
+<td><code>deployRoleExternalId</code></td>
+<td><code>string</code></td>
+<td>—</td>
+<td>Pipeline-level default ExternalId for the forced deploy-role assumption. See <a href="#cross-account-externalid">Cross-account externalId</a>.</td>
+</tr>
+<tr>
 <td><code>codeBuildEnvSettings</code></td>
 <td><code>codebuild.BuildEnvironment</code></td>
 <td>—</td>
@@ -2886,6 +2976,12 @@ and <code>src/config/define.ts</code>.</p>
 <td><code>BuildImage</code></td>
 <td>—</td>
 <td>Container mode: build &amp; push a deployer image instead of deploying.</td>
+</tr>
+<tr>
+<td><code>plugins</code></td>
+<td><code>PluginRef[]</code></td>
+<td>the default-on hardening set</td>
+<td>Security plugins (hardening Aspects) applied tree-wide. See <a href="#security-plugins">Security plugins</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -2924,7 +3020,8 @@ where GitHub already checked the source out.</p>
 <li><strong><code>regionOrder</code></strong> — <code>RegionOrder.SEQUENTIAL</code> (default) rolls regions out one after another;
   <code>RegionOrder.PARALLEL</code> deploys them at once.</li>
 <li><strong><code>deployment</code></strong> — force a <code>deployRole</code> (<code>cdk deploy --role-arn</code>) and/or <code>cfnExecutionRole</code> for the
-  stage.</li>
+  stage, and optionally an <code>externalId</code> presented when assuming <code>deployRole</code>. See
+  <a href="#cross-account-externalid">Cross-account externalId</a>.</li>
 </ul>
 <p>See <a href="cd.html">Continuous Deployment</a> for the deeper stage model.</p>
 <h2 id="engine">Engine</h2>
@@ -2938,6 +3035,34 @@ where GitHub already checked the source out.</p>
   pipeline shaped like a Blueprint (<code>0.x</code>) one.</li>
 <li><strong><code>EngineType.GITHUB_ACTIONS</code></strong> — renders a GitHub Actions workflow instead of an AWS-hosted pipeline.
   Requires <code>repository</code> to be <code>Repository.github(...)</code> and reads the <code>githubActions</code> config.</li>
+</ul>
+<h2 id="github-actions">GitHub Actions</h2>
+<p>When <code>engine</code> is <code>EngineType.GITHUB_ACTIONS</code>, <code>githubActions</code> configures the generated workflow and the
+OIDC role it assumes. Every field is optional.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">githubActions</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">roleName</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app-github-role'</span><span class="p">,</span><span class="w"> </span><span class="c1">// OIDC role the workflow assumes (literal; embedded in the workflow YAML)</span>
+<span class="w">  </span><span class="nx">subjectClaims</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'repo:my-org/my-app:ref:refs/heads/main'</span><span class="p">],</span><span class="w"> </span><span class="c1">// allowed OIDC subject claims</span>
+<span class="w">  </span><span class="nx">openIdConnectProviderArn</span><span class="o">:</span><span class="w"> </span><span class="s1">'arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">thumbprints</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'&lt;sha1&gt;'</span><span class="p">],</span><span class="w"> </span><span class="c1">// GitHub cert thumbprints (defaults to the built-in set)</span>
+<span class="w">  </span><span class="nx">workflowPath</span><span class="o">:</span><span class="w"> </span><span class="s1">'.github/workflows/deploy.yml'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">workflowName</span><span class="o">:</span><span class="w"> </span><span class="s1">'deploy'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">workflowTriggers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">push</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">branches</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'main'</span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// cdk-pipelines-github WorkflowTriggers</span>
+<span class="w">  </span><span class="nx">publishAssetsAuthRegion</span><span class="o">:</span><span class="w"> </span><span class="s1">'us-west-2'</span><span class="p">,</span><span class="w"> </span><span class="c1">// region the OIDC role is assumed in when publishing assets</span>
+<span class="p">},</span>
+</code></pre></div>
+<ul>
+<li><strong><code>roleName</code></strong> — the OIDC role the workflow assumes. Must be literal (the workflow YAML embeds its
+  ARN as plain text). Defaults to <code>&lt;application&gt;-github-role</code>.</li>
+<li><strong><code>subjectClaims</code></strong> — OIDC subject claims allowed to assume the role. Defaults to every ref/environment
+  of <code>repository</code>'s <code>owner/repo</code>.</li>
+<li><strong><code>openIdConnectProviderArn</code></strong> — an existing OIDC provider ARN; omit to have one created.</li>
+<li><strong><code>thumbprints</code></strong> — GitHub certificate thumbprints; defaults to the built-in, currently-valid set.</li>
+<li><strong><code>workflowPath</code></strong> / <strong><code>workflowName</code></strong> — file path and name of the generated workflow (default
+  <code>.github/workflows/deploy.yml</code>, <code>deploy</code>).</li>
+<li><strong><code>workflowTriggers</code></strong> — the workflow's triggers (default: push to the tracked branch plus manual
+  dispatch).</li>
+<li><strong><code>publishAssetsAuthRegion</code></strong> — the region the OIDC role is assumed in when publishing assets (not the
+  region assets publish to). Default <code>us-west-2</code>.</li>
 </ul>
 <h2 id="ci">CI</h2>
 <p><code>ci</code> controls the build steps and which stages CI synthesizes for validation.</p>
@@ -2954,6 +3079,7 @@ where GitHub already checked the source out.</p>
   want those checks.</li>
 <li><strong><code>synthStages</code></strong> — <code>'all'</code> synthesizes every stage; an explicit list names stages; omitting it uses
   the engine default (every stage under <code>ASSEMBLY_PROMOTION</code>, one env under <code>DEPLOY_TIME_SYNTH</code>).</li>
+<li><strong><code>image</code></strong> — an optional CodeBuild image override for the CI build project.</li>
 <li><strong><code>partialBuildSpec</code></strong> — a CodeBuild spec fragment deep-merged into the CI build project's generated
   buildspec (the CI project only — not self-update or per-stage deploy projects).</li>
 </ul>
@@ -2969,13 +3095,17 @@ where GitHub already checked the source out.</p>
 <h2 id="private-dependencies">Private dependencies</h2>
 <p>Three independent, optional blocks let the pipeline's builds install private packages:</p>
 <ul>
-<li><strong><code>codeArtifact</code></strong> — <code>{ domain, repository, account?, region?, npmScope? }</code>. Every build runs
-  <code>aws codeartifact login</code> before <code>npm ci</code>.</li>
-<li><strong><code>npmRegistry</code></strong> — <code>{ url, basicAuthSecretArn, scope? }</code>. Any npm-compatible registry; the build writes
-  a <code>.npmrc</code> with a bearer token read from Secrets Manager.</li>
-<li><strong><code>proxy</code></strong> — <code>{ proxySecretArn, noProxy?, proxyTestUrl? }</code>. Every build reads proxy credentials from
-  Secrets Manager, exports <code>HTTP(S)_PROXY</code>, and curls <code>proxyTestUrl</code> to prove the tunnel before installs.
-  <code>noProxy</code> defaults to <code>[]</code>; <code>proxyTestUrl</code> defaults to <code>https://aws.amazon.com</code>.</li>
+<li><strong><code>codeArtifact</code></strong> — a private CodeArtifact npm repository. Every build runs <code>aws codeartifact login</code>
+  before <code>npm ci</code>. Fields: <code>domain</code> and <code>repository</code> (required); <code>account</code> and <code>region</code> default to the
+  pipeline's own; <code>npmScope</code> binds an npm scope (e.g. <code>cdklabs</code> for <code>@cdklabs/*</code>).</li>
+<li><strong><code>npmRegistry</code></strong> — any npm-compatible registry authenticated with a bearer token; the build writes a
+  <code>.npmrc</code> with a token read from Secrets Manager. Fields: <code>url</code> (the registry URL) and
+  <code>basicAuthSecretArn</code> (the Secrets Manager secret) are required; <code>scope</code> binds an npm scope, omit to
+  override the default registry.</li>
+<li><strong><code>proxy</code></strong> — route every build through an HTTP(S) proxy. <code>proxySecretArn</code> (required) is the Secrets
+  Manager secret holding the proxy credentials; the build exports <code>HTTP(S)_PROXY</code> and curls
+  <code>proxyTestUrl</code> to prove the tunnel before installs. <code>noProxy</code> defaults to <code>[]</code>; <code>proxyTestUrl</code> defaults
+  to <code>https://aws.amazon.com</code>.</li>
 </ul>
 <h2 id="vpc">VPC</h2>
 <p><code>vpc</code> runs the pipeline's CodeBuild projects inside a VPC. Set <code>managedVpc</code> to have the wrapper create
@@ -2997,6 +3127,60 @@ production; it targets fast iterative deployments. Off by default.</p>
 deployer image instead of deploying stages (CodePipeline engine only). The deploy side is authored
 separately with <code>defineDeployment</code> in a <code>deploy.config.ts</code>. See the
 <a href="container_mode.html">Container mode guide</a> for the full two-repository flow.</p>
+<h2 id="pipeline-role-names">Pipeline role names</h2>
+<p>Force deterministic IAM role names on the pipeline's own roles — the parity replacement for Blueprint's
+<code>PipelineRoleNameEnforcementPlugin</code>. Use it when external cross-account trust policies, SCPs, or
+permission boundaries reference fixed role names. Any field you omit keeps the CDK-generated name, so
+existing pipelines are unaffected. The two engines expose <strong>different</strong> role sets, so each takes its own
+field (the <code>GITHUB_ACTIONS</code> engine's only role is already nameable via <code>githubActions.roleName</code>).</p>
+<p>For <code>EngineType.CDK_PIPELINES</code>, use <code>pipelineRoleNames</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">pipelineRoleNames</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">pipeline</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app-codepipeline-role'</span><span class="p">,</span><span class="w"> </span><span class="c1">// the CodePipeline pipeline role</span>
+<span class="w">  </span><span class="nx">assetsFile</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app-codepipeline-assets-file-role'</span><span class="p">,</span><span class="w"> </span><span class="c1">// CDK Pipelines file-publishing role</span>
+<span class="w">  </span><span class="nx">assetsDocker</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app-codepipeline-assets-docker-role'</span><span class="p">,</span><span class="w"> </span><span class="c1">// CDK Pipelines docker-publishing role</span>
+<span class="p">},</span>
+</code></pre></div>
+<p>For the flat <code>EngineType.CODEPIPELINE</code>, use <code>codePipelineRoleNames</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">codePipelineRoleNames</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">pipeline</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app-codepipeline-role'</span><span class="p">,</span><span class="w"> </span><span class="c1">// the CodePipeline pipeline role</span>
+<span class="w">  </span><span class="nx">buildRolePrefix</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app-build'</span><span class="p">,</span><span class="w"> </span><span class="c1">// per-stage CodeBuild roles =&gt; `&lt;prefix&gt;-&lt;projectId&gt;`, e.g. `my-app-build-deploy-dev`</span>
+<span class="p">},</span>
+</code></pre></div>
+<h2 id="cross-account-externalid">Cross-account externalId</h2>
+<p>When a stage forces a <code>deployRole</code> (see <a href="#stages">Stages</a>), you can present an <code>ExternalId</code> on the role
+assumption — the <code>sts:ExternalId</code> condition a hardened cross-account trust policy requires. It threads
+into the synthesizer as <code>DefaultStackSynthesizer.deployRoleExternalId</code>, so it applies to the
+<code>cdk deploy --role-arn</code> assumption the wrapper performs; it is a no-op without a <code>deployRole</code>.</p>
+<p>Set a pipeline-level default with <code>deployRoleExternalId</code>, and override per stage with
+<code>deployment.externalId</code> (the per-stage value wins):</p>
+<div class="highlight"><pre><span></span><code><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.github</span><span class="p">(</span><span class="s1">'my-org/my-app'</span><span class="p">),</span>
+<span class="w">  </span><span class="nx">deployRoleExternalId</span><span class="o">:</span><span class="w"> </span><span class="s1">'org-wide-external-id'</span><span class="p">,</span><span class="w"> </span><span class="c1">// pipeline-level default</span>
+<span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'333333333333'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nx">deployment</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">deployRole</span><span class="o">:</span><span class="w"> </span><span class="s1">'arn:aws:iam::333333333333:role/Deployer'</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">externalId</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod-only-external-id'</span><span class="p">,</span><span class="w"> </span><span class="c1">// overrides the pipeline-level default for this stage</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="p">});</span>
+</code></pre></div>
+<p>Either value may be a literal, or a <code>resolve:secretsmanager:&lt;arn&gt;</code> reference resolved at exec time from
+the secret's <code>SecretString</code> (so the ExternalId can live in Secrets Manager rather than in
+<code>cicd.config.ts</code>).</p>
+<h2 id="security-plugins">Security plugins</h2>
+<p><code>plugins</code> selects the security-hardening Aspects the wrapper applies tree-wide (<code>PluginRef[]</code>, each a
+<code>{ name, version }</code>). Omitting it applies the default-on set; <code>[]</code> opts out of all of them; a non-empty
+list <strong>completely overrides</strong> the defaults (list only what you want). A name that is not a built-in is a
+custom plugin and must be registered in <code>bin/</code> via <code>CdkCicd.addPlugin</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">plugins</span><span class="o">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'EncryptBucketOnTransit'</span><span class="p">,</span><span class="w"> </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="s1">'1.0.0'</span><span class="w"> </span><span class="p">}],</span><span class="w"> </span><span class="c1">// only this one; defaults dropped</span>
+<span class="c1">// plugins: [],                                                   // opt out of all default hardening</span>
+</code></pre></div>
+<p>See <a href="../getting_started/index.html">Getting started</a> for the built-in set and the custom-plugin flow.</p>
 
 
 
