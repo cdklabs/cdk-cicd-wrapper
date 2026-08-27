@@ -31,14 +31,57 @@ const CONFIG_CONTEXT_KEY = 'cicd:config';
 const EXEC_FLAG = 'CDK_CICD_EXEC';
 
 // The forced-role env vars the preload's resolveSynthesizer reads (same cross-package literal contract
-// as EXEC_FLAG; the constructs package exports these as DEPLOY_ROLE_FLAG / CFN_EXEC_ROLE_FLAG).
+// as EXEC_FLAG; the constructs package exports these as DEPLOY_ROLE_FLAG / CFN_EXEC_ROLE_FLAG /
+// DEPLOY_ROLE_EXTERNAL_ID_FLAG).
 const DEPLOY_ROLE_FLAG = 'CDK_CICD_DEPLOY_ROLE_ARN';
 const CFN_EXEC_ROLE_FLAG = 'CDK_CICD_CFN_EXEC_ROLE_ARN';
+const DEPLOY_ROLE_EXTERNAL_ID_FLAG = 'CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID';
 
-/** Env vars carrying the active stage's forced deploy/CFN-exec roles, if it configured any. */
-export function forcedRoleEnv(cicdStage?: { deployment?: { deployRole?: string; cfnExecutionRole?: string } }): {
-  [key: string]: string;
-} {
+/** Prefix marking a config value as a Secrets Manager reference to resolve at exec time. */
+const SECRET_REF_PREFIX = 'resolve:secretsmanager:';
+
+/**
+ * Resolve a deploy-role ExternalId value: a literal is returned as-is; a `resolve:secretsmanager:<arn>`
+ * reference is fetched from Secrets Manager (the `SecretString`) at exec time. Undefined/blank -> undefined.
+ *
+ * The `@aws-sdk/client-secrets-manager` client is loaded through an UNTYPED dynamic import on purpose: it
+ * is not a declared build dependency (adding it drags a nested `@smithy/*` that conflicts with the CLI's
+ * hoisted copy and breaks `tsc --build`). The AWS SDK v3 is ambient in the pipeline/CI runtime where a
+ * `resolve:secretsmanager:` reference is actually used; a literal externalId needs no SDK at all. Kept
+ * async and isolated so the import is only paid for when a secret reference is present.
+ */
+export async function resolveExternalId(value?: string): Promise<string | undefined> {
+  const trimmed = value?.trim();
+  if (trimmed === undefined || trimmed.length === 0) return undefined;
+  if (!trimmed.startsWith(SECRET_REF_PREFIX)) return trimmed;
+  const secretId = trimmed.slice(SECRET_REF_PREFIX.length);
+  const moduleName = '@aws-sdk/client-secrets-manager';
+  // Untyped import (see the doc comment): tsc must not load this client's .d.ts.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sdk: any = await import(moduleName).catch(() => {
+    throw new Error(
+      `cdk-cicd exec: resolving '${trimmed}' needs @aws-sdk/client-secrets-manager, which is not available ` +
+        'in this environment. Provide the deploy-role externalId as a literal, or run where the AWS SDK v3 is present.',
+    );
+  });
+  const client = new sdk.SecretsManager({});
+  const res = await client.getSecretValue({ SecretId: secretId });
+  const secret: string | undefined = res.SecretString;
+  if (secret === undefined || secret.length === 0) {
+    throw new Error(`cdk-cicd exec: secret '${secretId}' for the deploy-role externalId has no SecretString`);
+  }
+  return secret;
+}
+
+/**
+ * Env vars carrying the active stage's forced deploy/CFN-exec roles and deploy-role ExternalId, if any.
+ * The ExternalId is the stage's own `deployment.externalId` when set, else the pipeline-level
+ * `deployRoleExternalId` default; either may be a literal or a `resolve:secretsmanager:<arn>` reference.
+ */
+export async function forcedRoleEnv(
+  cicdStage?: { deployment?: { deployRole?: string; cfnExecutionRole?: string; externalId?: string } },
+  pipelineDeployRoleExternalId?: string,
+): Promise<{ [key: string]: string }> {
   const out: { [key: string]: string } = {};
   const deployment = cicdStage?.deployment;
   if (deployment?.deployRole) {
@@ -46,6 +89,12 @@ export function forcedRoleEnv(cicdStage?: { deployment?: { deployRole?: string; 
   }
   if (deployment?.cfnExecutionRole) {
     out[CFN_EXEC_ROLE_FLAG] = deployment.cfnExecutionRole;
+  }
+  // Per-stage externalId overrides the pipeline-level default. Only meaningful with a forced deployRole,
+  // but resolved whenever configured -- an externalId without a deployRole is a harmless no-op downstream.
+  const externalId = await resolveExternalId(deployment?.externalId ?? pipelineDeployRoleExternalId);
+  if (externalId !== undefined) {
+    out[DEPLOY_ROLE_EXTERNAL_ID_FLAG] = externalId;
   }
   return out;
 }
@@ -247,7 +296,10 @@ class Command implements yargs.CommandModule {
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
       ...stageEnv(stage, target),
-      ...forcedRoleEnv(cicdStage),
+      ...(await forcedRoleEnv(
+        cicdStage,
+        (cicd as { deployRoleExternalId?: string } | undefined)?.deployRoleExternalId,
+      )),
       CDK_CONTEXT_JSON: buildContextJson(config, process.env, cwd),
       // The `-r ts-node/register` preload takes no options, so the module kind has to come from the
       // environment. Same requirement as the config loader: the entry is `require`d, so it must

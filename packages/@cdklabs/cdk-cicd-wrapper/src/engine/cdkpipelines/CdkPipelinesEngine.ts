@@ -13,7 +13,7 @@
 // builds the app's stacks for a given stage, exactly as Blueprint's `.addStack(...)` did. So it is used from an
 // explicit `bin/` (the documented opt-in path), not the `deploy-ci` zero-touch flow.
 
-import { Arn, ArnFormat, Environment, Stack, Stage } from 'aws-cdk-lib';
+import { Arn, ArnFormat, AspectPriority, Aspects, Environment, Stack, Stage } from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -22,7 +22,9 @@ import * as pipelines from 'aws-cdk-lib/pipelines';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { Repository, RepositorySourceType } from '../../config/repository';
-import { CodeArtifactConfig, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
+import { CodeArtifactConfig, PipelineRoleNames, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
+import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
+import { SupportResources } from '../../support/SupportResources';
 import { resolveVpcNetworking } from '../../support/Vpc';
 
 /** Context passed to the stage factory for one deployment stage. */
@@ -183,6 +185,66 @@ export class CdkPipelinesEngine extends Construct {
     // roles/buckets exist to annotate below, before the AwsSolutionsChecks aspect visits at synth time.
     this.pipeline.buildPipeline();
     this.suppressGeneratedPipelineNag();
+
+    // Parity with Blueprint's PipelineRoleNameEnforcementPlugin: force deterministic RoleNames on the
+    // pipeline's own roles so external cross-account trust policies / SCPs / permission boundaries that
+    // reference fixed names keep working. The assembler owns the pipeline stack, so this must live here --
+    // a consumer's replayed bin has no handle on these roles. Omitted names keep CDK's generated value.
+    if (config.pipelineRoleNames !== undefined) {
+      this.enforceRoleNames(config.pipelineRoleNames);
+    }
+
+    // Compliance/access-log bucket, at parity with the flat CodePipelineEngine: provision it when a name
+    // is configured, and attach the per-region name-substituting access-logs aspect so secondary-region
+    // stacks log to the region-substituted bucket name (Blueprint's AccessLogsForBucketPlugin behavior).
+    if (config.complianceLogBucketName !== undefined) {
+      const support = new SupportResources(this, 'Support', {
+        complianceLogBucketName: config.complianceLogBucketName,
+      });
+      // Force-read the lazy getter so the bucket is provisioned by merely configuring the name (Blueprint's
+      // ComplianceBucketProvider was default-on, not behind a separate opt-in).
+      void support.complianceLogBucket;
+      // MUTATING priority so the aspect sets each bucket's L1 loggingConfiguration BEFORE the readonly
+      // AwsSolutionsChecks (added in pipeline-assembler) visits -- otherwise AwsSolutions-S1 false-fails
+      // because nag sees the bucket before the logging config is applied. No S1 suppression is added.
+      Aspects.of(this).add(
+        new AccessLogsForBucketAspect({
+          complianceLogBucketName: config.complianceLogBucketName,
+          mainRegion: region,
+        }),
+        { priority: AspectPriority.MUTATING },
+      );
+    }
+  }
+
+  /**
+   * Force `RoleName` on the pipeline's own IAM roles (Blueprint `PipelineRoleNameEnforcementPlugin`
+   * parity). Matches on `iam.CfnRole` under this engine's construct scope rather than a hard-coded leaf
+   * id: the CodePipeline role is the pipeline construct's own role, and the file/docker asset-publishing
+   * roles live under the CDK Pipelines-generated `Assets` scope. The asset roles are distinguished by
+   * their node path segment (`FileRole` / `DockerRole`), which is stable across the aws-cdk-lib/pipelines
+   * versions the wrapper supports; run against the real synthesized tree in tests to pin them.
+   */
+  private enforceRoleNames(names: PipelineRoleNames): void {
+    const setRoleName = (role: iam.CfnRole | undefined, roleName?: string): void => {
+      if (role !== undefined && roleName !== undefined && roleName.length > 0) {
+        role.roleName = roleName;
+      }
+    };
+
+    // The CodePipeline pipeline role: the role directly on the underlying Pipeline construct.
+    const pipelineRole = this.pipeline.pipeline.role.node.defaultChild as iam.CfnRole | undefined;
+    setRoleName(pipelineRole, names.pipeline);
+
+    // The asset-publishing roles: CfnRoles whose node path carries the CDK Pipelines asset-role segment.
+    for (const cfnRole of this.node.findAll().filter((c): c is iam.CfnRole => c instanceof iam.CfnRole)) {
+      const path = cfnRole.node.path;
+      if (/FileRole/.test(path)) {
+        setRoleName(cfnRole, names.assetsFile);
+      } else if (/DockerRole/.test(path)) {
+        setRoleName(cfnRole, names.assetsDocker);
+      }
+    }
   }
 
   /**
