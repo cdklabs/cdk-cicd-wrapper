@@ -105,6 +105,37 @@ See [Continuous Deployment](./cd.md) for the deeper stage model.
 - **`EngineType.GITHUB_ACTIONS`** — renders a GitHub Actions workflow instead of an AWS-hosted pipeline.
   Requires `repository` to be `Repository.github(...)` and reads the `githubActions` config.
 
+## GitHub Actions
+
+When `engine` is `EngineType.GITHUB_ACTIONS`, `githubActions` configures the generated workflow and the
+OIDC role it assumes. Every field is optional.
+
+```typescript
+githubActions: {
+  roleName: 'my-app-github-role', // OIDC role the workflow assumes (literal; embedded in the workflow YAML)
+  subjectClaims: ['repo:my-org/my-app:ref:refs/heads/main'], // allowed OIDC subject claims
+  openIdConnectProviderArn: 'arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com',
+  thumbprints: ['<sha1>'], // GitHub cert thumbprints (defaults to the built-in set)
+  workflowPath: '.github/workflows/deploy.yml',
+  workflowName: 'deploy',
+  workflowTriggers: { push: { branches: ['main'] } }, // cdk-pipelines-github WorkflowTriggers
+  publishAssetsAuthRegion: 'us-west-2', // region the OIDC role is assumed in when publishing assets
+},
+```
+
+- **`roleName`** — the OIDC role the workflow assumes. Must be literal (the workflow YAML embeds its
+  ARN as plain text). Defaults to `<application>-github-role`.
+- **`subjectClaims`** — OIDC subject claims allowed to assume the role. Defaults to every ref/environment
+  of `repository`'s `owner/repo`.
+- **`openIdConnectProviderArn`** — an existing OIDC provider ARN; omit to have one created.
+- **`thumbprints`** — GitHub certificate thumbprints; defaults to the built-in, currently-valid set.
+- **`workflowPath`** / **`workflowName`** — file path and name of the generated workflow (default
+  `.github/workflows/deploy.yml`, `deploy`).
+- **`workflowTriggers`** — the workflow's triggers (default: push to the tracked branch plus manual
+  dispatch).
+- **`publishAssetsAuthRegion`** — the region the OIDC role is assumed in when publishing assets (not the
+  region assets publish to). Default `us-west-2`.
+
 ## CI
 
 `ci` controls the build steps and which stages CI synthesizes for validation.

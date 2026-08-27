@@ -45,15 +45,21 @@ function interfaceFields(file: string, interfaceName: string): string[] {
 describe('docs coverage: every public cicd.config field is documented', () => {
   const doc = fs.readFileSync(DOC, 'utf-8');
 
-  // The user-authored config surface: the top-level input and the per-stage deployment block. Fields the
-  // reference documents under a shared heading rather than by their own name are allowlisted with the
-  // heading that covers them, so the gate stays honest instead of being satisfied by an incidental match.
+  // The user-authored config surface: the top-level input, the per-stage deployment block, and the
+  // engine/networking sub-structs a user writes fields into. Fields the reference documents under a
+  // shared heading rather than by their own name still satisfy the gate via a backticked mention.
   const topLevel = interfaceFields(path.join(SRC, 'define.ts'), 'CicdConfigProps');
   const deployment = interfaceFields(path.join(SRC, 'types.ts'), 'DeploymentConfig');
+  const githubActions = interfaceFields(path.join(SRC, 'types.ts'), 'GitHubActionsConfig');
+  const vpc = interfaceFields(path.join(SRC, 'types.ts'), 'VpcConfig');
+  const managedVpc = interfaceFields(path.join(SRC, 'types.ts'), 'ManagedVpcConfig');
 
   const cases: Array<[string, string[]]> = [
     ['CicdConfigProps', topLevel],
     ['DeploymentConfig', deployment],
+    ['GitHubActionsConfig', githubActions],
+    ['VpcConfig', vpc],
+    ['ManagedVpcConfig', managedVpc],
   ];
 
   for (const [iface, fields] of cases) {
