@@ -2599,6 +2599,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security plugins
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security plugins">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#choosing-which-plugins-apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      Choosing which plugins apply
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-custom-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding a custom plugin
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       Next steps
@@ -2722,6 +2755,63 @@ git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span
 <div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>migrate<span class="w"> </span>--entry<span class="w"> </span>src/main.ts<span class="w"> </span>--application<span class="w"> </span>my-project<span class="w">   </span><span class="c1"># add --dry-run to preview</span>
 </code></pre></div>
 <p>It extracts your stage list (falling back to Blueprint's default <code>RES</code>/<code>DEV</code>/<code>INT</code> when no <code>.defineStages(...)</code> call is found), flags anything it can't safely determine — the repository is always flagged as unresolved today (set <code>repository: Repository.*(...)</code> yourself), plus hooks/phases, <code>workbench</code>, … — and prints the remaining manual steps. It deliberately does not rewrite your entry file's stack construction. Read the full mapping table and the <strong>Preserving already-deployed resources</strong> section in the repository's <a href="https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/MIGRATION.md"><code>MIGRATION.md</code></a> before switching a production pipeline over — getting the CloudFormation stack name right is what decides whether your existing resources are updated in place or recreated.</p>
+<h2 id="security-plugins">Security plugins</h2>
+<p>The wrapper applies a set of default-on security-hardening Aspects tree-wide: <code>AwsSolutionsChecks</code>
+(cdk-nag), <code>LogRetention</code>, <code>EncryptBucketOnTransit</code>, <code>EncryptSNSTopicOnTransit</code>,
+<code>RotateEncryptionKeys</code>, and <code>DisablePublicIPAssignmentForEC2</code>.</p>
+<p>Which path applies them depends on the <code>app</code> command in your <code>cdk.json</code> — that is what <code>cdk deploy</code>
+(or <code>npm run cdk deploy</code>) actually runs:</p>
+<ul>
+<li><strong><code>cdk.json</code> app is <code>npx cdk-cicd exec …</code></strong> — the wrapper's runtime preload applies the Aspects
+  automatically. You do <strong>not</strong> add anything to <code>bin/</code>; <code>CdkCicd.attach(app)</code> would be redundant.</li>
+<li><strong><code>cdk.json</code> app runs your own <code>bin/</code> entry</strong> (e.g. <code>npx ts-node --prefer-ts-exts bin/app.ts</code>) —
+  nothing wraps the app, so add one line to that <code>bin/</code> entry to apply the Aspects yourself:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>// cdk.json — this entry is what `cdk deploy` runs
+{ "app": "npx ts-node --prefer-ts-exts bin/app.ts" }
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1">// bin/app.ts</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">CdkCicd</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">cdk</span><span class="p">.</span><span class="nx">App</span><span class="p">();</span>
+<span class="ow">new</span><span class="w"> </span><span class="nx">MyStack</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="s1">'my-stack'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">});</span>
+<span class="nx">CdkCicd</span><span class="p">.</span><span class="nx">attach</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span><span class="w"> </span><span class="c1">// applies the security plugins tree-wide</span>
+</code></pre></div>
+<h3 id="choosing-which-plugins-apply">Choosing which plugins apply</h3>
+<p>Each plugin has a <code>{ name, version }</code>. Configure the set in <code>cicd.config.ts</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">),</span>
+<span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'dev'</span><span class="p">,</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">],</span>
+<span class="w">  </span><span class="c1">// Omit `plugins` entirely to keep the default-on set.</span>
+<span class="w">  </span><span class="c1">// An empty list opts out of all of them.</span>
+<span class="w">  </span><span class="c1">// A non-empty list COMPLETELY overrides the defaults — only the plugins named here apply.</span>
+<span class="w">  </span><span class="nx">plugins</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'AwsSolutionsChecks'</span><span class="p">,</span><span class="w"> </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="s1">'1'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'EncryptSNSTopicOnTransit'</span><span class="p">,</span><span class="w"> </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="s1">'1'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="p">});</span>
+</code></pre></div>
+<p>From code, the same selection is available on <code>attach</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">CdkCicd</span><span class="p">.</span><span class="nx">attach</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">plugins</span><span class="o">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'EncryptSNSTopicOnTransit'</span><span class="p">,</span><span class="w"> </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="s1">'1'</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">});</span>
+<span class="nx">CdkCicd</span><span class="p">.</span><span class="nx">attach</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">skipDefaults</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">});</span><span class="w"> </span><span class="c1">// opt out of all</span>
+</code></pre></div>
+<h3 id="adding-a-custom-plugin">Adding a custom plugin</h3>
+<p>A custom plugin is any <code>IAspect</code>. Because a live Aspect cannot travel through config, declare its
+<code>{ name, version }</code> in <code>cicd.config.ts</code>'s <code>plugins</code> list <strong>and</strong> register the instance in <code>bin/</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">class</span><span class="w"> </span><span class="nx">RequireOwnerTagAspect</span><span class="w"> </span><span class="k">implements</span><span class="w"> </span><span class="nx">IAspect</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}</span>
+
+<span class="nx">CdkCicd</span><span class="p">.</span><span class="nx">addPlugin</span><span class="p">(</span><span class="nx">app</span><span class="p">,</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">RequireOwnerTagAspect</span><span class="p">(),</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'RequireOwnerTag'</span><span class="p">,</span><span class="w"> </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="s1">'1.0.0'</span><span class="w"> </span><span class="p">});</span>
+<span class="nx">CdkCicd</span><span class="p">.</span><span class="nx">attach</span><span class="p">(</span><span class="nx">app</span><span class="p">);</span>
+</code></pre></div>
+<p>Naming a custom plugin in the config without a matching <code>addPlugin</code> in <code>bin/</code> fails synth with an
+actionable error. A complete, runnable example is in
+<a href="https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/samples/security-plugins-proof"><code>samples/security-plugins-proof</code></a>.</p>
+<blockquote>
+<p><strong>Note:</strong> custom plugins (<code>addPlugin</code>) require the explicit <code>CdkCicd.attach(app)</code> path — the
+zero-touch <code>cdk-cicd exec</code> preload constructs the <code>App</code> before your <code>bin/</code> runs, so an <code>addPlugin</code>
+call there cannot be seen. Built-in selection and opt-out work on both paths.</p>
+</blockquote>
 <h2 id="next-steps">Next steps</h2>
 <p>Read the <a href="../developer_guides/index.html">Developer Guide</a> for the full picture: repository sources, stage/CD configuration, CI steps, security scanning, VPC/proxy/private-registry support, and the container ("two-repo") deployment mode.</p>
 
