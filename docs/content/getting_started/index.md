@@ -151,6 +151,80 @@ npx cdk-cicd migrate --entry src/main.ts --application my-project   # add --dry-
 
 It extracts your stage list (falling back to Blueprint's default `RES`/`DEV`/`INT` when no `.defineStages(...)` call is found), flags anything it can't safely determine — the repository is always flagged as unresolved today (set `repository: Repository.*(...)` yourself), plus hooks/phases, `workbench`, … — and prints the remaining manual steps. It deliberately does not rewrite your entry file's stack construction. Read the full mapping table and the **Preserving already-deployed resources** section in the repository's [`MIGRATION.md`](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/MIGRATION.md) before switching a production pipeline over — getting the CloudFormation stack name right is what decides whether your existing resources are updated in place or recreated.
 
+## Security plugins
+
+The wrapper applies a set of default-on security-hardening Aspects tree-wide: `AwsSolutionsChecks`
+(cdk-nag), `LogRetention`, `EncryptBucketOnTransit`, `EncryptSNSTopicOnTransit`,
+`RotateEncryptionKeys`, and `DisablePublicIPAssignmentForEC2`.
+
+Which path applies them depends on the `app` command in your `cdk.json` — that is what `cdk deploy`
+(or `npm run cdk deploy`) actually runs:
+
+- **`cdk.json` app is `npx cdk-cicd exec …`** — the wrapper's runtime preload applies the Aspects
+  automatically. You do **not** add anything to `bin/`; `CdkCicd.attach(app)` would be redundant.
+- **`cdk.json` app runs your own `bin/` entry** (e.g. `npx ts-node --prefer-ts-exts bin/app.ts`) —
+  nothing wraps the app, so add one line to that `bin/` entry to apply the Aspects yourself:
+
+```jsonc
+// cdk.json — this entry is what `cdk deploy` runs
+{ "app": "npx ts-node --prefer-ts-exts bin/app.ts" }
+```
+
+```ts
+// bin/app.ts
+import { CdkCicd } from '@cdklabs/cdk-cicd-wrapper';
+
+const app = new cdk.App();
+new MyStack(app, 'my-stack', { /* … */ });
+CdkCicd.attach(app); // applies the security plugins tree-wide
+```
+
+### Choosing which plugins apply
+
+Each plugin has a `{ name, version }`. Configure the set in `cicd.config.ts`:
+
+```ts
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.codecommit('my-app'),
+  stages: ['dev', 'prod'],
+  // Omit `plugins` entirely to keep the default-on set.
+  // An empty list opts out of all of them.
+  // A non-empty list COMPLETELY overrides the defaults — only the plugins named here apply.
+  plugins: [
+    { name: 'AwsSolutionsChecks', version: '1' },
+    { name: 'EncryptSNSTopicOnTransit', version: '1' },
+  ],
+});
+```
+
+From code, the same selection is available on `attach`:
+
+```ts
+CdkCicd.attach(app, { plugins: [{ name: 'EncryptSNSTopicOnTransit', version: '1' }] });
+CdkCicd.attach(app, { skipDefaults: true }); // opt out of all
+```
+
+### Adding a custom plugin
+
+A custom plugin is any `IAspect`. Because a live Aspect cannot travel through config, declare its
+`{ name, version }` in `cicd.config.ts`'s `plugins` list **and** register the instance in `bin/`:
+
+```ts
+class RequireOwnerTagAspect implements IAspect { /* … */ }
+
+CdkCicd.addPlugin(app, new RequireOwnerTagAspect(), { name: 'RequireOwnerTag', version: '1.0.0' });
+CdkCicd.attach(app);
+```
+
+Naming a custom plugin in the config without a matching `addPlugin` in `bin/` fails synth with an
+actionable error. A complete, runnable example is in
+[`samples/security-plugins-proof`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/samples/security-plugins-proof).
+
+> **Note:** custom plugins (`addPlugin`) require the explicit `CdkCicd.attach(app)` path — the
+> zero-touch `cdk-cicd exec` preload constructs the `App` before your `bin/` runs, so an `addPlugin`
+> call there cannot be seen. Built-in selection and opt-out work on both paths.
+
 ## Next steps
 
 Read the [Developer Guide](../developer_guides/index.md) for the full picture: repository sources, stage/CD configuration, CI steps, security scanning, VPC/proxy/private-registry support, and the container ("two-repo") deployment mode.
