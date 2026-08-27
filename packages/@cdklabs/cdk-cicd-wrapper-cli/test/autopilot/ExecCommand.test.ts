@@ -15,6 +15,7 @@ import {
   forcedRoleEnv,
   preloadArgs,
   resolveEnvTarget,
+  resolveExternalId,
   resolveStage,
   stageEnv,
 } from '../../src/cmds/autopilot/ExecCommand';
@@ -154,19 +155,59 @@ describe('exec: execInvocation (engine routing)', () => {
 });
 
 describe('exec: forcedRoleEnv', () => {
-  test('exports the stage deployment roles as the preload role env vars', () => {
-    expect(forcedRoleEnv({ deployment: { deployRole: 'arn:deploy', cfnExecutionRole: 'arn:cfn' } })).toEqual({
+  test('exports the stage deployment roles as the preload role env vars', async () => {
+    expect(await forcedRoleEnv({ deployment: { deployRole: 'arn:deploy', cfnExecutionRole: 'arn:cfn' } })).toEqual({
       CDK_CICD_DEPLOY_ROLE_ARN: 'arn:deploy',
       CDK_CICD_CFN_EXEC_ROLE_ARN: 'arn:cfn',
     });
   });
 
-  test('exports only what the stage configured; nothing for a stage with no deployment', () => {
-    expect(forcedRoleEnv({ deployment: { deployRole: 'arn:deploy' } })).toEqual({
+  test('exports only what the stage configured; nothing for a stage with no deployment', async () => {
+    expect(await forcedRoleEnv({ deployment: { deployRole: 'arn:deploy' } })).toEqual({
       CDK_CICD_DEPLOY_ROLE_ARN: 'arn:deploy',
     });
-    expect(forcedRoleEnv({})).toEqual({});
-    expect(forcedRoleEnv(undefined)).toEqual({});
+    expect(await forcedRoleEnv({})).toEqual({});
+    expect(await forcedRoleEnv(undefined)).toEqual({});
+  });
+
+  test('a literal per-stage externalId is exported', async () => {
+    expect(await forcedRoleEnv({ deployment: { deployRole: 'arn:deploy', externalId: 'ext-stage' } })).toEqual({
+      CDK_CICD_DEPLOY_ROLE_ARN: 'arn:deploy',
+      CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID: 'ext-stage',
+    });
+  });
+
+  test('the pipeline-level externalId is used when the stage sets none', async () => {
+    expect(await forcedRoleEnv({ deployment: { deployRole: 'arn:deploy' } }, 'ext-pipeline')).toEqual({
+      CDK_CICD_DEPLOY_ROLE_ARN: 'arn:deploy',
+      CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID: 'ext-pipeline',
+    });
+  });
+
+  test('a per-stage externalId overrides the pipeline-level default', async () => {
+    expect(
+      await forcedRoleEnv({ deployment: { deployRole: 'arn:deploy', externalId: 'ext-stage' } }, 'ext-pipeline'),
+    ).toEqual({
+      CDK_CICD_DEPLOY_ROLE_ARN: 'arn:deploy',
+      CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID: 'ext-stage',
+    });
+  });
+});
+
+describe('exec: resolveExternalId', () => {
+  test('a literal is returned unchanged; blank/undefined -> undefined', async () => {
+    expect(await resolveExternalId('plain-value')).toBe('plain-value');
+    expect(await resolveExternalId('')).toBeUndefined();
+    expect(await resolveExternalId(undefined)).toBeUndefined();
+  });
+
+  test('a resolve:secretsmanager: reference without the SDK present fails with a clear, actionable error', async () => {
+    // @aws-sdk/client-secrets-manager is intentionally NOT a build dependency (nested-smithy conflict); it
+    // is loaded via an untyped runtime import that is present in the pipeline/CI runtime. When absent, the
+    // resolver must fail with guidance rather than an opaque MODULE_NOT_FOUND.
+    await expect(
+      resolveExternalId('resolve:secretsmanager:arn:aws:secretsmanager:us-west-2:111111111111:secret:x'),
+    ).rejects.toThrow(/needs @aws-sdk\/client-secrets-manager|has no SecretString/);
   });
 });
 
@@ -179,5 +220,6 @@ describe('exec: cross-package env-flag literals match the constructs package', (
     expect(src).toContain(`const EXEC_FLAG = '${inject.EXEC_FLAG}'`);
     expect(src).toContain(`const DEPLOY_ROLE_FLAG = '${inject.DEPLOY_ROLE_FLAG}'`);
     expect(src).toContain(`const CFN_EXEC_ROLE_FLAG = '${inject.CFN_EXEC_ROLE_FLAG}'`);
+    expect(src).toContain(`const DEPLOY_ROLE_EXTERNAL_ID_FLAG = '${inject.DEPLOY_ROLE_EXTERNAL_ID_FLAG}'`);
   });
 });

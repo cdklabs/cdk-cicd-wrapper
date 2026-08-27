@@ -1,19 +1,21 @@
 ---
 nav:
   - index.md
-  - "Continuous Integration": "ci.md"
-  - "Continuous Deployment": "cd.md"
-  - "CDK Context": "cdk_context.md"
-  - "Security": "security.md"
-  - "Python Dependencies":
-    - "AWS CodeArtifact": "codeartifact.md"
-    - "python_dependencies.md"
-  - "NPM Dependencies":
-    - "AWS CodeArtifact": "codeartifact.md"
-    - "Private NPM Registry": "private_npm_registry.md"
-  - "GIT Integrations":
-    - "Amazon S3": "vcs_s3.md"
-    - "CodeCommit": "vcs_codecommit.md"
-    - "GitHub": "vcs_github.md"
-  - "Networking": "networking.md"
-  - "Git Branching Strategies": "gitbranchingstrategies.md"
+  - 'Configuration Reference': 'configuration.md'
+  - 'Continuous Integration': 'ci.md'
+  - 'Continuous Deployment': 'cd.md'
+  - 'Container Mode': 'container_mode.md'
+  - 'CDK Context': 'cdk_context.md'
+  - 'Security': 'security.md'
+  - 'Python Dependencies':
+      - 'AWS CodeArtifact': 'codeartifact.md'
+      - 'python_dependencies.md'
+  - 'NPM Dependencies':
+      - 'AWS CodeArtifact': 'codeartifact.md'
+      - 'Private NPM Registry': 'private_npm_registry.md'
+  - 'GIT Integrations':
+      - 'Amazon S3': 'vcs_s3.md'
+      - 'CodeCommit': 'vcs_codecommit.md'
+      - 'GitHub': 'vcs_github.md'
+  - 'Networking': 'networking.md'
+  - 'Git Branching Strategies': 'gitbranchingstrategies.md'

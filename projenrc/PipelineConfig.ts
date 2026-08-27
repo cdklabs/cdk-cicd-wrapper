@@ -76,6 +76,11 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
     const packageBasename = 'cdk-cicd-wrapper';
     this.with(
       new yarn.WorkspaceJsiiBuild({
+        // The CLI takes a TypeScript workspace reference on this package (so the release
+        // `gather-versions` step rewrites its `^0.0.0` placeholder to a real range). A referenced
+        // project must be `composite`, so `tsc --build` in the CLI can build it as a project
+        // reference; this sets jsii's `projectReferences`, which emits `composite: true`.
+        composite: true,
         // jsii-docgen regenerates API.md on every build from the jsii assembly, so the reference never
         // drifts from the public surface. It resolves `cdk-nag`/`cdk-pipelines-github` from the copies the
         // package's own `post-compile` places in its local `node_modules` (see below).

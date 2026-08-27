@@ -15,7 +15,7 @@
 import { spawnSync, SpawnSyncReturns } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
-import { ResolvedDeploymentConfig, ResolvedDeploymentTarget } from '@cdklabs/cdk-cicd-wrapper';
+import type { ResolvedDeploymentConfig, ResolvedDeploymentTarget } from '@cdklabs/cdk-cicd-wrapper';
 import { logger } from '../../utils/Logging';
 
 /** Reads the deployed `version` (hash or semver) for a stage from `config/<stage>.json`. Injectable for tests. */

@@ -1470,6 +1470,53 @@ Defaults to `local`.
 
 ---
 
+### AttachOptions <a name="AttachOptions" id="@cdklabs/cdk-cicd-wrapper.AttachOptions"></a>
+
+Options for `CdkCicd.attach`: override or opt out of the default security plugins from code.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.AttachOptions.Initializer"></a>
+
+```typescript
+import { AttachOptions } from '@cdklabs/cdk-cicd-wrapper'
+
+const attachOptions: AttachOptions = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.AttachOptions.property.plugins">plugins</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.PluginRef">PluginRef</a>[]</code> | Plugin selection, equivalent to `cicd.config.ts`'s `plugins`. Omitted keeps the config's selection (or the defaults); a non-empty list COMPLETELY overrides it; an empty list opts out of all plugins. A custom name here must have a matching `CdkCicd.addPlugin(app, ...)`. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.AttachOptions.property.skipDefaults">skipDefaults</a></code> | <code>boolean</code> | Shorthand for `plugins: []` -- opt out of every default plugin. |
+
+---
+
+##### `plugins`<sup>Optional</sup> <a name="plugins" id="@cdklabs/cdk-cicd-wrapper.AttachOptions.property.plugins"></a>
+
+```typescript
+public readonly plugins: PluginRef[];
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.PluginRef">PluginRef</a>[]
+
+Plugin selection, equivalent to `cicd.config.ts`'s `plugins`. Omitted keeps the config's selection (or the defaults); a non-empty list COMPLETELY overrides it; an empty list opts out of all plugins. A custom name here must have a matching `CdkCicd.addPlugin(app, ...)`.
+
+---
+
+##### `skipDefaults`<sup>Optional</sup> <a name="skipDefaults" id="@cdklabs/cdk-cicd-wrapper.AttachOptions.property.skipDefaults"></a>
+
+```typescript
+public readonly skipDefaults: boolean;
+```
+
+- *Type:* boolean
+
+Shorthand for `plugins: []` -- opt out of every default plugin.
+
+Ignored when `plugins` is set.
+
+---
+
 ### AwsEnvironment <a name="AwsEnvironment" id="@cdklabs/cdk-cicd-wrapper.AwsEnvironment"></a>
 
 AWS account / region routing for the active stage.
@@ -1936,6 +1983,58 @@ Removal policy for the pipeline's own support resources (artifact bucket, encryp
 
 ---
 
+### CodePipelineRoleNames <a name="CodePipelineRoleNames" id="@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames"></a>
+
+Names for the flat `CODEPIPELINE` engine's IAM roles.
+
+This engine's role set differs from the CDK
+Pipelines engine (no asset-publishing roles; instead one CodeBuild role per stage), so it takes its
+own struct. Any field omitted keeps CDK's generated name. Only read when `engine` is
+`EngineType.CODEPIPELINE`.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames.Initializer"></a>
+
+```typescript
+import { CodePipelineRoleNames } from '@cdklabs/cdk-cicd-wrapper'
+
+const codePipelineRoleNames: CodePipelineRoleNames = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames.property.buildRolePrefix">buildRolePrefix</a></code> | <code>string</code> | Prefix for the per-stage CodeBuild project roles: each stage's build role is named `<buildRolePrefix>-<stage>` (plus the CI/self-update projects, `<buildRolePrefix>-build` / `<buildRolePrefix>-selfupdate`). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames.property.pipeline">pipeline</a></code> | <code>string</code> | `RoleName` forced on the CodePipeline pipeline role. |
+
+---
+
+##### `buildRolePrefix`<sup>Optional</sup> <a name="buildRolePrefix" id="@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames.property.buildRolePrefix"></a>
+
+```typescript
+public readonly buildRolePrefix: string;
+```
+
+- *Type:* string
+
+Prefix for the per-stage CodeBuild project roles: each stage's build role is named `<buildRolePrefix>-<stage>` (plus the CI/self-update projects, `<buildRolePrefix>-build` / `<buildRolePrefix>-selfupdate`).
+
+Omit to keep CDK-generated names.
+
+---
+
+##### `pipeline`<sup>Optional</sup> <a name="pipeline" id="@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames.property.pipeline"></a>
+
+```typescript
+public readonly pipeline: string;
+```
+
+- *Type:* string
+
+`RoleName` forced on the CodePipeline pipeline role.
+
+---
+
 ### ConditionalFieldGroup <a name="ConditionalFieldGroup" id="@cdklabs/cdk-cicd-wrapper.ConditionalFieldGroup"></a>
 
 A group of fields that becomes required only when `when` resolves to a present value.
@@ -2059,6 +2158,7 @@ const deploymentConfig: DeploymentConfig = { ... }
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentConfig.property.cfnExecutionRole">cfnExecutionRole</a></code> | <code>string</code> | ARN CloudFormation assumes to execute the change set. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentConfig.property.deployRole">deployRole</a></code> | <code>string</code> | ARN the CLI assumes to deploy (passed as `cdk deploy --role-arn`). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentConfig.property.externalId">externalId</a></code> | <code>string</code> | ExternalId presented when assuming `deployRole` (the `sts:ExternalId` a hardened cross-account trust policy requires). |
 
 ---
 
@@ -2083,6 +2183,23 @@ public readonly deployRole: string;
 - *Type:* string
 
 ARN the CLI assumes to deploy (passed as `cdk deploy --role-arn`).
+
+---
+
+##### `externalId`<sup>Optional</sup> <a name="externalId" id="@cdklabs/cdk-cicd-wrapper.DeploymentConfig.property.externalId"></a>
+
+```typescript
+public readonly externalId: string;
+```
+
+- *Type:* string
+
+ExternalId presented when assuming `deployRole` (the `sts:ExternalId` a hardened cross-account trust policy requires).
+
+Overrides the pipeline-level `ResolvedCicdConfig.deployRoleExternalId` for
+this stage. A literal, or a `resolve:secretsmanager:<arn>` reference resolved at synth time (the
+same `resolve:` convention `VpcConfig.vpcId` uses). Ignored when `deployRole` is unset -- an
+ExternalId only applies to a role assumption the wrapper actually performs.
 
 ---
 
@@ -2852,6 +2969,116 @@ artifact history to a `cdk destroy` is not a default anyone should get by accide
 
 ---
 
+### PipelineRoleNames <a name="PipelineRoleNames" id="@cdklabs/cdk-cicd-wrapper.PipelineRoleNames"></a>
+
+Names for the CDK Pipelines (Blueprint-compatible `CDK_PIPELINES`) engine's IAM roles -- the parity replacement for Blueprint's `PipelineRoleNameEnforcementPlugin`, which the 1.x assembler-owned pipeline stack gives a consumer no way to reattach. Any field omitted keeps CDK's generated name (no behavior change). Only read when `engine` is `EngineType.CDK_PIPELINES`. The flat engine's roles are a different set -- see `CodePipelineRoleNames`.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.PipelineRoleNames.Initializer"></a>
+
+```typescript
+import { PipelineRoleNames } from '@cdklabs/cdk-cicd-wrapper'
+
+const pipelineRoleNames: PipelineRoleNames = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.PipelineRoleNames.property.assetsDocker">assetsDocker</a></code> | <code>string</code> | `RoleName` forced on the CDK Pipelines docker-image-publishing (assets) role. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.PipelineRoleNames.property.assetsFile">assetsFile</a></code> | <code>string</code> | `RoleName` forced on the CDK Pipelines file-publishing (assets) role. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.PipelineRoleNames.property.pipeline">pipeline</a></code> | <code>string</code> | `RoleName` forced on the CodePipeline pipeline role. |
+
+---
+
+##### `assetsDocker`<sup>Optional</sup> <a name="assetsDocker" id="@cdklabs/cdk-cicd-wrapper.PipelineRoleNames.property.assetsDocker"></a>
+
+```typescript
+public readonly assetsDocker: string;
+```
+
+- *Type:* string
+
+`RoleName` forced on the CDK Pipelines docker-image-publishing (assets) role.
+
+---
+
+##### `assetsFile`<sup>Optional</sup> <a name="assetsFile" id="@cdklabs/cdk-cicd-wrapper.PipelineRoleNames.property.assetsFile"></a>
+
+```typescript
+public readonly assetsFile: string;
+```
+
+- *Type:* string
+
+`RoleName` forced on the CDK Pipelines file-publishing (assets) role.
+
+---
+
+##### `pipeline`<sup>Optional</sup> <a name="pipeline" id="@cdklabs/cdk-cicd-wrapper.PipelineRoleNames.property.pipeline"></a>
+
+```typescript
+public readonly pipeline: string;
+```
+
+- *Type:* string
+
+`RoleName` forced on the CodePipeline pipeline role.
+
+---
+
+### PluginRef <a name="PluginRef" id="@cdklabs/cdk-cicd-wrapper.PluginRef"></a>
+
+A security plugin's stable identity (issue #241).
+
+Serializable, so it is what `cicd.config.ts`
+carries (through CDK context) to select a built-in plugin or declare a custom one. A custom
+plugin's actual `IAspect` instance is supplied separately in `bin/` via `CdkCicd.addPlugin`, since
+a live object cannot cross the context boundary.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.PluginRef.Initializer"></a>
+
+```typescript
+import { PluginRef } from '@cdklabs/cdk-cicd-wrapper'
+
+const pluginRef: PluginRef = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.PluginRef.property.name">name</a></code> | <code>string</code> | Stable plugin name. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.PluginRef.property.version">version</a></code> | <code>string</code> | Plugin version, recorded for inventory and divergence warnings. |
+
+---
+
+##### `name`<sup>Required</sup> <a name="name" id="@cdklabs/cdk-cicd-wrapper.PluginRef.property.name"></a>
+
+```typescript
+public readonly name: string;
+```
+
+- *Type:* string
+
+Stable plugin name.
+
+Built-in names are fixed; a custom name must match a `bin/` `addPlugin`.
+
+---
+
+##### `version`<sup>Required</sup> <a name="version" id="@cdklabs/cdk-cicd-wrapper.PluginRef.property.version"></a>
+
+```typescript
+public readonly version: string;
+```
+
+- *Type:* string
+
+Plugin version, recorded for inventory and divergence warnings.
+
+---
+
 ### ProxyConfig <a name="ProxyConfig" id="@cdklabs/cdk-cicd-wrapper.ProxyConfig"></a>
 
 HTTP(S) proxy configuration for the pipeline's CodeBuild projects (Blueprint `IProxyConfig`, migrated).
@@ -3035,11 +3262,15 @@ const resolvedCicdConfig: ResolvedCicdConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.application">application</a></code> | <code>string</code> | Application name; |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.codeArtifact">codeArtifact</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeArtifactConfig">CodeArtifactConfig</a></code> | Private CodeArtifact npm repository the builds authenticate against, if any. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.codeBuildEnvSettings">codeBuildEnvSettings</a></code> | <code>aws-cdk-lib.aws_codebuild.BuildEnvironment</code> | CodeBuild environment overrides -- privileged mode, compute type, environment variables -- applied to every CodeBuild project the pipeline creates (Blueprint `codeBuildEnvSettings`, migrated from `CodeBuildFactoryProvider`/`PipelineBlueprint.codeBuildEnvSettings(...)`). Reuses CDK's own `BuildEnvironment` rather than a bespoke type, so it stays a drop-in for Blueprint callers. `buildImage` here is a full `IBuildImage` (e.g. an ARM or GPU managed image); it is distinct from the engines' own `buildImage` constructor prop, which takes a Docker-registry image string -- that prop wins when both are set. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.codePipelineRoleNames">codePipelineRoleNames</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames">CodePipelineRoleNames</a></code> | Forced IAM role names for the flat `CODEPIPELINE` engine's own roles. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | The name of the compliance/access-log destination bucket, if configured (Blueprint `ComplianceBucketProvider`/`ComplianceLogBucketStack`, migrated). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployerImage">deployerImage</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage">BuildImage</a></code> | Container mode (Repo 1): when set, the pipeline runs CI then builds & pushes a config-agnostic deployer image to ECR instead of deploying stages. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployRoleExternalId">deployRoleExternalId</a></code> | <code>string</code> | Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.express">express</a></code> | <code>boolean</code> | Deploy with **CloudFormation express mode** (`cdk deploy --express`). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.githubActions">githubActions</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig">GitHubActionsConfig</a></code> | GitHub Actions engine configuration. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the builds authenticate against with a bearer token, if any. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.pipelineRoleNames">pipelineRoleNames</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.PipelineRoleNames">PipelineRoleNames</a></code> | Forced IAM role names for the CDK Pipelines (`CDK_PIPELINES`) engine's own roles. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.plugins">plugins</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.PluginRef">PluginRef</a>[]</code> | Security plugins (hardening Aspects) to apply tree-wide, by `{ name, version }` (issue #241). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.proxy">proxy</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ProxyConfig">ProxyConfig</a></code> | HTTP(S) proxy every build project routes through, if any. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier (≤10 chars), derived from `application` when not given. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.vpc">vpc</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.VpcConfig">VpcConfig</a></code> | VPC every CodeBuild project the pipeline creates runs in, if configured (Blueprint `VPCProvider`, migrated). |
@@ -3177,6 +3408,21 @@ CodeBuild environment overrides -- privileged mode, compute type, environment va
 
 ---
 
+##### `codePipelineRoleNames`<sup>Optional</sup> <a name="codePipelineRoleNames" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.codePipelineRoleNames"></a>
+
+```typescript
+public readonly codePipelineRoleNames: CodePipelineRoleNames;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames">CodePipelineRoleNames</a>
+
+Forced IAM role names for the flat `CODEPIPELINE` engine's own roles.
+
+Only read when `engine` is
+`EngineType.CODEPIPELINE`; omitted fields keep CDK-generated names.
+
+---
+
 ##### `complianceLogBucketName`<sup>Optional</sup> <a name="complianceLogBucketName" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.complianceLogBucketName"></a>
 
 ```typescript
@@ -3204,6 +3450,22 @@ Container mode (Repo 1): when set, the pipeline runs CI then builds & pushes a c
 
 Undefined = the normal deploy pipeline. (Named
 `deployerImage`, not `build` -- jsii reserves `build` as a struct member name.)
+
+---
+
+##### `deployRoleExternalId`<sup>Optional</sup> <a name="deployRoleExternalId" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployRoleExternalId"></a>
+
+```typescript
+public readonly deployRoleExternalId: string;
+```
+
+- *Type:* string
+
+Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`.
+
+A stage's
+own `DeploymentConfig.externalId` overrides this. A literal or a `resolve:secretsmanager:<arn>`
+reference resolved at synth time.
 
 ---
 
@@ -3250,6 +3512,37 @@ public readonly npmRegistry: NpmRegistryConfig;
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a>
 
 Generic private npm registry the builds authenticate against with a bearer token, if any.
+
+---
+
+##### `pipelineRoleNames`<sup>Optional</sup> <a name="pipelineRoleNames" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.pipelineRoleNames"></a>
+
+```typescript
+public readonly pipelineRoleNames: PipelineRoleNames;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.PipelineRoleNames">PipelineRoleNames</a>
+
+Forced IAM role names for the CDK Pipelines (`CDK_PIPELINES`) engine's own roles.
+
+Only read when
+`engine` is `EngineType.CDK_PIPELINES`; omitted fields keep CDK-generated names.
+
+---
+
+##### `plugins`<sup>Optional</sup> <a name="plugins" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.plugins"></a>
+
+```typescript
+public readonly plugins: PluginRef[];
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.PluginRef">PluginRef</a>[]
+
+Security plugins (hardening Aspects) to apply tree-wide, by `{ name, version }` (issue #241).
+
+Omitted keeps the default-on set; an empty list opts out of all; a non-empty list COMPLETELY
+overrides the defaults. A name that is not a built-in is a custom plugin and MUST be registered
+in `bin/` via `CdkCicd.addPlugin` -- the config carries only its identity, not the instance.
 
 ---
 
@@ -4166,7 +4459,41 @@ forced roles are threaded in at wave 3).
 
 | **Name** | **Description** |
 | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CdkCicd.addPlugin">addPlugin</a></code> | Register a custom security plugin: a real `IAspect` instance plus its `{ name, version }` identity. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CdkCicd.attach">attach</a></code> | Apply the wrapper's Aspects and tags to an already-constructed `App`, reading the injected `cicd:config` from its (fully-merged) context. |
+
+---
+
+##### `addPlugin` <a name="addPlugin" id="@cdklabs/cdk-cicd-wrapper.CdkCicd.addPlugin"></a>
+
+```typescript
+import { CdkCicd } from '@cdklabs/cdk-cicd-wrapper'
+
+CdkCicd.addPlugin(app: App, aspect: IAspect, ref: PluginRef)
+```
+
+Register a custom security plugin: a real `IAspect` instance plus its `{ name, version }` identity.
+
+Because a live Aspect cannot travel through CDK context, a plugin named in `cicd.config.ts` that is
+not a built-in MUST be registered here in `bin/`; `applyWrapper`/`attach` then matches it by name.
+Call before `attach` (or before the exec preload runs `applyWrapper`) so the registration is present
+when plugins resolve.
+
+###### `app`<sup>Required</sup> <a name="app" id="@cdklabs/cdk-cicd-wrapper.CdkCicd.addPlugin.parameter.app"></a>
+
+- *Type:* aws-cdk-lib.App
+
+---
+
+###### `aspect`<sup>Required</sup> <a name="aspect" id="@cdklabs/cdk-cicd-wrapper.CdkCicd.addPlugin.parameter.aspect"></a>
+
+- *Type:* aws-cdk-lib.IAspect
+
+---
+
+###### `ref`<sup>Required</sup> <a name="ref" id="@cdklabs/cdk-cicd-wrapper.CdkCicd.addPlugin.parameter.ref"></a>
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.PluginRef">PluginRef</a>
 
 ---
 
@@ -4175,7 +4502,7 @@ forced roles are threaded in at wave 3).
 ```typescript
 import { CdkCicd } from '@cdklabs/cdk-cicd-wrapper'
 
-CdkCicd.attach(app: App)
+CdkCicd.attach(app: App, options?: AttachOptions)
 ```
 
 Apply the wrapper's Aspects and tags to an already-constructed `App`, reading the injected `cicd:config` from its (fully-merged) context.
@@ -4187,6 +4514,12 @@ a second cdk-nag Aspect and evaluates the rules twice (tags are idempotent, same
 ###### `app`<sup>Required</sup> <a name="app" id="@cdklabs/cdk-cicd-wrapper.CdkCicd.attach.parameter.app"></a>
 
 - *Type:* aws-cdk-lib.App
+
+---
+
+###### `options`<sup>Optional</sup> <a name="options" id="@cdklabs/cdk-cicd-wrapper.CdkCicd.attach.parameter.options"></a>
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.AttachOptions">AttachOptions</a>
 
 ---
 

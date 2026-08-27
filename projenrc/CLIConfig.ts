@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { yarn } from 'cdklabs-projen-project-types';
+import { PipelineConfig } from './PipelineConfig';
 import { RootConfig } from './RootConfig';
 
 export class CLIConfig extends yarn.TypeScriptWorkspace {
-  constructor(root: RootConfig) {
+  constructor(root: RootConfig, wrapper: PipelineConfig) {
     super({
       parent: root,
       name: '@cdklabs/cdk-cicd-wrapper-cli',
@@ -33,7 +34,15 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         'tslog',
         // Autopilot `cdk-cicd exec` resolves the register preload and reuses the config loader from the
         // constructs package. Kept a workspace dependency, NOT folded into the jsii package (D5).
-        '@cdklabs/cdk-cicd-wrapper',
+        //
+        // Referenced as the workspace project (via customizeReference) rather than a bare
+        // '@cdklabs/cdk-cicd-wrapper' string: a bare string renders as the `^0.0.0` workspace
+        // placeholder that the release `gather-versions` step never rewrites for a runtime dep, so the
+        // PUBLISHED tarball shipped `^0.0.0` and external installs resolved the empty 0.0.0 stub of the
+        // wrapper (crashing every command with `Cannot find module 'projen'`). A real workspace
+        // reference records the dep in `repoRuntimeDeps`, so `gather-versions` rewrites it to the
+        // released range (`future-minor` => `^1.x`) at publish time.
+        wrapper.customizeReference({ versionType: 'future-minor' }),
         // A TypeScript `cicd.config.ts` is the primary authoring path, and both `CicdConfig.load`
         // (in-process `require('ts-node/register')`) and `exec`/`deploy-ci` (spawned `-r
         // ts-node/register`) depend on it. Previously it resolved only because the workspace root

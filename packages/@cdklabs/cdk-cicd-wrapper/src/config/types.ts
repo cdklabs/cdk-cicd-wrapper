@@ -11,6 +11,19 @@ import { WorkflowTriggers } from 'cdk-pipelines-github';
 import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
+/**
+ * A security plugin's stable identity (issue #241). Serializable, so it is what `cicd.config.ts`
+ * carries (through CDK context) to select a built-in plugin or declare a custom one. A custom
+ * plugin's actual `IAspect` instance is supplied separately in `bin/` via `CdkCicd.addPlugin`, since
+ * a live object cannot cross the context boundary.
+ */
+export interface PluginRef {
+  /** Stable plugin name. Built-in names are fixed; a custom name must match a `bin/` `addPlugin`. */
+  readonly name: string;
+  /** Plugin version, recorded for inventory and divergence warnings. */
+  readonly version: string;
+}
+
 /** Order in which a stage's regions are rolled out. */
 export enum RegionOrder {
   /** One region after another (default). */
@@ -251,6 +264,47 @@ export interface DeploymentConfig {
   readonly deployRole?: string;
   /** ARN CloudFormation assumes to execute the change set. */
   readonly cfnExecutionRole?: string;
+  /**
+   * ExternalId presented when assuming `deployRole` (the `sts:ExternalId` a hardened cross-account
+   * trust policy requires). Overrides the pipeline-level `ResolvedCicdConfig.deployRoleExternalId` for
+   * this stage. A literal, or a `resolve:secretsmanager:<arn>` reference resolved at synth time (the
+   * same `resolve:` convention `VpcConfig.vpcId` uses). Ignored when `deployRole` is unset -- an
+   * ExternalId only applies to a role assumption the wrapper actually performs.
+   */
+  readonly externalId?: string;
+}
+
+/**
+ * Names for the CDK Pipelines (Blueprint-compatible `CDK_PIPELINES`) engine's IAM roles -- the parity
+ * replacement for Blueprint's `PipelineRoleNameEnforcementPlugin`, which the 1.x assembler-owned
+ * pipeline stack gives a consumer no way to reattach. Any field omitted keeps CDK's generated name (no
+ * behavior change). Only read when `engine` is `EngineType.CDK_PIPELINES`. The flat engine's roles are a
+ * different set -- see `CodePipelineRoleNames`.
+ */
+export interface PipelineRoleNames {
+  /** `RoleName` forced on the CodePipeline pipeline role. */
+  readonly pipeline?: string;
+  /** `RoleName` forced on the CDK Pipelines file-publishing (assets) role. */
+  readonly assetsFile?: string;
+  /** `RoleName` forced on the CDK Pipelines docker-image-publishing (assets) role. */
+  readonly assetsDocker?: string;
+}
+
+/**
+ * Names for the flat `CODEPIPELINE` engine's IAM roles. This engine's role set differs from the CDK
+ * Pipelines engine (no asset-publishing roles; instead one CodeBuild role per stage), so it takes its
+ * own struct. Any field omitted keeps CDK's generated name. Only read when `engine` is
+ * `EngineType.CODEPIPELINE`.
+ */
+export interface CodePipelineRoleNames {
+  /** `RoleName` forced on the CodePipeline pipeline role. */
+  readonly pipeline?: string;
+  /**
+   * Prefix for the per-stage CodeBuild project roles: each stage's build role is named
+   * `<buildRolePrefix>-<stage>` (plus the CI/self-update projects, `<buildRolePrefix>-build` /
+   * `<buildRolePrefix>-selfupdate`). Omit to keep CDK-generated names.
+   */
+  readonly buildRolePrefix?: string;
 }
 
 /** A fully resolved deployment stage. */
@@ -287,6 +341,22 @@ export interface ResolvedCicdConfig {
   readonly engine: EngineType;
   /** GitHub Actions engine configuration. Only read when `engine` is `EngineType.GITHUB_ACTIONS`. */
   readonly githubActions?: GitHubActionsConfig;
+  /**
+   * Forced IAM role names for the CDK Pipelines (`CDK_PIPELINES`) engine's own roles. Only read when
+   * `engine` is `EngineType.CDK_PIPELINES`; omitted fields keep CDK-generated names.
+   */
+  readonly pipelineRoleNames?: PipelineRoleNames;
+  /**
+   * Forced IAM role names for the flat `CODEPIPELINE` engine's own roles. Only read when `engine` is
+   * `EngineType.CODEPIPELINE`; omitted fields keep CDK-generated names.
+   */
+  readonly codePipelineRoleNames?: CodePipelineRoleNames;
+  /**
+   * Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`. A stage's
+   * own `DeploymentConfig.externalId` overrides this. A literal or a `resolve:secretsmanager:<arn>`
+   * reference resolved at synth time.
+   */
+  readonly deployRoleExternalId?: string;
   /** Resolved CI configuration. */
   readonly ci: CiConfig;
   /** Private CodeArtifact npm repository the builds authenticate against, if any. */
@@ -340,6 +410,13 @@ export interface ResolvedCicdConfig {
    * deployments. Off by default.
    */
   readonly express?: boolean;
+  /**
+   * Security plugins (hardening Aspects) to apply tree-wide, by `{ name, version }` (issue #241).
+   * Omitted keeps the default-on set; an empty list opts out of all; a non-empty list COMPLETELY
+   * overrides the defaults. A name that is not a built-in is a custom plugin and MUST be registered
+   * in `bin/` via `CdkCicd.addPlugin` -- the config carries only its identity, not the instance.
+   */
+  readonly plugins?: PluginRef[];
 }
 
 /**
