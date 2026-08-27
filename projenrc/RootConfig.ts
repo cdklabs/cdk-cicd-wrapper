@@ -374,10 +374,10 @@ export class RootConfig extends yarn.Monorepo {
 
   /**
    * Build the mkdocs site and publish it to GitHub Pages on every push to `main` that touches the
-   * docs (or on a manual dispatch). Reuses the repo's own `docs/scripts/build-docs` so the deployed
-   * site is byte-for-byte what a local build produces, then ships `docs/dist/docs` through the
-   * official Pages actions. Requires GitHub Pages to be set to the "GitHub Actions" source in the
-   * repo settings (one-time, owner-only).
+   * docs (or on a manual dispatch). Runs the same two steps as the `docs` + `docs:deploy` Taskfile
+   * targets -- `docs/scripts/build-docs` then `mkdocs gh-deploy` -- so CI publishes exactly what a
+   * maintainer would from their machine. `gh-deploy` builds from `build/docs/mkdocs.yml` and
+   * force-pushes the rendered site to the `gh-pages` branch, which is where Pages already serves from.
    */
   private configureDocsDeploy() {
     const workflow = this.github!.addWorkflow('docs');
@@ -389,35 +389,24 @@ export class RootConfig extends yarn.Monorepo {
       },
       workflowDispatch: {},
     });
-    // The deploy step needs to mint the Pages OIDC token and write the Pages deployment.
-    workflow.addJob('build', {
+    workflow.addJob('deploy', {
       runsOn: this.workflowRunsOn,
-      permissions: {
-        contents: pj.github.workflows.JobPermission.READ,
-        pages: pj.github.workflows.JobPermission.WRITE,
-        idToken: pj.github.workflows.JobPermission.WRITE,
-      },
+      // gh-deploy commits the rendered site to the `gh-pages` branch, so the job needs write access
+      // to repository contents. fetch-depth: 0 gives gh-deploy the full history it pushes onto.
+      permissions: { contents: pj.github.workflows.JobPermission.WRITE },
       steps: [
-        { uses: 'actions/checkout@v6' },
+        { uses: 'actions/checkout@v6', with: { 'fetch-depth': 0 } },
         { uses: 'actions/setup-node@v4', with: { 'node-version': '24' } },
         { uses: 'actions/setup-python@v5', with: { 'python-version': '3.12' } },
-        { name: 'Configure Pages', uses: 'actions/configure-pages@v5' },
-        // build-docs runs generate-markdown, then mkdocs build into docs/dist/docs.
+        // build-docs runs generate-markdown then mkdocs build; it also creates the venv gh-deploy uses.
         { name: 'Build docs', run: './scripts/build-docs', workingDirectory: 'docs' },
+        // Same command as the `docs:deploy` Taskfile target; --force so CI can update the branch head.
         {
-          name: 'Upload Pages artifact',
-          uses: 'actions/upload-pages-artifact@v3',
-          with: { path: 'docs/dist/docs' },
+          name: 'Publish to gh-pages',
+          run: '.venv/bin/mkdocs gh-deploy --force',
+          workingDirectory: 'docs/build/docs',
         },
       ],
-    });
-    // A separate job so the deployment shows up under the `github-pages` environment.
-    workflow.addJob('deploy', {
-      needs: ['build'],
-      runsOn: this.workflowRunsOn,
-      permissions: { pages: pj.github.workflows.JobPermission.WRITE, idToken: pj.github.workflows.JobPermission.WRITE },
-      environment: { name: 'github-pages', url: '${{ steps.deployment.outputs.page_url }}' },
-      steps: [{ name: 'Deploy to GitHub Pages', id: 'deployment', uses: 'actions/deploy-pages@v4' }],
     });
   }
 

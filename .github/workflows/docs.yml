@@ -11,39 +11,23 @@ on:
       - .github/workflows/docs.yml
   workflow_dispatch: {}
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write
-      id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
       - name: Build docs
         run: ./scripts/build-docs
         working-directory: docs
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs/dist/docs
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to gh-pages
+        run: .venv/bin/mkdocs gh-deploy --force
+        working-directory: docs/build/docs
