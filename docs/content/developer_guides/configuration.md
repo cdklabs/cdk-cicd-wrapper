@@ -154,6 +154,7 @@ ci: {
   want those checks.
 - **`synthStages`** — `'all'` synthesizes every stage; an explicit list names stages; omitting it uses
   the engine default (every stage under `ASSEMBLY_PROMOTION`, one env under `DEPLOY_TIME_SYNTH`).
+- **`image`** — an optional CodeBuild image override for the CI build project.
 - **`partialBuildSpec`** — a CodeBuild spec fragment deep-merged into the CI build project's generated
   buildspec (the CI project only — not self-update or per-stage deploy projects).
 
@@ -171,13 +172,17 @@ ci: {
 
 Three independent, optional blocks let the pipeline's builds install private packages:
 
-- **`codeArtifact`** — `{ domain, repository, account?, region?, npmScope? }`. Every build runs
-  `aws codeartifact login` before `npm ci`.
-- **`npmRegistry`** — `{ url, basicAuthSecretArn, scope? }`. Any npm-compatible registry; the build writes
-  a `.npmrc` with a bearer token read from Secrets Manager.
-- **`proxy`** — `{ proxySecretArn, noProxy?, proxyTestUrl? }`. Every build reads proxy credentials from
-  Secrets Manager, exports `HTTP(S)_PROXY`, and curls `proxyTestUrl` to prove the tunnel before installs.
-  `noProxy` defaults to `[]`; `proxyTestUrl` defaults to `https://aws.amazon.com`.
+- **`codeArtifact`** — a private CodeArtifact npm repository. Every build runs `aws codeartifact login`
+  before `npm ci`. Fields: `domain` and `repository` (required); `account` and `region` default to the
+  pipeline's own; `npmScope` binds an npm scope (e.g. `cdklabs` for `@cdklabs/*`).
+- **`npmRegistry`** — any npm-compatible registry authenticated with a bearer token; the build writes a
+  `.npmrc` with a token read from Secrets Manager. Fields: `url` (the registry URL) and
+  `basicAuthSecretArn` (the Secrets Manager secret) are required; `scope` binds an npm scope, omit to
+  override the default registry.
+- **`proxy`** — route every build through an HTTP(S) proxy. `proxySecretArn` (required) is the Secrets
+  Manager secret holding the proxy credentials; the build exports `HTTP(S)_PROXY` and curls
+  `proxyTestUrl` to prove the tunnel before installs. `noProxy` defaults to `[]`; `proxyTestUrl` defaults
+  to `https://aws.amazon.com`.
 
 ## VPC
 

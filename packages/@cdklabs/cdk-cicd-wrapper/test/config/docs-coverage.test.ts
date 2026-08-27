@@ -65,6 +65,10 @@ describe('docs coverage: every public cicd.config field is documented', () => {
   const githubActions = interfaceFields(path.join(SRC, 'types.ts'), 'GitHubActionsConfig');
   const vpc = interfaceFields(path.join(SRC, 'types.ts'), 'VpcConfig');
   const managedVpc = interfaceFields(path.join(SRC, 'types.ts'), 'ManagedVpcConfig');
+  const ci = interfaceFields(path.join(SRC, 'define.ts'), 'CiConfigInput');
+  const proxy = interfaceFields(path.join(SRC, 'define.ts'), 'ProxyConfigInput');
+  const codeArtifact = interfaceFields(path.join(SRC, 'types.ts'), 'CodeArtifactConfig');
+  const npmRegistry = interfaceFields(path.join(SRC, 'types.ts'), 'NpmRegistryConfig');
 
   const cases: Array<[string, string[]]> = [
     ['CicdConfigProps', topLevel],
@@ -72,6 +76,10 @@ describe('docs coverage: every public cicd.config field is documented', () => {
     ['GitHubActionsConfig', githubActions],
     ['VpcConfig', vpc],
     ['ManagedVpcConfig', managedVpc],
+    ['CiConfigInput', ci],
+    ['ProxyConfigInput', proxy],
+    ['CodeArtifactConfig', codeArtifact],
+    ['NpmRegistryConfig', npmRegistry],
   ];
 
   for (const [iface, fields] of cases) {
