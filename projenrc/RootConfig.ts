@@ -186,6 +186,7 @@ export class RootConfig extends yarn.Monorepo {
 
     this.configureHusky();
     this.configureContributors();
+    this.configureDocsDeploy();
 
     this.ignoreProofArtifacts();
   }
@@ -369,6 +370,55 @@ export class RootConfig extends yarn.Monorepo {
     });
 
     return aislop;
+  }
+
+  /**
+   * Build the mkdocs site and publish it to GitHub Pages on every push to `main` that touches the
+   * docs (or on a manual dispatch). Reuses the repo's own `docs/scripts/build-docs` so the deployed
+   * site is byte-for-byte what a local build produces, then ships `docs/dist/docs` through the
+   * official Pages actions. Requires GitHub Pages to be set to the "GitHub Actions" source in the
+   * repo settings (one-time, owner-only).
+   */
+  private configureDocsDeploy() {
+    const workflow = this.github!.addWorkflow('docs');
+    workflow.on({
+      push: {
+        branches: ['main'],
+        // Only rebuild when something the site is built from changes.
+        paths: ['docs/**', 'CONTRIBUTING.md', '.github/workflows/docs.yml'],
+      },
+      workflowDispatch: {},
+    });
+    // The deploy step needs to mint the Pages OIDC token and write the Pages deployment.
+    workflow.addJob('build', {
+      runsOn: this.workflowRunsOn,
+      permissions: {
+        contents: pj.github.workflows.JobPermission.READ,
+        pages: pj.github.workflows.JobPermission.WRITE,
+        idToken: pj.github.workflows.JobPermission.WRITE,
+      },
+      steps: [
+        { uses: 'actions/checkout@v6' },
+        { uses: 'actions/setup-node@v4', with: { 'node-version': '24' } },
+        { uses: 'actions/setup-python@v5', with: { 'python-version': '3.12' } },
+        { name: 'Configure Pages', uses: 'actions/configure-pages@v5' },
+        // build-docs runs generate-markdown, then mkdocs build into docs/dist/docs.
+        { name: 'Build docs', run: './scripts/build-docs', workingDirectory: 'docs' },
+        {
+          name: 'Upload Pages artifact',
+          uses: 'actions/upload-pages-artifact@v3',
+          with: { path: 'docs/dist/docs' },
+        },
+      ],
+    });
+    // A separate job so the deployment shows up under the `github-pages` environment.
+    workflow.addJob('deploy', {
+      needs: ['build'],
+      runsOn: this.workflowRunsOn,
+      permissions: { pages: pj.github.workflows.JobPermission.WRITE, idToken: pj.github.workflows.JobPermission.WRITE },
+      environment: { name: 'github-pages', url: '${{ steps.deployment.outputs.page_url }}' },
+      steps: [{ name: 'Deploy to GitHub Pages', id: 'deployment', uses: 'actions/deploy-pages@v4' }],
+    });
   }
 
   private configureHusky() {
