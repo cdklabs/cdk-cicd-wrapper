@@ -135,7 +135,7 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
     // `cdk-pipelines-github` to the monorepo root, so copy them local FIRST -- prepended so it runs
     // before the docgen step, otherwise docgen fails with `Unable to locate assembly for dependency`.
     postCompile.prependExec(
-      "for DEP in cdk-nag cdk-pipelines-github; do cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null; done;",
+      'for DEP in cdk-nag cdk-pipelines-github; do cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null; done;',
     );
   }
 }
