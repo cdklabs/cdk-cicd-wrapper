@@ -9,6 +9,7 @@
     ".github/workflows/dependency-review.yml",
     ".github/workflows/pull-request-lint.yml",
     ".github/workflows/release.yml",
+    ".github/workflows/sample-harness.yml",
     ".github/workflows/upgrade.yml",
     ".gitignore",
     ".mergify.yml",

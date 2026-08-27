@@ -186,6 +186,7 @@ export class RootConfig extends yarn.Monorepo {
 
     this.configureHusky();
     this.configureContributors();
+    this.configureSampleHarness();
 
     this.ignoreProofArtifacts();
   }
@@ -369,6 +370,45 @@ export class RootConfig extends yarn.Monorepo {
     });
 
     return aislop;
+  }
+
+  /**
+   * The sample-app harness: audits every app under `samples/` for dependency vulnerabilities and for
+   * Lambda runtimes that are past their AWS deprecation date. Fails on an EOL runtime (unless a sample
+   * explicitly opts out with a `cdk-cicd:allow-runtime` marker) or a high/critical dependency advisory,
+   * and warns on a not-latest runtime or an outdated `aws-cdk-lib` floor. The policy lives in
+   * `test/harness/runtime-policy.json`; the logic is unit-tested in `test/harness/check-samples.test.mjs`.
+   */
+  private configureSampleHarness() {
+    this.addTask('check:samples', {
+      description: 'Audit samples/ for dependency CVEs and EOL/not-latest Lambda runtimes',
+      exec: 'bash test/harness/check-samples.sh',
+    });
+    // Also run the fast, offline unit test of the policy logic as part of it.
+    this.addTask('check:samples:test', {
+      description: 'Unit-test the sample-harness runtime policy logic',
+      exec: 'node --test test/harness/check-samples.test.mjs',
+    });
+
+    const workflow = this.github!.addWorkflow('sample-harness');
+    workflow.on({
+      pullRequest: { paths: ['samples/**', 'test/harness/**'] },
+      push: { branches: ['main'], paths: ['samples/**', 'test/harness/**'] },
+      workflowDispatch: {},
+    });
+    workflow.addJob('harness', {
+      runsOn: this.workflowRunsOn,
+      permissions: { contents: pj.github.workflows.JobPermission.READ },
+      steps: [
+        { uses: 'actions/checkout@v6' },
+        { uses: 'actions/setup-node@v4', with: { 'node-version': '24' } },
+        { uses: 'actions/setup-python@v5', with: { 'python-version': '3.12' } },
+        // pip-audit powers the Python-sample security scan; harmless when a sample has no requirements.txt.
+        { name: 'Install pip-audit', run: 'python3 -m pip install pip-audit' },
+        { name: 'Unit-test the runtime policy', run: 'node --test test/harness/check-samples.test.mjs' },
+        { name: 'Run the sample harness', run: 'bash test/harness/check-samples.sh' },
+      ],
+    });
   }
 
   private configureHusky() {
