@@ -12,7 +12,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const SRC = path.resolve(__dirname, '..', '..', 'src', 'config');
-const DOC = path.resolve(__dirname, '..', '..', '..', '..', '..', 'docs', 'content', 'developer_guides', 'configuration.md');
+const DOC = path.resolve(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  '..',
+  '..',
+  'docs',
+  'content',
+  'developer_guides',
+  'configuration.md',
+);
 
 /**
  * Extract the `readonly <name>` field names declared inside a named interface in a source file. Deliberately
@@ -28,8 +39,9 @@ function interfaceFields(file: string, interfaceName: string): string[] {
   let i = src.indexOf('{', start);
   const bodyStart = i + 1;
   for (; i < src.length; i++) {
-    if (src[i] === '{') depth++;
-    else if (src[i] === '}') {
+    if (src[i] === '{') {
+      depth++;
+    } else if (src[i] === '}') {
       depth--;
       if (depth === 0) break;
     }
