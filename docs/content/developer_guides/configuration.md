@@ -33,10 +33,14 @@ export default defineCICD({
 | `proxy`                   | `ProxyConfigInput`            | —                                      | HTTP(S) proxy every build project routes through.                           |
 | `vpc`                     | `VpcConfig`                   | no VPC                                 | VPC the pipeline's CodeBuild projects run in. See [VPC](#vpc).              |
 | `complianceLogBucketName` | `string`                      | —                                      | Compliance/access-log destination bucket name.                              |
+| `pipelineRoleNames`       | `PipelineRoleNames`           | CDK-generated names                    | Force IAM role names on the `CDK_PIPELINES` engine's roles. See [Pipeline role names](#pipeline-role-names). |
+| `codePipelineRoleNames`   | `CodePipelineRoleNames`       | CDK-generated names                    | Force IAM role names on the flat `CODEPIPELINE` engine's roles. See [Pipeline role names](#pipeline-role-names). |
+| `deployRoleExternalId`    | `string`                      | —                                      | Pipeline-level default ExternalId for the forced deploy-role assumption. See [Cross-account externalId](#cross-account-externalid). |
 | `codeBuildEnvSettings`    | `codebuild.BuildEnvironment`  | —                                      | CodeBuild overrides (privileged mode, compute, env vars).                   |
 | `asyncDeploy`             | `boolean`                     | `false`                                | Let a Lambda own the CloudFormation wait instead of build compute.          |
 | `express`                 | `boolean`                     | `false`                                | Deploy with CloudFormation express mode. See [Express mode](#express-mode). |
 | `deployerImage`           | `BuildImage`                  | —                                      | Container mode: build & push a deployer image instead of deploying.         |
+| `plugins`                 | `PluginRef[]`                 | the default-on hardening set           | Security plugins (hardening Aspects) applied tree-wide. See [Security plugins](#security-plugins). |
 
 ## `application` and `qualifier`
 
@@ -83,7 +87,8 @@ stages: [
 - **`regionOrder`** — `RegionOrder.SEQUENTIAL` (default) rolls regions out one after another;
   `RegionOrder.PARALLEL` deploys them at once.
 - **`deployment`** — force a `deployRole` (`cdk deploy --role-arn`) and/or `cfnExecutionRole` for the
-  stage.
+  stage, and optionally an `externalId` presented when assuming `deployRole`. See
+  [Cross-account externalId](#cross-account-externalid).
 
 See [Continuous Deployment](./cd.md) for the deeper stage model.
 
@@ -99,6 +104,37 @@ See [Continuous Deployment](./cd.md) for the deeper stage model.
   pipeline shaped like a Blueprint (`0.x`) one.
 - **`EngineType.GITHUB_ACTIONS`** — renders a GitHub Actions workflow instead of an AWS-hosted pipeline.
   Requires `repository` to be `Repository.github(...)` and reads the `githubActions` config.
+
+## GitHub Actions
+
+When `engine` is `EngineType.GITHUB_ACTIONS`, `githubActions` configures the generated workflow and the
+OIDC role it assumes. Every field is optional.
+
+```typescript
+githubActions: {
+  roleName: 'my-app-github-role', // OIDC role the workflow assumes (literal; embedded in the workflow YAML)
+  subjectClaims: ['repo:my-org/my-app:ref:refs/heads/main'], // allowed OIDC subject claims
+  openIdConnectProviderArn: 'arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com',
+  thumbprints: ['<sha1>'], // GitHub cert thumbprints (defaults to the built-in set)
+  workflowPath: '.github/workflows/deploy.yml',
+  workflowName: 'deploy',
+  workflowTriggers: { push: { branches: ['main'] } }, // cdk-pipelines-github WorkflowTriggers
+  publishAssetsAuthRegion: 'us-west-2', // region the OIDC role is assumed in when publishing assets
+},
+```
+
+- **`roleName`** — the OIDC role the workflow assumes. Must be literal (the workflow YAML embeds its
+  ARN as plain text). Defaults to `<application>-github-role`.
+- **`subjectClaims`** — OIDC subject claims allowed to assume the role. Defaults to every ref/environment
+  of `repository`'s `owner/repo`.
+- **`openIdConnectProviderArn`** — an existing OIDC provider ARN; omit to have one created.
+- **`thumbprints`** — GitHub certificate thumbprints; defaults to the built-in, currently-valid set.
+- **`workflowPath`** / **`workflowName`** — file path and name of the generated workflow (default
+  `.github/workflows/deploy.yml`, `deploy`).
+- **`workflowTriggers`** — the workflow's triggers (default: push to the tracked branch plus manual
+  dispatch).
+- **`publishAssetsAuthRegion`** — the region the OIDC role is assumed in when publishing assets (not the
+  region assets publish to). Default `us-west-2`.
 
 ## CI
 
@@ -118,6 +154,7 @@ ci: {
   want those checks.
 - **`synthStages`** — `'all'` synthesizes every stage; an explicit list names stages; omitting it uses
   the engine default (every stage under `ASSEMBLY_PROMOTION`, one env under `DEPLOY_TIME_SYNTH`).
+- **`image`** — an optional CodeBuild image override for the CI build project.
 - **`partialBuildSpec`** — a CodeBuild spec fragment deep-merged into the CI build project's generated
   buildspec (the CI project only — not self-update or per-stage deploy projects).
 
@@ -135,13 +172,17 @@ ci: {
 
 Three independent, optional blocks let the pipeline's builds install private packages:
 
-- **`codeArtifact`** — `{ domain, repository, account?, region?, npmScope? }`. Every build runs
-  `aws codeartifact login` before `npm ci`.
-- **`npmRegistry`** — `{ url, basicAuthSecretArn, scope? }`. Any npm-compatible registry; the build writes
-  a `.npmrc` with a bearer token read from Secrets Manager.
-- **`proxy`** — `{ proxySecretArn, noProxy?, proxyTestUrl? }`. Every build reads proxy credentials from
-  Secrets Manager, exports `HTTP(S)_PROXY`, and curls `proxyTestUrl` to prove the tunnel before installs.
-  `noProxy` defaults to `[]`; `proxyTestUrl` defaults to `https://aws.amazon.com`.
+- **`codeArtifact`** — a private CodeArtifact npm repository. Every build runs `aws codeartifact login`
+  before `npm ci`. Fields: `domain` and `repository` (required); `account` and `region` default to the
+  pipeline's own; `npmScope` binds an npm scope (e.g. `cdklabs` for `@cdklabs/*`).
+- **`npmRegistry`** — any npm-compatible registry authenticated with a bearer token; the build writes a
+  `.npmrc` with a token read from Secrets Manager. Fields: `url` (the registry URL) and
+  `basicAuthSecretArn` (the Secrets Manager secret) are required; `scope` binds an npm scope, omit to
+  override the default registry.
+- **`proxy`** — route every build through an HTTP(S) proxy. `proxySecretArn` (required) is the Secrets
+  Manager secret holding the proxy credentials; the build exports `HTTP(S)_PROXY` and curls
+  `proxyTestUrl` to prove the tunnel before installs. `noProxy` defaults to `[]`; `proxyTestUrl` defaults
+  to `https://aws.amazon.com`.
 
 ## VPC
 
@@ -171,3 +212,76 @@ production; it targets fast iterative deployments. Off by default.
 deployer image instead of deploying stages (CodePipeline engine only). The deploy side is authored
 separately with `defineDeployment` in a `deploy.config.ts`. See the
 [Container mode guide](./container_mode.md) for the full two-repository flow.
+
+## Pipeline role names
+
+Force deterministic IAM role names on the pipeline's own roles — the parity replacement for Blueprint's
+`PipelineRoleNameEnforcementPlugin`. Use it when external cross-account trust policies, SCPs, or
+permission boundaries reference fixed role names. Any field you omit keeps the CDK-generated name, so
+existing pipelines are unaffected. The two engines expose **different** role sets, so each takes its own
+field (the `GITHUB_ACTIONS` engine's only role is already nameable via `githubActions.roleName`).
+
+For `EngineType.CDK_PIPELINES`, use `pipelineRoleNames`:
+
+```typescript
+pipelineRoleNames: {
+  pipeline: 'my-app-codepipeline-role', // the CodePipeline pipeline role
+  assetsFile: 'my-app-codepipeline-assets-file-role', // CDK Pipelines file-publishing role
+  assetsDocker: 'my-app-codepipeline-assets-docker-role', // CDK Pipelines docker-publishing role
+},
+```
+
+For the flat `EngineType.CODEPIPELINE`, use `codePipelineRoleNames`:
+
+```typescript
+codePipelineRoleNames: {
+  pipeline: 'my-app-codepipeline-role', // the CodePipeline pipeline role
+  buildRolePrefix: 'my-app-build', // per-stage CodeBuild roles => `<prefix>-<projectId>`, e.g. `my-app-build-deploy-dev`
+},
+```
+
+## Cross-account externalId
+
+When a stage forces a `deployRole` (see [Stages](#stages)), you can present an `ExternalId` on the role
+assumption — the `sts:ExternalId` condition a hardened cross-account trust policy requires. It threads
+into the synthesizer as `DefaultStackSynthesizer.deployRoleExternalId`, so it applies to the
+`cdk deploy --role-arn` assumption the wrapper performs; it is a no-op without a `deployRole`.
+
+Set a pipeline-level default with `deployRoleExternalId`, and override per stage with
+`deployment.externalId` (the per-stage value wins):
+
+```typescript
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.github('my-org/my-app'),
+  deployRoleExternalId: 'org-wide-external-id', // pipeline-level default
+  stages: [
+    {
+      name: 'prod',
+      env: { account: '333333333333', region: 'eu-west-1' },
+      deployment: {
+        deployRole: 'arn:aws:iam::333333333333:role/Deployer',
+        externalId: 'prod-only-external-id', // overrides the pipeline-level default for this stage
+      },
+    },
+  ],
+});
+```
+
+Either value may be a literal, or a `resolve:secretsmanager:<arn>` reference resolved at exec time from
+the secret's `SecretString` (so the ExternalId can live in Secrets Manager rather than in
+`cicd.config.ts`).
+
+## Security plugins
+
+`plugins` selects the security-hardening Aspects the wrapper applies tree-wide (`PluginRef[]`, each a
+`{ name, version }`). Omitting it applies the default-on set; `[]` opts out of all of them; a non-empty
+list **completely overrides** the defaults (list only what you want). A name that is not a built-in is a
+custom plugin and must be registered in `bin/` via `CdkCicd.addPlugin`.
+
+```typescript
+plugins: [{ name: 'EncryptBucketOnTransit', version: '1.0.0' }], // only this one; defaults dropped
+// plugins: [],                                                   // opt out of all default hardening
+```
+
+See [Getting started](../getting_started/index.md) for the built-in set and the custom-plugin flow.
