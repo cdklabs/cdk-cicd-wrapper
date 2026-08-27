@@ -186,6 +186,7 @@ export class RootConfig extends yarn.Monorepo {
 
     this.configureHusky();
     this.configureContributors();
+    this.configureDocsDeploy();
     this.configureSampleHarness();
 
     this.ignoreProofArtifacts();
@@ -407,6 +408,44 @@ export class RootConfig extends yarn.Monorepo {
         { name: 'Install pip-audit', run: 'python3 -m pip install pip-audit' },
         { name: 'Unit-test the runtime policy', run: 'node --test test/harness/check-samples.test.mjs' },
         { name: 'Run the sample harness', run: 'bash test/harness/check-samples.sh' },
+      ],
+    });
+  }
+
+  /**
+   * Build the mkdocs site and publish it to GitHub Pages on every push to `main` that touches the
+   * docs (or on a manual dispatch). Runs the same two steps as the `docs` + `docs:deploy` Taskfile
+   * targets -- `docs/scripts/build-docs` then `mkdocs gh-deploy` -- so CI publishes exactly what a
+   * maintainer would from their machine. `gh-deploy` builds from `build/docs/mkdocs.yml` and
+   * force-pushes the rendered site to the `gh-pages` branch, which is where Pages already serves from.
+   */
+  private configureDocsDeploy() {
+    const workflow = this.github!.addWorkflow('docs');
+    workflow.on({
+      push: {
+        branches: ['main'],
+        // Only rebuild when something the site is built from changes.
+        paths: ['docs/**', 'CONTRIBUTING.md', '.github/workflows/docs.yml'],
+      },
+      workflowDispatch: {},
+    });
+    workflow.addJob('deploy', {
+      runsOn: this.workflowRunsOn,
+      // gh-deploy commits the rendered site to the `gh-pages` branch, so the job needs write access
+      // to repository contents. fetch-depth: 0 gives gh-deploy the full history it pushes onto.
+      permissions: { contents: pj.github.workflows.JobPermission.WRITE },
+      steps: [
+        { uses: 'actions/checkout@v6', with: { 'fetch-depth': 0 } },
+        { uses: 'actions/setup-node@v4', with: { 'node-version': '24' } },
+        { uses: 'actions/setup-python@v5', with: { 'python-version': '3.12' } },
+        // build-docs runs generate-markdown then mkdocs build; it also creates the venv gh-deploy uses.
+        { name: 'Build docs', run: './scripts/build-docs', workingDirectory: 'docs' },
+        // Same command as the `docs:deploy` Taskfile target; --force so CI can update the branch head.
+        {
+          name: 'Publish to gh-pages',
+          run: '.venv/bin/mkdocs gh-deploy --force',
+          workingDirectory: 'docs/build/docs',
+        },
       ],
     });
   }
