@@ -155,11 +155,23 @@ It extracts your stage list (falling back to Blueprint's default `RES`/`DEV`/`IN
 
 The wrapper applies a set of default-on security-hardening Aspects tree-wide: `AwsSolutionsChecks`
 (cdk-nag), `LogRetention`, `EncryptBucketOnTransit`, `EncryptSNSTopicOnTransit`,
-`RotateEncryptionKeys`, and `DisablePublicIPAssignmentForEC2`. Under `cdk-cicd exec` these are
-applied automatically. On a **plain `cdk deploy`** (no `cdk-cicd exec`), add one line to your `bin/`
-to apply them:
+`RotateEncryptionKeys`, and `DisablePublicIPAssignmentForEC2`.
+
+Which path applies them depends on the `app` command in your `cdk.json` — that is what `cdk deploy`
+(or `npm run cdk deploy`) actually runs:
+
+- **`cdk.json` app is `npx cdk-cicd exec …`** — the wrapper's runtime preload applies the Aspects
+  automatically. You do **not** add anything to `bin/`; `CdkCicd.attach(app)` would be redundant.
+- **`cdk.json` app runs your own `bin/` entry** (e.g. `npx ts-node --prefer-ts-exts bin/app.ts`) —
+  nothing wraps the app, so add one line to that `bin/` entry to apply the Aspects yourself:
+
+```jsonc
+// cdk.json — this entry is what `cdk deploy` runs
+{ "app": "npx ts-node --prefer-ts-exts bin/app.ts" }
+```
 
 ```ts
+// bin/app.ts
 import { CdkCicd } from '@cdklabs/cdk-cicd-wrapper';
 
 const app = new cdk.App();
