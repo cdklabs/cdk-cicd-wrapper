@@ -2066,6 +2066,14 @@
     chalk "^4.1.2"
     semver "^7.8.5"
 
+"@jsii/check-node@1.140.0":
+  version "1.140.0"
+  resolved "https://registry.yarnpkg.com/@jsii/check-node/-/check-node-1.140.0.tgz#cc52431daf11ae18437397348f7aabedef5bb99d"
+  integrity sha512-NTiY2Nd9ZtACPZjaU+k9+oiaD191Yw0FoiUR7bB+NoOtB5nMEhrLKn5O/PYmCIZGK0G1JaJs+PmLcyj68J6RKw==
+  dependencies:
+    chalk "^4.1.2"
+    semver "^7.8.5"
+
 "@jsii/spec@1.114.1":
   version "1.114.1"
   resolved "https://registry.npmjs.org/@jsii/spec/-/spec-1.114.1.tgz"
@@ -2087,6 +2095,11 @@
   version "1.139.0"
   resolved "https://registry.npmjs.org/@jsii/spec/-/spec-1.139.0.tgz"
   integrity sha512-+l1B0h4WAg6KOQ7PGykW/FvxeFmyt74U0/n41cus9Jdjv3VfQJKynsv5r9Ng23B1KwWqJkS5YvJuv2yGYoULdw==
+
+"@jsii/spec@1.140.0", "@jsii/spec@^1.139.0":
+  version "1.140.0"
+  resolved "https://registry.yarnpkg.com/@jsii/spec/-/spec-1.140.0.tgz#a9a92005e189b6ea47808cb1f003ac69d8182882"
+  integrity sha512-1rGS+iJtejQ3ybSJfV0if9PzZuSQmORbVF3MkqE0csatF//Rj8raCqptZLMX6rkdfZ8C2Jsw5hU4PrmuCzBk6A==
 
 "@modelcontextprotocol/sdk@^1.30.0":
   version "1.30.0"
@@ -7287,6 +7300,20 @@ jsii-diff@^1.131.0:
     log4js "^6.9.1"
     yargs "^17.7.2"
 
+jsii-docgen@^10.5.0:
+  version "10.12.5"
+  resolved "https://registry.yarnpkg.com/jsii-docgen/-/jsii-docgen-10.12.5.tgz#f56b698cbe7ab06a978cbdee9f9fde79a741188a"
+  integrity sha512-u0xKNxyaDY8Gbfs7hM761OsHr8xoRrJn+2iVCgJ6VvKTW0iDJ0bWHZdCv1ETrKAZdfE7sMy+2OoGL0+J9czgRQ==
+  dependencies:
+    "@jsii/spec" "^1.139.0"
+    case "^1.6.3"
+    fast-glob "^3.3.3"
+    fs-extra "^10.1.0"
+    jsii-reflect "^1.139.0"
+    json-stream-stringify "^3.1.7"
+    semver "^7.8.5"
+    yargs "^16.2.2"
+
 jsii-pacmak@^1.128.0:
   version "1.128.0"
   resolved "https://registry.npmjs.org/jsii-pacmak/-/jsii-pacmak-1.128.0.tgz"
@@ -7315,6 +7342,18 @@ jsii-reflect@^1.128.0, jsii-reflect@^1.131.0:
     chalk "^4"
     fs-extra "^10.1.0"
     oo-ascii-tree "^1.139.0"
+    yargs "^17.7.3"
+
+jsii-reflect@^1.139.0:
+  version "1.140.0"
+  resolved "https://registry.yarnpkg.com/jsii-reflect/-/jsii-reflect-1.140.0.tgz#8929a3fbccee9c02bc6a1a2a9f49df2b0026086d"
+  integrity sha512-8bRD6WSQfWrB6/31sz92bi21HWaMVzvxZUgaJt/IiT3RqGKc57dO+idekn8WNpTBneE9vVhj24UDExHH8YfJAQ==
+  dependencies:
+    "@jsii/check-node" "1.140.0"
+    "@jsii/spec" "1.140.0"
+    chalk "^4"
+    fs-extra "^10.1.0"
+    oo-ascii-tree "^1.140.0"
     yargs "^17.7.3"
 
 jsii-rosetta@~5.9.0:
@@ -7402,6 +7441,11 @@ json-stable-stringify-without-jsonify@^1.0.1:
   version "1.0.1"
   resolved "https://registry.npmjs.org/json-stable-stringify-without-jsonify/-/json-stable-stringify-without-jsonify-1.0.1.tgz"
   integrity sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==
+
+json-stream-stringify@^3.1.7:
+  version "3.1.7"
+  resolved "https://registry.yarnpkg.com/json-stream-stringify/-/json-stream-stringify-3.1.7.tgz#80a29711b43b1d9e4d9eccd4f6873df3f68da22a"
+  integrity sha512-F4MWetLtY42YMaAKw5cV4e47zMD5aOT+tjjQWjX18ACtdkQ5Y/vrcfbcQ107Rh+MXjOCIx4KhW0wPmOvG8iQ5w==
 
 json-stringify-safe@^5.0.1:
   version "5.0.1"
@@ -7982,6 +8026,11 @@ oo-ascii-tree@^1.139.0:
   version "1.139.0"
   resolved "https://registry.npmjs.org/oo-ascii-tree/-/oo-ascii-tree-1.139.0.tgz"
   integrity sha512-Sv9334UvsBcvYh9xkcBtheWjH+mkhXLmuhOm+/OTGVFUCsvdVdXwDMTbYZHpJaTSbhaHScPbHqjAPECAFwlgtg==
+
+oo-ascii-tree@^1.140.0:
+  version "1.140.0"
+  resolved "https://registry.yarnpkg.com/oo-ascii-tree/-/oo-ascii-tree-1.140.0.tgz#4411d3e4d9f436cd3b6531b19c866ae4bee0efac"
+  integrity sha512-swJJN43RwwtZAtNQu03W8rqNtTUvq9T4eGU4KupRq7I9/R3exHobbF/OOm5sl6tGcumsQrNU97NBx7x+LEIPgA==
 
 optionator@^0.9.3:
   version "0.9.4"
@@ -10038,6 +10087,19 @@ yargs@^16.2.0:
   version "16.2.0"
   resolved "https://registry.npmjs.org/yargs/-/yargs-16.2.0.tgz"
   integrity sha512-D1mvvtDG0L5ft/jGWkLpG1+m0eQxOfaBvTNELraWj22wSVUMWxZUvYgJYcKh6jGGIkJFhH4IZPQhR4TKpc8mBw==
+  dependencies:
+    cliui "^7.0.2"
+    escalade "^3.1.1"
+    get-caller-file "^2.0.5"
+    require-directory "^2.1.1"
+    string-width "^4.2.0"
+    y18n "^5.0.5"
+    yargs-parser "^20.2.2"
+
+yargs@^16.2.2:
+  version "16.2.2"
+  resolved "https://registry.yarnpkg.com/yargs/-/yargs-16.2.2.tgz#c56731dca0d2788ae0866dd3c83907d6bab85f7d"
+  integrity sha512-Nt9ZJjXTv5R8MHbqby/wXQ6Gi0Bb3TcYZkR1bzuL4yB2OxWPkXknz513gEF0GoA6tn00UpbPvERW8rzCuWCA6w==
   dependencies:
     cliui "^7.0.2"
     escalade "^3.1.1"

@@ -81,9 +81,10 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         // project must be `composite`, so `tsc --build` in the CLI can build it as a project
         // reference; this sets jsii's `projectReferences`, which emits `composite: true`.
         composite: true,
-        // jsii-docgen cannot locate `cdk-nag`/`cdk-pipelines-github`, which yarn hoists to the
-        // monorepo root. Enabling it needs those in `nohoist`; API.md stays hand-committed.
-        docgen: false,
+        // jsii-docgen regenerates API.md on every build from the jsii assembly, so the reference never
+        // drifts from the public surface. It resolves `cdk-nag`/`cdk-pipelines-github` from the copies the
+        // package's own `post-compile` places in its local `node_modules` (see below).
+        docgen: true,
         publishToPypi: {
           distName: `cdklabs.${packageBasename}`,
           module: `cdklabs.${changeDelimiter(packageBasename, '_')}`,
@@ -129,6 +130,13 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
     const postCompile = this.tasks.tryFind('post-compile')!;
     // postCompile.exec("export DEP='@cloudcomponents';cp -rf ./node_modules/$DEP ./node_modules/ 2>/dev/null;");
     postCompile.exec("export DEP='yaml';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;");
+    // jsii-docgen (the docgen step `WorkspaceJsiiBuild` injects first in post-compile) reads the `.jsii`
+    // assembly of every dependency from this package's own node_modules; yarn hoists `cdk-nag` and
+    // `cdk-pipelines-github` to the monorepo root, so copy them local FIRST -- prepended so it runs
+    // before the docgen step, otherwise docgen fails with `Unable to locate assembly for dependency`.
+    postCompile.prependExec(
+      'for DEP in cdk-nag cdk-pipelines-github; do cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null; done;',
+    );
   }
 }
 

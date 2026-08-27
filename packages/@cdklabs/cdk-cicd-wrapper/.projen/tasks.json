@@ -83,6 +83,15 @@
         }
       ]
     },
+    "docgen": {
+      "name": "docgen",
+      "description": "Generate API.md from .jsii manifest",
+      "steps": [
+        {
+          "exec": "jsii-docgen -o API.md"
+        }
+      ]
+    },
     "eslint": {
       "name": "eslint",
       "description": "Runs eslint against the codebase",
@@ -211,6 +220,12 @@
       "name": "post-compile",
       "description": "Runs after successful compilation",
       "steps": [
+        {
+          "exec": "for DEP in cdk-nag cdk-pipelines-github; do cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null; done;"
+        },
+        {
+          "spawn": "docgen"
+        },
         {
           "spawn": "rosetta:extract"
         },
