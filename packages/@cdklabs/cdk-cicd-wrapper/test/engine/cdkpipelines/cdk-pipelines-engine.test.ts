@@ -7,7 +7,10 @@
 import { App, Aspects, Stack, Stage } from 'aws-cdk-lib';
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as path from 'path';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
@@ -237,5 +240,129 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     for (const s of wrapperStacks) {
       expect(Annotations.fromStack(s).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'))).toHaveLength(0);
     }
+  });
+
+  describe('pipelineRoleNames (Blueprint PipelineRoleNameEnforcementPlugin parity)', () => {
+    // The asset-publishing roles (FileRole/DockerRole) only exist when the pipeline actually publishes
+    // file AND docker assets, so this stub emits both -- a Lambda (file asset) and a Docker image asset.
+    class AssetStages implements IStageProvider {
+      public stacks(stage: Stage, context: CdkPipelinesStageContext): void {
+        const stack = new Stack(stage, 'App');
+        new lambda.Function(stack, `Fn-${context.stageName}`, {
+          runtime: lambda.Runtime.NODEJS_20_X,
+          handler: 'index.handler',
+          code: lambda.Code.fromAsset(path.join(__dirname, 'fixtures', 'asset')),
+        });
+        new ecr_assets.DockerImageAsset(stack, `Img-${context.stageName}`, {
+          directory: path.join(__dirname, 'fixtures', 'docker'),
+        });
+      }
+    }
+
+    function renderWithRoleNames(names: {
+      pipeline?: string;
+      assetsFile?: string;
+      assetsDocker?: string;
+    }): Template {
+      const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+      const engine = new CdkPipelinesEngine(stack, 'Cd', {
+        config: defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev'],
+          pipelineRoleNames: names,
+        }),
+        stages: new AssetStages(),
+      });
+      void engine;
+      return Template.fromStack(stack);
+    }
+
+    test('forces RoleName on the pipeline role and the file/docker asset roles', () => {
+      const t = renderWithRoleNames({
+        pipeline: 'shop-codepipeline-role',
+        assetsFile: 'shop-codepipeline-assets-file-role',
+        assetsDocker: 'shop-codepipeline-assets-docker-role',
+      });
+      const roleNames = Object.values(t.findResources('AWS::IAM::Role'))
+        .map((r: any) => r.Properties.RoleName)
+        .filter((n): n is string => typeof n === 'string');
+      expect(roleNames).toEqual(
+        expect.arrayContaining([
+          'shop-codepipeline-role',
+          'shop-codepipeline-assets-file-role',
+          'shop-codepipeline-assets-docker-role',
+        ]),
+      );
+    });
+
+    test('omitting a field keeps the CDK-generated name (no RoleName override)', () => {
+      // Only the pipeline name is set; the asset roles must NOT carry an explicit RoleName.
+      const t = renderWithRoleNames({ pipeline: 'shop-codepipeline-role' });
+      const roles = Object.values(t.findResources('AWS::IAM::Role')) as any[];
+      const named = roles.map((r) => r.Properties.RoleName).filter((n) => typeof n === 'string');
+      expect(named).toContain('shop-codepipeline-role');
+      expect(named).not.toContain('shop-codepipeline-assets-file-role');
+      expect(named).not.toContain('shop-codepipeline-assets-docker-role');
+    });
+
+    test('no pipelineRoleNames at all leaves every role CDK-named', () => {
+      const t = render();
+      for (const r of Object.values(t.findResources('AWS::IAM::Role')) as any[]) {
+        // CDK-generated pipeline roles do not set an explicit RoleName.
+        expect(r.Properties.RoleName).toBeUndefined();
+      }
+    });
+  });
+
+  describe('complianceLogBucketName under CDK_PIPELINES', () => {
+    function renderWithCompliance(regionOfStage: string): Template {
+      // Pipeline in us-west-2; a stage in a different region exercises the per-region name substitution.
+      const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+      const engine = new CdkPipelinesEngine(stack, 'Cd', {
+        config: defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: [{ name: 'prod', env: { account: '111111111111', region: regionOfStage } }],
+          complianceLogBucketName: 'compliance-log-111111111111-us-west-2',
+        }),
+        stages: new StubStages(),
+      });
+      void engine;
+      return Template.fromStack(stack);
+    }
+
+    test('provisions the compliance-log bucket in the pipeline stack when the name is set', () => {
+      const t = renderWithCompliance('us-west-2');
+      const buckets = Object.values(t.findResources('AWS::S3::Bucket')) as any[];
+      const names = buckets.map((b) => b.Properties.BucketName).filter((n) => typeof n === 'string');
+      expect(names).toContain('compliance-log-111111111111-us-west-2');
+    });
+
+    test('is absent when no complianceLogBucketName is configured', () => {
+      const t = render();
+      const buckets = Object.values(t.findResources('AWS::S3::Bucket')) as any[];
+      const names = buckets.map((b) => b.Properties.BucketName).filter((n) => typeof n === 'string');
+      expect(names.some((n) => n.startsWith('compliance-log-'))).toBe(false);
+    });
+
+    test('passes AwsSolutions-S1 with no suppression (MUTATING aspect ordering)', () => {
+      const app = new App();
+      const stack = new Stack(app, 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+      const engine = new CdkPipelinesEngine(stack, 'Cd', {
+        config: defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev'],
+          complianceLogBucketName: 'compliance-log-111111111111-us-west-2',
+        }),
+        stages: new StubStages(),
+      });
+      void engine;
+      Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
+      expect(
+        Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-S1')),
+      ).toHaveLength(0);
+    });
   });
 });
