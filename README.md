@@ -18,6 +18,7 @@
 </p>
 
 > [!WARNING]
+> [!WARNING]
 > **Experimental — pre-release.** The developer experience documented below is the Autopilot (`1.x`)
 > line, developed on `main`. Version `1.0.0` **is published to npm** but is **not** the `latest`
 > dist-tag: `npm install` still resolves the stable `0.x` (Blueprint) line (currently `0.4.3`; **`0.4.0`
@@ -27,7 +28,6 @@
 > [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/), and the
 > [Migration Guide](./MIGRATION.md) for the mapping between the two. `samples/cdk-cicd-wrapper-example/`
 > is a complete `1.x` example. The public API is not frozen and may change.
-
 
 # Welcome to the CDK CI/CD Wrapper
 
@@ -227,6 +227,27 @@ This provisions the pipeline from `cicd.config.ts` alone — nothing else needs 
 Supporting resources — the encryption key, VPC networking for the pipeline's own CodeBuild projects, a compliance bucket — are **lazily provisioned**, so a pipeline only pays for what its configuration actually references.
 
 **Note**: Check the [networking documentation](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/networking.html) for VPC configurations, and the [Migration Guide](./MIGRATION.md) if you are coming from the previous major, where the pipeline was assembled from a set of named stacks in your own `bin/`.
+
+#### Choosing an engine
+
+The `engine` field in `cicd.config.ts` selects how the pipeline is rendered. There are three, and the default suits most projects:
+
+- **`EngineType.CODEPIPELINE`** (default) — a lightweight, flat AWS CodePipeline. Deploy stages re-invoke your app per stage, so `bin/` stays a plain single-stage app. Smallest footprint, and the only engine that supports [container mode](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/container_mode.html).
+- **`EngineType.CDK_PIPELINES`** — the Blueprint-compatible self-mutating pipeline built on `aws-cdk-lib/pipelines` (Source → Synth → Assets → one wave per stage). Choose it when you want a pipeline shaped like a Blueprint (`0.x`) one, e.g. to keep a migration's topology familiar.
+- **`EngineType.GITHUB_ACTIONS`** — renders a GitHub Actions workflow instead of an AWS-hosted pipeline. Requires `repository: Repository.github(...)` and a `githubActions` config block.
+
+```typescript
+import { defineCICD, Repository, EngineType } from '@cdklabs/cdk-cicd-wrapper';
+
+export default defineCICD({
+  application: 'my-app',
+  repository: Repository.github('my-org/my-app'),
+  engine: EngineType.CDK_PIPELINES, // omit for the default CODEPIPELINE
+  stages: ['dev', 'prod'],
+});
+```
+
+See the [Configuration Reference](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/configuration.html) for the full engine and field surface.
 
 Visit our [documentation](https://cdklabs.github.io/cdk-cicd-wrapper/) to learn more.
 
