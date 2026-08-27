@@ -62,6 +62,8 @@ export function shouldWarnBundled(params: { armed: boolean; constructed: number;
  */
 export const DEPLOY_ROLE_FLAG = 'CDK_CICD_DEPLOY_ROLE_ARN';
 export const CFN_EXEC_ROLE_FLAG = 'CDK_CICD_CFN_EXEC_ROLE_ARN';
+/** ExternalId presented when assuming the forced deploy role (m-external-id). See `DeploymentConfig.externalId`. */
+export const DEPLOY_ROLE_EXTERNAL_ID_FLAG = 'CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID';
 
 function envArn(value: string | undefined): string | undefined {
   return value !== undefined && value.trim().length > 0 ? value.trim() : undefined;
@@ -71,13 +73,15 @@ function envArn(value: string | undefined): string | undefined {
  * The synthesizer the wrapper installs. `DefaultStackSynthesizer` is the Autopilot default (app-staging is
  * opt-in, still alpha). When the CLI has exported forced deployer / CloudFormation-execution role ARNs
  * for the active stage (m3-forced-roles), they are threaded into the synthesizer here -- read from the
- * environment, not from config, so the wrapper stays decoupled from cicd.config parsing.
+ * environment, not from config, so the wrapper stays decoupled from cicd.config parsing. A forced
+ * deploy-role ExternalId is threaded the same way (`DefaultStackSynthesizer.deployRoleExternalId`).
  */
 export function resolveSynthesizer(_config: Record<string, unknown>): IReusableStackSynthesizer {
   const deployRoleArn = envArn(process.env[DEPLOY_ROLE_FLAG]);
   const cloudFormationExecutionRole = envArn(process.env[CFN_EXEC_ROLE_FLAG]);
+  const deployRoleExternalId = envArn(process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG]);
   if (deployRoleArn !== undefined || cloudFormationExecutionRole !== undefined) {
-    return new DefaultStackSynthesizer({ deployRoleArn, cloudFormationExecutionRole });
+    return new DefaultStackSynthesizer({ deployRoleArn, cloudFormationExecutionRole, deployRoleExternalId });
   }
   return new DefaultStackSynthesizer();
 }

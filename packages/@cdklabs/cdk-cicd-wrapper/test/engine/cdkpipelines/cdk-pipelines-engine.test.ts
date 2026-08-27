@@ -4,13 +4,13 @@
 // The Blueprint-compatible CDK Pipelines engine: reproduces the Blueprint pipeline shape (Source -> Build/Synth ->
 // UpdatePipeline self-mutation -> Assets -> one wave per stage, with a manual-approval gate on gated stages).
 
+import * as path from 'path';
 import { App, Aspects, Stack, Stage } from 'aws-cdk-lib';
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as path from 'path';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
@@ -259,11 +259,7 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
       }
     }
 
-    function renderWithRoleNames(names: {
-      pipeline?: string;
-      assetsFile?: string;
-      assetsDocker?: string;
-    }): Template {
+    function renderWithRoleNames(names: { pipeline?: string; assetsFile?: string; assetsDocker?: string }): Template {
       const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
       const engine = new CdkPipelinesEngine(stack, 'Cd', {
         config: defineCICD({
@@ -360,9 +356,7 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
       });
       void engine;
       Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
-      expect(
-        Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-S1')),
-      ).toHaveLength(0);
+      expect(Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-S1'))).toHaveLength(0);
     });
   });
 });

@@ -12,6 +12,8 @@ import * as path from 'path';
 import {
   Arn,
   ArnFormat,
+  AspectPriority,
+  Aspects,
   DefaultStackSynthesizer,
   Duration,
   RemovalPolicy,
@@ -27,7 +29,14 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { buildSourceAction } from './source';
 import { BuildImage, BuildImageKind, ImageTagStrategy } from '../../config/build-image';
-import { CodeArtifactConfig, DeployModel, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
+import {
+  CodeArtifactConfig,
+  CodePipelineRoleNames,
+  DeployModel,
+  ProxyConfig,
+  ResolvedCicdConfig,
+} from '../../config/types';
+import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
 import { EngineRenderProps, IEngine } from '../types';
@@ -316,6 +325,53 @@ export class CodePipelineEngine implements IEngine {
       ],
       true,
     );
+
+    // Compliance/access-log bucket: attach the per-region name-substituting aspect when a name is
+    // configured (the bucket itself is force-provisioned above via `void support.complianceLogBucket`).
+    // MUTATING priority so the L1 loggingConfiguration override lands before the readonly
+    // AwsSolutionsChecks, else AwsSolutions-S1 false-fails. No S1 suppression is added.
+    if (config.complianceLogBucketName !== undefined) {
+      Aspects.of(scope).add(
+        new AccessLogsForBucketAspect({
+          complianceLogBucketName: config.complianceLogBucketName,
+          mainRegion: Stack.of(scope).region,
+        }),
+        { priority: AspectPriority.MUTATING },
+      );
+    }
+
+    // Force deterministic RoleNames on the flat engine's own roles (Blueprint parity), last, once every
+    // role exists. The pipeline role is on the Pipeline construct; each CodeBuild project's role is named
+    // `<buildRolePrefix>-<projectId>` from its construct id (Build / UpdatePipeline / Deploy-<stage>).
+    if (config.codePipelineRoleNames !== undefined) {
+      this.enforceRoleNames(scope, pipeline, config.codePipelineRoleNames);
+    }
+  }
+
+  /**
+   * Force `RoleName` on the flat engine's own roles (Blueprint `PipelineRoleNameEnforcementPlugin`
+   * parity for the CODEPIPELINE engine). The pipeline role is the CodePipeline construct's own role;
+   * the per-stage CodeBuild roles are named `<buildRolePrefix>-<projectId>`, where `projectId` is the
+   * CodeBuild project's construct id lower-cased and stripped of the `Project` suffix (so `BuildProject`
+   * -> `build`, `UpdatePipeline` -> `updatepipeline`, `Deploy-dev` -> `deploy-dev`). Any omitted field
+   * keeps CDK's generated name.
+   */
+  private enforceRoleNames(scope: Construct, pipeline: codepipeline.Pipeline, names: CodePipelineRoleNames): void {
+    if (names.pipeline !== undefined && names.pipeline.length > 0) {
+      const pipelineRole = pipeline.role.node.defaultChild as iam.CfnRole | undefined;
+      if (pipelineRole !== undefined) pipelineRole.roleName = names.pipeline;
+    }
+
+    const prefix = names.buildRolePrefix;
+    if (prefix !== undefined && prefix.length > 0) {
+      for (const project of Construct.isConstruct(scope) ? scope.node.findAll() : []) {
+        if (!(project instanceof codebuild.PipelineProject)) continue;
+        const cfnRole = project.role?.node.defaultChild as iam.CfnRole | undefined;
+        if (cfnRole === undefined) continue;
+        const suffix = project.node.id.replace(/Project$/, '').toLowerCase();
+        cfnRole.roleName = `${prefix}-${suffix}`;
+      }
+    }
   }
 
   /**
