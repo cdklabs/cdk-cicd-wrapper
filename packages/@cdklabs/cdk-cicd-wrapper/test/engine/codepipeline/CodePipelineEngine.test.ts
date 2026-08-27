@@ -1067,4 +1067,58 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       expect(build.env).toBeUndefined();
     });
   });
+
+  describe('codePipelineRoleNames (Blueprint role-name parity for the flat engine)', () => {
+    test('forces the pipeline role name and the per-stage build role names via prefix', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev', 'prod'],
+        codePipelineRoleNames: { pipeline: 'shop-codepipeline-role', buildRolePrefix: 'shop-build' },
+      });
+      const t = render(config);
+      const roleNames = Object.values(t.findResources('AWS::IAM::Role'))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => r.Properties.RoleName)
+        .filter((n): n is string => typeof n === 'string');
+      // The pipeline role, plus the CI build, self-update, and per-stage deploy build roles.
+      expect(roleNames).toEqual(
+        expect.arrayContaining([
+          'shop-codepipeline-role',
+          'shop-build-build', // BuildProject
+          'shop-build-updatepipeline', // UpdatePipeline
+          'shop-build-deploy-dev', // Deploy-dev
+          'shop-build-deploy-prod', // Deploy-prod
+        ]),
+      );
+    });
+
+    test('omitting codePipelineRoleNames leaves every role CDK-named', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+      });
+      const t = render(config);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const r of Object.values(t.findResources('AWS::IAM::Role')) as any[]) {
+        expect(r.Properties.RoleName).toBeUndefined();
+      }
+    });
+
+    test('only the pipeline name set: build roles stay CDK-named', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        codePipelineRoleNames: { pipeline: 'shop-codepipeline-role' },
+      });
+      const t = render(config);
+      const named = Object.values(t.findResources('AWS::IAM::Role'))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => r.Properties.RoleName)
+        .filter((n): n is string => typeof n === 'string');
+      expect(named).toEqual(['shop-codepipeline-role']);
+    });
+  });
 });

@@ -18,11 +18,13 @@ import { Repository } from './repository';
 import {
   CiConfig,
   CodeArtifactConfig,
+  CodePipelineRoleNames,
   DeployModel,
   DeploymentConfig,
   EngineType,
   GitHubActionsConfig,
   NpmRegistryConfig,
+  PipelineRoleNames,
   PluginRef,
   ProxyConfig,
   RegionOrder,
@@ -81,6 +83,12 @@ export interface CicdConfigProps {
   readonly engine?: EngineType;
   /** GitHub Actions engine configuration. Only read when `engine` is `EngineType.GITHUB_ACTIONS`. */
   readonly githubActions?: GitHubActionsConfig;
+  /** Forced role names for the CDK Pipelines engine. See `ResolvedCicdConfig.pipelineRoleNames`. */
+  readonly pipelineRoleNames?: PipelineRoleNames;
+  /** Forced role names for the flat CodePipeline engine. See `ResolvedCicdConfig.codePipelineRoleNames`. */
+  readonly codePipelineRoleNames?: CodePipelineRoleNames;
+  /** Pipeline-level default deploy-role ExternalId. See `ResolvedCicdConfig.deployRoleExternalId`. */
+  readonly deployRoleExternalId?: string;
   readonly ci?: CiConfigInput;
   readonly codeArtifact?: CodeArtifactConfig;
   /** Generic private npm registry the builds authenticate against. See `ResolvedCicdConfig.npmRegistry`. */
@@ -185,6 +193,9 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     synthesizer: { type: props.synthesizer?.type ?? SynthesizerType.DEFAULT },
     engine: props.engine ?? EngineType.CODEPIPELINE,
     githubActions: props.githubActions,
+    pipelineRoleNames: props.pipelineRoleNames,
+    codePipelineRoleNames: props.codePipelineRoleNames,
+    deployRoleExternalId: props.deployRoleExternalId,
     ci: normalizeCi(
       props.ci,
       stages.map((s) => s.name),
