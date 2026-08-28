@@ -101,6 +101,16 @@ function replayEntryInto(entry: string, stage: Stage, context: CdkPipelinesStage
       return stage;
     }
   };
+  // Inherit `App`'s statics -- above all `App.of`. `ReplayApp` replaces the exported `App` on every
+  // target below, so any aws-cdk-lib code that reaches for a static through the export slot resolves it
+  // on `ReplayApp`, not the real `App`. The construct-synth warning path does exactly that: emitting a
+  // warning (e.g. a NodejsFunction bundling notice, or any `Annotations.of(scope).addWarningV2(...)`)
+  // runs `Acknowledgements.of(scope)` -> `App.of(scope)`, which on some aws-cdk-lib versions (confirmed
+  // on 2.195.0 and 2.255.0) reads `App` from a patched slot and calls `.of` on it. A bare `ReplayApp`
+  // has no statics, so that throws `App.of is not a function` and aborts the replay. Setting `App` as
+  // its prototype makes `ReplayApp.of` (and every other `App` static) delegate to the real `App`.
+  // Instances are unaffected: the constructor still returns `stage`.
+  Object.setPrototypeOf(ReplayApp, App);
   // Object.defineProperty, not a plain assignment: on newer aws-cdk-lib, the `aws-cdk-lib`/
   // `aws-cdk-lib/core` re-exports self-memoize into a non-writable value on first read (see
   // appExportTargets), and a plain assignment silently no-ops against that -- the entry's

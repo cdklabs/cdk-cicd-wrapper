@@ -3,9 +3,9 @@
 // stage, how many S3 buckets its stack got -- proving the plain bin's resources land in each stage.
 const path = require('path');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { assemblePipelineApp } = require('../../../../lib/v3/runtime/pipeline-assembler.js');
+const { assemblePipelineApp } = require('../../../lib/runtime/pipeline-assembler.js');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { defineCICD, Repository } = require('../../../../lib/index.js');
+const { defineCICD, Repository } = require('../../../lib/index.js');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const cdk = require('aws-cdk-lib');
 
