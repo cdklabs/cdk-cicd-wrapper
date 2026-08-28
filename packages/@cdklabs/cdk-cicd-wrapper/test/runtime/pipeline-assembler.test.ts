@@ -13,7 +13,7 @@ import { execFileSync } from 'child_process';
 import { existsSync, mkdtempSync, rmSync } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { Stack, Stage } from 'aws-cdk-lib';
+import { App, Stack, Stage } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { defineCICD } from '../../src/config/define';
@@ -190,7 +190,7 @@ describe('self-mutating assembler: GITHUB_ACTIONS picks the GitHubActionsEngine'
 // skip with a pointer when lib/ is absent, exactly as the bundled-diagnostic test does.
 describe('CDK Pipelines assembler: real per-stage replay (subprocess)', () => {
   const runner = path.join(__dirname, 'fixtures', 'cdkp-runner.js');
-  const compiled = path.join(__dirname, '..', '..', '..', 'lib', 'v3', 'runtime', 'pipeline-assembler.js');
+  const compiled = path.join(__dirname, '..', '..', 'lib', 'runtime', 'pipeline-assembler.js');
   const maybe = existsSync(compiled) ? test : test.skip;
 
   maybe('replays the plain bin into each stage so every stage stack gets the bucket', () => {
@@ -216,5 +216,51 @@ describe('CDK Pipelines assembler: real per-stage replay (subprocess)', () => {
     expect(byStage.prod.account).toBe('222222222222');
     // CDK_STAGE was pinned per stage: the bucket logical id (Data-${CDK_STAGE}) differs across stages.
     expect(byStage.dev.bucketIds[0]).not.toEqual(byStage.prod.bucketIds[0]);
+  });
+
+  // Regression guard for the App.of crash: plain-bin.js emits a construct warning during replay
+  // (addWarningV2 -> Acknowledgements.of -> App.of). If ReplayApp stops inheriting App's statics, the
+  // subprocess above throws `App.of is not a function` and execFileSync rejects -- so the assertions
+  // there already fail closed. This case makes the intent explicit and independent of bucket counts.
+  maybe('replay survives an aws-cdk-lib warning that reaches App.of', () => {
+    const out = execFileSync(process.execPath, [runner], {
+      env: { ...process.env, CDK_DEFAULT_ACCOUNT: '111111111111', CDK_DEFAULT_REGION: 'us-east-1' },
+      encoding: 'utf-8',
+    });
+    // The subprocess only reaches its RESULT= line if the warning path (App.of) did not throw.
+    expect(out).toMatch(/^RESULT=/m);
+    expect(out).not.toMatch(/App\.of is not a function/);
+  });
+});
+
+// The App.of crash in isolation, without the compiled lib/ or a subprocess: it is a property of the
+// ReplayApp stand-in the assembler builds. ReplayApp REPLACES the exported `App`, so aws-cdk-lib code
+// that reads a static off `App` reads it off ReplayApp. `App.of` is the one that bites -- the synth-time
+// warning path (Acknowledgements.of -> App.of) calls it. A bare class has no statics; setting App as its
+// prototype makes them delegate. This reproduces both halves so the fix cannot silently regress.
+describe('CDK Pipelines assembler: ReplayApp inherits App statics (App.of)', () => {
+  test('a bare ReplayApp has no App.of; prototype-linked to App it delegates', () => {
+    const parent = new App();
+    const stage = new Stage(parent, 'dev');
+
+    const Bare = class {
+      public constructor() {
+        return stage as unknown as object;
+      }
+    };
+    // The bug: the replay stand-in without the fix.
+    expect((Bare as unknown as { of?: unknown }).of).toBeUndefined();
+
+    const Fixed = class {
+      public constructor() {
+        return stage as unknown as object;
+      }
+    };
+    Object.setPrototypeOf(Fixed, App);
+    // The fix: App's statics (App.of, App.isApp, …) delegate through the prototype.
+    expect(typeof (Fixed as unknown as { of?: unknown }).of).toBe('function');
+    expect((Fixed as unknown as typeof App).of).toBe(App.of);
+    // Instance behaviour is unchanged -- constructing still yields the stage, not a real App.
+    expect(new (Fixed as unknown as new () => object)()).toBe(stage);
   });
 });
