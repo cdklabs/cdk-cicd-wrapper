@@ -754,6 +754,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pipeline-stack-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline stack name
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#repository" class="md-nav__link">
     <span class="md-ellipsis">
       Repository
@@ -2693,6 +2702,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pipeline-stack-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline stack name
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#repository" class="md-nav__link">
     <span class="md-ellipsis">
       Repository
@@ -2864,6 +2882,12 @@ and <code>src/config/define.ts</code>.</p>
 <td>CDK bootstrap qualifier.</td>
 </tr>
 <tr>
+<td><code>pipelineStackName</code></td>
+<td><code>string</code></td>
+<td><code>${application}-pipeline</code></td>
+<td>CloudFormation stack name for the self-mutating pipeline stack (<code>CDK_PIPELINES</code>/<code>GITHUB_ACTIONS</code>). See <a href="#pipeline-stack-name">Pipeline stack name</a>.</td>
+</tr>
+<tr>
 <td><code>repository</code></td>
 <td><code>Repository</code></td>
 <td>— (required)</td>
@@ -2989,6 +3013,30 @@ and <code>src/config/define.ts</code>.</p>
 <p><code>application</code> names the app and drives asset naming. <code>qualifier</code> is the CDK bootstrap qualifier; when
 omitted it is derived from <code>application</code> — lowercased, non-alphanumerics stripped, truncated to 10
 characters (falling back to <code>cdkcicd</code> if that leaves nothing).</p>
+<h2 id="pipeline-stack-name">Pipeline stack name</h2>
+<p>The <code>CDK_PIPELINES</code> and <code>GITHUB_ACTIONS</code> engines assemble their own self-mutating pipeline stack, named
+<code>${application}-pipeline</code> by default. <code>pipelineStackName</code> overrides the CloudFormation stack name of
+that stack:</p>
+<div class="highlight"><pre><span></span><code><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'automation'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">pipelineStackName</span><span class="o">:</span><span class="w"> </span><span class="s1">'automation'</span><span class="p">,</span><span class="w"> </span><span class="c1">// deploy the pipeline stack as `automation`, not `automation-pipeline`</span>
+<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'automation'</span><span class="p">),</span>
+<span class="w">  </span><span class="nx">engine</span><span class="o">:</span><span class="w"> </span><span class="kt">EngineType.CDK_PIPELINES</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="cm">/* … */</span><span class="p">],</span>
+<span class="p">});</span>
+</code></pre></div>
+<p>Set it to preserve a pre-1.x (Blueprint) pipeline stack name when migrating an <strong>already-deployed</strong>
+pipeline. A deployed pipeline is self-mutating: its <code>SelfMutate</code> step runs <code>cdk deploy &lt;stackName&gt;</code>, and
+a self-mutating pipeline cannot rename its own root stack in place — so if the synthesized stack name
+changes from the deployed one, <code>SelfMutate</code> fails with <code>No stacks match the name(s) &lt;oldName&gt;</code>. Pinning
+the name back to the deployed value lets the existing pipeline update in place, avoiding a disruptive
+rename cutover (pipeline outage plus, where the pipeline pins cross-account role names, a manual
+role-name resequencing).</p>
+<p>The override changes <strong>only</strong> the CloudFormation <code>stackName</code>. The construct id stays
+<code>${application}-pipeline</code>, so the pipeline's child resource logical IDs (roles, CodeBuild projects,
+artifact buckets) — which derive from the construct node path — are unchanged from the default. It does
+not restore pre-1.x child logical IDs; it is scoped to the pipeline stack name only. Omitting the field
+keeps the <code>${application}-pipeline</code> default, so existing consumers are unaffected.</p>
 <h2 id="repository">Repository</h2>
 <p>The source repository, constructed through a <code>Repository</code> factory. The tracked branch defaults to
 <code>main</code>.</p>
@@ -3201,7 +3249,7 @@ custom plugin and must be registered in <code>bin/</code> via <code>CdkCicd.addP
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-08-27
+    2026-08-28
   </span>
 
     
