@@ -263,4 +263,45 @@ describe('CDK Pipelines assembler: ReplayApp inherits App statics (App.of)', () 
     // Instance behaviour is unchanged -- constructing still yields the stage, not a real App.
     expect(new (Fixed as unknown as new () => object)()).toBe(stage);
   });
+
+  // Pin the supported range explicitly. The App-export injection hook is documented (inject.ts) as
+  // verified from aws-cdk-lib 2.195.0 upward -- that is the wrapper's declared peer floor
+  // (`^2.195.0`), so this fix widens NOTHING below it; it repairs a crash WITHIN the range. This guard
+  // fails loudly if the installed dev version drifts below the floor, or if a future aws-cdk-lib ever
+  // drops the `App.of` static the fix relies on -- either would invalidate the compatibility claim.
+  test('the installed aws-cdk-lib is within the declared peer range and exposes App.of', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const installed: string = require('aws-cdk-lib/package.json').version;
+    const [major, minor] = installed.split('.').map((n) => parseInt(n, 10));
+    expect(major).toBe(2);
+    expect(minor).toBeGreaterThanOrEqual(195); // the wrapper's declared peer floor
+    expect(typeof (App as unknown as { of?: unknown }).of).toBe('function');
+  });
+
+  // The fix must hold for the versions the compatibility claim names, not just whatever single copy is
+  // installed. We cannot install a second aws-cdk-lib in CI (offline), so model each version's `App`
+  // shape: `App.of` is a static that has existed unchanged across this range, so a class exposing a
+  // static `of` faithfully represents 2.250.0 and 2.255.0's App for the purpose of THIS mechanism.
+  // Reproduces the crash (bare stand-in) and proves the fix (prototype-linked) against each shape.
+  it.each([['2.250.0'], ['2.255.0']])('replay stand-in survives App.of for an aws-cdk-lib %s-shaped App', (version) => {
+    // A version-representative App: a class whose only relevant surface is the static `App.of`.
+    const marker = Symbol(version);
+    const VersionedApp = class {
+      public static of(_scope: unknown): symbol {
+        return marker;
+      }
+    };
+
+    // Without the fix: the bare replay stand-in that replaced the exported App has no `.of`, so the
+    // synth warning path (Acknowledgements.of -> App.of) throws `App.of is not a function`.
+    const Bare = class {};
+    expect((Bare as unknown as { of?: unknown }).of).toBeUndefined();
+
+    // With the fix: setPrototypeOf makes the stand-in delegate to this version's App.of.
+    const Fixed = class {};
+    Object.setPrototypeOf(Fixed, VersionedApp);
+    const resolvedOf = (Fixed as unknown as { of: (s: unknown) => symbol }).of;
+    expect(typeof resolvedOf).toBe('function');
+    expect(resolvedOf(undefined)).toBe(marker); // delegates to the versioned App.of, does not throw
+  });
 });
