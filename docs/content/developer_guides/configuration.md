@@ -21,6 +21,7 @@ export default defineCICD({
 | ------------------------- | ----------------------------- | -------------------------------------- | --------------------------------------------------------------------------- |
 | `application`             | `string`                      | —                                      | Application name; drives the bootstrap qualifier and asset naming.          |
 | `qualifier`               | `string`                      | derived from `application` (≤10 chars) | CDK bootstrap qualifier.                                                    |
+| `pipelineStackName`       | `string`                      | `${application}-pipeline`              | CloudFormation stack name for the self-mutating pipeline stack (`CDK_PIPELINES`/`GITHUB_ACTIONS`). See [Pipeline stack name](#pipeline-stack-name). |
 | `repository`              | `Repository`                  | — (required)                           | The pipeline's source. See [Repository](#repository).                       |
 | `stages`                  | `Array<string \| StageInput>` | — (required)                           | Deployment stages, in order. See [Stages](#stages).                         |
 | `engine`                  | `EngineType`                  | `CODEPIPELINE`                         | Which engine renders the pipeline. See [Engine](#engine).                   |
@@ -47,6 +48,36 @@ export default defineCICD({
 `application` names the app and drives asset naming. `qualifier` is the CDK bootstrap qualifier; when
 omitted it is derived from `application` — lowercased, non-alphanumerics stripped, truncated to 10
 characters (falling back to `cdkcicd` if that leaves nothing).
+
+## Pipeline stack name
+
+The `CDK_PIPELINES` and `GITHUB_ACTIONS` engines assemble their own self-mutating pipeline stack, named
+`${application}-pipeline` by default. `pipelineStackName` overrides the CloudFormation stack name of
+that stack:
+
+```typescript
+export default defineCICD({
+  application: 'automation',
+  pipelineStackName: 'automation', // deploy the pipeline stack as `automation`, not `automation-pipeline`
+  repository: Repository.codecommit('automation'),
+  engine: EngineType.CDK_PIPELINES,
+  stages: [/* … */],
+});
+```
+
+Set it to preserve a pre-1.x (Blueprint) pipeline stack name when migrating an **already-deployed**
+pipeline. A deployed pipeline is self-mutating: its `SelfMutate` step runs `cdk deploy <stackName>`, and
+a self-mutating pipeline cannot rename its own root stack in place — so if the synthesized stack name
+changes from the deployed one, `SelfMutate` fails with `No stacks match the name(s) <oldName>`. Pinning
+the name back to the deployed value lets the existing pipeline update in place, avoiding a disruptive
+rename cutover (pipeline outage plus, where the pipeline pins cross-account role names, a manual
+role-name resequencing).
+
+The override changes **only** the CloudFormation `stackName`. The construct id stays
+`${application}-pipeline`, so the pipeline's child resource logical IDs (roles, CodeBuild projects,
+artifact buckets) — which derive from the construct node path — are unchanged from the default. It does
+not restore pre-1.x child logical IDs; it is scoped to the pipeline stack name only. Omitting the field
+keeps the `${application}-pipeline` default, so existing consumers are unaffected.
 
 ## Repository
 

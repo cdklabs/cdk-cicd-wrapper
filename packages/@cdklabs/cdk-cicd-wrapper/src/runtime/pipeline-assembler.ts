@@ -155,7 +155,13 @@ export function replayStageProvider(entry: string): IStageProvider {
  */
 export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStageProvider): App {
   const app = new App();
-  const name = `${config.application ?? DEFAULT_APPLICATION}-pipeline`;
+  // The construct id stays `${application}-pipeline` regardless of any stack-name override: the
+  // pipeline's child logical IDs derive from the construct node path (`<id>/Cd/Pipeline/…`), so
+  // changing the id would churn every child logical ID. `pipelineStackName` overrides ONLY the
+  // CloudFormation stackName, which is what lets an already-deployed self-mutating pipeline update in
+  // place (its `SelfMutate` runs `cdk deploy <stackName>`) without a rename cutover.
+  const constructId = `${config.application ?? DEFAULT_APPLICATION}-pipeline`;
+  const stackName = config.pipelineStackName ?? constructId;
   // Ambient credentials win when present (a real `deploy-ci` run, or any locally-authenticated synth).
   // Falling back to the first stage's env keeps the pipeline stack's account/region reproducible when
   // no credentials are active -- e.g. the GitHub Actions engine's own self-mutation "Synthesize" job,
@@ -163,17 +169,20 @@ export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStagePro
   // to pass cdk-pipelines-github's "commit the updated workflow file" check (a token there is never
   // stable across runs).
   const firstStage = config.stages[0];
-  const stack = new Stack(app, name, {
-    stackName: name,
+  const stack = new Stack(app, constructId, {
+    stackName,
     env: {
       account: process.env.CDK_DEFAULT_ACCOUNT ?? firstStage?.env.account,
       region: process.env.CDK_DEFAULT_REGION ?? firstStage?.env.regions[0],
     } as Environment,
   });
+  // `pipelineName` is the construct id, not the (possibly overridden) stackName: the GitHub Actions
+  // engine embeds it as a stable literal the "commit the updated workflow file" self-mutation check
+  // compares across runs, so it must not vary with a CloudFormation stack-name override.
   if (config.engine === EngineType.GITHUB_ACTIONS) {
-    new GitHubActionsEngine(stack, 'Cd', { config, pipelineName: name, stages: provider });
+    new GitHubActionsEngine(stack, 'Cd', { config, pipelineName: constructId, stages: provider });
   } else {
-    new CdkPipelinesEngine(stack, 'Cd', { config, pipelineName: name, stages: provider });
+    new CdkPipelinesEngine(stack, 'Cd', { config, pipelineName: constructId, stages: provider });
   }
   Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
   return app;

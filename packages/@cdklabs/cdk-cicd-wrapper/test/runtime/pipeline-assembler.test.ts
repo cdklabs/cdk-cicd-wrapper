@@ -73,6 +73,69 @@ describe('CDK Pipelines assembler: pipeline structure (stub provider)', () => {
   });
 });
 
+describe('CDK Pipelines assembler: pipelineStackName override', () => {
+  const prev = { a: process.env.CDK_DEFAULT_ACCOUNT, r: process.env.CDK_DEFAULT_REGION };
+  beforeEach(() => {
+    process.env.CDK_DEFAULT_ACCOUNT = '111111111111';
+    process.env.CDK_DEFAULT_REGION = 'us-east-1';
+  });
+  afterEach(() => {
+    process.env.CDK_DEFAULT_ACCOUNT = prev.a;
+    process.env.CDK_DEFAULT_REGION = prev.r;
+  });
+
+  function pinnedConfig() {
+    return defineCICD({
+      application: 'automation',
+      pipelineStackName: 'automation',
+      repository: Repository.codecommit('automation'),
+      engine: EngineType.CDK_PIPELINES,
+      stages: ['dev'],
+    });
+  }
+
+  test('renders the pipeline stack with the overridden CloudFormation stackName', () => {
+    const app = buildPipelineApp(pinnedConfig(), new StubProvider());
+    // The construct id is unchanged (`${application}-pipeline`), so the stack is still found by it...
+    const stack = app.node.findChild('automation-pipeline') as Stack;
+    // ...but its CloudFormation stack name is the override.
+    expect(stack.stackName).toBe('automation');
+  });
+
+  test('the construct id stays `${application}-pipeline`, so child logical IDs are unchanged', () => {
+    const withOverride = buildPipelineApp(pinnedConfig(), new StubProvider());
+    const withoutOverride = buildPipelineApp(
+      defineCICD({
+        application: 'automation',
+        repository: Repository.codecommit('automation'),
+        engine: EngineType.CDK_PIPELINES,
+        stages: ['dev'],
+      }),
+      new StubProvider(),
+    );
+    // Same construct id both ways.
+    const a = withOverride.node.findChild('automation-pipeline') as Stack;
+    const b = withoutOverride.node.findChild('automation-pipeline') as Stack;
+    // The pipeline role's logical id derives from the construct node path -- identical with and without
+    // the stackName override (only the CFN stackName differs).
+    const roleIds = (s: Stack) => Object.keys(Template.fromStack(s).findResources('AWS::IAM::Role')).sort();
+    expect(roleIds(a)).toEqual(roleIds(b));
+  });
+
+  test('omitting pipelineStackName keeps the `${application}-pipeline` default', () => {
+    const stack = buildPipelineApp(
+      defineCICD({
+        application: 'automation',
+        repository: Repository.codecommit('automation'),
+        engine: EngineType.CDK_PIPELINES,
+        stages: ['dev'],
+      }),
+      new StubProvider(),
+    ).node.findChild('automation-pipeline') as Stack;
+    expect(stack.stackName).toBe('automation-pipeline');
+  });
+});
+
 describe('self-mutating assembler: GITHUB_ACTIONS picks the GitHubActionsEngine', () => {
   const prev = { a: process.env.CDK_DEFAULT_ACCOUNT, r: process.env.CDK_DEFAULT_REGION };
   let workflowDir: string;
@@ -102,6 +165,24 @@ describe('self-mutating assembler: GITHUB_ACTIONS picks the GitHubActionsEngine'
     expect(stack.node.tryFindChild('Cd')).toBeInstanceOf(GitHubActionsEngine);
     // No AWS-hosted CodePipeline: GitHub Actions renders a workflow file, not a CodePipeline resource.
     Template.fromStack(stack).resourceCountIs('AWS::CodePipeline::Pipeline', 0);
+  });
+
+  test('pipelineStackName overrides the CloudFormation stackName but not the construct id', () => {
+    const app = buildPipelineApp(
+      defineCICD({
+        application: 'shop',
+        pipelineStackName: 'shop',
+        repository: Repository.github('org/shop'),
+        stages: ['dev'],
+        engine: EngineType.GITHUB_ACTIONS,
+        githubActions: { workflowPath: path.join(workflowDir, '.github', 'workflows', 'deploy.yml') },
+      }),
+      new StubProvider(),
+    );
+    // Construct id preserved (the stable literal the workflow's self-mutation check compares)...
+    const stack = app.node.findChild('shop-pipeline') as Stack;
+    // ...while the CloudFormation stack name is the override.
+    expect(stack.stackName).toBe('shop');
   });
 });
 
