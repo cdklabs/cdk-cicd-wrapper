@@ -76,6 +76,12 @@ export interface ProxyConfigInput {
 export interface CicdConfigProps {
   readonly application?: string;
   readonly qualifier?: string;
+  /**
+   * CloudFormation stack name for the engine-owned self-mutating pipeline stack. See
+   * `ResolvedCicdConfig.pipelineStackName`. Defaults to `${application}-pipeline`; set it to pin a
+   * pre-1.x (Blueprint) pipeline stack name for an in-place migration.
+   */
+  readonly pipelineStackName?: string;
   readonly repository: Repository;
   /** Each stage is either a bare name (`'dev'`) or a full object. */
   readonly stages: Array<string | StageInput>;
@@ -188,6 +194,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
   return {
     application,
     qualifier: props.qualifier ?? (application !== undefined ? deriveQualifier(application) : undefined),
+    pipelineStackName: props.pipelineStackName,
     repository: props.repository,
     stages,
     synthesizer: { type: props.synthesizer?.type ?? SynthesizerType.DEFAULT },

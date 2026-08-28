@@ -331,6 +331,19 @@ export interface ResolvedCicdConfig {
   readonly application?: string;
   /** Bootstrap qualifier (≤10 chars), derived from `application` when not given. */
   readonly qualifier?: string;
+  /**
+   * CloudFormation stack name for the engine-owned self-mutating pipeline stack (the one the
+   * `CDK_PIPELINES` and `GITHUB_ACTIONS` engines assemble). Only read by those self-mutating engines;
+   * the flat `CODEPIPELINE` engine names its stack from the user's own `bin`.
+   * @default `${application}-pipeline`
+   *
+   * Set this to preserve a pre-1.x (Blueprint) pipeline stack name so an already-deployed,
+   * self-mutating pipeline can update IN PLACE instead of requiring a rename cutover -- the pipeline's
+   * `SelfMutate` step runs `cdk deploy <thisName>`, and a self-mutating pipeline cannot rename its own
+   * root stack. Changes ONLY the CloudFormation `stackName`, never the construct id, so the pipeline's
+   * child logical IDs are unchanged from the default. Same Blueprint-parity family as `pipelineRoleNames`.
+   */
+  readonly pipelineStackName?: string;
   /** The source repository. */
   readonly repository: Repository;
   /** The deployment stages, in order. */

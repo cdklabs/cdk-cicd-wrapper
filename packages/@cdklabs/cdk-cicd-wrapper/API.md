@@ -3270,6 +3270,7 @@ const resolvedCicdConfig: ResolvedCicdConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.githubActions">githubActions</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig">GitHubActionsConfig</a></code> | GitHub Actions engine configuration. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the builds authenticate against with a bearer token, if any. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.pipelineRoleNames">pipelineRoleNames</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.PipelineRoleNames">PipelineRoleNames</a></code> | Forced IAM role names for the CDK Pipelines (`CDK_PIPELINES`) engine's own roles. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.pipelineStackName">pipelineStackName</a></code> | <code>string</code> | CloudFormation stack name for the engine-owned self-mutating pipeline stack (the one the `CDK_PIPELINES` and `GITHUB_ACTIONS` engines assemble). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.plugins">plugins</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.PluginRef">PluginRef</a>[]</code> | Security plugins (hardening Aspects) to apply tree-wide, by `{ name, version }` (issue #241). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.proxy">proxy</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ProxyConfig">ProxyConfig</a></code> | HTTP(S) proxy every build project routes through, if any. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier (≤10 chars), derived from `application` when not given. |
@@ -3527,6 +3528,22 @@ Forced IAM role names for the CDK Pipelines (`CDK_PIPELINES`) engine's own roles
 
 Only read when
 `engine` is `EngineType.CDK_PIPELINES`; omitted fields keep CDK-generated names.
+
+---
+
+##### `pipelineStackName`<sup>Optional</sup> <a name="pipelineStackName" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.pipelineStackName"></a>
+
+```typescript
+public readonly pipelineStackName: string;
+```
+
+- *Type:* string
+- *Default:* `${application}-pipeline`  Set this to preserve a pre-1.x (Blueprint) pipeline stack name so an already-deployed, self-mutating pipeline can update IN PLACE instead of requiring a rename cutover -- the pipeline's `SelfMutate` step runs `cdk deploy <thisName>`, and a self-mutating pipeline cannot rename its own root stack. Changes ONLY the CloudFormation `stackName`, never the construct id, so the pipeline's child logical IDs are unchanged from the default. Same Blueprint-parity family as `pipelineRoleNames`.
+
+CloudFormation stack name for the engine-owned self-mutating pipeline stack (the one the `CDK_PIPELINES` and `GITHUB_ACTIONS` engines assemble).
+
+Only read by those self-mutating engines;
+the flat `CODEPIPELINE` engine names its stack from the user's own `bin`.
 
 ---
 
