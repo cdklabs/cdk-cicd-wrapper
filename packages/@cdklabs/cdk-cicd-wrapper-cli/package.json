@@ -47,7 +47,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1030.0",
+    "@aws-sdk/client-s3": "^3.1120.0",
     "@aws-sdk/credential-providers": "^3.1041.0",
     "@cdklabs/cdk-cicd-wrapper": "^0.0.0",
     "@types/fs-extra": "^11.0.4",
