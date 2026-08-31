@@ -43,7 +43,7 @@
     "@typescript-eslint/eslint-plugin": "^7",
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
-    "aislop": "^0.14.1",
+    "aislop": "^0.15.0",
     "all-contributors-cli": "^6.26.1",
     "cdklabs-projen-project-types": "^0.5.2",
     "constructs": "10.5.0",
