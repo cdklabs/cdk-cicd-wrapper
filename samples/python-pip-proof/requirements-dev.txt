@@ -1,0 +1,2 @@
+pytest==8.4.2
+pip-audit==2.9.0

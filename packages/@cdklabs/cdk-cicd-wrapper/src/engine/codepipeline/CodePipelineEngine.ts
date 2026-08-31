@@ -30,6 +30,7 @@ import { Construct } from 'constructs';
 import { buildSourceAction } from './source';
 import { BuildImage, BuildImageKind, ImageTagStrategy } from '../../config/build-image';
 import {
+  CiLanguage,
   CodeArtifactConfig,
   CodePipelineRoleNames,
   DeployModel,
@@ -39,7 +40,7 @@ import {
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
-import { defaultCiCommands } from '../ci-commands';
+import { defaultCiCommands, languageOf } from '../ci-commands';
 import { EngineRenderProps, IEngine } from '../types';
 
 /**
@@ -53,6 +54,10 @@ const BOOTSTRAP_ROLE_KINDS = ['deploy', 'file-publishing', 'image-publishing', '
  * `aws-cdk-lib` requires Node >= 20 and the standard CodeBuild image still defaults to Node 18.
  */
 const NODE_RUNTIME_VERSION = 22;
+// The Python runtime pinned on the managed CI image when the app is Python. Emitted only for the
+// managed image (like the Node pin); a user-supplied buildImage owns its own runtimes. Node stays
+// pinned alongside it because the `cdk` CLI is Node even for a Python app.
+const PYTHON_RUNTIME_VERSION = '3.12';
 
 /**
  * The newest Node runtime the CONSUMER's `aws-cdk-lib` knows about, for the deploy-driver Lambda.
@@ -174,6 +179,7 @@ export class CodePipelineEngine implements IEngine {
             assembly !== undefined,
             config.ci.partialBuildSpec,
             vpcNetworking,
+            languageOf(config.ci.language),
           ),
           input: sourceOutput,
           outputs: assembly !== undefined ? [assembly] : undefined,
@@ -455,7 +461,7 @@ export class CodePipelineEngine implements IEngine {
     const uri = `${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}/${repository.repositoryName}`;
     const commands = [
       ...(config.codeArtifact ? [codeArtifactLogin(stack, config.codeArtifact)] : []),
-      ...defaultCiCommands(),
+      ...defaultCiCommands(languageOf(config.ci.language)),
       // Log in to ECR, build the deployer image from the source, tag by commit, push. The image payload
       // is the app + deps (per the Dockerfile), NOT cdk.out -- Repo 2 synths at run time.
       `aws ecr get-login-password --region ${stack.region} | docker login --username AWS --password-stdin ${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}`,
@@ -467,7 +473,14 @@ export class CodePipelineEngine implements IEngine {
     // ordering as `project()` (NO_PROXY is what lets the AWS-API-bound `codeartifact login` skip the
     // proxy while `npm ci` against public npm goes through it).
     const install = {
-      ...(this.buildImage === undefined ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } : {}),
+      ...(this.buildImage === undefined
+        ? {
+            'runtime-versions': {
+              nodejs: NODE_RUNTIME_VERSION,
+              ...(languageOf(config.ci.language) === CiLanguage.PYTHON ? { python: PYTHON_RUNTIME_VERSION } : {}),
+            },
+          }
+        : {}),
       ...(config.proxy ? { commands: proxyInstallCommands(config.proxy) } : {}),
     };
 
@@ -613,7 +626,7 @@ export class CodePipelineEngine implements IEngine {
     // With no ci.steps the engine runs the default CI (which begins with its own `npm ci`). With
     // ci.steps configured, those steps ARE the build phase verbatim -- the engine injects nothing, not
     // even `npm ci`: a project that customizes CI decides for itself whether and where to install.
-    const base = steps.length > 0 ? steps : defaultCiCommands();
+    const base = steps.length > 0 ? steps : defaultCiCommands(languageOf(config.ci.language));
     // The synth is appended, never replaced by `ci.steps`. In promotion mode it produces the artifact
     // every deploy stage consumes, so a config that dropped it would render a pipeline that cannot
     // deploy at all; in deploy-time-synth mode it is the validation gate.
@@ -630,6 +643,7 @@ export class CodePipelineEngine implements IEngine {
     publishAssembly = false,
     partialBuildSpec?: codebuild.BuildSpec,
     vpcNetworking?: VpcNetworking,
+    language: CiLanguage = CiLanguage.NODE,
   ): codebuild.PipelineProject {
     const stack = Stack.of(scope);
     // Pin the Node runtime, but ONLY on the default (CodeBuild-managed) image. Without
@@ -639,12 +653,20 @@ export class CodePipelineEngine implements IEngine {
     // only honoured by the managed standard images, and each offers a fixed set, so emitting it for a
     // user-supplied `buildImage` (a custom registry image, or standard:5.0/6.0 where nodejs 22 does not
     // exist) turns a working pipeline into a hard YAML_FILE_ERROR in the install phase. A user who brings
-    // their own image owns its Node version.
+    // their own image owns its Node version. A Python app pins BOTH runtimes: Node stays because the
+    // `cdk` CLI is Node even for a Python app (it shells to `python3 app.py`).
     // The proxy's exports run first, in `install` -- ahead of the codeArtifact login and `npm ci`, both
     // of which need HTTP(S)_PROXY/NO_PROXY already set (NO_PROXY is what lets the AWS-API-bound
     // `codeartifact login` skip the proxy while `npm ci` against public npm goes through it).
     const install = {
-      ...(this.buildImage === undefined ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } : {}),
+      ...(this.buildImage === undefined
+        ? {
+            'runtime-versions': {
+              nodejs: NODE_RUNTIME_VERSION,
+              ...(language === CiLanguage.PYTHON ? { python: PYTHON_RUNTIME_VERSION } : {}),
+            },
+          }
+        : {}),
       ...(proxy ? { commands: proxyInstallCommands(proxy) } : {}),
     };
     // Every project runs `npm ci`; a private-registry login has to come first, or the install resolves

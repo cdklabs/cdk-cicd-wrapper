@@ -1785,6 +1785,7 @@ const ciConfig: CiConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.steps">steps</a></code> | <code>{[ key: string ]: string}</code> | Named build steps as shell commands, e.g. `{ lint: 'npx cdk-cicd validate' }`. Empty means the engine applies its built-in default set. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.synthStages">synthStages</a></code> | <code>string[]</code> | Which stages CI synthesizes. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.image">image</a></code> | <code>string</code> | Optional CodeBuild image override. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.language">language</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiLanguage">CiLanguage</a></code> | The CDK app's language, selecting which default build phase the engines render when `steps` is empty. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.partialBuildSpec">partialBuildSpec</a></code> | <code>aws-cdk-lib.aws_codebuild.BuildSpec</code> | Escape hatch (Blueprint `CDKPipelineProps.ciBuildSpec`, migrated): deep-merged into the CI build project's generated buildspec via `codebuild.mergeBuildSpecs`, augmenting rather than replacing the engine's own phases. Scoped the same way Blueprint scoped it -- the CI build project only, not self-update or per-stage deploy projects. |
 
 ---
@@ -1826,6 +1827,20 @@ public readonly image: string;
 - *Type:* string
 
 Optional CodeBuild image override.
+
+---
+
+##### `language`<sup>Optional</sup> <a name="language" id="@cdklabs/cdk-cicd-wrapper.CiConfig.property.language"></a>
+
+```typescript
+public readonly language: CiLanguage;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.CiLanguage">CiLanguage</a>
+
+The CDK app's language, selecting which default build phase the engines render when `steps` is empty.
+
+Omitted means auto-detect from `cdk.json`'s `app` command at synth time (see `CiLanguage`).
 
 ---
 
@@ -5253,6 +5268,38 @@ Only Docker today; kept an enum so more can slot in.
 ---
 
 ##### `DOCKER` <a name="DOCKER" id="@cdklabs/cdk-cicd-wrapper.BuildImageKind.DOCKER"></a>
+
+---
+
+
+### CiLanguage <a name="CiLanguage" id="@cdklabs/cdk-cicd-wrapper.CiLanguage"></a>
+
+The language of the CDK application CI builds.
+
+Selects which default build phase the engines render
+when no `ci.steps` is set: the Node/npm default, or the Python (pip/uv) default. When left unset the
+engine auto-detects from `cdk.json`'s `app` command (a `python`/`uv run python` command is Python;
+anything else is Node).
+
+#### Members <a name="Members" id="Members"></a>
+
+| **Name** | **Description** |
+| --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CiLanguage.NODE">NODE</a></code> | Node/TypeScript CDK app: `npm ci` then `npm run audit\|build\|test` (the default). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CiLanguage.PYTHON">PYTHON</a></code> | Python CDK app: install then `pip-audit`/`mypy`/`pytest` (pip) or their `uv run` equivalents (uv). |
+
+---
+
+##### `NODE` <a name="NODE" id="@cdklabs/cdk-cicd-wrapper.CiLanguage.NODE"></a>
+
+Node/TypeScript CDK app: `npm ci` then `npm run audit|build|test` (the default).
+
+---
+
+
+##### `PYTHON` <a name="PYTHON" id="@cdklabs/cdk-cicd-wrapper.CiLanguage.PYTHON"></a>
+
+Python CDK app: install then `pip-audit`/`mypy`/`pytest` (pip) or their `uv run` equivalents (uv).
 
 ---
 

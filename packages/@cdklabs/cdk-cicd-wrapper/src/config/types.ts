@@ -32,6 +32,19 @@ export enum RegionOrder {
   PARALLEL = 'parallel',
 }
 
+/**
+ * The language of the CDK application CI builds. Selects which default build phase the engines render
+ * when no `ci.steps` is set: the Node/npm default, or the Python (pip/uv) default. When left unset the
+ * engine auto-detects from `cdk.json`'s `app` command (a `python`/`uv run python` command is Python;
+ * anything else is Node).
+ */
+export enum CiLanguage {
+  /** Node/TypeScript CDK app: `npm ci` then `npm run audit|build|test` (the default). */
+  NODE = 'node',
+  /** Python CDK app: install then `pip-audit`/`mypy`/`pytest` (pip) or their `uv run` equivalents (uv). */
+  PYTHON = 'python',
+}
+
 /** Which stack synthesizer the wrapper installs. */
 export enum SynthesizerType {
   /** `DefaultStackSynthesizer` -- the Autopilot default. */
@@ -124,6 +137,11 @@ export interface CiConfig {
    * engine applies its built-in default set.
    */
   readonly steps: { [key: string]: string };
+  /**
+   * The CDK app's language, selecting which default build phase the engines render when `steps` is
+   * empty. Omitted means auto-detect from `cdk.json`'s `app` command at synth time (see `CiLanguage`).
+   */
+  readonly language?: CiLanguage;
   /**
    * Which stages CI synthesizes. Empty means the engine's default -- every stage under
    * `ASSEMBLY_PROMOTION`, one env under `DEPLOY_TIME_SYNTH`. A non-empty list names the stages

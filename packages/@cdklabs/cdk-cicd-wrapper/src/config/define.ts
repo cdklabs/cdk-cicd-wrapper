@@ -17,6 +17,7 @@ import { BuildImage } from './build-image';
 import { Repository } from './repository';
 import {
   CiConfig,
+  CiLanguage,
   CodeArtifactConfig,
   CodePipelineRoleNames,
   DeployModel,
@@ -61,6 +62,8 @@ export interface CiConfigInput {
   readonly steps?: { [key: string]: string };
   readonly synthStages?: string[] | 'all';
   readonly image?: string;
+  /** The CDK app's language. Omit to auto-detect from `cdk.json`'s `app` command. See `CiConfig.language`. */
+  readonly language?: CiLanguage;
   /** Escape hatch: a CodeBuild spec fragment merged into the CI build project. See `CiConfig.partialBuildSpec`. */
   readonly partialBuildSpec?: codebuild.BuildSpec;
 }
@@ -141,6 +144,7 @@ export interface CicdConfigProps {
 function normalizeCi(ci: CiConfigInput | undefined, stageNames: string[]): CiConfig {
   return {
     steps: ci?.steps ?? {},
+    language: ci?.language,
     synthStages: ci?.synthStages === undefined ? [] : ci.synthStages === 'all' ? [...stageNames] : ci.synthStages,
     image: ci?.image,
     partialBuildSpec: ci?.partialBuildSpec,
