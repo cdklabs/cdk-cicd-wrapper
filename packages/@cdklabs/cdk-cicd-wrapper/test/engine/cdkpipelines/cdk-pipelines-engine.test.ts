@@ -67,14 +67,22 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(actionCategories('dev')).not.toContain('Approval');
   });
 
-  test('the synth step runs npm ci + the default scripts + cdk synth (CI in the pipeline)', () => {
+  test('the synth step runs npm ci + the default scripts + npm run cdk synth with CDK_CICD_MODE=pipeline', () => {
     const t = render();
-    // The Synth CodeBuild project's buildspec carries the commands.
+    // The Synth CodeBuild project's buildspec carries the commands. It runs `npm run cdk synth` (never
+    // npx) through cdk.json's single `cdk-cicd exec` entry; CDK_CICD_MODE=pipeline in the step env makes
+    // that entry render THIS pipeline, so CDK Pipelines self-mutation re-renders itself.
     const projects = t.findResources('AWS::CodeBuild::Project');
     const specs = Object.values(projects).map((p: any) => JSON.stringify(p.Properties.Source.BuildSpec));
-    expect(specs.some((s) => s.includes('npm ci') && s.includes('npm run audit') && s.includes('cdk synth'))).toBe(
-      true,
+    expect(
+      specs.some((s) => s.includes('npm ci') && s.includes('npm run audit') && s.includes('npm run cdk synth')),
+    ).toBe(true);
+    // The mode signal is set on the synth step environment. CDK Pipelines renders a CodeBuildStep's
+    // `env` into the CodeBuild project's Environment.EnvironmentVariables (not the buildspec string).
+    const envVars = Object.values(projects).flatMap(
+      (p: any) => (p.Properties?.Environment?.EnvironmentVariables ?? []) as Array<{ Name?: string; Value?: string }>,
     );
+    expect(envVars.some((v) => v.Name === 'CDK_CICD_MODE' && v.Value === 'pipeline')).toBe(true);
   });
 
   test('a codeArtifact config grants the synth build CodeArtifact read + the STS bearer token', () => {

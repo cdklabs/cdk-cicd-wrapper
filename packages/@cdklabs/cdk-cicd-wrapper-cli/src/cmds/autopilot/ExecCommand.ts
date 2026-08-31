@@ -4,9 +4,9 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
-import type { EngineType } from '@cdklabs/cdk-cicd-wrapper';
+import type { EngineType, ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
-import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, stageByName } from './CicdConfig';
+import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
 import { logger } from '../../utils/Logging';
 
 /**
@@ -232,30 +232,73 @@ export function preloadArgs(entry: string, registerPath: string): string[] {
   return args;
 }
 
-/** Engines whose app IS the pipeline (self-mutating), routed through the wrapper's replay assembler. */
-// The wrapper's `EngineType` string-enum values, kept as plain strings so this routing logic does not
-// force a runtime load of the wrapper (the enum object) at CLI boot. `EngineType` stays a type-only
-// import; comparisons widen the engine to its string value below.
-const SELF_MUTATING_ENGINES: string[] = ['cdk-pipelines', 'github-actions'];
-
 /**
- * The node argv + optional `CDK_CICD_ENTRY` for the child, chosen by engine. The flat engine runs the
- * entry directly under the register preload (its pipeline re-invokes the entry per stage, so a plain
- * single-stage bin is enough). The self-mutating engines (CDK Pipelines, GitHub Actions) need the app's
- * stacks IN the pipeline's own synth -- the app IS the pipeline -- so they run the wrapper's assembler,
- * which loads cicd.config and replays the entry (passed via CDK_CICD_ENTRY) once per stage; it
- * self-manages App construction so it runs WITHOUT register, with ts-node to require a `.ts` entry /
- * cicd.config.ts.
+ * The node argv for the child. Every engine runs the plain user entry directly under the register
+ * preload: in the default (application) mode, `cdk.json`'s single `app` command (`cdk-cicd exec`)
+ * synthesizes the APPLICATION stacks for all three engines. The pipeline is synthesized by the SAME
+ * `exec` entry point when `CDK_CICD_MODE=pipeline` is set in the environment (by `deploy-ci`, and by
+ * each self-mutating engine's in-pipeline synth step) -- there is no `--app` override and no separate
+ * renderer command. `exec` reads the mode in its handler and takes the pipeline-render path directly;
+ * this function only builds the plain-bin (application) invocation.
+ *
+ * `engine` is retained in the signature because the caller resolves it from cicd.config anyway, and a
+ * future engine could reintroduce a per-engine entry shape; today it is unused.
  */
 export function execInvocation(
   entry: string,
-  engine: EngineType | undefined,
-  paths: { registerPath: string; assemblerPath: string },
+  _engine: EngineType | undefined,
+  paths: { registerPath: string },
 ): { nodeArgs: string[]; entryEnv?: string } {
-  if (engine !== undefined && SELF_MUTATING_ENGINES.includes(engine)) {
-    return { nodeArgs: ['-r', 'ts-node/register', paths.assemblerPath], entryEnv: entry };
-  }
   return { nodeArgs: [...preloadArgs(entry, paths.registerPath), entry] };
+}
+
+/**
+ * The wrapper's synth-mode signal, inherited from the invoking command through the process
+ * environment (the same channel CDK uses for `CDK_DEFAULT_*`). `deploy-ci` and each self-mutating
+ * engine's in-pipeline synth step export `CDK_CICD_MODE=pipeline` before running `cdk`; a plain
+ * `cdk synth`/`cdk deploy` leaves it unset and gets the application stacks. This is what keeps
+ * `cdk.json` to a SINGLE `app` entry (`npm run cdk-cicd exec <entry>`) with no `--app` override.
+ */
+export const MODE_FLAG = 'CDK_CICD_MODE';
+export const PIPELINE_MODE = 'pipeline';
+
+/** True when the environment asks `exec` to render the pipeline itself rather than the app stacks. */
+export function isPipelineMode(env: NodeJS.ProcessEnv): boolean {
+  return (env[MODE_FLAG] ?? '').trim() === PIPELINE_MODE;
+}
+
+/**
+ * Render the pipeline itself (CDK_CICD_MODE=pipeline). Same construct tree `deploy-ci` provisions.
+ * Routes on which config the repo carries and, for CI, on the engine:
+ *   - CI (cicd.config): flat CodePipeline engine -> the jsii-exported `PipelineApp`; the self-mutating
+ *     engines -> the runtime assembler (reached via the compiled `lib/` deep path, since it is a
+ *     dynamic-require/require.cache module not jsii-exported), replaying the SAME `entry` bin per stage.
+ *   - CD (deploy.config, container two-repo mode): `DeploymentPipelineApp`.
+ * Runs in this process (no spawn) so the assembly lands in the cwd the CDK CLI is reading.
+ */
+async function renderPipeline(entry: string, cicd: ResolvedCicdConfig | undefined, cwd: string): Promise<void> {
+  const disposable = (process.env.CDK_CICD_DISPOSABLE ?? '').trim() === '1';
+
+  if (cicd === undefined) {
+    // No cicd.config -> a CD (deploy.config) config repo. Render the deployment pipeline.
+    const deployment = loadDeployment(cwd);
+    if (deployment === undefined) {
+      throw new Error('no cicd.config.ts or deploy.config.ts found next to cdk.json');
+    }
+    const { DeploymentPipelineApp } = await import('@cdklabs/cdk-cicd-wrapper');
+    new DeploymentPipelineApp({ config: deployment, disposable }).synth();
+    return;
+  }
+
+  const engineValue = cicd.engine as string | undefined;
+  if (engineValue === 'cdk-pipelines' || engineValue === 'github-actions') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { assemblePipelineApp } = require('@cdklabs/cdk-cicd-wrapper/lib/runtime/pipeline-assembler');
+    assemblePipelineApp(cicd, path.resolve(cwd, entry)).synth();
+    return;
+  }
+  const { PipelineApp } = await import('@cdklabs/cdk-cicd-wrapper');
+  new PipelineApp({ config: cicd, disposable }).synth();
 }
 
 class Command implements yargs.CommandModule {
@@ -293,6 +336,21 @@ class Command implements yargs.CommandModule {
     const cicdStage = cicd ? stageByName(cicd, stage) : undefined;
     const target = resolveEnvTarget(process.env, config, cicdStage);
 
+    // Pipeline mode: `deploy-ci` (and each self-mutating engine's in-pipeline synth step) set
+    // CDK_CICD_MODE=pipeline in the inherited environment. The SAME `exec` entry point then renders the
+    // pipeline itself instead of the application stacks -- so `cdk.json` needs only one `app` command
+    // and no `--app` override. Rendered in-process; the CDK CLI reads the resulting cdk.out.
+    if (isPipelineMode(process.env)) {
+      logger.info(`cdk-cicd exec: mode='pipeline', engine='${cicd?.engine ?? 'codepipeline'}', rendering the pipeline`);
+      try {
+        await renderPipeline(entry, cicd, cwd);
+      } catch (error) {
+        logger.error(`cdk-cicd exec: rendering the pipeline failed: ${(error as Error).message}`);
+        process.exit(1);
+      }
+      return;
+    }
+
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
       ...stageEnv(stage, target),
@@ -310,7 +368,6 @@ class Command implements yargs.CommandModule {
 
     const invocation = execInvocation(entry, cicd?.engine, {
       registerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/runtime/register.js'),
-      assemblerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/runtime/pipeline-assembler.js'),
     });
     const nodeArgs = invocation.nodeArgs;
     if (invocation.entryEnv !== undefined) {

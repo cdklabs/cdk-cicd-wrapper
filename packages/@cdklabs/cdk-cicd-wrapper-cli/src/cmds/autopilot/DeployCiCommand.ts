@@ -17,28 +17,27 @@ import { load as loadCicdConfig, loadDeployment } from './CicdConfig';
 import { logger } from '../../utils/Logging';
 
 /**
- * The `--app` value: the CDK CLI shells this out and reads the assembly it writes. `pipeline-app` renders
- * the flat CI pipeline from `cicd.config.ts`; `deployment-app` renders the CD pipeline from `deploy.config.ts`.
+ * The `cdk` argv that deploys the pipeline stack. There is NO `--app` override: `cdk.json`'s single
+ * `app` command (`cdk-cicd exec <entry>`) renders the pipeline when `CDK_CICD_MODE=pipeline` is in the
+ * environment (set below), and the application stacks otherwise. So provisioning the pipeline uses the
+ * exact same entry point as a plain synth, differing only by the inherited mode signal.
+ *
+ * `cdk` is invoked as `npm run cdk` (never `npx`) so the project's pinned aws-cdk is used, matching the
+ * in-pipeline synth step. `_kind`/`_engine` are retained for the handler's logging and back-compat.
  */
-export function pipelineAppCommand(disposable: boolean, kind: 'ci' | 'cd' = 'ci'): string {
-  const cmd = kind === 'cd' ? 'deployment-app' : 'pipeline-app';
-  return `npx cdk-cicd ${cmd}${disposable ? ' --disposable' : ''}`;
-}
-
-/** The `cdk` argv that deploys the pipeline stack (CI from cicd.config, or CD from deploy.config). */
-export function deployCiArgs(disposable: boolean, kind: 'ci' | 'cd' = 'ci', engine?: EngineType): string[] {
+export function deployCiArgs(_kind: 'ci' | 'cd' = 'ci', _engine?: EngineType): string[] {
   // `--require-approval never` because the only stack here is the pipeline and its own support
   // resources; the approval that matters to a user is the one inside the pipeline, not this one.
-  // The self-mutating engines (CDK Pipelines, GitHub Actions) self-mutate: the app IS the pipeline,
-  // rendered by cdk.json's `cdk-cicd exec` (the assembler). So deploy the DEFAULT app rather than
-  // overriding --app to the flat pipeline-app renderer.
-  // Compared as plain strings (the `EngineType` values) so this file keeps a type-only import of the
-  // wrapper and does not load it at CLI boot.
-  const engineValue = engine as string | undefined;
-  if (kind === 'ci' && (engineValue === 'cdk-pipelines' || engineValue === 'github-actions')) {
-    return ['cdk', 'deploy', '--all', '--require-approval', 'never'];
+  return ['run', 'cdk', 'deploy', '--all', '--require-approval', 'never'];
+}
+
+/** The environment `deploy-ci` exports so `cdk-cicd exec` renders the pipeline, not the app stacks. */
+export function deployCiEnv(disposable: boolean): { [key: string]: string } {
+  const out: { [key: string]: string } = { CDK_CICD_MODE: 'pipeline' };
+  if (disposable) {
+    out.CDK_CICD_DISPOSABLE = '1';
   }
-  return ['cdk', 'deploy', '--app', pipelineAppCommand(disposable, kind), '--all', '--require-approval', 'never'];
+  return out;
 }
 
 class Command implements yargs.CommandModule {
@@ -75,7 +74,11 @@ class Command implements yargs.CommandModule {
     logger.info(
       `cdk-cicd deploy-ci: provisioning the ${kind === 'cd' ? 'CD (deploy.config)' : `CI (cicd.config, engine=${engine})`} pipeline`,
     );
-    const deploy = spawnSync('npx', deployCiArgs(disposable, kind, engine), { stdio: 'inherit', cwd });
+    const deploy = spawnSync('npm', deployCiArgs(kind, engine), {
+      stdio: 'inherit',
+      cwd,
+      env: { ...process.env, ...deployCiEnv(disposable) },
+    });
     if (deploy.error) {
       logger.error(`cdk-cicd deploy-ci: could not run cdk deploy: ${deploy.error.message}`);
       process.exit(1);

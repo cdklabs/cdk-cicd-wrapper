@@ -105,9 +105,12 @@ export class CdkPipelinesEngine extends Construct {
     const region = Stack.of(this).region;
 
     // The Synth step: install (proxy exports, then CodeArtifact login for private/pre-release deps)
-    // then `cdk synth`, which re-runs the caller's bin -- the same app that built this pipeline -- so
-    // self-mutation works. The proxy's exports run FIRST: NO_PROXY is what lets the AWS-API-bound
-    // `codeartifact login` skip the proxy while `npm ci` against public npm goes through it.
+    // then `npm run cdk synth`, run with `CDK_CICD_MODE=pipeline` on the step env (below) so
+    // `cdk.json`'s single `cdk-cicd exec` entry renders THIS pipeline -- so CDK Pipelines self-mutation,
+    // which reruns this step and redeploys the pipeline stack from the fresh assembly, still sees itself.
+    // Without the mode set, that same entry synthesizes only the application stacks. The proxy's exports
+    // run FIRST: NO_PROXY is what lets the AWS-API-bound `codeartifact login` skip the proxy while
+    // `npm ci` against public npm goes through it.
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
       ...(config.codeArtifact
@@ -145,10 +148,14 @@ export class CdkPipelinesEngine extends Construct {
         input: sourceFor(this, config.repository),
         installCommands,
         // With no ci.steps, run the default CI (its own `npm ci` first); with ci.steps, those steps ARE
-        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then synth via
-        // `npm run cdk` so the project's pinned aws-cdk is used, not whatever `npx` resolves.
+        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then `npm run cdk
+        // synth`, which runs `cdk.json`'s single `cdk-cicd exec` entry. `CDK_CICD_MODE=pipeline` (below)
+        // makes that entry render THIS pipeline, so CDK Pipelines self-mutation re-renders itself; a plain
+        // `cdk synth` without the mode set renders only the application stacks.
         commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
         env: {
+          // Render the pipeline (not the app stacks) from the single cdk.json entry during self-mutation.
+          CDK_CICD_MODE: 'pipeline',
           ...(config.qualifier ? { CDK_QUALIFIER: config.qualifier } : {}),
           AWS_REGION: region,
           ...(config.proxy ? proxyEnvVariables(Stack.of(this), config.proxy) : {}),

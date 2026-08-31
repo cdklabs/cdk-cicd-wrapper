@@ -7,10 +7,10 @@ import * as yargs from 'yargs';
 import check from './cmds/autopilot/CheckCommand';
 import deployCi from './cmds/autopilot/DeployCiCommand';
 import deploy from './cmds/autopilot/DeployCommand';
-import deploymentApp from './cmds/autopilot/DeploymentAppCommand';
 import exec from './cmds/autopilot/ExecCommand';
+import listCi from './cmds/autopilot/ListCiCommand';
 import migrate from './cmds/autopilot/MigrateCommand';
-import pipelineApp from './cmds/autopilot/PipelineAppCommand';
+import synthCi from './cmds/autopilot/SynthCiCommand';
 import synth from './cmds/autopilot/SynthCommand';
 import checkDependencies from './cmds/CheckDependenciesCommand';
 import complianceBucket from './cmds/ComplianceBucketCommand';
@@ -38,8 +38,8 @@ async function main() {
   ya.command(exec);
   ya.command(synth);
   ya.command(deploy);
-  ya.command(pipelineApp);
-  ya.command(deploymentApp);
+  ya.command(synthCi);
+  ya.command(listCi);
   ya.command(deployCi);
   ya.command(migrate);
 

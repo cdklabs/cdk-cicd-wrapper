@@ -111,9 +111,12 @@ export class GitHubActionsEngine extends Construct {
       true,
     );
 
-    // Same install/synth commands as `CdkPipelinesEngine`'s Synth step (proxy exports, then CodeArtifact
-    // login, then the configured CI steps and `cdk synth`) -- GitHub Actions runs this as a plain job step
-    // rather than a CodeBuild project, but the commands themselves are engine-agnostic.
+    // Same install/synth shape as `CdkPipelinesEngine`'s Synth step (proxy exports, then CodeArtifact
+    // login, then the configured CI steps and `npm run cdk synth`) -- GitHub Actions runs this as a
+    // plain job step rather than a CodeBuild project, but the commands themselves are engine-agnostic.
+    // The step runs with `CDK_CICD_MODE=pipeline` (set on the step env below), so `cdk.json`'s single
+    // `cdk-cicd exec` entry renders the pipeline -- keeping self-mutation producing the workflow the
+    // "commit the updated workflow file" check compares. Without the mode it synthesizes only app stacks.
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
       ...(config.codeArtifact
@@ -136,10 +139,12 @@ export class GitHubActionsEngine extends Construct {
       synth: new CodeBuildStep('Synth', {
         installCommands: [],
         // With no ci.steps, run the default CI (its own `npm ci` first); with ci.steps, those steps ARE
-        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then synth via
-        // `npm run cdk` so the project's pinned aws-cdk is used, not whatever `npx` resolves.
+        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then `npm run cdk
+        // synth`, which runs `cdk.json`'s single `cdk-cicd exec` entry; `CDK_CICD_MODE=pipeline` makes it
+        // render THIS pipeline so self-mutation keeps producing the workflow the "commit the updated
+        // workflow file" check compares. A plain `cdk synth` without the mode renders only the app stacks.
         commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
-        env: config.qualifier ? { CDK_QUALIFIER: config.qualifier } : undefined,
+        env: { CDK_CICD_MODE: 'pipeline', ...(config.qualifier ? { CDK_QUALIFIER: config.qualifier } : {}) },
         primaryOutputDirectory: 'cdk.out',
       }),
     });

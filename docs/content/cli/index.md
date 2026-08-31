@@ -25,14 +25,13 @@ npx cdk-cicd <command> --help
 
 | Command | Description |
 | --- | --- |
-| `exec` | Run a CDK app under the wrapper — the single entry point that activates the pipeline for both engines, reading the engine and stages from `cicd.config`. |
+| `exec` | Run a CDK app under the wrapper — the **single** `cdk.json` entry point for all engines. It reads engine/stages from `cicd.config` and renders the application stacks by default, or the pipeline when `CDK_CICD_MODE=pipeline` is set in the environment (no `--app` override). |
 | `synth` | Synthesize the app per stage/region (`--stage`, or `--all` for full CI validation). |
 | `deploy` | Synth, drift-check, and deploy a stage across its regions. |
-| `deploy-ci` | Provision the pipeline itself into the hub account, from `cicd.config.ts` alone (the one command a user runs by hand; everything after it is the pipeline deploying the application). `--disposable` deletes the pipeline's artifact bucket and key together with the stack (for throwaway pipelines). |
+| `synth-ci` | Synthesize the **pipeline** without deploying — the safe pre-flight for `deploy-ci`. Runs the same single `cdk-cicd exec` entry with `CDK_CICD_MODE=pipeline` (via `npm run cdk synth`) into `--output` (default `cdk.out`) so you can inspect or `cdk diff` it first. |
+| `list-ci` | List the stacks (and, with `--resources`, a per-stack resource-type breakdown) of the **pipeline** `deploy-ci` would provision — a quick inventory that leaves no `cdk.out` behind. |
+| `deploy-ci` | Provision the pipeline itself into the hub account, from `cicd.config.ts` alone (the one command a user runs by hand; everything after it is the pipeline deploying the application). Runs `npm run cdk deploy --all` with `CDK_CICD_MODE=pipeline` — no `--app` override. `--disposable` deletes the pipeline's artifact bucket and key together with the stack. Preview it first with `synth-ci` / `list-ci`. |
 | `check` | Run the default-on CI checks (`validate`, `audit`, `license`, `security`). |
 | `migrate` | Generate an Autopilot `cicd.config.ts` from an existing 0.4.x `PipelineBlueprint` entry file (`--entry`, `--application`, `--dry-run`). |
-
-Some commands (for example the pipeline app / deployment-CI handlers) are invoked by the pipeline
-itself rather than run directly by users.
 
 For the authoritative, always-current flag list, prefer `cdk-cicd <command> --help`.
