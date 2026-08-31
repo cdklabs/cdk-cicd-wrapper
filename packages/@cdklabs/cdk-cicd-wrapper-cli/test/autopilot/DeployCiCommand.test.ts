@@ -41,17 +41,16 @@ describe('m4-approval-selfupdate: deployCiArgs', () => {
     expect(deployCiArgs(false, 'ci', undefined)).toContain('npx cdk-cicd pipeline-app');
   });
 
-  test('the CDK Pipelines engine deploys the default cdk.json app (exec -> assembler), no --app override', () => {
-    // The app IS the pipeline; overriding --app to pipeline-app would render the wrong (flat) pipeline.
+  test('the CDK Pipelines engine also deploys through the pipeline-app renderer (--app override)', () => {
+    // Converged behaviour: `cdk.json`'s own `exec` app synthesizes only the application stacks, so the
+    // pipeline is rendered by `pipeline-app` for every engine. `pipeline-app` routes on the engine
+    // internally (it replays the bin for a self-mutating pipeline).
     const args = deployCiArgs(false, 'ci', EngineType.CDK_PIPELINES);
-    expect(args).toEqual(['cdk', 'deploy', '--all', '--require-approval', 'never']);
-    expect(args).not.toContain('--app');
+    expect(args).toEqual(['cdk', 'deploy', '--app', 'npx cdk-cicd pipeline-app', '--all', '--require-approval', 'never']);
   });
 
-  test('the GitHub Actions engine also deploys the default cdk.json app, no --app override', () => {
-    // Same self-mutating shape as CDK Pipelines: no AWS-hosted pipeline stack to point --app at.
+  test('the GitHub Actions engine also deploys through the pipeline-app renderer (--app override)', () => {
     const args = deployCiArgs(false, 'ci', EngineType.GITHUB_ACTIONS);
-    expect(args).toEqual(['cdk', 'deploy', '--all', '--require-approval', 'never']);
-    expect(args).not.toContain('--app');
+    expect(args).toEqual(['cdk', 'deploy', '--app', 'npx cdk-cicd pipeline-app', '--all', '--require-approval', 'never']);
   });
 });

@@ -105,8 +105,11 @@ export class CdkPipelinesEngine extends Construct {
     const region = Stack.of(this).region;
 
     // The Synth step: install (proxy exports, then CodeArtifact login for private/pre-release deps)
-    // then `cdk synth`, which re-runs the caller's bin -- the same app that built this pipeline -- so
-    // self-mutation works. The proxy's exports run FIRST: NO_PROXY is what lets the AWS-API-bound
+    // then `cdk-cicd pipeline-app`, which renders THIS pipeline (replaying the caller's bin per stage)
+    // -- so CDK Pipelines self-mutation, which reruns this step and redeploys the pipeline stack from
+    // the fresh assembly, still sees itself. `cdk.json`'s own app command (`cdk-cicd exec`) synthesizes
+    // only the application stacks now, so synth here must invoke `pipeline-app` explicitly rather than a
+    // bare `cdk synth`. The proxy's exports run FIRST: NO_PROXY is what lets the AWS-API-bound
     // `codeartifact login` skip the proxy while `npm ci` against public npm goes through it.
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
@@ -145,9 +148,10 @@ export class CdkPipelinesEngine extends Construct {
         input: sourceFor(this, config.repository),
         installCommands,
         // With no ci.steps, run the default CI (its own `npm ci` first); with ci.steps, those steps ARE
-        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then synth via
-        // `npm run cdk` so the project's pinned aws-cdk is used, not whatever `npx` resolves.
-        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
+        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then render the
+        // pipeline itself via `cdk-cicd pipeline-app` so CDK Pipelines self-mutation re-renders THIS
+        // pipeline -- `cdk.json`'s own `cdk-cicd exec` app synthesizes only the application stacks now.
+        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npx cdk-cicd pipeline-app'],
         env: {
           ...(config.qualifier ? { CDK_QUALIFIER: config.qualifier } : {}),
           AWS_REGION: region,

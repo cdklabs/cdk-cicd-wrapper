@@ -67,14 +67,16 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(actionCategories('dev')).not.toContain('Approval');
   });
 
-  test('the synth step runs npm ci + the default scripts + cdk synth (CI in the pipeline)', () => {
+  test('the synth step runs npm ci + the default scripts + cdk-cicd pipeline-app (renders the pipeline for self-mutation)', () => {
     const t = render();
-    // The Synth CodeBuild project's buildspec carries the commands.
+    // The Synth CodeBuild project's buildspec carries the commands. It runs `cdk-cicd pipeline-app`
+    // (not a bare `cdk synth`) so CDK Pipelines self-mutation re-renders THIS pipeline -- `cdk.json`'s
+    // own `cdk-cicd exec` app synthesizes only the application stacks now.
     const projects = t.findResources('AWS::CodeBuild::Project');
     const specs = Object.values(projects).map((p: any) => JSON.stringify(p.Properties.Source.BuildSpec));
-    expect(specs.some((s) => s.includes('npm ci') && s.includes('npm run audit') && s.includes('cdk synth'))).toBe(
-      true,
-    );
+    expect(
+      specs.some((s) => s.includes('npm ci') && s.includes('npm run audit') && s.includes('cdk-cicd pipeline-app')),
+    ).toBe(true);
   });
 
   test('a codeArtifact config grants the synth build CodeArtifact read + the STS bearer token', () => {

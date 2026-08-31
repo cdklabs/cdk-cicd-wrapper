@@ -232,29 +232,21 @@ export function preloadArgs(entry: string, registerPath: string): string[] {
   return args;
 }
 
-/** Engines whose app IS the pipeline (self-mutating), routed through the wrapper's replay assembler. */
-// The wrapper's `EngineType` string-enum values, kept as plain strings so this routing logic does not
-// force a runtime load of the wrapper (the enum object) at CLI boot. `EngineType` stays a type-only
-// import; comparisons widen the engine to its string value below.
-const SELF_MUTATING_ENGINES: string[] = ['cdk-pipelines', 'github-actions'];
-
 /**
- * The node argv + optional `CDK_CICD_ENTRY` for the child, chosen by engine. The flat engine runs the
- * entry directly under the register preload (its pipeline re-invokes the entry per stage, so a plain
- * single-stage bin is enough). The self-mutating engines (CDK Pipelines, GitHub Actions) need the app's
- * stacks IN the pipeline's own synth -- the app IS the pipeline -- so they run the wrapper's assembler,
- * which loads cicd.config and replays the entry (passed via CDK_CICD_ENTRY) once per stage; it
- * self-manages App construction so it runs WITHOUT register, with ts-node to require a `.ts` entry /
- * cicd.config.ts.
+ * The node argv for the child. Every engine runs the plain user entry directly under the register
+ * preload: `cdk.json`'s `app` command (`cdk-cicd exec`) synthesizes the APPLICATION stacks, never the
+ * pipeline -- the same behaviour for all three engines. The pipeline is synthesized only by
+ * `cdk-cicd pipeline-app` (which `deploy-ci` and each engine's in-pipeline self-mutation synth step
+ * point `cdk --app` at), so `exec` no longer branches on the engine and does not load the assembler.
+ *
+ * `engine` is retained in the signature because the caller resolves it from cicd.config anyway, and a
+ * future engine could reintroduce a per-engine entry shape; today it is unused.
  */
 export function execInvocation(
   entry: string,
-  engine: EngineType | undefined,
-  paths: { registerPath: string; assemblerPath: string },
+  _engine: EngineType | undefined,
+  paths: { registerPath: string },
 ): { nodeArgs: string[]; entryEnv?: string } {
-  if (engine !== undefined && SELF_MUTATING_ENGINES.includes(engine)) {
-    return { nodeArgs: ['-r', 'ts-node/register', paths.assemblerPath], entryEnv: entry };
-  }
   return { nodeArgs: [...preloadArgs(entry, paths.registerPath), entry] };
 }
 
@@ -310,7 +302,6 @@ class Command implements yargs.CommandModule {
 
     const invocation = execInvocation(entry, cicd?.engine, {
       registerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/runtime/register.js'),
-      assemblerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/runtime/pipeline-assembler.js'),
     });
     const nodeArgs = invocation.nodeArgs;
     if (invocation.entryEnv !== undefined) {

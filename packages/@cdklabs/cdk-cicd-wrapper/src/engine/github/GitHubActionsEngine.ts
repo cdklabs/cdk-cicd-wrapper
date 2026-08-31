@@ -111,9 +111,12 @@ export class GitHubActionsEngine extends Construct {
       true,
     );
 
-    // Same install/synth commands as `CdkPipelinesEngine`'s Synth step (proxy exports, then CodeArtifact
-    // login, then the configured CI steps and `cdk synth`) -- GitHub Actions runs this as a plain job step
-    // rather than a CodeBuild project, but the commands themselves are engine-agnostic.
+    // Same install/synth shape as `CdkPipelinesEngine`'s Synth step (proxy exports, then CodeArtifact
+    // login, then the configured CI steps and `cdk-cicd pipeline-app`) -- GitHub Actions runs this as a
+    // plain job step rather than a CodeBuild project, but the commands themselves are engine-agnostic.
+    // `pipeline-app` renders the pipeline (replaying the bin per stage); `cdk.json`'s own `cdk-cicd exec`
+    // app command synthesizes only the application stacks now, so self-mutation invokes `pipeline-app`
+    // explicitly to keep producing the workflow the "commit the updated workflow file" check compares.
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
       ...(config.codeArtifact
@@ -136,9 +139,11 @@ export class GitHubActionsEngine extends Construct {
       synth: new CodeBuildStep('Synth', {
         installCommands: [],
         // With no ci.steps, run the default CI (its own `npm ci` first); with ci.steps, those steps ARE
-        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then synth via
-        // `npm run cdk` so the project's pinned aws-cdk is used, not whatever `npx` resolves.
-        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
+        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then render the
+        // pipeline via `cdk-cicd pipeline-app` so self-mutation keeps producing the workflow the "commit
+        // the updated workflow file" check compares -- `cdk.json`'s `cdk-cicd exec` app synthesizes only
+        // the application stacks now.
+        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npx cdk-cicd pipeline-app'],
         env: config.qualifier ? { CDK_QUALIFIER: config.qualifier } : undefined,
         primaryOutputDirectory: 'cdk.out',
       }),

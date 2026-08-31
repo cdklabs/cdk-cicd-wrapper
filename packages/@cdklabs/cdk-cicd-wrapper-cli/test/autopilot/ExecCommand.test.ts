@@ -127,30 +127,30 @@ describe('exec: preloadArgs', () => {
   });
 });
 
-describe('exec: execInvocation (engine routing)', () => {
-  const paths = { registerPath: '/reg.js', assemblerPath: '/asm.js' };
+describe('exec: execInvocation (all engines run the plain bin)', () => {
+  const paths = { registerPath: '/reg.js' };
 
   test('the flat engine (default) runs the entry directly under the register preload', () => {
     expect(execInvocation('bin/app.ts', EngineType.CODEPIPELINE, paths)).toEqual({
       nodeArgs: ['-r', 'ts-node/register', '-r', '/reg.js', 'bin/app.ts'],
     });
-    // undefined engine falls back to the flat behaviour (no assembler).
+    // undefined engine behaves the same (no assembler).
     expect(execInvocation('bin/app.ts', undefined, paths).nodeArgs).toContain('/reg.js');
     expect(execInvocation('bin/app.ts', undefined, paths).entryEnv).toBeUndefined();
   });
 
-  test('the CDK Pipelines engine runs the assembler (no register) and passes the entry via CDK_CICD_ENTRY', () => {
+  test('the CDK Pipelines engine ALSO runs the plain bin -- exec never synthesizes the pipeline', () => {
+    // The pipeline is rendered only by `cdk-cicd pipeline-app`; `exec` synthesizes the app stacks for
+    // every engine. So no assembler routing, no CDK_CICD_ENTRY.
     const inv = execInvocation('bin/app.ts', EngineType.CDK_PIPELINES, paths);
-    expect(inv.nodeArgs).toEqual(['-r', 'ts-node/register', '/asm.js']);
-    expect(inv.nodeArgs).not.toContain('/reg.js'); // the assembler self-manages App construction
-    expect(inv.entryEnv).toBe('bin/app.ts'); // assembler reads CDK_CICD_ENTRY to replay per stage
+    expect(inv.nodeArgs).toEqual(['-r', 'ts-node/register', '-r', '/reg.js', 'bin/app.ts']);
+    expect(inv.entryEnv).toBeUndefined();
   });
 
-  test('the GitHub Actions engine also self-mutates -- routed through the same assembler as CDK Pipelines', () => {
+  test('the GitHub Actions engine also runs the plain bin, same as every other engine', () => {
     const inv = execInvocation('bin/app.ts', EngineType.GITHUB_ACTIONS, paths);
-    expect(inv.nodeArgs).toEqual(['-r', 'ts-node/register', '/asm.js']);
-    expect(inv.nodeArgs).not.toContain('/reg.js');
-    expect(inv.entryEnv).toBe('bin/app.ts');
+    expect(inv.nodeArgs).toEqual(['-r', 'ts-node/register', '-r', '/reg.js', 'bin/app.ts']);
+    expect(inv.entryEnv).toBeUndefined();
   });
 });
 

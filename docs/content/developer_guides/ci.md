@@ -12,13 +12,16 @@ There is no `PhaseCommand`/`definePhase` model in Autopilot. The CI build's comm
 
 ```
 <your ci.steps verbatim, in the order you wrote them — or, if you set none, the default: npm ci then npm run audit / build / test>
-cdk synth (+ CDK Nag)
+synth (+ CDK Nag)
 ```
 
-`cdk synth` is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
+The final synth step is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. Which synth command runs depends on the engine: the flat `codepipeline` engine synthesizes the application stacks (via `npm run cdk synth`, see below), while the self-mutating engines (`cdk-pipelines`, `github-actions`) run `npx cdk-cicd pipeline-app`, which renders the pipeline itself so the pipeline can self-mutate. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
+
+!!! note "Plain `cdk synth`/`cdk deploy` never synthesize the pipeline"
+    For every engine, `cdk.json`'s `app` command is `npx cdk-cicd exec`, which synthesizes only the **application** stacks — never the pipeline. The pipeline is synthesized only by `npx cdk-cicd pipeline-app` (what `cdk-cicd deploy-ci` and each self-mutating engine's in-pipeline synth step point at). So a local `npm run cdk synth`/`cdk deploy` gives you the app stacks for the active `CDK_STAGE`, consistently across all three engines; provision the pipeline with `cdk-cicd deploy-ci` (preview it first with `cdk-cicd synth-ci` / `cdk-cicd list-ci`).
 
 !!! important
-    The pipeline runs **`npm run cdk synth`**, not `npx cdk synth`, so it uses the exact `aws-cdk` version pinned in your project — the pipeline never resolves a tool through `npx`, which is non-deterministic. This requires your `package.json` to define a `cdk` script (e.g. `"cdk": "cdk"`), which is the expected shape for a CDK app. A project without a `cdk` script fails at the synth step.
+    Where the build runs `cdk synth` (the flat `codepipeline` engine's app synth, and any project whose `ci.steps` invoke it), it runs **`npm run cdk synth`**, not `npx cdk synth`, so it uses the exact `aws-cdk` version pinned in your project — the pipeline never resolves a tool through `npx`, which is non-deterministic. This requires your `package.json` to define a `cdk` script (e.g. `"cdk": "cdk"`), which is the expected shape for a CDK app. A project without a `cdk` script fails at that synth step. (The self-mutating engines' pipeline render step runs `cdk-cicd pipeline-app` instead — see above.)
 
 ## Default build phase: your own npm scripts
 

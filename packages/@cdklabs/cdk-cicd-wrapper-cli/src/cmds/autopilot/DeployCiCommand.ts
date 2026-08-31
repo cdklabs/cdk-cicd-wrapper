@@ -26,18 +26,14 @@ export function pipelineAppCommand(disposable: boolean, kind: 'ci' | 'cd' = 'ci'
 }
 
 /** The `cdk` argv that deploys the pipeline stack (CI from cicd.config, or CD from deploy.config). */
-export function deployCiArgs(disposable: boolean, kind: 'ci' | 'cd' = 'ci', engine?: EngineType): string[] {
+export function deployCiArgs(disposable: boolean, kind: 'ci' | 'cd' = 'ci', _engine?: EngineType): string[] {
   // `--require-approval never` because the only stack here is the pipeline and its own support
   // resources; the approval that matters to a user is the one inside the pipeline, not this one.
-  // The self-mutating engines (CDK Pipelines, GitHub Actions) self-mutate: the app IS the pipeline,
-  // rendered by cdk.json's `cdk-cicd exec` (the assembler). So deploy the DEFAULT app rather than
-  // overriding --app to the flat pipeline-app renderer.
-  // Compared as plain strings (the `EngineType` values) so this file keeps a type-only import of the
-  // wrapper and does not load it at CLI boot.
-  const engineValue = engine as string | undefined;
-  if (kind === 'ci' && (engineValue === 'cdk-pipelines' || engineValue === 'github-actions')) {
-    return ['cdk', 'deploy', '--all', '--require-approval', 'never'];
-  }
+  // ALL engines deploy through the `pipeline-app` renderer: `cdk.json`'s own `app` command
+  // (`cdk-cicd exec`) synthesizes only the application stacks now, so pointing `--app` at
+  // `pipeline-app` is the single path that renders the pipeline for every engine (the flat
+  // CodePipeline stack, or a self-mutating pipeline via the assembler -- `pipeline-app` routes on the
+  // engine internally). `_engine` is retained for callers/back-compat but no longer branches here.
   return ['cdk', 'deploy', '--app', pipelineAppCommand(disposable, kind), '--all', '--require-approval', 'never'];
 }
 
