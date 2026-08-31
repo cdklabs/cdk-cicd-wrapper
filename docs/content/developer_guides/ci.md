@@ -15,7 +15,7 @@ There is no `PhaseCommand`/`definePhase` model in Autopilot. The CI build's comm
 synth (+ CDK Nag)
 ```
 
-The final synth step is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. It is always `npm run cdk synth` (never `npx`), so it uses the `aws-cdk` version pinned in your project. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
+The final synth step is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. It is always `npm run cdk synth`, so it uses the `aws-cdk` version pinned in your project. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
 
 !!! note "One `cdk.json` entry point; `CDK_CICD_MODE` decides app-vs-pipeline"
     `cdk.json` has a **single** `app` command — the preferred form is `npm run cdk-cicd exec bin/<your-entry>.ts` (or `npx cdk-cicd exec …`). That one entry renders **either** the application stacks **or** the pipeline, decided by the `CDK_CICD_MODE` environment variable that the invoking command sets — there is no `--app` override and no separate renderer command:
@@ -26,7 +26,7 @@ The final synth step is always appended at the end and is **never** replaced by 
     So you provision the pipeline with `cdk-cicd deploy-ci` (preview it first with `cdk-cicd synth-ci` / `cdk-cicd list-ci`, which run the same entry with the mode set), and a local plain synth/deploy always gives you the app stacks.
 
 !!! important
-    The build (and every wrapper command that synthesizes) runs **`npm run cdk synth`**, not `npx cdk synth` — `npx` is non-deterministic and is not used anywhere in the pipeline. This requires your `package.json` to define a `cdk` script (e.g. `"cdk": "cdk"`), the expected shape for a CDK app; a project without a `cdk` script fails at the synth step.
+    The build (and every wrapper command that synthesizes) runs **`npm run cdk synth`**, so it uses the `aws-cdk` version pinned in your project. This requires your `package.json` to define a `cdk` script (e.g. `"cdk": "cdk"`), the expected shape for a CDK app; a project without a `cdk` script fails at the synth step.
 
 ## Default build phase: your own npm scripts
 
