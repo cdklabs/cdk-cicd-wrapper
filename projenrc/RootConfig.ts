@@ -23,7 +23,7 @@ export class RootConfig extends yarn.Monorepo {
   public readonly workflowRunsOn = ['ubuntu-latest'];
   public readonly cdkVersion = '2.195.0';
   public readonly integVersion = '2.186.0';
-  public readonly cdkNagVersion = '2.28.0';
+  public readonly cdkNagVersion = '2.37.55';
   public readonly constructsVersion = CONSTRUCTS_VERSION;
   public readonly authorName = 'CDK CI/CD Wrapper Team';
 
