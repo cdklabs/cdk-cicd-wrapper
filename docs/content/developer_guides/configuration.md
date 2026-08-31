@@ -175,6 +175,7 @@ githubActions: {
 ci: {
   steps: { lint: 'npx cdk-cicd validate', test: 'npx jest' }, // empty => the engine's default check set
   synthStages: 'all', // 'all' (every stage), an explicit list, or omit for the engine default
+  // language: CiLanguage.PYTHON, // omit to auto-detect from cdk.json's app command
   // image: 'aws/codebuild/standard:7.0',
   // partialBuildSpec: codebuild.BuildSpec.fromObject({ ... }), // merged into the CI build project only
 },
@@ -183,6 +184,9 @@ ci: {
 - **`steps`** — named shell commands. Empty (the default) applies the engine's built-in check set
   (`npx cdk-cicd check`). Setting `steps` _replaces_ that default, so include a `check` step if you still
   want those checks.
+- **`language`** — the CDK app's language for the default build phase: `CiLanguage.NODE` (npm) or
+  `CiLanguage.PYTHON` (pip/uv). Omit to auto-detect from `cdk.json`'s `app` command. See the
+  [CI guide](./ci.md#python-cdk-apps).
 - **`synthStages`** — `'all'` synthesizes every stage; an explicit list names stages; omitting it uses
   the engine default (every stage under `ASSEMBLY_PROMOTION`, one env under `DEPLOY_TIME_SYNTH`).
 - **`image`** — an optional CodeBuild image override for the CI build project.

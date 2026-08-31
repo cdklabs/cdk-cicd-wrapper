@@ -1,0 +1,24 @@
+[project]
+name = "python-uv-proof"
+version = "0.1.0"
+description = "Modern (uv) tier proof of the cdk-cicd-wrapper Python build phase"
+requires-python = ">=3.12"
+dependencies = [
+    "aws-cdk-lib>=2.266.0,<3.0.0",
+    "constructs>=10.5.0,<11.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.0.3",
+    "pip-audit==2.9.0",
+    "mypy==1.18.2",
+]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -22,11 +22,11 @@ import * as pipelines from 'aws-cdk-lib/pipelines';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { Repository, RepositorySourceType } from '../../config/repository';
-import { CodeArtifactConfig, PipelineRoleNames, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
+import { CiLanguage, CodeArtifactConfig, PipelineRoleNames, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { resolveVpcNetworking } from '../../support/Vpc';
-import { defaultCiCommands } from '../ci-commands';
+import { defaultCiCommands, languageOf, synthCommandFor } from '../ci-commands';
 
 /** Context passed to the stage factory for one deployment stage. */
 export interface CdkPipelinesStageContext {
@@ -123,6 +123,23 @@ export class CdkPipelinesEngine extends Construct {
         : []),
     ];
     const ciSteps = Object.values(config.ci.steps);
+    const ciLanguage = languageOf(config.ci.language);
+    // A Python app's synth step also needs Python on the managed image. Node stays pinned regardless
+    // (the `cdk` CLI is Node even for a Python app), so a Python project pins BOTH runtimes. Merged into
+    // any proxy partialBuildSpec below via codebuild.mergeBuildSpecs.
+    const pythonRuntimeSpec =
+      ciLanguage === CiLanguage.PYTHON
+        ? codebuild.BuildSpec.fromObject({
+            phases: { install: { 'runtime-versions': { nodejs: 22, python: '3.12' } } },
+          })
+        : undefined;
+    const proxySpec = config.proxy
+      ? codebuild.BuildSpec.fromObject({ env: { 'secrets-manager': proxySecretsManagerVars(config.proxy) } })
+      : undefined;
+    const synthPartialBuildSpec =
+      pythonRuntimeSpec && proxySpec
+        ? codebuild.mergeBuildSpecs(pythonRuntimeSpec, proxySpec)
+        : (pythonRuntimeSpec ?? proxySpec);
     // Blueprint `VPCProvider`, applied by CDK Pipelines itself to EVERY CodeBuild project it creates (synth,
     // self-mutation, asset publishing) -- the uniform application Blueprint had.
     const vpcNetworking = resolveVpcNetworking(this, config.vpc, config.proxy !== undefined);
@@ -152,7 +169,7 @@ export class CdkPipelinesEngine extends Construct {
         // synth`, which runs `cdk.json`'s single `cdk-cicd exec` entry. `CDK_CICD_MODE=pipeline` (below)
         // makes that entry render THIS pipeline, so CDK Pipelines self-mutation re-renders itself; a plain
         // `cdk synth` without the mode set renders only the application stacks.
-        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
+        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands(ciLanguage)), synthCommandFor(ciLanguage)],
         env: {
           // Render the pipeline (not the app stacks) from the single cdk.json entry during self-mutation.
           CDK_CICD_MODE: 'pipeline',
@@ -160,10 +177,9 @@ export class CdkPipelinesEngine extends Construct {
           AWS_REGION: region,
           ...(config.proxy ? proxyEnvVariables(Stack.of(this), config.proxy) : {}),
         },
-        // The proxy credentials/ports live in Secrets Manager, not in plain env vars.
-        partialBuildSpec: config.proxy
-          ? codebuild.BuildSpec.fromObject({ env: { 'secrets-manager': proxySecretsManagerVars(config.proxy) } })
-          : undefined,
+        // Proxy secrets live in Secrets Manager (not plain env vars); a Python app also pins the python
+        // runtime here. Both are merged into one partialBuildSpec.
+        partialBuildSpec: synthPartialBuildSpec,
         // Grant the synth build the CodeArtifact/proxy-secret read permissions its
         // `codeartifact login`/`export`s need (the CodeBuildStep role has only logs/artifacts by
         // default) -- else they fail AccessDenied.

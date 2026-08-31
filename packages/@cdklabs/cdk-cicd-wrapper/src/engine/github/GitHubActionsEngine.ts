@@ -26,9 +26,9 @@ import { NagSuppressions } from 'cdk-nag';
 import { AwsCredentials, GitHubActionRole, GitHubWorkflow, JsonPatch } from 'cdk-pipelines-github';
 import { Construct } from 'constructs';
 import { RepositorySourceType } from '../../config/repository';
-import { ProxyConfig, ResolvedCicdConfig } from '../../config/types';
+import { CiLanguage, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
 import { CdkPipelinesStageContext, IStageProvider } from '../cdkpipelines/CdkPipelinesEngine';
-import { defaultCiCommands } from '../ci-commands';
+import { defaultCiCommands, isUvProject, languageOf, synthCommandFor } from '../ci-commands';
 
 /** Props for the GitHub Actions engine. */
 export interface GitHubActionsEngineProps {
@@ -129,6 +129,7 @@ export class GitHubActionsEngine extends Construct {
         : []),
     ];
     const ciSteps = Object.values(config.ci.steps);
+    const ciLanguage = languageOf(config.ci.language);
 
     this.pipeline = new GitHubWorkflow(this, 'Workflow', {
       awsCreds: AwsCredentials.fromOpenIdConnect({ gitHubActionRoleArn, roleSessionName: 'cdk-cicd-github-actions' }),
@@ -143,7 +144,7 @@ export class GitHubActionsEngine extends Construct {
         // synth`, which runs `cdk.json`'s single `cdk-cicd exec` entry; `CDK_CICD_MODE=pipeline` makes it
         // render THIS pipeline so self-mutation keeps producing the workflow the "commit the updated
         // workflow file" check compares. A plain `cdk synth` without the mode renders only the app stacks.
-        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
+        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands(ciLanguage)), synthCommandFor(ciLanguage)],
         env: { CDK_CICD_MODE: 'pipeline', ...(config.qualifier ? { CDK_QUALIFIER: config.qualifier } : {}) },
         primaryOutputDirectory: 'cdk.out',
       }),
@@ -160,6 +161,26 @@ export class GitHubActionsEngine extends Construct {
     // have applied -- so the credential step (when present) always lands ahead of the login step.
     const patches: JsonPatch[] = [];
     let insertAt = 1;
+    // Best-effort Python support: a Python app's Synth job needs Python on the GitHub runner (the
+    // runner has Node, but `cdk synth` shells to `python3 app.py`). Inject `actions/setup-python` right
+    // after checkout, ahead of the install/build commands; add `astral-sh/setup-uv` too for a uv project.
+    // Same fixed `Build-Synth` step addressing the credential/login patches use.
+    if (ciLanguage === CiLanguage.PYTHON) {
+      patches.push(
+        JsonPatch.add(`/jobs/Build-Synth/steps/${insertAt}`, {
+          name: 'Setup Python',
+          uses: 'actions/setup-python@v5',
+          with: { 'python-version': '3.12' },
+        }),
+      );
+      insertAt += 1;
+      if (isUvProject()) {
+        patches.push(
+          JsonPatch.add(`/jobs/Build-Synth/steps/${insertAt}`, { name: 'Setup uv', uses: 'astral-sh/setup-uv@v5' }),
+        );
+        insertAt += 1;
+      }
+    }
     if (config.codeArtifact !== undefined || config.proxy !== undefined) {
       const credentialStep = AwsCredentials.fromOpenIdConnect({
         gitHubActionRoleArn,

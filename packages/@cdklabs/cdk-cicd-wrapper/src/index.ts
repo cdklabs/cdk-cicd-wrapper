@@ -37,6 +37,7 @@ export { Repository, RepositorySourceType } from './config/repository';
 export { BuildImage, BuildImageKind, DockerBuildProps, ImageTagStrategy } from './config/build-image';
 export {
   CiConfig,
+  CiLanguage,
   CodeArtifactConfig,
   CodePipelineRoleNames,
   DeployModel,

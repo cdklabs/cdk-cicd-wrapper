@@ -1,0 +1,7 @@
+.venv/
+cdk.out/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+.cdk.staging/
+.mypy_cache/

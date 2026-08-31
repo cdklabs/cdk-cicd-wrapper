@@ -44,6 +44,54 @@ Each script runs only when your `package.json` actually defines it. A missing sc
 !!! tip
     The wrapper's own checks are still available as scripts you can point these at — e.g. `"audit": "cdk-cicd check-dependencies --npm"` in your `package.json`. See the [Audit guide](./audit.md) and [Security guide](./security.md) for the recommended commands.
 
+## Python CDK apps
+
+The default build phase supports Python CDK apps as a first-class language on all engines — no `package.json` required. The wrapper detects a Python project from `cdk.json`'s `app` command (a `python`/`python3`/`uv run python …` command is Python; anything else is Node) and renders the Python build phase instead of the npm one. You can also set it explicitly with `ci.language`:
+
+```typescript
+import { defineCICD, CiLanguage, Repository } from '@cdklabs/cdk-cicd-wrapper';
+
+export default defineCICD({
+  application: 'my-python-app',
+  repository: Repository.codecommit('my-repo'),
+  stages: ['dev', 'prod'],
+  ci: {
+    language: CiLanguage.PYTHON, // omit to auto-detect from cdk.json
+  },
+});
+```
+
+Two tiers are chosen automatically:
+
+- **Basic (pip)** — a `requirements.txt` project:
+
+    ```
+    pip install -r requirements.txt
+    pip-audit -r requirements.txt   # if pip-audit is on PATH; else a warning
+    mypy .                          # if mypy is on PATH; else a warning
+    python -m pytest                # if pytest is on PATH; else a warning
+    cdk synth
+    ```
+
+- **Modern (uv)** — a project with a `uv.lock` or a `pyproject.toml` carrying `[tool.uv]`:
+
+    ```
+    uv sync
+    uv run pip-audit
+    uv run mypy .
+    uv run pytest
+    cdk synth
+    ```
+
+Each check runs only when its tool is available; a missing tool prints a warning that points at the [recommended checks](./audit.md) and **continues** — the same warn-not-fail behavior as the npm build phase. `pip-audit` is the dependency-CVE audit; `bandit` is not part of it (it is SAST, run by the [security scanners](./security.md)).
+
+!!! note "Both runtimes on the build host"
+    A Python app's synth runs `cdk synth` — the Node `aws-cdk` CLI reading `cdk.json`, whose `app` runs `python3 app.py` — so the build needs **both** Node and Python. On the managed CodeBuild image the wrapper pins both `runtime-versions` automatically; on GitHub Actions it injects `actions/setup-python` (and `astral-sh/setup-uv` for the uv tier) into the generated workflow. If you supply your own `ci.image`/`buildImage`, that image owns its runtimes — make sure it has Node **and** Python.
+
+    GitHub Actions Python support is best-effort; CodePipeline and CDK Pipelines are first-class.
+
+Runnable proofs of both tiers live in [`samples/python-pip-proof`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/samples/python-pip-proof) and [`samples/python-uv-proof`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/samples/python-uv-proof).
+
 ## Adding your own build steps
 
 Set `ci.steps` in `cicd.config.ts` — a named map of shell commands, run in the order they appear. This **replaces** the default scripts entirely, so list everything you want the build to run, **including `npm ci`** (the engine injects nothing of its own when you configure `ci.steps`):

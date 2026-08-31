@@ -1,0 +1,4 @@
+{
+  "app": "uv run python app.py",
+  "output": "cdk.out"
+}
