@@ -92,6 +92,10 @@ describe('defaultCiCommands: runtime behaviour in /bin/sh (the CodeBuild shell)'
     // so the `!= "{}"` guard takes the warn branch instead of trying to `npm run` a nonexistent script.
     const { output, code } = run(project({ build: 'true' }));
     expect(output).toContain('WARNING');
+    // The script name must survive into the printed warning intact. It is double-quoted inside a
+    // single-quoted echo; an embedded single quote would close that echo quote in /bin/sh and the
+    // name would be stripped from the output -- so assert the exact `"audit"` token round-trips.
+    expect(output).toContain('"audit"');
     expect(output).not.toContain('AUDIT_RAN');
     expect(code).toBe(0);
   });

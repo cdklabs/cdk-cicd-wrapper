@@ -27,10 +27,11 @@ const CHECKS_DOCS_URL = 'https://cdklabs.github.io/cdk-cicd-wrapper/developer_gu
  * line so it drops straight into a CodeBuild `commands` array or a CDK Pipelines step.
  */
 function runScriptOrWarn(script: string): string {
+  // Double-quote the script name INSIDE the message: the message itself is wrapped in single quotes
+  // for the echo, so an embedded single quote would close that quote in /bin/sh rather than print.
   const warning =
-    `WARNING: no '${script}' script in package.json -- skipping. ` +
-    `The cdk-cicd-wrapper recommends a '${script}' script for your CI checks; see ${CHECKS_DOCS_URL}`;
-  // Single-quote the warning for the echo; the message contains no single quotes.
+    `WARNING: no "${script}" script in package.json -- skipping. ` +
+    `The cdk-cicd-wrapper recommends a "${script}" script for your CI checks; see ${CHECKS_DOCS_URL}`;
   return `if [ "$(npm pkg get scripts.${script})" != "{}" ]; then npm run ${script}; else echo '${warning}'; fi`;
 }
 
