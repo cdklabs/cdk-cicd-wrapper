@@ -112,11 +112,11 @@ export class GitHubActionsEngine extends Construct {
     );
 
     // Same install/synth shape as `CdkPipelinesEngine`'s Synth step (proxy exports, then CodeArtifact
-    // login, then the configured CI steps and `cdk-cicd pipeline-app`) -- GitHub Actions runs this as a
+    // login, then the configured CI steps and `npm run cdk synth`) -- GitHub Actions runs this as a
     // plain job step rather than a CodeBuild project, but the commands themselves are engine-agnostic.
-    // `pipeline-app` renders the pipeline (replaying the bin per stage); `cdk.json`'s own `cdk-cicd exec`
-    // app command synthesizes only the application stacks now, so self-mutation invokes `pipeline-app`
-    // explicitly to keep producing the workflow the "commit the updated workflow file" check compares.
+    // The step runs with `CDK_CICD_MODE=pipeline` (set on the step env below), so `cdk.json`'s single
+    // `cdk-cicd exec` entry renders the pipeline -- keeping self-mutation producing the workflow the
+    // "commit the updated workflow file" check compares. Without the mode it synthesizes only app stacks.
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
       ...(config.codeArtifact

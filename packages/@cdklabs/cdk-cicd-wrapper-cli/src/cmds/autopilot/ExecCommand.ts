@@ -4,7 +4,7 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
-import type { EngineType } from '@cdklabs/cdk-cicd-wrapper';
+import type { EngineType, ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
 import { logger } from '../../utils/Logging';
@@ -276,7 +276,7 @@ export function isPipelineMode(env: NodeJS.ProcessEnv): boolean {
  *   - CD (deploy.config, container two-repo mode): `DeploymentPipelineApp`.
  * Runs in this process (no spawn) so the assembly lands in the cwd the CDK CLI is reading.
  */
-async function renderPipeline(entry: string, cicd: { engine?: EngineType } | undefined, cwd: string): Promise<void> {
+async function renderPipeline(entry: string, cicd: ResolvedCicdConfig | undefined, cwd: string): Promise<void> {
   const disposable = (process.env.CDK_CICD_DISPOSABLE ?? '').trim() === '1';
 
   if (cicd === undefined) {
@@ -286,7 +286,7 @@ async function renderPipeline(entry: string, cicd: { engine?: EngineType } | und
       throw new Error('no cicd.config.ts or deploy.config.ts found next to cdk.json');
     }
     const { DeploymentPipelineApp } = await import('@cdklabs/cdk-cicd-wrapper');
-    new DeploymentPipelineApp({ config: deployment as any, disposable }).synth();
+    new DeploymentPipelineApp({ config: deployment, disposable }).synth();
     return;
   }
 
@@ -298,7 +298,7 @@ async function renderPipeline(entry: string, cicd: { engine?: EngineType } | und
     return;
   }
   const { PipelineApp } = await import('@cdklabs/cdk-cicd-wrapper');
-  new PipelineApp({ config: cicd as any, disposable }).synth();
+  new PipelineApp({ config: cicd, disposable }).synth();
 }
 
 class Command implements yargs.CommandModule {
