@@ -2726,15 +2726,15 @@ npx<span class="w"> </span>aws-cdk@latest<span class="w"> </span>init<span class
 <div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>deploy-ci
 </code></pre></div>
 <p>This provisions the pipeline from <code>cicd.config.ts</code> alone — nothing else needs to exist yet. From here, the pipeline self-updates from <code>cicd.config.ts</code> on every run, so you only run <code>deploy-ci</code> by hand once (and again if you ever need to recover a deleted pipeline stack).</p>
-<p>Once deployed, the pipeline runs: <strong>Source</strong> → <strong>Build</strong> (<code>npm ci</code>, then either your configured <code>ci.steps</code> or, if you set none, the default <code>npx cdk-cicd check</code>, then <code>cdk synth</code> with CDK Nag) → <strong>self-update</strong> → one <strong>deploy</strong> action per configured stage, in order, gated by a manual approval on every stage except your inner-loop ones (<code>dev</code>/<code>res</code>) unless you set <code>manualApproval</code> explicitly.</p>
+<p>Once deployed, the pipeline runs: <strong>Source</strong> → <strong>Build</strong> (<code>npm ci</code>, then either your configured <code>ci.steps</code> or, if you set none, the default scripts <code>npm run audit</code>/<code>build</code>/<code>test</code>, then <code>cdk synth</code> with CDK Nag) → <strong>self-update</strong> → one <strong>deploy</strong> action per configured stage, in order, gated by a manual approval on every stage except your inner-loop ones (<code>dev</code>/<code>res</code>) unless you set <code>manualApproval</code> explicitly.</p>
 <h2 id="configuring-continuous-integration">Configuring Continuous Integration</h2>
-<p>Leave <code>ci.steps</code> unset and the build runs <code>npx cdk-cicd check</code> by default — <code>validate</code> (lock-file integrity), <code>audit</code> (dependency CVE scanning), <code>license</code> (open-source license checking), and <code>security</code> (Bandit/Semgrep/ShellCheck), each skipped rather than failed when the project has no baseline for it yet (for example a fresh <code>cdk init</code>-ed project with no <code>package-verification.json</code>).</p>
-<p>Setting <code>ci.steps</code> <strong>replaces</strong> that default <code>cdk-cicd check</code> step rather than adding to it, so include it explicitly if you still want those checks:</p>
+<p>Leave <code>ci.steps</code> unset and the build runs your project's own npm scripts by default — <code>npm run audit</code>, <code>npm run build</code>, then <code>npm run test</code>. Each runs only when your <code>package.json</code> defines it; a missing script prints a warning pointing at the recommended checks and continues, so it never fails the build. This keeps CI identical to what you run locally and treats the checks as encouraged guidance. See the <a href="../developer_guides/audit.html">Audit guide</a> for the recommended <code>audit</code> command to point your script at.</p>
+<p>Setting <code>ci.steps</code> <strong>replaces</strong> those default scripts rather than adding to them, so list everything you want the build to run:</p>
 <div class="highlight"><pre><span></span><code><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
 <span class="w">  </span><span class="c1">// ...</span>
 <span class="w">  </span><span class="nx">ci</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">steps</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nx">check</span><span class="o">:</span><span class="w"> </span><span class="s1">'npx cdk-cicd check'</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">audit</span><span class="o">:</span><span class="w"> </span><span class="s1">'npm run audit'</span><span class="p">,</span>
 <span class="w">      </span><span class="nx">build</span><span class="o">:</span><span class="w"> </span><span class="s1">'npm run build'</span><span class="p">,</span>
 <span class="w">      </span><span class="nx">test</span><span class="o">:</span><span class="w"> </span><span class="s1">'npm run test'</span><span class="p">,</span>
 <span class="w">    </span><span class="p">},</span>
@@ -2834,7 +2834,7 @@ call there cannot be seen. Built-in selection and opt-out work on both paths.</p
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-08-28
+    2026-08-31
   </span>
 
     

@@ -2732,7 +2732,7 @@
 
 
 <h1 id="security-on-cdk-cicd-wrapper">Security on CDK CI/CD Wrapper</h1>
-<p>CDK CI/CD Wrapper brings infrastructure-as-code security to a new level with built-in toolsets based on AWS best practices and industry-wide standards. It includes Static Application Security Testing (SAST) and dependency vulnerability scanning, run through <code>cdk-cicd check</code>/<code>cdk-cicd security-scan</code>/<code>cdk-cicd check-dependencies</code> — no package.json script surgery needed.</p>
+<p>CDK CI/CD Wrapper brings infrastructure-as-code security to a new level with built-in toolsets based on AWS best practices and industry-wide standards. It includes Static Application Security Testing (SAST) and dependency vulnerability scanning, available through <code>cdk-cicd security-scan</code>/<code>cdk-cicd check-dependencies</code>. Wire them into your build by pointing a <code>ci.steps</code> entry (or a <code>package.json</code> script the default build runs) at these commands — see the <a href="ci.html">CI guide</a>.</p>
 <h2 id="reference-sheet-of-security-controls">Reference sheet of Security controls</h2>
 <table>
 <thead>
@@ -2829,22 +2829,22 @@ Tracked as <code>migration-encryptbuckettransit-s10-action-scope</code> in the r
 <p>Additional features on top of the existing <code>npm audit</code> options, aimed at encouraging more people to run security audits for their projects.</p>
 <p>More information about <a href="https://www.npmjs.com/package/better-npm-audit">Better NPM Audit</a>.</p>
 <h4 id="how-to-enable-disable_1">How to enable / disable</h4>
-<p>Run <code>cdk-cicd check-dependencies --npm</code> (or <code>cdk-cicd check</code> without arguments, which includes it as the <code>audit</code> check whenever an npm lock file is present). To disable it, remove it from your own <code>ci.steps</code> in <code>cicd.config.ts</code> if you have replaced the default <code>cdk-cicd check</code> step — see the <a href="ci.html">CI guide</a>.</p>
+<p>Run <code>cdk-cicd check-dependencies --npm</code>. This is no longer part of the default build phase, so add it as a <code>ci.steps</code> entry in <code>cicd.config.ts</code> or as the <code>audit</code> script in your <code>package.json</code> (which the default build runs as <code>npm run audit</code>) — see the <a href="ci.html">CI guide</a> and <a href="audit.html">Audit guide</a>. To disable it, leave that step/script out.</p>
 <h3 id="pip-audit">pip-audit</h3>
 <p>Scans Python environments for packages with known vulnerabilities, using the <a href="https://github.com/pypa/advisory-database">Python Packaging Advisory Database</a> via the PyPI JSON API.</p>
 <p>More information about <a href="https://pypi.org/project/pip-audit/">pip-audit</a>.</p>
 <h4 id="how-to-enable-disable_2">How to enable / disable</h4>
-<p>Run <code>cdk-cicd check-dependencies --python</code>. <code>cdk-cicd check</code>'s <code>audit</code> check includes this automatically whenever a <code>Pipfile</code> is present in the project; it is skipped (not failed) otherwise.</p>
+<p>Run <code>cdk-cicd check-dependencies --python</code>. Add it as a <code>ci.steps</code> entry or <code>package.json</code> script to run it in your build; it is not part of the default build phase.</p>
 <h3 id="semgrep">Semgrep</h3>
 <p>Static code scanning for common bug/vulnerability patterns, using Semgrep's free community rule sets. What
 runs here is plain <code>semgrep scan --config p/default</code> — no login, no <code>SEMGREP_APP_TOKEN</code>. Semgrep's paid
 Supply Chain and Secrets products (dependency-vulnerability scanning, hardcoded-credential detection) are
 <strong>not</strong> what's wired up here; those require the logged-in <code>semgrep ci</code> workflow, which this integration
 does not use. Dependency vulnerabilities are covered separately by <a href="#better-npm-audit">Better NPM Audit</a>
-above; there is no dedicated secrets scanner in the default <code>cdk-cicd check</code> pipeline.</p>
+above; there is no dedicated secrets scanner among the wrapper's CI tools.</p>
 <p>More information about <a href="https://github.com/returntocorp/semgrep">Semgrep</a>.</p>
 <h4 id="how-to-enable-disable_3">How to enable / disable</h4>
-<p>Semgrep runs as part of <code>cdk-cicd security-scan --semgrep</code> (or <code>cdk-cicd check</code>'s <code>security</code> check, which always runs it). There is no per-scanner disable flag exposed through <code>cdk-cicd check</code> — replace the default <code>check</code> step with your own <code>ci.steps</code> (see the <a href="ci.html">CI guide</a>) if you need to opt out of an individual scanner.</p>
+<p>Semgrep runs as part of <code>cdk-cicd security-scan --semgrep</code> (or <code>cdk-cicd check</code>'s <code>security</code> check, which always runs it). There is no per-scanner disable flag exposed through <code>cdk-cicd check</code> — run <code>cdk-cicd security-scan</code> with only the scanners you want as a <code>ci.steps</code> entry (see the <a href="ci.html">CI guide</a>) if you need to opt out of an individual scanner.</p>
 <h3 id="shellcheck">Shellcheck</h3>
 <p>A static analysis tool for shell scripts.</p>
 <p>More information about <a href="https://www.shellcheck.net/wiki/Home">ShellCheck</a>.</p>
@@ -2877,7 +2877,7 @@ above; there is no dedicated secrets scanner in the default <code>cdk-cicd check
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-08-28
+    2026-08-31
   </span>
 
     
