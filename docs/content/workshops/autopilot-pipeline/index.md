@@ -21,7 +21,7 @@ and *your* pipeline, not the wrapper's internals:
 | Keep your app portable | Wrap `bin/` in `PipelineBlueprint.builder()…synth(app)` — wrapper code you own forever | An ordinary `cdk init` app. Zero wrapper imports in `bin/` for the basic flow |
 | Describe stages & accounts | Encode them in builder calls + `ACCOUNT_*` env vars | Declare them as data in `cicd.config.ts` — read, diff, and review a plain object |
 | Understand the pipeline | Trace 100+ CodeBuild projects (per-asset, per-stage pre/post, self-mutation) | One flat CodePipeline: `Source → Build → UpdatePipeline → deploy per stage` |
-| Run the CI checks | Wire npm scripts, `jq` surgery, `package-verification.json` | Default-on checks the `cdk-cicd` CLI runs for you — a fresh project passes |
+| Run the CI checks | Wire npm scripts, `jq` surgery, `package-verification.json` | Your own golden-path `npm run` scripts run by default — a fresh project passes, with the wrapper's checks available to point them at |
 | Change the pipeline | Re-run a build command by hand | Edit config, push — the pipeline self-updates before the stages it affects |
 | Scale to many targets | Grow pipeline resources per target | **Container mode**: one config-agnostic image, many deploy targets as config rows |
 | Adopt it on a live app | Risk recreating deployed stacks | A codemod + a stack-name helper that keep already-deployed resources **in place** |

@@ -151,11 +151,12 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     });
   });
 
-  test('the default CI run includes the checks, so validate/audit/license/security are default-on', () => {
+  test('the default CI run invokes the project golden-path scripts (audit/build/test), not a bespoke CLI', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
-    // Without this the checks exist as a CLI command nobody in CI ever calls.
+    // The default build phase runs the project's own npm scripts, each run-only-if-present with a
+    // warning otherwise -- so the checks are encouraged guidance, discoverable and local==CI.
     render(config).hasResourceProperties('AWS::CodeBuild::Project', {
-      Source: { BuildSpec: Match.stringLikeRegexp('cdk-cicd check') },
+      Source: { BuildSpec: Match.stringLikeRegexp('npm run audit') },
     });
   });
 
@@ -1025,7 +1026,7 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
           }),
         },
       });
-      const build = specContaining(render(config), 'cdk-cicd check');
+      const build = specContaining(render(config), 'npm run audit');
 
       // The user's fragment lands on the CI build project's spec...
       expect(build.env.variables.CUSTOM_VAR).toBe('custom-value');
@@ -1033,7 +1034,8 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       // ...WITHOUT dropping the engine's own generated content -- a naive `replace` here would drop the
       // Node runtime pin and the default CI commands, and a real pipeline would break silently.
       expect(build.phases.install['runtime-versions'].nodejs).toBeGreaterThanOrEqual(20);
-      expect(build.phases.build.commands).toEqual(expect.arrayContaining(['npm ci', 'npx cdk-cicd check']));
+      expect(build.phases.build.commands[0]).toBe('npm ci');
+      expect(build.phases.build.commands.some((c: string) => c.includes('npm run audit'))).toBe(true);
     });
 
     test('the merge is scoped to the CI build project; self-update and stage deploys are untouched', () => {
@@ -1063,7 +1065,7 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
         repository: Repository.s3('shop-src/app.zip'),
         stages: ['dev'],
       });
-      const build = specContaining(render(config), 'cdk-cicd check');
+      const build = specContaining(render(config), 'npm run audit');
       expect(build.env).toBeUndefined();
     });
   });

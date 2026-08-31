@@ -28,6 +28,7 @@ import { Construct } from 'constructs';
 import { RepositorySourceType } from '../../config/repository';
 import { ProxyConfig, ResolvedCicdConfig } from '../../config/types';
 import { CdkPipelinesStageContext, IStageProvider } from '../cdkpipelines/CdkPipelinesEngine';
+import { defaultCiCommands } from '../ci-commands';
 
 /** Props for the GitHub Actions engine. */
 export interface GitHubActionsEngineProps {
@@ -134,7 +135,7 @@ export class GitHubActionsEngine extends Construct {
       workflowTriggers: options.workflowTriggers,
       synth: new CodeBuildStep('Synth', {
         installCommands: [],
-        commands: ['npm ci', 'npx cdk-cicd check', ...ciSteps, 'npx cdk synth'],
+        commands: [...(ciSteps.length > 0 ? ['npm ci', ...ciSteps] : defaultCiCommands()), 'npx cdk synth'],
         env: config.qualifier ? { CDK_QUALIFIER: config.qualifier } : undefined,
         primaryOutputDirectory: 'cdk.out',
       }),

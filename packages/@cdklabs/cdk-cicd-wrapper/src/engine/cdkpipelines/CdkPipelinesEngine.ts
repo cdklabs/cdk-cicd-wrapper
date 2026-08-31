@@ -26,6 +26,7 @@ import { CodeArtifactConfig, PipelineRoleNames, ProxyConfig, ResolvedCicdConfig 
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { resolveVpcNetworking } from '../../support/Vpc';
+import { defaultCiCommands } from '../ci-commands';
 
 /** Context passed to the stage factory for one deployment stage. */
 export interface CdkPipelinesStageContext {
@@ -143,8 +144,9 @@ export class CdkPipelinesEngine extends Construct {
       synth: new pipelines.CodeBuildStep('Synth', {
         input: sourceFor(this, config.repository),
         installCommands,
-        // Run the default CI check, any configured extra steps, then synth the app.
-        commands: ['npm ci', 'npx cdk-cicd check', ...ciSteps, 'npx cdk synth'],
+        // When no ci.steps are configured, run the project's golden-path npm scripts (audit/build/test,
+        // each run-or-warn); otherwise the configured steps replace them. Then synth the app.
+        commands: [...(ciSteps.length > 0 ? ['npm ci', ...ciSteps] : defaultCiCommands()), 'npx cdk synth'],
         env: {
           ...(config.qualifier ? { CDK_QUALIFIER: config.qualifier } : {}),
           AWS_REGION: region,

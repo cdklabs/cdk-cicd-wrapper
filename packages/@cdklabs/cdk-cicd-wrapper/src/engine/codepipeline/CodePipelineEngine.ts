@@ -39,14 +39,8 @@ import {
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
+import { defaultCiCommands } from '../ci-commands';
 import { EngineRenderProps, IEngine } from '../types';
-
-/**
- * Default CI commands when the config sets none. The engine, not the config layer, owns these.
- * `check` runs the validate/audit/license/security set before synth, which is what makes those checks
- * default-on in CI: a project that configures no `ci.steps` still gets them.
- */
-const DEFAULT_CI_COMMANDS = ['npm ci', 'npx cdk-cicd check'];
 
 /**
  * The CDK bootstrap roles `cdk deploy` assumes: the deploy role drives CloudFormation, the two
@@ -461,8 +455,7 @@ export class CodePipelineEngine implements IEngine {
     const uri = `${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}/${repository.repositoryName}`;
     const commands = [
       ...(config.codeArtifact ? [codeArtifactLogin(stack, config.codeArtifact)] : []),
-      'npm ci',
-      'npx cdk-cicd check',
+      ...defaultCiCommands(),
       // Log in to ECR, build the deployer image from the source, tag by commit, push. The image payload
       // is the app + deps (per the Dockerfile), NOT cdk.out -- Repo 2 synths at run time.
       `aws ecr get-login-password --region ${stack.region} | docker login --username AWS --password-stdin ${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}`,
@@ -617,11 +610,11 @@ export class CodePipelineEngine implements IEngine {
 
   private ciCommands(config: ResolvedCicdConfig, synthed: string[], promote: boolean): string[] {
     const steps = Object.values(config.ci.steps);
-    const base = steps.length > 0 ? ['npm ci', ...steps] : DEFAULT_CI_COMMANDS;
+    const base = steps.length > 0 ? ['npm ci', ...steps] : defaultCiCommands();
     // The synth is appended, never replaced by `ci.steps`. In promotion mode it produces the artifact
     // every deploy stage consumes, so a config that dropped it would render a pipeline that cannot
     // deploy at all; in deploy-time-synth mode it is the validation gate. `ci.steps` still replaces the
-    // check step -- see finding `code-review-ci-steps-replace-drops-checks`, unchanged here.
+    // default golden-path commands wholesale -- a project that customizes CI owns its build phase.
     return [...base, ...synthCommands(synthed, promote)];
   }
 

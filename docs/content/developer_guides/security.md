@@ -1,6 +1,6 @@
 # Security on {{ project_name }}
 
-{{ project_name }} brings infrastructure-as-code security to a new level with built-in toolsets based on AWS best practices and industry-wide standards. It includes Static Application Security Testing (SAST) and dependency vulnerability scanning, run through `cdk-cicd check`/`cdk-cicd security-scan`/`cdk-cicd check-dependencies` — no package.json script surgery needed.
+{{ project_name }} brings infrastructure-as-code security to a new level with built-in toolsets based on AWS best practices and industry-wide standards. It includes Static Application Security Testing (SAST) and dependency vulnerability scanning, available through `cdk-cicd security-scan`/`cdk-cicd check-dependencies`. Wire them into your build by pointing a `ci.steps` entry (or a `package.json` script the default build runs) at these commands — see the [CI guide](./ci.md).
 
 ## Reference sheet of Security controls
 
@@ -63,7 +63,7 @@ More information about [Better NPM Audit](https://www.npmjs.com/package/better-n
 
 #### How to enable / disable
 
-Run `cdk-cicd check-dependencies --npm` (or `cdk-cicd check` without arguments, which includes it as the `audit` check whenever an npm lock file is present). To disable it, remove it from your own `ci.steps` in `cicd.config.ts` if you have replaced the default `cdk-cicd check` step — see the [CI guide](./ci.md).
+Run `cdk-cicd check-dependencies --npm`. This is no longer part of the default build phase, so add it as a `ci.steps` entry in `cicd.config.ts` or as the `audit` script in your `package.json` (which the default build runs as `npm run audit`) — see the [CI guide](./ci.md) and [Audit guide](./audit.md). To disable it, leave that step/script out.
 
 ### pip-audit
 
@@ -73,7 +73,7 @@ More information about [pip-audit](https://pypi.org/project/pip-audit/).
 
 #### How to enable / disable
 
-Run `cdk-cicd check-dependencies --python`. `cdk-cicd check`'s `audit` check includes this automatically whenever a `Pipfile` is present in the project; it is skipped (not failed) otherwise.
+Run `cdk-cicd check-dependencies --python`. Add it as a `ci.steps` entry or `package.json` script to run it in your build; it is not part of the default build phase.
 
 ### Semgrep
 
@@ -82,13 +82,13 @@ runs here is plain `semgrep scan --config p/default` — no login, no `SEMGREP_A
 Supply Chain and Secrets products (dependency-vulnerability scanning, hardcoded-credential detection) are
 **not** what's wired up here; those require the logged-in `semgrep ci` workflow, which this integration
 does not use. Dependency vulnerabilities are covered separately by [Better NPM Audit](#better-npm-audit)
-above; there is no dedicated secrets scanner in the default `cdk-cicd check` pipeline.
+above; there is no dedicated secrets scanner among the wrapper's CI tools.
 
 More information about [Semgrep](https://github.com/returntocorp/semgrep).
 
 #### How to enable / disable
 
-Semgrep runs as part of `cdk-cicd security-scan --semgrep` (or `cdk-cicd check`'s `security` check, which always runs it). There is no per-scanner disable flag exposed through `cdk-cicd check` — replace the default `check` step with your own `ci.steps` (see the [CI guide](./ci.md)) if you need to opt out of an individual scanner.
+Semgrep runs as part of `cdk-cicd security-scan --semgrep` (or `cdk-cicd check`'s `security` check, which always runs it). There is no per-scanner disable flag exposed through `cdk-cicd check` — run `cdk-cicd security-scan` with only the scanners you want as a `ci.steps` entry (see the [CI guide](./ci.md)) if you need to opt out of an individual scanner.
 
 ### Shellcheck
 

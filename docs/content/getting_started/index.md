@@ -105,20 +105,20 @@ npx cdk-cicd deploy-ci
 
 This provisions the pipeline from `cicd.config.ts` alone — nothing else needs to exist yet. From here, the pipeline self-updates from `cicd.config.ts` on every run, so you only run `deploy-ci` by hand once (and again if you ever need to recover a deleted pipeline stack).
 
-Once deployed, the pipeline runs: **Source** → **Build** (`npm ci`, then either your configured `ci.steps` or, if you set none, the default `npx cdk-cicd check`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, gated by a manual approval on every stage except your inner-loop ones (`dev`/`res`) unless you set `manualApproval` explicitly.
+Once deployed, the pipeline runs: **Source** → **Build** (`npm ci`, then either your configured `ci.steps` or, if you set none, the default golden-path scripts `npm run audit`/`build`/`test`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, gated by a manual approval on every stage except your inner-loop ones (`dev`/`res`) unless you set `manualApproval` explicitly.
 
 ## Configuring Continuous Integration
 
-Leave `ci.steps` unset and the build runs `npx cdk-cicd check` by default — `validate` (lock-file integrity), `audit` (dependency CVE scanning), `license` (open-source license checking), and `security` (Bandit/Semgrep/ShellCheck), each skipped rather than failed when the project has no baseline for it yet (for example a fresh `cdk init`-ed project with no `package-verification.json`).
+Leave `ci.steps` unset and the build runs your project's own golden-path scripts by default — `npm run audit`, `npm run build`, then `npm run test`. Each runs only when your `package.json` defines it; a missing script prints a warning pointing at the recommended checks and continues, so it never fails the build. This keeps CI identical to what you run locally and treats the checks as encouraged guidance. See the [Audit guide](../developer_guides/audit.md) for the recommended `audit` command to point your script at.
 
-Setting `ci.steps` **replaces** that default `cdk-cicd check` step rather than adding to it, so include it explicitly if you still want those checks:
+Setting `ci.steps` **replaces** those default scripts rather than adding to them, so list everything you want the build to run:
 
 ```typescript
 export default defineCICD({
   // ...
   ci: {
     steps: {
-      check: 'npx cdk-cicd check',
+      audit: 'npm run audit',
       build: 'npm run build',
       test: 'npm run test',
     },

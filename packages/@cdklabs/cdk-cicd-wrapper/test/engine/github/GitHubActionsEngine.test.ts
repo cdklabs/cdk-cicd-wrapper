@@ -149,11 +149,13 @@ describe('GitHubActionsEngine', () => {
     expect(yaml).not.toContain('Token[');
   });
 
-  test('the Synth job runs npm ci + cdk-cicd check + cdk synth', () => {
+  test('the Synth job runs npm ci + the golden-path scripts + cdk synth', () => {
     const { engine } = render();
     const yaml = engine.pipeline.workflowFile.toYaml();
     expect(yaml).toContain('npm ci');
-    expect(yaml).toContain('npx cdk-cicd check');
+    expect(yaml).toContain('npm run audit');
+    expect(yaml).toContain('npm run build');
+    expect(yaml).toContain('npm run test');
     expect(yaml).toContain('npx cdk synth');
   });
 
