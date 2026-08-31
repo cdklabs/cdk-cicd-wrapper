@@ -35,7 +35,7 @@ export default defineCICD({
 
 `cdk-cicd deploy-ci` provisions a **secondary CodePipeline** whose single build project:
 
-1. runs `npm ci` and your golden-path CI scripts (`npm run audit`/`build`/`test`, CI as a validation gate),
+1. runs `npm ci` and your CI scripts (`npm run audit`/`build`/`test`, CI as a validation gate),
 2. logs in to ECR (`aws ecr get-login-password | docker login …`),
 3. `docker build`s your Dockerfile and pushes the image, tagged by the resolved commit.
 

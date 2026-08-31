@@ -67,7 +67,7 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(actionCategories('dev')).not.toContain('Approval');
   });
 
-  test('the synth step runs npm ci + the golden-path scripts + cdk synth (CI in the pipeline)', () => {
+  test('the synth step runs npm ci + the default scripts + cdk synth (CI in the pipeline)', () => {
     const t = render();
     // The Synth CodeBuild project's buildspec carries the commands.
     const projects = t.findResources('AWS::CodeBuild::Project');

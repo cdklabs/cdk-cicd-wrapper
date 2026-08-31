@@ -17,7 +17,7 @@ The {{ project_name }} can address these issues and drastically reduce the effor
 Here are some key features provided by the {{ project_name }}:
 
 - :white_check_mark: **Zero wrapper code in your app** (TypeScript/JavaScript apps) — your `bin/` stays exactly what `cdk init` produced; the pipeline lives in a separate `cicd.config.ts`. Non-Node apps (e.g. Python) use the explicit `CdkCicd.attach(app)` opt-in instead — see [Getting Started](../getting_started/index.md)
-- :white_check_mark: [Customizable CI](../developer_guides/ci.md) steps that default to your project's own golden-path npm scripts (`npm run audit`/`build`/`test`)
+- :white_check_mark: [Customizable CI](../developer_guides/ci.md) steps that default to your project's own npm scripts (`npm run audit`/`build`/`test`)
 - :white_check_mark: Integration of various [security scanning tools](../developer_guides/security.md) (cdk-nag, Bandit, Semgrep, ShellCheck, dependency-vulnerability scanning)
 - :white_check_mark: Multi-staged Continuous Deployment process with manual-approval gating on by default for anything past your inner development loop
 - :white_check_mark: Flexible definition of stages, including multi-region stages and per-stage AWS accounts
@@ -45,7 +45,7 @@ The CI/CD process in the {{ project_name }} establishes the following:
 1. Changes are committed to the Git repository in a branch, and a Pull Request (PR) is created for the tracked branch (`main` by default).
 2. The PR is reviewed, approved, and merged.
 3. Once the codebase is merged, the pipeline is triggered to execute the CI/CD process:
-   - **Build**: This is the Continuous Integration step, which runs your configured `ci.steps` or, by default, your project's golden-path scripts (`npm run audit`/`build`/`test`, each run-if-present) to ensure code quality and security before deployment to any stage.
+   - **Build**: This is the Continuous Integration step, which runs your configured `ci.steps` or, by default, your project's own npm scripts (`npm run audit`/`build`/`test`, each run-if-present) to ensure code quality and security before deployment to any stage.
    - **Synthesize**: This step executes `cdk synth` and runs CDK Nag to promote infrastructure best practices.
    - **Self-update**: The pipeline updates its own definition from the latest `cicd.config.ts`.
    - **Deploy `<stage>`** (one action per configured stage): Updates the infrastructure elements in that stage's account/region with AWS CloudFormation. Stages other than your inner-loop stages (e.g. `dev`/`res`) are gated by a manual approval by default.

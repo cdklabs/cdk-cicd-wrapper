@@ -11,16 +11,15 @@ The CI functionality of the {{ project_name }} can be used in any software devel
 There is no `PhaseCommand`/`definePhase` model in Autopilot. The CI build's commands, per `CiConfig` (the `ci` field on `cicd.config.ts`), are:
 
 ```
-npm ci
-<your ci.steps, in the order you wrote them — or, if you set none, the default golden-path scripts (npm run audit / build / test)>
+<your ci.steps verbatim, in the order you wrote them — or, if you set none, the default: npm ci then npm run audit / build / test>
 cdk synth (+ CDK Nag)
 ```
 
-`cdk synth` is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. Setting `ci.steps`, however, **replaces** the default golden-path scripts rather than adding to them — a project that configures its own steps owns its build phase.
+`cdk synth` is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
 
 ## Default build phase: your own npm scripts
 
-With no `ci.steps` configured, the CI build runs the project's own golden-path npm scripts, in order:
+With no `ci.steps` configured, the CI build runs the project's own npm scripts, in order:
 
 ```
 npm ci
@@ -36,7 +35,7 @@ Each script runs only when your `package.json` actually defines it. A missing sc
 
 ## Adding your own build steps
 
-Set `ci.steps` in `cicd.config.ts` — a named map of shell commands, run in the order they appear. This **replaces** the default golden-path scripts, so list everything you want the build to run:
+Set `ci.steps` in `cicd.config.ts` — a named map of shell commands, run in the order they appear. This **replaces** the default scripts entirely, so list everything you want the build to run, **including `npm ci`** (the engine injects nothing of its own when you configure `ci.steps`):
 
 ```typescript
 import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
@@ -47,6 +46,7 @@ export default defineCICD({
   stages: ['dev', 'prod'],
   ci: {
     steps: {
+      install: 'npm ci',
       audit: 'npm run audit',
       build: 'npm run build',
       test: 'npm run test',
@@ -55,7 +55,7 @@ export default defineCICD({
 });
 ```
 
-`npm ci` runs before your steps and `cdk synth` after them, regardless of what you configure.
+Only `cdk synth` is appended after your steps; nothing is prepended. (With **no** `ci.steps` configured, the default build begins with its own `npm ci` — see above.)
 
 ### Controlling which stages CI synthesizes
 

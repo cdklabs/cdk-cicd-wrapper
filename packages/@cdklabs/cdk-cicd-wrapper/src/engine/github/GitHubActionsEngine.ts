@@ -135,7 +135,10 @@ export class GitHubActionsEngine extends Construct {
       workflowTriggers: options.workflowTriggers,
       synth: new CodeBuildStep('Synth', {
         installCommands: [],
-        commands: [...(ciSteps.length > 0 ? ['npm ci', ...ciSteps] : defaultCiCommands()), 'npx cdk synth'],
+        // With no ci.steps, run the default CI (its own `npm ci` first); with ci.steps, those steps ARE
+        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then synth via
+        // `npm run cdk` so the project's pinned aws-cdk is used, not whatever `npx` resolves.
+        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
         env: config.qualifier ? { CDK_QUALIFIER: config.qualifier } : undefined,
         primaryOutputDirectory: 'cdk.out',
       }),

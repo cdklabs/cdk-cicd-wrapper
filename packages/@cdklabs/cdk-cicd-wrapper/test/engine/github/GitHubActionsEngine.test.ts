@@ -149,14 +149,16 @@ describe('GitHubActionsEngine', () => {
     expect(yaml).not.toContain('Token[');
   });
 
-  test('the Synth job runs npm ci + the golden-path scripts + cdk synth', () => {
+  test('the Synth job runs npm ci + the default scripts + npm run cdk synth', () => {
     const { engine } = render();
     const yaml = engine.pipeline.workflowFile.toYaml();
     expect(yaml).toContain('npm ci');
     expect(yaml).toContain('npm run audit');
     expect(yaml).toContain('npm run build');
     expect(yaml).toContain('npm run test');
-    expect(yaml).toContain('npx cdk synth');
+    // Synth via `npm run cdk` so the project's pinned aws-cdk is used, not whatever npx resolves.
+    expect(yaml).toContain('npm run cdk synth');
+    expect(yaml).not.toContain('npx cdk synth');
   });
 
   test('each stage gets its own GitHub Environment named after the stage', () => {

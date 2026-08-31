@@ -610,11 +610,13 @@ export class CodePipelineEngine implements IEngine {
 
   private ciCommands(config: ResolvedCicdConfig, synthed: string[], promote: boolean): string[] {
     const steps = Object.values(config.ci.steps);
-    const base = steps.length > 0 ? ['npm ci', ...steps] : defaultCiCommands();
+    // With no ci.steps the engine runs the default CI (which begins with its own `npm ci`). With
+    // ci.steps configured, those steps ARE the build phase verbatim -- the engine injects nothing, not
+    // even `npm ci`: a project that customizes CI decides for itself whether and where to install.
+    const base = steps.length > 0 ? steps : defaultCiCommands();
     // The synth is appended, never replaced by `ci.steps`. In promotion mode it produces the artifact
     // every deploy stage consumes, so a config that dropped it would render a pipeline that cannot
-    // deploy at all; in deploy-time-synth mode it is the validation gate. `ci.steps` still replaces the
-    // default golden-path commands wholesale -- a project that customizes CI owns its build phase.
+    // deploy at all; in deploy-time-synth mode it is the validation gate.
     return [...base, ...synthCommands(synthed, promote)];
   }
 

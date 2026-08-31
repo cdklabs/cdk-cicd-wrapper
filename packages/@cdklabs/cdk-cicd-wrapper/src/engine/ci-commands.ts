@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The default CI build commands, shared by every engine so all three render the SAME default build
-// phase. When a project configures no `ci.steps`, CI runs the project's own golden-path npm scripts
+// phase. When a project configures no `ci.steps`, CI runs the project's own npm scripts
 // -- `npm run audit`, `npm run build`, `npm run test` -- rather than a bespoke umbrella CLI. Each is
 // run only when the project actually defines that script; a missing script prints a warning that
 // points at our recommended checks and CONTINUES (it never fails the build). This keeps the checks as
@@ -12,7 +12,7 @@
 // The moment a project sets its own `ci.steps`, this default is replaced wholesale (the engines own
 // that replacement): a project that customizes CI owns its build phase, warnings included.
 
-/** The golden-path scripts CI runs by default, in order. */
+/** The npm scripts CI runs by default, in order. */
 const DEFAULT_SCRIPTS = ['audit', 'build', 'test'] as const;
 
 /** Where the recommended-checks guidance lives, cited by the missing-script warning. */
@@ -36,7 +36,7 @@ function runScriptOrWarn(script: string): string {
 }
 
 /**
- * The default CI build commands when `ci.steps` is empty: `npm ci`, then each golden-path script
+ * The default CI build commands when `ci.steps` is empty: `npm ci`, then each default script
  * (run-or-warn), in order. `cdk synth` is appended by the engine, not here.
  */
 export function defaultCiCommands(): string[] {

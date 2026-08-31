@@ -151,13 +151,32 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     });
   });
 
-  test('the default CI run invokes the project golden-path scripts (audit/build/test), not a bespoke CLI', () => {
+  test('the default CI run invokes the project npm scripts (audit/build/test), not a bespoke CLI', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
     // The default build phase runs the project's own npm scripts, each run-only-if-present with a
     // warning otherwise -- so the checks are encouraged guidance, discoverable and local==CI.
     render(config).hasResourceProperties('AWS::CodeBuild::Project', {
       Source: { BuildSpec: Match.stringLikeRegexp('npm run audit') },
     });
+  });
+
+  test('custom ci.steps are the build phase verbatim -- the engine injects no npm ci of its own', () => {
+    // A project that configures ci.steps owns its build phase, including whether/where `npm ci` runs.
+    // The engine must not prepend one: the CI build commands are exactly the configured steps, in order.
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      ci: { steps: { install: 'npm ci --ignore-scripts', build: 'npm run build' } },
+    });
+    const spec = specContaining(render(config), 'npm run build');
+    // The build commands begin with the user's OWN first step, not an engine-injected `npm ci`, and
+    // synth is still appended after.
+    expect(spec.phases.build.commands[0]).toBe('npm ci --ignore-scripts');
+    expect(spec.phases.build.commands).toContain('npm run build');
+    // Exactly one `npm ci ...` -- the user's -- not a duplicate injected before it.
+    const npmCiCount = spec.phases.build.commands.filter((c: string) => c.startsWith('npm ci')).length;
+    expect(npmCiCount).toBe(1);
   });
 
   test('a codeArtifact config logs every build project into the private repo before npm ci', () => {

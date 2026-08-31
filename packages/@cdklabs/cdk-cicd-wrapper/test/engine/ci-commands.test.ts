@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Unit tests for the shared default CI build commands: the golden-path scripts (audit/build/test)
+// Unit tests for the shared default CI build commands: the default scripts (audit/build/test)
 // each run-or-warn, in order, with npm ci first. The engines are responsible for appending cdk synth
 // and for replacing this default when ci.steps is set -- those are covered in the engine tests.
 //
