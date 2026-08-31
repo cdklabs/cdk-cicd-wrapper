@@ -17,6 +17,9 @@ cdk synth (+ CDK Nag)
 
 `cdk synth` is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
 
+!!! important
+    The pipeline runs **`npm run cdk synth`**, not `npx cdk synth`, so it uses the exact `aws-cdk` version pinned in your project — the pipeline never resolves a tool through `npx`, which is non-deterministic. This requires your `package.json` to define a `cdk` script (e.g. `"cdk": "cdk"`), which is the expected shape for a CDK app. A project without a `cdk` script fails at the synth step.
+
 ## Default build phase: your own npm scripts
 
 With no `ci.steps` configured, the CI build runs the project's own npm scripts, in order:

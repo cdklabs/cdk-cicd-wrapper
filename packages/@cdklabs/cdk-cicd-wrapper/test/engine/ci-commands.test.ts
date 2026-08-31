@@ -105,3 +105,40 @@ describe('defaultCiCommands: runtime behaviour in /bin/sh (the CodeBuild shell)'
     expect(code).not.toBe(0);
   });
 });
+
+describe('pipeline synth: npm run cdk synth (never npx -- npx is non-deterministic and banned)', () => {
+  // The engines append `npm run cdk synth`, not `npx cdk synth`, so the project's pinned aws-cdk is used
+  // deterministically. That REQUIRES the CDK app to expose a `cdk` script in package.json -- the expected
+  // project shape (see the CI guide). These tests pin that contract: it resolves the project's own script,
+  // and a project missing it fails loudly rather than silently pulling an unpinned cdk.
+  const dirs: string[] = [];
+  function project(scripts: Record<string, string>): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cdk-cicd-synth-'));
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'fixture', version: '1.0.0', scripts }));
+    dirs.push(dir);
+    return dir;
+  }
+  function runCmd(cwd: string, cmd: string): { output: string; code: number } {
+    try {
+      const output = execFileSync('/bin/sh', ['-c', cmd], { cwd, encoding: 'utf8', stdio: 'pipe' });
+      return { output, code: 0 };
+    } catch (e) {
+      const err = e as { status?: number; stdout?: string; stderr?: string };
+      return { output: `${err.stdout ?? ''}${err.stderr ?? ''}`, code: err.status ?? -1 };
+    }
+  }
+  afterAll(() => dirs.forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })));
+
+  test('runs the project cdk script when present (a real "cdk" script stands in for the aws-cdk bin)', () => {
+    // The fixture's `cdk` script echoes a marker instead of invoking the real CLI; the point is that
+    // `npm run cdk synth` resolves the PROJECT's script (deterministic), not an ambient/npx-fetched cdk.
+    const { output, code } = runCmd(project({ cdk: 'echo CDK_SCRIPT_RAN' }), 'npm run cdk synth');
+    expect(output).toContain('CDK_SCRIPT_RAN');
+    expect(code).toBe(0);
+  });
+
+  test('fails loudly when the project has no cdk script (the prerequisite the CI guide documents)', () => {
+    const { code } = runCmd(project({ build: 'true' }), 'npm run cdk synth');
+    expect(code).not.toBe(0);
+  });
+});
