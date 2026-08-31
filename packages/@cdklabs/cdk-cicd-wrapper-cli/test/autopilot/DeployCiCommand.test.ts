@@ -46,11 +46,27 @@ describe('m4-approval-selfupdate: deployCiArgs', () => {
     // pipeline is rendered by `pipeline-app` for every engine. `pipeline-app` routes on the engine
     // internally (it replays the bin for a self-mutating pipeline).
     const args = deployCiArgs(false, 'ci', EngineType.CDK_PIPELINES);
-    expect(args).toEqual(['cdk', 'deploy', '--app', 'npx cdk-cicd pipeline-app', '--all', '--require-approval', 'never']);
+    expect(args).toEqual([
+      'cdk',
+      'deploy',
+      '--app',
+      'npx cdk-cicd pipeline-app',
+      '--all',
+      '--require-approval',
+      'never',
+    ]);
   });
 
   test('the GitHub Actions engine also deploys through the pipeline-app renderer (--app override)', () => {
     const args = deployCiArgs(false, 'ci', EngineType.GITHUB_ACTIONS);
-    expect(args).toEqual(['cdk', 'deploy', '--app', 'npx cdk-cicd pipeline-app', '--all', '--require-approval', 'never']);
+    expect(args).toEqual([
+      'cdk',
+      'deploy',
+      '--app',
+      'npx cdk-cicd pipeline-app',
+      '--all',
+      '--require-approval',
+      'never',
+    ]);
   });
 });

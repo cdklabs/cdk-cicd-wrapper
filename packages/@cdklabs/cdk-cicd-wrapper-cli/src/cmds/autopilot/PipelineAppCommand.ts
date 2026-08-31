@@ -17,7 +17,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { EngineType } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig } from './CicdConfig';
 import { logger } from '../../utils/Logging';
@@ -49,9 +48,43 @@ export function resolveEntry(cwd: string, override?: string): string {
     }
   }
   throw new Error(
-    "cdk-cicd pipeline-app: cannot determine the app entry to replay for a self-mutating engine. Ensure " +
+    'cdk-cicd pipeline-app: cannot determine the app entry to replay for a self-mutating engine. Ensure ' +
       "cdk.json's `app` is `npx cdk-cicd exec <entry>`, or pass --entry <entry>.",
   );
+}
+
+/**
+ * Render the pipeline app the way `deploy-ci` would deploy it, WITHOUT synthesizing. Returns the CDK
+ * `App` so the caller decides what to do with it (synth to a dir, or inspect the construct tree). The
+ * single source of truth for "what is the pipeline" across `pipeline-app`, `synth-ci` and `list-ci`, so
+ * a pre-deploy double-check renders exactly what `deploy-ci` will provision -- not an approximation.
+ *
+ * The engine routing mirrors `deploy-ci`: the flat CodePipeline engine renders through the jsii-exported
+ * `PipelineApp`; the self-mutating engines render through the runtime assembler (reached via the compiled
+ * `lib/` deep path, since it is a dynamic-require/require.cache module that is not jsii-exported), which
+ * replays the user's plain `bin` entry once per stage.
+ */
+export async function renderPipelineApp(
+  cwd: string,
+  opts: { disposable?: boolean; entry?: string } = {},
+): Promise<import('aws-cdk-lib').App> {
+  const config = loadCicdConfig(cwd);
+  if (config === undefined) {
+    throw new Error('no cicd.config.ts found next to cdk.json');
+  }
+
+  const engineValue = config.engine as string | undefined;
+  if (engineValue !== undefined && SELF_MUTATING_ENGINES.includes(engineValue)) {
+    const entry = resolveEntry(cwd, opts.entry);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { assemblePipelineApp } = require('@cdklabs/cdk-cicd-wrapper/lib/runtime/pipeline-assembler');
+    return assemblePipelineApp(config, path.resolve(cwd, entry));
+  }
+
+  // Imported here rather than at module load: only the render paths need aws-cdk-lib, and an eager import
+  // would put its load time on every `cdk-cicd` invocation, checks included.
+  const { PipelineApp } = await import('@cdklabs/cdk-cicd-wrapper');
+  return new PipelineApp({ config, disposable: opts.disposable ?? false });
 }
 
 class Command implements yargs.CommandModule {
@@ -67,36 +100,23 @@ class Command implements yargs.CommandModule {
       })
       .option('entry', {
         type: 'string',
-        describe: 'The app entry to replay for a self-mutating engine (defaults to cdk.json app `cdk-cicd exec <entry>`)',
+        describe:
+          'The app entry to replay for a self-mutating engine (defaults to cdk.json app `cdk-cicd exec <entry>`)',
       });
   }
 
   public async handler(args: yargs.Arguments) {
     const cwd = process.cwd();
-    const config = loadCicdConfig(cwd);
-    if (config === undefined) {
-      logger.error('cdk-cicd pipeline-app: no cicd.config.ts found next to cdk.json');
+    try {
+      const app = await renderPipelineApp(cwd, {
+        disposable: args.disposable as boolean,
+        entry: args.entry as string | undefined,
+      });
+      app.synth();
+    } catch (error) {
+      logger.error(`cdk-cicd pipeline-app: ${(error as Error).message}`);
       process.exit(1);
     }
-
-    const engine = config.engine as EngineType | undefined;
-    const engineValue = engine as string | undefined;
-
-    if (engineValue !== undefined && SELF_MUTATING_ENGINES.includes(engineValue)) {
-      // The app IS the pipeline: replay the user's bin per stage. Reached via the compiled runtime
-      // module deep path (not the jsii-exported entry) because the assembler is runtime-only.
-      const entry = resolveEntry(cwd, args.entry as string | undefined);
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { assemblePipelineApp } = require('@cdklabs/cdk-cicd-wrapper/lib/runtime/pipeline-assembler');
-      assemblePipelineApp(config, path.resolve(cwd, entry)).synth();
-      return;
-    }
-
-    // The flat CodePipeline engine: one stack, rendered by the jsii-exported PipelineApp. Imported here
-    // rather than at module load: this is the only path that needs aws-cdk-lib, and an eager import would
-    // put its load time on every `cdk-cicd` invocation, checks included.
-    const { PipelineApp } = await import('@cdklabs/cdk-cicd-wrapper');
-    new PipelineApp({ config, disposable: args.disposable as boolean }).synth();
   }
 }
 
