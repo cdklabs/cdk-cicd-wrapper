@@ -2684,12 +2684,21 @@
 <h2 id="how-the-ci-build-is-assembled">How the CI build is assembled</h2>
 <p>There is no <code>PhaseCommand</code>/<code>definePhase</code> model in Autopilot. The CI build's commands, per <code>CiConfig</code> (the <code>ci</code> field on <code>cicd.config.ts</code>), are:</p>
 <div class="highlight"><pre><span></span><code>&lt;your ci.steps verbatim, in the order you wrote them — or, if you set none, the default: npm ci then npm run audit / build / test&gt;
-cdk synth (+ CDK Nag)
+synth (+ CDK Nag)
 </code></pre></div>
-<p><code>cdk synth</code> is always appended at the end and is <strong>never</strong> replaced by <code>ci.steps</code> — dropping it would render a pipeline with nothing to deploy. Setting <code>ci.steps</code>, however, <strong>replaces</strong> the entire default build phase (including its <code>npm ci</code>) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own <code>npm ci</code>.</p>
+<p>The final synth step is always appended at the end and is <strong>never</strong> replaced by <code>ci.steps</code> — dropping it would render a pipeline with nothing to deploy. It is always <code>npm run cdk synth</code>, so it uses the <code>aws-cdk</code> version pinned in your project. Setting <code>ci.steps</code>, however, <strong>replaces</strong> the entire default build phase (including its <code>npm ci</code>) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own <code>npm ci</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">One <code>cdk.json</code> entry point; <code>CDK_CICD_MODE</code> decides app-vs-pipeline</p>
+<p><code>cdk.json</code> has a <strong>single</strong> <code>app</code> command — the preferred form is <code>npm run cdk-cicd exec bin/&lt;your-entry&gt;.ts</code> (or <code>npx cdk-cicd exec …</code>). That one entry renders <strong>either</strong> the application stacks <strong>or</strong> the pipeline, decided by the <code>CDK_CICD_MODE</code> environment variable that the invoking command sets — there is no <code>--app</code> override and no separate renderer command:</p>
+<ul>
+<li><strong><code>CDK_CICD_MODE</code> unset</strong> (a plain <code>npm run cdk synth</code> / <code>cdk deploy</code>) → the <strong>application</strong> stacks for the active <code>CDK_STAGE</code>, for all three engines.</li>
+<li><strong><code>CDK_CICD_MODE=pipeline</code></strong> → the <strong>pipeline</strong> itself. <code>cdk-cicd deploy-ci</code> sets this before it runs <code>npm run cdk deploy --all</code>, and each self-mutating engine's in-pipeline synth step sets it too, so the pipeline re-renders itself on self-mutation.</li>
+</ul>
+<p>So you provision the pipeline with <code>cdk-cicd deploy-ci</code> (preview it first with <code>cdk-cicd synth-ci</code> / <code>cdk-cicd list-ci</code>, which run the same entry with the mode set), and a local plain synth/deploy always gives you the app stacks.</p>
+</div>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p>The pipeline runs <strong><code>npm run cdk synth</code></strong>, not <code>npx cdk synth</code>, so it uses the exact <code>aws-cdk</code> version pinned in your project — the pipeline never resolves a tool through <code>npx</code>, which is non-deterministic. This requires your <code>package.json</code> to define a <code>cdk</code> script (e.g. <code>"cdk": "cdk"</code>), which is the expected shape for a CDK app. A project without a <code>cdk</code> script fails at the synth step.</p>
+<p>The build (and every wrapper command that synthesizes) runs <strong><code>npm run cdk synth</code></strong>, so it uses the <code>aws-cdk</code> version pinned in your project. This requires your <code>package.json</code> to define a <code>cdk</code> script (e.g. <code>"cdk": "cdk"</code>), the expected shape for a CDK app; a project without a <code>cdk</code> script fails at the synth step.</p>
 </div>
 <h2 id="default-build-phase-your-own-npm-scripts">Default build phase: your own npm scripts</h2>
 <p>With no <code>ci.steps</code> configured, the CI build runs the project's own npm scripts, in order:</p>

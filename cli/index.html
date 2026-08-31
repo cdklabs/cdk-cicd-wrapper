@@ -2590,7 +2590,7 @@ behaviour may change before the <code>1.0</code> release.</p>
 <tbody>
 <tr>
 <td><code>exec</code></td>
-<td>Run a CDK app under the wrapper — the single entry point that activates the pipeline for both engines, reading the engine and stages from <code>cicd.config</code>.</td>
+<td>Run a CDK app under the wrapper — the <strong>single</strong> <code>cdk.json</code> entry point for all engines. It reads engine/stages from <code>cicd.config</code> and renders the application stacks by default, or the pipeline when <code>CDK_CICD_MODE=pipeline</code> is set in the environment (no <code>--app</code> override).</td>
 </tr>
 <tr>
 <td><code>synth</code></td>
@@ -2601,8 +2601,16 @@ behaviour may change before the <code>1.0</code> release.</p>
 <td>Synth, drift-check, and deploy a stage across its regions.</td>
 </tr>
 <tr>
+<td><code>synth-ci</code></td>
+<td>Synthesize the <strong>pipeline</strong> without deploying — the safe pre-flight for <code>deploy-ci</code>. Runs the same single <code>cdk-cicd exec</code> entry with <code>CDK_CICD_MODE=pipeline</code> (via <code>npm run cdk synth</code>) into <code>--output</code> (default <code>cdk.out</code>) so you can inspect or <code>cdk diff</code> it first.</td>
+</tr>
+<tr>
+<td><code>list-ci</code></td>
+<td>List the stacks (and, with <code>--resources</code>, a per-stack resource-type breakdown) of the <strong>pipeline</strong> <code>deploy-ci</code> would provision — a quick inventory that leaves no <code>cdk.out</code> behind.</td>
+</tr>
+<tr>
 <td><code>deploy-ci</code></td>
-<td>Provision the pipeline itself into the hub account, from <code>cicd.config.ts</code> alone (the one command a user runs by hand; everything after it is the pipeline deploying the application). <code>--disposable</code> deletes the pipeline's artifact bucket and key together with the stack (for throwaway pipelines).</td>
+<td>Provision the pipeline itself into the hub account, from <code>cicd.config.ts</code> alone (the one command a user runs by hand; everything after it is the pipeline deploying the application). Runs <code>npm run cdk deploy --all</code> with <code>CDK_CICD_MODE=pipeline</code> — no <code>--app</code> override. <code>--disposable</code> deletes the pipeline's artifact bucket and key together with the stack. Preview it first with <code>synth-ci</code> / <code>list-ci</code>.</td>
 </tr>
 <tr>
 <td><code>check</code></td>
@@ -2614,8 +2622,6 @@ behaviour may change before the <code>1.0</code> release.</p>
 </tr>
 </tbody>
 </table>
-<p>Some commands (for example the pipeline app / deployment-CI handlers) are invoked by the pipeline
-itself rather than run directly by users.</p>
 <p>For the authoritative, always-current flag list, prefer <code>cdk-cicd &lt;command&gt; --help</code>.</p>
 
 
