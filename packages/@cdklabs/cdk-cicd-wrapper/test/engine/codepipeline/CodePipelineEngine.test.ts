@@ -151,12 +151,32 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     });
   });
 
-  test('the default CI run includes the checks, so validate/audit/license/security are default-on', () => {
+  test('the default CI run invokes the project npm scripts (audit/build/test), not a bespoke CLI', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
-    // Without this the checks exist as a CLI command nobody in CI ever calls.
+    // The default build phase runs the project's own npm scripts, each run-only-if-present with a
+    // warning otherwise -- so the checks are encouraged guidance, discoverable and local==CI.
     render(config).hasResourceProperties('AWS::CodeBuild::Project', {
-      Source: { BuildSpec: Match.stringLikeRegexp('cdk-cicd check') },
+      Source: { BuildSpec: Match.stringLikeRegexp('npm run audit') },
     });
+  });
+
+  test('custom ci.steps are the build phase verbatim -- the engine injects no npm ci of its own', () => {
+    // A project that configures ci.steps owns its build phase, including whether/where `npm ci` runs.
+    // The engine must not prepend one: the CI build commands are exactly the configured steps, in order.
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      ci: { steps: { install: 'npm ci --ignore-scripts', build: 'npm run build' } },
+    });
+    const spec = specContaining(render(config), 'npm run build');
+    // The build commands begin with the user's OWN first step, not an engine-injected `npm ci`, and
+    // synth is still appended after.
+    expect(spec.phases.build.commands[0]).toBe('npm ci --ignore-scripts');
+    expect(spec.phases.build.commands).toContain('npm run build');
+    // Exactly one `npm ci ...` -- the user's -- not a duplicate injected before it.
+    const npmCiCount = spec.phases.build.commands.filter((c: string) => c.startsWith('npm ci')).length;
+    expect(npmCiCount).toBe(1);
   });
 
   test('a codeArtifact config logs every build project into the private repo before npm ci', () => {
@@ -1025,7 +1045,7 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
           }),
         },
       });
-      const build = specContaining(render(config), 'cdk-cicd check');
+      const build = specContaining(render(config), 'npm run audit');
 
       // The user's fragment lands on the CI build project's spec...
       expect(build.env.variables.CUSTOM_VAR).toBe('custom-value');
@@ -1033,7 +1053,8 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       // ...WITHOUT dropping the engine's own generated content -- a naive `replace` here would drop the
       // Node runtime pin and the default CI commands, and a real pipeline would break silently.
       expect(build.phases.install['runtime-versions'].nodejs).toBeGreaterThanOrEqual(20);
-      expect(build.phases.build.commands).toEqual(expect.arrayContaining(['npm ci', 'npx cdk-cicd check']));
+      expect(build.phases.build.commands[0]).toBe('npm ci');
+      expect(build.phases.build.commands.some((c: string) => c.includes('npm run audit'))).toBe(true);
     });
 
     test('the merge is scoped to the CI build project; self-update and stage deploys are untouched', () => {
@@ -1063,7 +1084,7 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
         repository: Repository.s3('shop-src/app.zip'),
         stages: ['dev'],
       });
-      const build = specContaining(render(config), 'cdk-cicd check');
+      const build = specContaining(render(config), 'npm run audit');
       expect(build.env).toBeUndefined();
     });
   });

@@ -95,9 +95,9 @@ only ever write the few you need, because the wrapper resolves sensible defaults
 
 ## Customizing CI
 
-The `ci` block shapes the Build phase. All three sub-fields are optional; the wrapper's default-on checks
-(`cdk-cicd check` runs validate, audit, license, security) plus the synth step run whether or not you set
-anything.
+The `ci` block shapes the Build phase. All three sub-fields are optional; with none set, the build runs
+your project's own npm scripts (`npm run audit`/`build`/`test`, each run-if-present, warn-if-absent)
+plus the synth step.
 
 **Named build steps (`ci.steps`)** — a map of `{ name: shell-command }`. Each entry becomes a named step
 in the CI build, so you add project-specific gates without editing pipeline code:

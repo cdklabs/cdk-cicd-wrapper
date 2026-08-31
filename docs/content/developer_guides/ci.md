@@ -11,27 +11,34 @@ The CI functionality of the {{ project_name }} can be used in any software devel
 There is no `PhaseCommand`/`definePhase` model in Autopilot. The CI build's commands, per `CiConfig` (the `ci` field on `cicd.config.ts`), are:
 
 ```
-npm ci
-<your ci.steps, in the order you wrote them — or, if you set none, the single default step "npx cdk-cicd check">
+<your ci.steps verbatim, in the order you wrote them — or, if you set none, the default: npm ci then npm run audit / build / test>
 cdk synth (+ CDK Nag)
 ```
 
-`cdk synth` is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. Setting `ci.steps`, however, **replaces** the default `npx cdk-cicd check` step rather than adding to it, so include it explicitly if you still want those checks alongside your own commands.
+`cdk synth` is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
 
-## Default checks: `cdk-cicd check`
+!!! important
+    The pipeline runs **`npm run cdk synth`**, not `npx cdk synth`, so it uses the exact `aws-cdk` version pinned in your project — the pipeline never resolves a tool through `npx`, which is non-deterministic. This requires your `package.json` to define a `cdk` script (e.g. `"cdk": "cdk"`), which is the expected shape for a CDK app. A project without a `cdk` script fails at the synth step.
 
-With no `ci.steps` configured, the CI build runs `npx cdk-cicd check`, which itself runs four sub-checks in order — `validate`, `audit`, `license`, `security` — each **skipped**, not failed, when the project has no baseline for it (a fresh `cdk init`-ed project has to pass this):
+## Default build phase: your own npm scripts
 
-| Check | What it runs | Skipped when |
-| --- | --- | --- |
-| `validate` | `cdk-cicd validate` — lock-file checksum against `package-verification.json` | no lock file, or no `package-verification.json` yet (run `cdk-cicd validate --fix`) |
-| `audit` | `cdk-cicd check-dependencies --npm`/`--python` — see the [Audit guide](./audit.md) | no npm lock file and no `Pipfile` |
-| `license` | `cdk-cicd license` — open-source license checking against `package-verification.json` | no `package-verification.json` yet (run `cdk-cicd license --fix`) |
-| `security` | `cdk-cicd security-scan --bandit --shellcheck --semgrep` — see the [Security guide](./security.md) | never (always runs) |
+With no `ci.steps` configured, the CI build runs the project's own npm scripts, in order:
+
+```
+npm ci
+npm run audit   # if the script exists; else a warning pointing at the recommended checks
+npm run build   # if the script exists; else a warning
+npm run test    # if the script exists; else a warning
+```
+
+Each script runs only when your `package.json` actually defines it. A missing script prints a warning that points at the [recommended checks](./audit.md) and **continues** — it never fails the build. This keeps the checks as encouraged guidance rather than hard enforcement, and keeps CI identical to what you run locally (`npm run audit` behaves the same on a laptop). A project that defines none of these scripts still builds and synthesizes; you just get three warnings in the build log.
+
+!!! tip
+    The wrapper's own checks are still available as scripts you can point these at — e.g. `"audit": "cdk-cicd check-dependencies --npm"` in your `package.json`. See the [Audit guide](./audit.md) and [Security guide](./security.md) for the recommended commands.
 
 ## Adding your own build steps
 
-Set `ci.steps` in `cicd.config.ts` — a named map of shell commands, run in the order they appear:
+Set `ci.steps` in `cicd.config.ts` — a named map of shell commands, run in the order they appear. This **replaces** the default scripts entirely, so list everything you want the build to run, **including `npm ci`** (the engine injects nothing of its own when you configure `ci.steps`):
 
 ```typescript
 import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
@@ -42,7 +49,8 @@ export default defineCICD({
   stages: ['dev', 'prod'],
   ci: {
     steps: {
-      check: 'npx cdk-cicd check', // keep the default checks alongside your own steps
+      install: 'npm ci',
+      audit: 'npm run audit',
       build: 'npm run build',
       test: 'npm run test',
     },
@@ -50,7 +58,7 @@ export default defineCICD({
 });
 ```
 
-`npm ci` runs before your steps and `cdk synth` after them, regardless of what you configure.
+Only `cdk synth` is appended after your steps; nothing is prepended. (With **no** `ci.steps` configured, the default build begins with its own `npm ci` — see above.)
 
 ### Controlling which stages CI synthesizes
 

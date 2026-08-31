@@ -67,12 +67,12 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(actionCategories('dev')).not.toContain('Approval');
   });
 
-  test('the synth step runs npm ci + cdk-cicd check + cdk synth (CI in the pipeline)', () => {
+  test('the synth step runs npm ci + the default scripts + cdk synth (CI in the pipeline)', () => {
     const t = render();
     // The Synth CodeBuild project's buildspec carries the commands.
     const projects = t.findResources('AWS::CodeBuild::Project');
     const specs = Object.values(projects).map((p: any) => JSON.stringify(p.Properties.Source.BuildSpec));
-    expect(specs.some((s) => s.includes('npm ci') && s.includes('cdk-cicd check') && s.includes('cdk synth'))).toBe(
+    expect(specs.some((s) => s.includes('npm ci') && s.includes('npm run audit') && s.includes('cdk synth'))).toBe(
       true,
     );
   });
