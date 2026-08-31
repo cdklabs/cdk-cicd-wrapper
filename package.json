@@ -52,7 +52,7 @@
     "eslint-plugin-prettier": "^5.5.5",
     "husky": "^9.1.7",
     "node-fetch": "^2",
-    "prettier": "^3.8.3",
+    "prettier": "^3.9.6",
     "projen": "^0.99.68",
     "shx": "^0.4.0",
     "ts-node": "^10.9.2",
