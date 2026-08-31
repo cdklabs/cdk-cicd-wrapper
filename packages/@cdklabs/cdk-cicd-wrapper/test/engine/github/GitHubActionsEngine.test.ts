@@ -149,16 +149,17 @@ describe('GitHubActionsEngine', () => {
     expect(yaml).not.toContain('Token[');
   });
 
-  test('the Synth job runs npm ci + the default scripts + cdk-cicd pipeline-app', () => {
+  test('the Synth job runs npm ci + the default scripts + npm run cdk synth with CDK_CICD_MODE=pipeline', () => {
     const { engine } = render();
     const yaml = engine.pipeline.workflowFile.toYaml();
     expect(yaml).toContain('npm ci');
     expect(yaml).toContain('npm run audit');
     expect(yaml).toContain('npm run build');
     expect(yaml).toContain('npm run test');
-    // `pipeline-app` renders the pipeline (bin replayed per stage); the bare `cdk synth` path now
-    // synthesizes only the application stacks via cdk.json's `cdk-cicd exec` app.
-    expect(yaml).toContain('npx cdk-cicd pipeline-app');
+    // `npm run cdk synth` (never npx) through cdk.json's single `cdk-cicd exec` entry; CDK_CICD_MODE
+    // renders the pipeline so self-mutation keeps producing the workflow the commit-check compares.
+    expect(yaml).toContain('npm run cdk synth');
+    expect(yaml).toContain('CDK_CICD_MODE');
   });
 
   test('each stage gets its own GitHub Environment named after the stage', () => {

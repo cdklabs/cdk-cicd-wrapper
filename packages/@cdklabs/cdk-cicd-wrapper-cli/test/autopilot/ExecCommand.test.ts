@@ -13,6 +13,7 @@ import {
   buildContextJson,
   execInvocation,
   forcedRoleEnv,
+  isPipelineMode,
   preloadArgs,
   resolveEnvTarget,
   resolveExternalId,
@@ -27,6 +28,18 @@ describe('exec: resolveStage', () => {
   test('falls back to local when unset or blank', () => {
     expect(resolveStage({})).toBe('local');
     expect(resolveStage({ CDK_STAGE: '   ' })).toBe('local');
+  });
+});
+
+describe('exec: isPipelineMode', () => {
+  test('true only when CDK_CICD_MODE is exactly pipeline (trimmed)', () => {
+    expect(isPipelineMode({ CDK_CICD_MODE: 'pipeline' })).toBe(true);
+    expect(isPipelineMode({ CDK_CICD_MODE: '  pipeline  ' })).toBe(true);
+  });
+  test('false when unset, blank, or any other value (a plain synth renders app stacks)', () => {
+    expect(isPipelineMode({})).toBe(false);
+    expect(isPipelineMode({ CDK_CICD_MODE: '' })).toBe(false);
+    expect(isPipelineMode({ CDK_CICD_MODE: 'app' })).toBe(false);
   });
 });
 

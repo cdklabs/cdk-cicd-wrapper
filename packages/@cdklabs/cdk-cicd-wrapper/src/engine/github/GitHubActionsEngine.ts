@@ -139,12 +139,12 @@ export class GitHubActionsEngine extends Construct {
       synth: new CodeBuildStep('Synth', {
         installCommands: [],
         // With no ci.steps, run the default CI (its own `npm ci` first); with ci.steps, those steps ARE
-        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then render the
-        // pipeline via `cdk-cicd pipeline-app` so self-mutation keeps producing the workflow the "commit
-        // the updated workflow file" check compares -- `cdk.json`'s `cdk-cicd exec` app synthesizes only
-        // the application stacks now.
-        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npx cdk-cicd pipeline-app'],
-        env: config.qualifier ? { CDK_QUALIFIER: config.qualifier } : undefined,
+        // the build phase verbatim -- the engine injects nothing, not even `npm ci`. Then `npm run cdk
+        // synth`, which runs `cdk.json`'s single `cdk-cicd exec` entry; `CDK_CICD_MODE=pipeline` makes it
+        // render THIS pipeline so self-mutation keeps producing the workflow the "commit the updated
+        // workflow file" check compares. A plain `cdk synth` without the mode renders only the app stacks.
+        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
+        env: { CDK_CICD_MODE: 'pipeline', ...(config.qualifier ? { CDK_QUALIFIER: config.qualifier } : {}) },
         primaryOutputDirectory: 'cdk.out',
       }),
     });
