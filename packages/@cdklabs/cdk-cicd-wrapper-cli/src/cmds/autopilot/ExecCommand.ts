@@ -119,21 +119,36 @@ export interface CicdStageEnv {
 }
 
 /**
- * Resolve the deploy target's account/region by precedence: an already-set `CDK_DEFAULT_*` wins,
- * then the matching cicd.config stage, then the app-config `aws.*`. The already-set case is what lets
- * `cdk-cicd synth`/`deploy` FIX a per-region target and have it survive exec -- exec fills a missing
- * target but never overrides one the caller pinned (required for multi-region). An absent value stays
+ * Resolve the inner-loop deploy target's account/region by precedence (highest first):
+ *
+ *   1. the chosen app-config file's `aws.accountId` / `aws.region`
+ *   2. the matching `cicd.config` stage's `env.account` / `env.regions[0]`
+ *   3. the per-stage `ACCOUNT_<STAGE>` / `REGION_<STAGE>` env vars (populated from SSM by the synth
+ *      step's warming commands, or set by hand)
+ *   4. the ambient `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION`
+ *
+ * This is the INNER-LOOP resolution only (a plain `cdk deploy`/`synth` running one target). The
+ * self-mutating pipeline REPLAY path does not come through here: the assembler
+ * (`runtime/pipeline-assembler`) pins `CDK_DEFAULT_*` per stage in its own process and re-runs the
+ * entry, so a replayed stage's target is fixed by the assembler and never resolved by this function --
+ * which is why moving `CDK_DEFAULT_*` to the bottom here is safe for multi-region pipelines.
+ *
+ * `<STAGE>` is the resolved stage name uppercased (`resolveStage`). An absent value at every rung stays
  * absent, so an env-agnostic app stays agnostic.
  */
 export function resolveEnvTarget(
   envIn: NodeJS.ProcessEnv,
   appConfig: { [key: string]: any },
   cicdStage?: CicdStageEnv,
+  stage?: string,
 ): { account?: string; region?: string } {
   const aws = appConfig?.aws ?? {};
+  const stageKey = (stage ?? '').trim().toUpperCase();
+  const accountEnv = stageKey.length > 0 ? envIn[`ACCOUNT_${stageKey}`] : undefined;
+  const regionEnv = stageKey.length > 0 ? envIn[`REGION_${stageKey}`] : undefined;
   return {
-    account: firstNonEmpty(envIn.CDK_DEFAULT_ACCOUNT, cicdStage?.env?.account, aws.accountId),
-    region: firstNonEmpty(envIn.CDK_DEFAULT_REGION, cicdStage?.env?.regions?.[0], aws.region),
+    account: firstNonEmpty(aws.accountId, cicdStage?.env?.account, accountEnv, envIn.CDK_DEFAULT_ACCOUNT),
+    region: firstNonEmpty(aws.region, cicdStage?.env?.regions?.[0], regionEnv, envIn.CDK_DEFAULT_REGION),
   };
 }
 
@@ -334,7 +349,7 @@ class Command implements yargs.CommandModule {
       );
     }
     const cicdStage = cicd ? stageByName(cicd, stage) : undefined;
-    const target = resolveEnvTarget(process.env, config, cicdStage);
+    const target = resolveEnvTarget(process.env, config, cicdStage, stage);
 
     // Pipeline mode: `deploy-ci` (and each self-mutating engine's in-pipeline synth step) set
     // CDK_CICD_MODE=pipeline in the inherited environment. The SAME `exec` entry point then renders the

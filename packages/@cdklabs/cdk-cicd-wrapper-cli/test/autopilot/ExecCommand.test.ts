@@ -71,19 +71,46 @@ describe('exec: resolveEnvTarget precedence', () => {
   const appConfig = { aws: { accountId: 'app-acct', region: 'app-region' } };
   const cicdStage = { env: { account: 'cicd-acct', regions: ['cicd-region', 'other'] } };
 
-  test('an already-set CDK_DEFAULT_* wins (so synth/deploy pin the per-region target)', () => {
+  test('the app-config file wins (config-file-first for the inner loop)', () => {
+    // Even with a cicd.config stage, per-stage env vars, and CDK_DEFAULT_* all set, the config file wins.
     expect(
-      resolveEnvTarget({ CDK_DEFAULT_ACCOUNT: 'env-acct', CDK_DEFAULT_REGION: 'env-region' }, appConfig, cicdStage),
+      resolveEnvTarget(
+        {
+          CDK_DEFAULT_ACCOUNT: 'env-acct',
+          CDK_DEFAULT_REGION: 'env-region',
+          ACCOUNT_DEV: 'stage-acct',
+          REGION_DEV: 'stage-region',
+        },
+        appConfig,
+        cicdStage,
+        'dev',
+      ),
+    ).toEqual({ account: 'app-acct', region: 'app-region' });
+  });
+
+  test('with no config file, the cicd.config stage is next', () => {
+    expect(resolveEnvTarget({}, {}, cicdStage, 'dev')).toEqual({ account: 'cicd-acct', region: 'cicd-region' });
+  });
+
+  test('then the per-stage ACCOUNT_<STAGE>/REGION_<STAGE> env vars (keyed by the uppercased stage)', () => {
+    expect(
+      resolveEnvTarget(
+        { ACCOUNT_DEV: 'stage-acct', REGION_DEV: 'stage-region', CDK_DEFAULT_ACCOUNT: 'env-acct' },
+        {},
+        undefined,
+        'dev',
+      ),
+    ).toEqual({ account: 'stage-acct', region: 'stage-region' });
+  });
+
+  test('finally CDK_DEFAULT_* is the last resort', () => {
+    expect(
+      resolveEnvTarget({ CDK_DEFAULT_ACCOUNT: 'env-acct', CDK_DEFAULT_REGION: 'env-region' }, {}, undefined, 'dev'),
     ).toEqual({ account: 'env-acct', region: 'env-region' });
   });
 
-  test('the cicd.config stage is next, then the app-config aws.*', () => {
-    expect(resolveEnvTarget({}, appConfig, cicdStage)).toEqual({ account: 'cicd-acct', region: 'cicd-region' });
-    expect(resolveEnvTarget({}, appConfig, undefined)).toEqual({ account: 'app-acct', region: 'app-region' });
-  });
-
   test('nothing anywhere leaves the target agnostic', () => {
-    expect(resolveEnvTarget({}, {}, undefined)).toEqual({ account: undefined, region: undefined });
+    expect(resolveEnvTarget({}, {}, undefined, 'dev')).toEqual({ account: undefined, region: undefined });
   });
 });
 

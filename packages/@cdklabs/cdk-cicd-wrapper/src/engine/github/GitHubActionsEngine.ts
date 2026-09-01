@@ -27,7 +27,7 @@ import { AwsCredentials, GitHubActionRole, GitHubWorkflow, JsonPatch } from 'cdk
 import { Construct } from 'constructs';
 import { RepositorySourceType } from '../../config/repository';
 import { ProxyConfig, ResolvedCicdConfig } from '../../config/types';
-import { CdkPipelinesStageContext, IStageProvider } from '../cdkpipelines/CdkPipelinesEngine';
+import { CdkPipelinesStageContext, IStageProvider, ssmWarmingCommands } from '../cdkpipelines/CdkPipelinesEngine';
 import { defaultCiCommands } from '../ci-commands';
 
 /** Props for the GitHub Actions engine. */
@@ -119,6 +119,7 @@ export class GitHubActionsEngine extends Construct {
     // "commit the updated workflow file" check compares. Without the mode it synthesizes only app stacks.
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
+      ...(config.warmAccountsFromSsm ? ssmWarmingCommands(config.qualifier) : []),
       ...(config.codeArtifact
         ? [
             `aws codeartifact login --tool npm --domain ${config.codeArtifact.domain} ` +
@@ -160,13 +161,25 @@ export class GitHubActionsEngine extends Construct {
     // have applied -- so the credential step (when present) always lands ahead of the login step.
     const patches: JsonPatch[] = [];
     let insertAt = 1;
-    if (config.codeArtifact !== undefined || config.proxy !== undefined) {
+    if (config.codeArtifact !== undefined || config.proxy !== undefined || config.warmAccountsFromSsm) {
       const credentialStep = AwsCredentials.fromOpenIdConnect({
         gitHubActionRoleArn,
         roleSessionName: 'cdk-cicd-github-actions',
       }).credentialSteps(publishAssetsAuthRegion)[0];
       patches.push(JsonPatch.add(`/jobs/Build-Synth/steps/${insertAt}`, credentialStep));
       insertAt += 1;
+    }
+    // The warming scan reads SSM under the qualifier; grant it on the OIDC role the Synth job assumes.
+    // A literal qualifier scopes to its parameter path; an unknown one falls back to a `*` path prefix
+    // (still pinned to this account/region's SSM parameters).
+    if (config.warmAccountsFromSsm) {
+      const qualifierSegment = config.qualifier ?? '*';
+      this.gitHubActionRole.role.addToPrincipalPolicy(
+        new iam.PolicyStatement({
+          actions: ['ssm:GetParametersByPath'],
+          resources: [`arn:${partition}:ssm:${stack.region}:${stack.account}:parameter/${qualifierSegment}/*`],
+        }),
+      );
     }
     if (installCommands.length > 0) {
       patches.push(

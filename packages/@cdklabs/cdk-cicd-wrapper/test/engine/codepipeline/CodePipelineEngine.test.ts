@@ -1142,4 +1142,67 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       expect(named).toEqual(['shop-codepipeline-role']);
     });
   });
+
+  describe('warmAccountsFromSsm (SSM account warming ahead of the synth build)', () => {
+    test('flag true: the synth build scans SSM and exports ACCOUNT_<STAGE> ahead of cdk synth', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        warmAccountsFromSsm: true,
+      });
+      // The scan lands in the CI Build project's build phase, ahead of the `cdk-cicd synth` command
+      // (same shell, so the exports reach synth). Qualifier is the config's derived qualifier ('shop').
+      const build = specContaining(render(config), 'get-parameters-by-path');
+      expect(build).toBeDefined();
+      const commands = JSON.stringify(build.phases.build.commands);
+      expect(commands).toContain('/shop/');
+      expect(commands).toContain('ACCOUNT_${_warm_stage}');
+      expect(commands).toContain('*Account*');
+      // Fails loud when the scan finds nothing.
+      expect(commands).toContain('exit 1');
+      // The warming runs BEFORE the synth command in the same phase.
+      const cmds: string[] = build.phases.build.commands;
+      const scanIdx = cmds.findIndex((c) => c.includes('get-parameters-by-path'));
+      const synthIdx = cmds.findIndex((c) => c.includes('cdk-cicd synth'));
+      expect(scanIdx).toBeGreaterThanOrEqual(0);
+      expect(synthIdx).toBeGreaterThan(scanIdx);
+    });
+
+    test('flag true: the synth build role is granted ssm:GetParametersByPath scoped to the qualifier path', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        warmAccountsFromSsm: true,
+      });
+      render(config).hasResourceProperties('AWS::IAM::Policy', {
+        // Pin it to the CI Build project's role, not any deploy role -- the scan runs in the synth build.
+        Roles: [{ Ref: Match.stringLikeRegexp('BuildProjectRole') }],
+        PolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: 'ssm:GetParametersByPath',
+              Resource: arnEndingIn(':ssm:us-west-2:111111111111:parameter/shop/*'),
+            }),
+          ]),
+        }),
+      });
+    });
+
+    test('flag absent: neither the SSM scan nor the GetParametersByPath grant is present', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+      });
+      const t = render(config);
+      const specs = Object.values(t.findResources('AWS::CodeBuild::Project')).map((p) =>
+        JSON.stringify(p.Properties.Source.BuildSpec),
+      );
+      expect(specs.some((s) => s.includes('get-parameters-by-path'))).toBe(false);
+      const policies = JSON.stringify(t.findResources('AWS::IAM::Policy'));
+      expect(policies).not.toContain('ssm:GetParametersByPath');
+    });
+  });
 });

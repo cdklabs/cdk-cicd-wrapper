@@ -101,6 +101,12 @@ export interface CicdConfigProps {
   readonly npmRegistry?: NpmRegistryConfig;
   /** HTTP(S) proxy every build project routes through. See `ResolvedCicdConfig.proxy`. */
   readonly proxy?: ProxyConfigInput;
+  /**
+   * Reproduce v2's "warming" behavior: dynamically export `ACCOUNT_<STAGE>` env vars in a self-mutating
+   * engine's synth step by scanning SSM Parameter Store under the qualifier. Off by default. See
+   * `ResolvedCicdConfig.warmAccountsFromSsm`.
+   */
+  readonly warmAccountsFromSsm?: boolean;
   /** VPC every CodeBuild project runs in. See `ResolvedCicdConfig.vpc`. */
   readonly vpc?: VpcConfig;
   /** Compliance/access-log destination bucket name. See `ResolvedCicdConfig.complianceLogBucketName`. */
@@ -210,6 +216,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     codeArtifact: props.codeArtifact,
     npmRegistry: props.npmRegistry,
     proxy: normalizeProxy(props.proxy),
+    warmAccountsFromSsm: props.warmAccountsFromSsm ?? false,
     vpc: props.vpc,
     complianceLogBucketName: props.complianceLogBucketName,
     codeBuildEnvSettings: props.codeBuildEnvSettings,

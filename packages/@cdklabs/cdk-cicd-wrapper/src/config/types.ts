@@ -378,6 +378,18 @@ export interface ResolvedCicdConfig {
   readonly npmRegistry?: NpmRegistryConfig;
   /** HTTP(S) proxy every build project routes through, if any. */
   readonly proxy?: ProxyConfig;
+  /**
+   * Reproduce v2's "warming" behavior on a self-mutating engine's synth step: before `cdk synth`, scan
+   * SSM Parameter Store under the pipeline's qualifier (`/<qualifier>/`) and export an `ACCOUNT_<STAGE>`
+   * env var for every parameter whose name contains `Account` (e.g. `/<qualifier>/AccountDev` ->
+   * `ACCOUNT_DEV`). This lets a `cdk.config.ts` that reads `process.env.ACCOUNT_<STAGE>` resolve target
+   * accounts at synth time from the values the bootstrap wrote to SSM, the way v2's `warming.sh` did.
+   * Off by default; only read by the self-mutating engines (`CDK_PIPELINES`, `GITHUB_ACTIONS`), whose
+   * synth step is the one that re-runs `cdk synth` under the pipeline. When on, the synth step is also
+   * granted `ssm:GetParametersByPath` on `/<qualifier>/*`, and fails loud if it finds no `Account*`
+   * parameter (a misconfigured qualifier is a hard error, not a silently-empty scan).
+   */
+  readonly warmAccountsFromSsm?: boolean;
   /** VPC every CodeBuild project the pipeline creates runs in, if configured (Blueprint `VPCProvider`, migrated). */
   readonly vpc?: VpcConfig;
   /**

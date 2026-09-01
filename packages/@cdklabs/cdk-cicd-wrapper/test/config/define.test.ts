@@ -124,6 +124,11 @@ describe('m3-config: defineCICD top-level defaults', () => {
     ).toEqual('my-compliance-bucket');
   });
 
+  test('warmAccountsFromSsm defaults to false (opt-in) and an explicit true passes through', () => {
+    expect(defineCICD({ repository: REPO, stages: [] }).warmAccountsFromSsm).toBe(false);
+    expect(defineCICD({ repository: REPO, stages: [], warmAccountsFromSsm: true }).warmAccountsFromSsm).toBe(true);
+  });
+
   test('resolveCicdConfig (the YAML path) produces the same result as defineCICD', () => {
     const props = { application: 'shop', repository: REPO, stages: ['dev', 'prod'] };
     expect(resolveCicdConfig(props)).toEqual(defineCICD(props));

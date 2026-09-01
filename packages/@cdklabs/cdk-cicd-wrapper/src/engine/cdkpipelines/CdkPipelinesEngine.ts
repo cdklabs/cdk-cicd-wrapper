@@ -113,6 +113,7 @@ export class CdkPipelinesEngine extends Construct {
     // `npm ci` against public npm goes through it.
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
+      ...(config.warmAccountsFromSsm ? ssmWarmingCommands(config.qualifier) : []),
       ...(config.codeArtifact
         ? [
             `aws codeartifact login --tool npm --domain ${config.codeArtifact.domain} ` +
@@ -170,6 +171,7 @@ export class CdkPipelinesEngine extends Construct {
         rolePolicyStatements: [
           ...(config.codeArtifact ? codeArtifactReadStatements(Stack.of(this), config.codeArtifact) : []),
           ...(config.proxy ? proxySecretReadStatements(Stack.of(this), config.proxy) : []),
+          ...(config.warmAccountsFromSsm ? ssmWarmingReadStatements(Stack.of(this), config.qualifier) : []),
         ],
       }),
     });
@@ -366,6 +368,56 @@ function proxyInstallCommands(proxy: ProxyConfig): string[] {
     'export HTTPS_PROXY="https://$PROXY_USERNAME:$PROXY_PASSWORD@$PROXY_DOMAIN:$HTTPS_PROXY_PORT"',
     'echo "--- Proxy Test ---"',
     `curl -Is --connect-timeout 5 ${proxy.proxyTestUrl} | grep "HTTP/"`,
+  ];
+}
+
+/**
+ * v2 "warming" (Blueprint `warming.sh`, migrated): before `cdk synth`, scan SSM Parameter Store under
+ * the qualifier and export an `ACCOUNT_<STAGE>` env var for EVERY parameter whose name contains
+ * `Account` (`/<qualifier>/AccountDev` -> `ACCOUNT_DEV`). Dynamic -- it does NOT hardcode Res/Dev/Int/Prod;
+ * whatever `Account*` params the bootstrap wrote become env vars. The qualifier is the config's when set,
+ * else the build's own `$CDK_QUALIFIER` (which `CdkPipelinesEngine` already puts on the synth step env).
+ *
+ * Emitted as POSIX `/bin/sh` (the CodeBuild default shell), NOT the bash `[[ ]]`/`<<<` the original used:
+ * the scan writes to a temp file and the `while` reads from it via redirection, so the `export`s land in
+ * the SAME shell that then runs `cdk synth` (a `... | while` pipe would export into a subshell and lose
+ * them). Fails loud -- `exit 1` -- if it finds zero `Account*` params, so a wrong qualifier is a hard
+ * error at synth time rather than a silently-empty warm.
+ */
+export function ssmWarmingCommands(qualifier?: string): string[] {
+  const qualifierExpr = qualifier !== undefined ? qualifier : '$CDK_QUALIFIER';
+  return [
+    `echo "Warming ACCOUNT_<STAGE> env vars from SSM parameters under /${qualifierExpr}/"`,
+    '_warm_tmp="$(mktemp)"',
+    `aws ssm get-parameters-by-path --path "/${qualifierExpr}/" --query "Parameters[].[Name, Value]" --output text > "$_warm_tmp"`,
+    '_warm_found=0',
+    'while IFS="$(printf \'\\t\')" read -r _warm_name _warm_value; do',
+    '  [ -z "$_warm_name" ] && continue',
+    '  case "$_warm_name" in',
+    '    *Account*)',
+    "      _warm_stage=\"$(printf '%s' \"${_warm_name##*Account}\" | tr '[:lower:]' '[:upper:]')\"",
+    '      export "ACCOUNT_${_warm_stage}=${_warm_value}"',
+    '      echo "ACCOUNT_${_warm_stage} set to ${_warm_value}"',
+    '      _warm_found=1',
+    '      ;;',
+    '  esac',
+    'done < "$_warm_tmp"',
+    'rm -f "$_warm_tmp"',
+    `if [ "$_warm_found" -eq 0 ]; then echo "cdk-cicd: warmAccountsFromSsm found no *Account* parameters under /${qualifierExpr}/ -- is the qualifier correct and the account bootstrapped?" >&2; exit 1; fi`,
+  ];
+}
+
+/** The read grant the SSM warming scan needs: `ssm:GetParametersByPath` on the qualifier's parameter path. */
+export function ssmWarmingReadStatements(stack: Stack, qualifier?: string): iam.PolicyStatement[] {
+  // The build resolves `$CDK_QUALIFIER` at run time; the IAM path must be a literal at synth time, so a
+  // config qualifier scopes to it exactly and an unknown one falls back to a `*` path prefix (still
+  // pinned to this account/region's SSM parameters).
+  const qualifierSegment = qualifier !== undefined ? qualifier : '*';
+  return [
+    new iam.PolicyStatement({
+      actions: ['ssm:GetParametersByPath'],
+      resources: [`arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter/${qualifierSegment}/*`],
+    }),
   ];
 }
 

@@ -32,6 +32,7 @@ export default defineCICD({
 | `codeArtifact`            | `CodeArtifactConfig`          | —                                      | Private CodeArtifact npm repo the builds authenticate against.              |
 | `npmRegistry`             | `NpmRegistryConfig`           | —                                      | Generic private npm registry (bearer token).                                |
 | `proxy`                   | `ProxyConfigInput`            | —                                      | HTTP(S) proxy every build project routes through.                           |
+| `warmAccountsFromSsm`     | `boolean`                     | `false`                                | Export `ACCOUNT_<STAGE>` env vars in a self-mutating engine's synth step by scanning SSM. See [Warming accounts from SSM](#warming-accounts-from-ssm). |
 | `vpc`                     | `VpcConfig`                   | no VPC                                 | VPC the pipeline's CodeBuild projects run in. See [VPC](#vpc).              |
 | `complianceLogBucketName` | `string`                      | —                                      | Compliance/access-log destination bucket name.                              |
 | `pipelineRoleNames`       | `PipelineRoleNames`           | CDK-generated names                    | Force IAM role names on the `CDK_PIPELINES` engine's roles. See [Pipeline role names](#pipeline-role-names). |
@@ -214,6 +215,27 @@ Three independent, optional blocks let the pipeline's builds install private pac
   Manager secret holding the proxy credentials; the build exports `HTTP(S)_PROXY` and curls
   `proxyTestUrl` to prove the tunnel before installs. `noProxy` defaults to `[]`; `proxyTestUrl` defaults
   to `https://aws.amazon.com`.
+
+## Warming accounts from SSM
+
+`warmAccountsFromSsm` (default `false`) reproduces v2's "warming" behavior on a **self-mutating engine's**
+synth step (`CDK_PIPELINES` and `GITHUB_ACTIONS` — the engines that re-run `cdk synth` under the pipeline).
+When on, before `cdk synth` the build scans SSM Parameter Store under the pipeline's qualifier
+(`/<qualifier>/`) and exports an `ACCOUNT_<STAGE>` environment variable for **every** parameter whose name
+contains `Account` — `/<qualifier>/AccountDev` becomes `ACCOUNT_DEV`, `/<qualifier>/AccountProd` becomes
+`ACCOUNT_PROD`, and so on. It is dynamic: whatever `Account*` parameters your bootstrap wrote become env
+vars, with no hardcoded stage list. A `cdk.config.ts` that reads `process.env.ACCOUNT_<STAGE>` then
+resolves its target accounts at synth time from those values.
+
+The qualifier comes from the config's `qualifier` when set, otherwise the build's own `$CDK_QUALIFIER`.
+The synth step is granted `ssm:GetParametersByPath` scoped to `/<qualifier>/*` in the pipeline's account
+and region. If the scan finds **no** `Account*` parameter it fails the build (`exit 1`) rather than
+proceeding with an empty warm — a misconfigured qualifier or an un-bootstrapped account is surfaced loudly.
+
+All three engines honor the flag on the CodeBuild/workflow step that runs `cdk synth`: `CDK_PIPELINES`
+and `GITHUB_ACTIONS` warm their self-mutating synth step, and the flat `CODEPIPELINE` engine warms its
+`Build` synth project. The scan runs ahead of `cdk synth` in the same shell, so the exported
+`ACCOUNT_<STAGE>` vars are visible to the app.
 
 ## VPC
 
