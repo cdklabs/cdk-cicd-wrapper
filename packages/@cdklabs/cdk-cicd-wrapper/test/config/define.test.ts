@@ -126,7 +126,22 @@ describe('m3-config: defineCICD top-level defaults', () => {
 
   test('warmAccountsFromSsm defaults to false (opt-in) and an explicit true passes through', () => {
     expect(defineCICD({ repository: REPO, stages: [] }).warmAccountsFromSsm).toBe(false);
-    expect(defineCICD({ repository: REPO, stages: [], warmAccountsFromSsm: true }).warmAccountsFromSsm).toBe(true);
+    // Enabling it requires a resolvable qualifier (see the guard test below), so supply one here.
+    expect(
+      defineCICD({ repository: REPO, stages: [], warmAccountsFromSsm: true, qualifier: 'shopq' }).warmAccountsFromSsm,
+    ).toBe(true);
+  });
+
+  test('warmAccountsFromSsm without a resolvable qualifier is a config-time error', () => {
+    // No qualifier and no application => qualifier is undefined => the SSM grant could only widen to
+    // parameter/*/*, so defineCICD rejects it rather than emit an over-broad grant.
+    expect(() => defineCICD({ repository: REPO, stages: [], warmAccountsFromSsm: true })).toThrow(
+      /warmAccountsFromSsm requires a resolvable qualifier/,
+    );
+    // A derived qualifier (from application) satisfies it.
+    expect(
+      defineCICD({ application: 'shop', repository: REPO, stages: [], warmAccountsFromSsm: true }).warmAccountsFromSsm,
+    ).toBe(true);
   });
 
   test('resolveCicdConfig (the YAML path) produces the same result as defineCICD', () => {

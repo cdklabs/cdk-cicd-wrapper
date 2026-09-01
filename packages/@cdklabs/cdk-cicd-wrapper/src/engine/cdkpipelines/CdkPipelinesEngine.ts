@@ -397,7 +397,7 @@ export function ssmWarmingCommands(qualifier?: string): string[] {
     '    *Account*)',
     "      _warm_stage=\"$(printf '%s' \"${_warm_name##*Account}\" | tr '[:lower:]' '[:upper:]')\"",
     '      export "ACCOUNT_${_warm_stage}=${_warm_value}"',
-    '      echo "ACCOUNT_${_warm_stage} set to ${_warm_value}"',
+    '      echo "ACCOUNT_${_warm_stage} set"',
     '      _warm_found=1',
     '      ;;',
     '  esac',
@@ -409,14 +409,16 @@ export function ssmWarmingCommands(qualifier?: string): string[] {
 
 /** The read grant the SSM warming scan needs: `ssm:GetParametersByPath` on the qualifier's parameter path. */
 export function ssmWarmingReadStatements(stack: Stack, qualifier?: string): iam.PolicyStatement[] {
-  // The build resolves `$CDK_QUALIFIER` at run time; the IAM path must be a literal at synth time, so a
-  // config qualifier scopes to it exactly and an unknown one falls back to a `*` path prefix (still
-  // pinned to this account/region's SSM parameters).
-  const qualifierSegment = qualifier !== undefined ? qualifier : '*';
+  // The grant must be scoped to a literal `parameter/<qualifier>/*`. A resolvable qualifier is required
+  // when warming is enabled (enforced in resolveCicdConfig) -- guard here too so this helper can never
+  // emit an over-broad `parameter/*/*` grant.
+  if (qualifier === undefined) {
+    throw new Error('cdk-cicd: ssmWarmingReadStatements needs a qualifier to scope the ssm:GetParametersByPath grant.');
+  }
   return [
     new iam.PolicyStatement({
       actions: ['ssm:GetParametersByPath'],
-      resources: [`arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter/${qualifierSegment}/*`],
+      resources: [`arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter/${qualifier}/*`],
     }),
   ];
 }

@@ -27,7 +27,12 @@ import { AwsCredentials, GitHubActionRole, GitHubWorkflow, JsonPatch } from 'cdk
 import { Construct } from 'constructs';
 import { RepositorySourceType } from '../../config/repository';
 import { ProxyConfig, ResolvedCicdConfig } from '../../config/types';
-import { CdkPipelinesStageContext, IStageProvider, ssmWarmingCommands } from '../cdkpipelines/CdkPipelinesEngine';
+import {
+  CdkPipelinesStageContext,
+  IStageProvider,
+  ssmWarmingCommands,
+  ssmWarmingReadStatements,
+} from '../cdkpipelines/CdkPipelinesEngine';
 import { defaultCiCommands } from '../ci-commands';
 
 /** Props for the GitHub Actions engine. */
@@ -170,16 +175,12 @@ export class GitHubActionsEngine extends Construct {
       insertAt += 1;
     }
     // The warming scan reads SSM under the qualifier; grant it on the OIDC role the Synth job assumes.
-    // A literal qualifier scopes to its parameter path; an unknown one falls back to a `*` path prefix
-    // (still pinned to this account/region's SSM parameters).
+    // Reuse the shared helper so the grant is scoped to `parameter/<qualifier>/*` (a resolvable
+    // qualifier is guaranteed: resolveCicdConfig rejects warmAccountsFromSsm without one).
     if (config.warmAccountsFromSsm) {
-      const qualifierSegment = config.qualifier ?? '*';
-      this.gitHubActionRole.role.addToPrincipalPolicy(
-        new iam.PolicyStatement({
-          actions: ['ssm:GetParametersByPath'],
-          resources: [`arn:${partition}:ssm:${stack.region}:${stack.account}:parameter/${qualifierSegment}/*`],
-        }),
-      );
+      for (const statement of ssmWarmingReadStatements(stack, config.qualifier)) {
+        this.gitHubActionRole.role.addToPrincipalPolicy(statement);
+      }
     }
     if (installCommands.length > 0) {
       patches.push(

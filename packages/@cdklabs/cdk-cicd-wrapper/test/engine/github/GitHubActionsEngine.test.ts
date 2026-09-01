@@ -244,9 +244,14 @@ describe('GitHubActionsEngine', () => {
         Statement: Match.arrayWith([
           Match.objectLike({
             Action: 'ssm:GetParametersByPath',
-            // The GitHub engine resolves the partition to a LITERAL (RegionInfo, not stack.partition),
-            // so the resource renders as a plain string, not an Fn::Join.
-            Resource: Match.stringLikeRegexp(':ssm:.*:parameter/shopq/\\*$'),
+            // The grant now comes from the shared ssmWarmingReadStatements helper, which uses
+            // stack.partition (a token) -> the resource renders as an Fn::Join ending in the
+            // qualifier-scoped parameter path.
+            Resource: {
+              'Fn::Join': Match.arrayWith([
+                Match.arrayWith([Match.stringLikeRegexp(':parameter/shopq/\\*$')]),
+              ]),
+            },
           }),
         ]),
       }),

@@ -197,9 +197,21 @@ function normalizeStage(stage: string | StageInput): ResolvedStage {
 export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
   const application = props.application;
   const stages = props.stages.map(normalizeStage);
+  const qualifier = props.qualifier ?? (application !== undefined ? deriveQualifier(application) : undefined);
+  const warmAccountsFromSsm = props.warmAccountsFromSsm ?? false;
+  // Account warming scans SSM under the qualifier and grants ssm:GetParametersByPath on
+  // `parameter/<qualifier>/*`. Without a resolvable qualifier the grant could only widen to
+  // `parameter/*/*` (every parameter in the account) -- so require a qualifier rather than emit an
+  // over-broad grant, and fail at config time rather than at synth.
+  if (warmAccountsFromSsm && qualifier === undefined) {
+    throw new Error(
+      'cdk-cicd: warmAccountsFromSsm requires a resolvable qualifier -- set `qualifier` or `application` ' +
+        'in defineCICD so the SSM scan and its IAM grant can be scoped to `parameter/<qualifier>/*`.',
+    );
+  }
   return {
     application,
-    qualifier: props.qualifier ?? (application !== undefined ? deriveQualifier(application) : undefined),
+    qualifier,
     pipelineStackName: props.pipelineStackName,
     repository: props.repository,
     stages,
@@ -216,7 +228,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     codeArtifact: props.codeArtifact,
     npmRegistry: props.npmRegistry,
     proxy: normalizeProxy(props.proxy),
-    warmAccountsFromSsm: props.warmAccountsFromSsm ?? false,
+    warmAccountsFromSsm,
     vpc: props.vpc,
     complianceLogBucketName: props.complianceLogBucketName,
     codeBuildEnvSettings: props.codeBuildEnvSettings,
