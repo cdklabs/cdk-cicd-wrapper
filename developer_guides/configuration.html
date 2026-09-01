@@ -826,6 +826,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#warming-accounts-from-ssm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Warming accounts from SSM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#vpc" class="md-nav__link">
     <span class="md-ellipsis">
       VPC
@@ -2774,6 +2783,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#warming-accounts-from-ssm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Warming accounts from SSM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#vpc" class="md-nav__link">
     <span class="md-ellipsis">
       VPC
@@ -2946,6 +2964,12 @@ and <code>src/config/define.ts</code>.</p>
 <td><code>ProxyConfigInput</code></td>
 <td>—</td>
 <td>HTTP(S) proxy every build project routes through.</td>
+</tr>
+<tr>
+<td><code>warmAccountsFromSsm</code></td>
+<td><code>boolean</code></td>
+<td><code>false</code></td>
+<td>Export <code>ACCOUNT_&lt;STAGE&gt;</code> env vars in a self-mutating engine's synth step by scanning SSM. See <a href="#warming-accounts-from-ssm">Warming accounts from SSM</a>.</td>
 </tr>
 <tr>
 <td><code>vpc</code></td>
@@ -3155,6 +3179,23 @@ OIDC role it assumes. Every field is optional.</p>
   <code>proxyTestUrl</code> to prove the tunnel before installs. <code>noProxy</code> defaults to <code>[]</code>; <code>proxyTestUrl</code> defaults
   to <code>https://aws.amazon.com</code>.</li>
 </ul>
+<h2 id="warming-accounts-from-ssm">Warming accounts from SSM</h2>
+<p><code>warmAccountsFromSsm</code> (default <code>false</code>) exports per-stage account env vars on a <strong>self-mutating engine's</strong>
+synth step (<code>CDK_PIPELINES</code> and <code>GITHUB_ACTIONS</code> — the engines that re-run <code>cdk synth</code> under the pipeline).
+When on, before <code>cdk synth</code> the build scans SSM Parameter Store under the pipeline's qualifier
+(<code>/&lt;qualifier&gt;/</code>) and exports an <code>ACCOUNT_&lt;STAGE&gt;</code> environment variable for <strong>every</strong> parameter whose name
+contains <code>Account</code> — <code>/&lt;qualifier&gt;/AccountDev</code> becomes <code>ACCOUNT_DEV</code>, <code>/&lt;qualifier&gt;/AccountProd</code> becomes
+<code>ACCOUNT_PROD</code>, and so on. It is dynamic: whatever <code>Account*</code> parameters your bootstrap wrote become env
+vars, with no hardcoded stage list. A <code>cdk.config.ts</code> that reads <code>process.env.ACCOUNT_&lt;STAGE&gt;</code> then
+resolves its target accounts at synth time from those values.</p>
+<p>The qualifier comes from the config's <code>qualifier</code> when set, otherwise the build's own <code>$CDK_QUALIFIER</code>.
+The synth step is granted <code>ssm:GetParametersByPath</code> scoped to <code>/&lt;qualifier&gt;/*</code> in the pipeline's account
+and region. If the scan finds <strong>no</strong> <code>Account*</code> parameter it fails the build (<code>exit 1</code>) rather than
+proceeding with an empty warm — a misconfigured qualifier or an un-bootstrapped account is surfaced loudly.</p>
+<p>All three engines honor the flag on the CodeBuild/workflow step that runs <code>cdk synth</code>: <code>CDK_PIPELINES</code>
+and <code>GITHUB_ACTIONS</code> warm their self-mutating synth step, and the flat <code>CODEPIPELINE</code> engine warms its
+<code>Build</code> synth project. The scan runs ahead of <code>cdk synth</code> in the same shell, so the exported
+<code>ACCOUNT_&lt;STAGE&gt;</code> vars are visible to the app.</p>
 <h2 id="vpc">VPC</h2>
 <p><code>vpc</code> runs the pipeline's CodeBuild projects inside a VPC. Set <code>managedVpc</code> to have the wrapper create
 one, or <code>vpcId</code> to look up an existing one; setting neither (the default) runs CodeBuild without a VPC.</p>
@@ -3249,7 +3290,7 @@ custom plugin and must be registered in <code>bin/</code> via <code>CdkCicd.addP
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-08-31
+    2026-09-01
   </span>
 
     
