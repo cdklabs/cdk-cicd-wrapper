@@ -372,17 +372,17 @@ function proxyInstallCommands(proxy: ProxyConfig): string[] {
 }
 
 /**
- * v2 "warming" (Blueprint `warming.sh`, migrated): before `cdk synth`, scan SSM Parameter Store under
- * the qualifier and export an `ACCOUNT_<STAGE>` env var for EVERY parameter whose name contains
- * `Account` (`/<qualifier>/AccountDev` -> `ACCOUNT_DEV`). Dynamic -- it does NOT hardcode Res/Dev/Int/Prod;
- * whatever `Account*` params the bootstrap wrote become env vars. The qualifier is the config's when set,
- * else the build's own `$CDK_QUALIFIER` (which `CdkPipelinesEngine` already puts on the synth step env).
+ * Before `cdk synth`, scan SSM Parameter Store under the qualifier and export an `ACCOUNT_<STAGE>`
+ * env var for EVERY parameter whose name contains `Account` (`/<qualifier>/AccountDev` ->
+ * `ACCOUNT_DEV`). Dynamic -- it does NOT hardcode a stage list; whatever `Account*` params the
+ * bootstrap wrote become env vars. The qualifier is the config's when set, else the build's own
+ * `$CDK_QUALIFIER` (which `CdkPipelinesEngine` already puts on the synth step env).
  *
- * Emitted as POSIX `/bin/sh` (the CodeBuild default shell), NOT the bash `[[ ]]`/`<<<` the original used:
- * the scan writes to a temp file and the `while` reads from it via redirection, so the `export`s land in
- * the SAME shell that then runs `cdk synth` (a `... | while` pipe would export into a subshell and lose
- * them). Fails loud -- `exit 1` -- if it finds zero `Account*` params, so a wrong qualifier is a hard
- * error at synth time rather than a silently-empty warm.
+ * Emitted as POSIX `/bin/sh` (the CodeBuild default shell): the scan writes to a temp file and the
+ * `while` reads from it via redirection, so the `export`s land in the SAME shell that then runs
+ * `cdk synth` (a `... | while` pipe would export into a subshell and lose them). Fails loud --
+ * `exit 1` -- if it finds zero `Account*` params, so a wrong qualifier is a hard error at synth
+ * time rather than a silently-empty warm.
  */
 export function ssmWarmingCommands(qualifier?: string): string[] {
   const qualifierExpr = qualifier !== undefined ? qualifier : '$CDK_QUALIFIER';

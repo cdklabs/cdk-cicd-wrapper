@@ -102,8 +102,8 @@ export interface CicdConfigProps {
   /** HTTP(S) proxy every build project routes through. See `ResolvedCicdConfig.proxy`. */
   readonly proxy?: ProxyConfigInput;
   /**
-   * Reproduce v2's "warming" behavior: dynamically export `ACCOUNT_<STAGE>` env vars in a self-mutating
-   * engine's synth step by scanning SSM Parameter Store under the qualifier. Off by default. See
+   * Dynamically export `ACCOUNT_<STAGE>` env vars in a self-mutating engine's synth step by scanning
+   * SSM Parameter Store under the qualifier. Off by default. See
    * `ResolvedCicdConfig.warmAccountsFromSsm`.
    */
   readonly warmAccountsFromSsm?: boolean;

@@ -218,7 +218,7 @@ Three independent, optional blocks let the pipeline's builds install private pac
 
 ## Warming accounts from SSM
 
-`warmAccountsFromSsm` (default `false`) reproduces v2's "warming" behavior on a **self-mutating engine's**
+`warmAccountsFromSsm` (default `false`) exports per-stage account env vars on a **self-mutating engine's**
 synth step (`CDK_PIPELINES` and `GITHUB_ACTIONS` — the engines that re-run `cdk synth` under the pipeline).
 When on, before `cdk synth` the build scans SSM Parameter Store under the pipeline's qualifier
 (`/<qualifier>/`) and exports an `ACCOUNT_<STAGE>` environment variable for **every** parameter whose name
