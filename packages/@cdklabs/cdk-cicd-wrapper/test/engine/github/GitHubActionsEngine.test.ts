@@ -248,9 +248,7 @@ describe('GitHubActionsEngine', () => {
             // stack.partition (a token) -> the resource renders as an Fn::Join ending in the
             // qualifier-scoped parameter path.
             Resource: {
-              'Fn::Join': Match.arrayWith([
-                Match.arrayWith([Match.stringLikeRegexp(':parameter/shopq/\\*$')]),
-              ]),
+              'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp(':parameter/shopq/\\*$')])]),
             },
           }),
         ]),
