@@ -224,6 +224,56 @@ describe('GitHubActionsEngine', () => {
     expect(synthJob).not.toContain('Login');
   });
 
+  test('warmAccountsFromSsm scans SSM in the Login step and exports the ACCOUNT_<STAGE> loop', () => {
+    const { engine } = render({ warmAccountsFromSsm: true, qualifier: 'shopq' });
+    const yaml = engine.pipeline.workflowFile.toYaml();
+    // The Login step carries the ssmWarmingCommands: the get-parameters-by-path scan (scoped to the
+    // qualifier path) plus the *Account* -> ACCOUNT_<STAGE> export loop.
+    expect(yaml).toContain('aws ssm get-parameters-by-path --path "/shopq/"');
+    expect(yaml).toContain('export "ACCOUNT_${_warm_stage}=${_warm_value}"');
+    // The warming block sits inside the Synth job's Login step, ahead of the build commands.
+    const synthJob = yaml.slice(yaml.indexOf('Build-Synth:'), yaml.indexOf('Assets-'));
+    expect(synthJob).toContain('aws ssm get-parameters-by-path --path "/shopq/"');
+  });
+
+  test('warmAccountsFromSsm grants the OIDC gitHubActionRole ssm:GetParametersByPath on /<qualifier>/*', () => {
+    const { stack } = render({ warmAccountsFromSsm: true, qualifier: 'shopq' });
+    const t = Template.fromStack(stack);
+    t.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'ssm:GetParametersByPath',
+            // The grant now comes from the shared ssmWarmingReadStatements helper, which uses
+            // stack.partition (a token) -> the resource renders as an Fn::Join ending in the
+            // qualifier-scoped parameter path.
+            Resource: {
+              'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp(':parameter/shopq/\\*$')])]),
+            },
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('without warmAccountsFromSsm neither the SSM scan nor the ssm:GetParametersByPath statement is present', () => {
+    const { stack, engine } = render();
+    const yaml = engine.pipeline.workflowFile.toYaml();
+    expect(yaml).not.toContain('aws ssm get-parameters-by-path');
+    expect(yaml).not.toContain('ACCOUNT_${_warm_stage}');
+    const t = Template.fromStack(stack);
+    // No IAM policy statement grants the SSM scan action on the OIDC role.
+    t.resourcePropertiesCountIs(
+      'AWS::IAM::Policy',
+      {
+        PolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([Match.objectLike({ Action: 'ssm:GetParametersByPath' })]),
+        }),
+      },
+      0,
+    );
+  });
+
   test('emits no cdk-nag errors on its OWN generated infra (the GitHubActionRole)', () => {
     const app = new App();
     const stack = new Stack(app, 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });

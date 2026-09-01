@@ -39,7 +39,10 @@ import {
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
+import { ssmWarmingCommands, ssmWarmingReadStatements } from '../cdkpipelines/CdkPipelinesEngine';
 import { defaultCiCommands } from '../ci-commands';
+// Reuse the SSM account-warming helpers the CdkPipelines engine exports (same wiring GitHubActionsEngine
+// does) rather than redefining the scan/grant here -- one source of truth for both the shell and the IAM.
 import { EngineRenderProps, IEngine } from '../types';
 
 /**
@@ -159,22 +162,31 @@ export class CodePipelineEngine implements IEngine {
     // in deploy-time-synth mode is reused too, not synthesized a second time by its own deploy.
     const assembly = synthed.length > 0 ? new codepipeline.Artifact('Assembly') : undefined;
 
+    const buildProject = this.project(
+      scope,
+      'BuildProject',
+      this.ciCommands(config, synthed, promote),
+      config.codeArtifact,
+      config.proxy,
+      config.codeBuildEnvSettings,
+      assembly !== undefined,
+      config.ci.partialBuildSpec,
+      vpcNetworking,
+    );
+    // The synth build is where `ssmWarmingCommands` runs its `aws ssm get-parameters-by-path`, so its
+    // role -- not the deploy roles -- needs the read grant. Same helper the CdkPipelines engine uses.
+    if (config.warmAccountsFromSsm) {
+      for (const statement of ssmWarmingReadStatements(Stack.of(scope), config.qualifier)) {
+        buildProject.addToRolePolicy(statement);
+      }
+    }
+
     pipeline.addStage({
       stageName: 'Build',
       actions: [
         new actions.CodeBuildAction({
           actionName: 'Build',
-          project: this.project(
-            scope,
-            'BuildProject',
-            this.ciCommands(config, synthed, promote),
-            config.codeArtifact,
-            config.proxy,
-            config.codeBuildEnvSettings,
-            assembly !== undefined,
-            config.ci.partialBuildSpec,
-            vpcNetworking,
-          ),
+          project: buildProject,
           input: sourceOutput,
           outputs: assembly !== undefined ? [assembly] : undefined,
         }),
@@ -614,10 +626,14 @@ export class CodePipelineEngine implements IEngine {
     // ci.steps configured, those steps ARE the build phase verbatim -- the engine injects nothing, not
     // even `npm ci`: a project that customizes CI decides for itself whether and where to install.
     const base = steps.length > 0 ? steps : defaultCiCommands();
+    // Account warming: when opted in, run the shared SSM scan (from CdkPipelinesEngine) so the synth sees
+    // ACCOUNT_<STAGE> env vars. It must land AFTER the CI base (which installs) and BEFORE the synth
+    // command(s), so the exports are in the same shell that runs `cdk synth`.
+    const warming = config.warmAccountsFromSsm ? ssmWarmingCommands(config.qualifier) : [];
     // The synth is appended, never replaced by `ci.steps`. In promotion mode it produces the artifact
     // every deploy stage consumes, so a config that dropped it would render a pipeline that cannot
     // deploy at all; in deploy-time-synth mode it is the validation gate.
-    return [...base, ...synthCommands(synthed, promote)];
+    return [...base, ...warming, ...synthCommands(synthed, promote)];
   }
 
   private project(

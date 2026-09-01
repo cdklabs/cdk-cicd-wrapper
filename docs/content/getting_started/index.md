@@ -60,7 +60,22 @@ See the [CD developer guide](../developer_guides/cd.md) for the full stage shape
 }
 ```
 
-`cdk-cicd exec` resolves the active stage's config, exports its account/region so a stock `env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION }` line in your stack resolves correctly, and runs your entry file under a preload that applies the wrapper's runtime hooks (tagging, default security aspects, etc.) — with zero references to the wrapper in your own code:
+**How the account/region are resolved.** When you run a plain `cdk synth`/`cdk deploy` for one stage
+(the inner loop), `cdk-cicd exec` resolves the target account and region in this order, first match wins:
+
+1. the active stage's config file — `config/<STAGE>.json` `aws.accountId` / `aws.region`
+2. the matching `cicd.config.ts` stage's `env.account` / `env.region`
+3. the per-stage `ACCOUNT_<STAGE>` / `REGION_<STAGE>` environment variables
+4. the ambient `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION`
+
+It then exports the resolved values as `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION`, so the stock
+`env: { account: process.env.CDK_DEFAULT_ACCOUNT, ... }` line below reads them. Put each stage's account
+and region in `config/<STAGE>.json` and you declare them once — nothing to repeat in `cicd.config.ts`.
+(Inside the self-mutating pipeline, each stage's target is pinned by the pipeline as it synthesizes every
+stage, so this inner-loop order does not apply there.)
+
+`cdk-cicd exec` also runs your entry file under a preload that applies the wrapper's runtime hooks
+(tagging, default security aspects, etc.) — with zero references to the wrapper in your own code:
 
 ```typescript
 // bin/my-project.ts — ordinary CDK, no wrapper imports required

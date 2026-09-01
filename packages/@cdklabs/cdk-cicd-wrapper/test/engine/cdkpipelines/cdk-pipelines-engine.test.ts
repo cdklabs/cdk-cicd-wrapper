@@ -133,6 +133,68 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(policies).toContain('secretsmanager:GetSecretValue');
   });
 
+  test('warmAccountsFromSsm scans SSM and exports ACCOUNT_<STAGE> ahead of the synth build', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    const engine = new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        warmAccountsFromSsm: true,
+      }),
+      stages: new StubStages(),
+    });
+    void engine;
+    const t = Template.fromStack(stack);
+    const projects = t.findResources('AWS::CodeBuild::Project');
+    // The synth build's install phase carries the dynamic SSM scan + the ACCOUNT_ export loop. The
+    // qualifier is the config's derived qualifier ('shop'), scanned under /shop/.
+    const specs = Object.values(projects).map((p: any) => JSON.stringify(p.Properties.Source.BuildSpec));
+    const synthSpec = specs.find((s) => s.includes('get-parameters-by-path'));
+    expect(synthSpec).toBeDefined();
+    expect(synthSpec).toContain('/shop/');
+    expect(synthSpec).toContain('ACCOUNT_${_warm_stage}');
+    expect(synthSpec).toContain('*Account*');
+    // Fails loud when the scan finds nothing.
+    expect(synthSpec).toContain('exit 1');
+  });
+
+  test('warmAccountsFromSsm grants the synth build ssm:GetParametersByPath scoped to the qualifier path', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    const engine = new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        warmAccountsFromSsm: true,
+      }),
+      stages: new StubStages(),
+    });
+    void engine;
+    const t = Template.fromStack(stack);
+    t.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'ssm:GetParametersByPath',
+            Resource: {
+              'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp(':parameter/shop/\\*$')])]),
+            },
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('without warmAccountsFromSsm neither the SSM scan nor the GetParametersByPath grant is present', () => {
+    const t = render();
+    const projects = t.findResources('AWS::CodeBuild::Project');
+    const specs = Object.values(projects).map((p: any) => JSON.stringify(p.Properties.Source.BuildSpec));
+    expect(specs.some((s) => s.includes('get-parameters-by-path'))).toBe(false);
+    const policies = JSON.stringify(t.findResources('AWS::IAM::Policy'));
+    expect(policies).not.toContain('ssm:GetParametersByPath');
+  });
+
   test('codeBuildEnvSettings applies to every CodeBuild project CDK Pipelines creates (synth + self-mutation)', () => {
     const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
     const engine = new CdkPipelinesEngine(stack, 'Cd', {

@@ -3275,6 +3275,7 @@ const resolvedCicdConfig: ResolvedCicdConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.proxy">proxy</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ProxyConfig">ProxyConfig</a></code> | HTTP(S) proxy every build project routes through, if any. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier (≤10 chars), derived from `application` when not given. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.vpc">vpc</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.VpcConfig">VpcConfig</a></code> | VPC every CodeBuild project the pipeline creates runs in, if configured (Blueprint `VPCProvider`, migrated). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.warmAccountsFromSsm">warmAccountsFromSsm</a></code> | <code>boolean</code> | Export per-stage account env vars on a self-mutating engine's synth step: before `cdk synth`, scan SSM Parameter Store under the pipeline's qualifier (`/<qualifier>/`) and export an `ACCOUNT_<STAGE>` env var for every parameter whose name contains `Account` (e.g. `/<qualifier>/AccountDev` -> `ACCOUNT_DEV`). This lets a `cdk.config.ts` that reads `process.env.ACCOUNT_<STAGE>` resolve target accounts at synth time from the values the bootstrap wrote to SSM. Off by default; only read by the self-mutating engines (`CDK_PIPELINES`, `GITHUB_ACTIONS`), whose synth step is the one that re-runs `cdk synth` under the pipeline. When on, the synth step is also granted `ssm:GetParametersByPath` on `/<qualifier>/*`, and fails loud if it finds no `Account*` parameter (a misconfigured qualifier is a hard error, not a silently-empty scan). |
 
 ---
 
@@ -3596,6 +3597,18 @@ public readonly vpc: VpcConfig;
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.VpcConfig">VpcConfig</a>
 
 VPC every CodeBuild project the pipeline creates runs in, if configured (Blueprint `VPCProvider`, migrated).
+
+---
+
+##### `warmAccountsFromSsm`<sup>Optional</sup> <a name="warmAccountsFromSsm" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.warmAccountsFromSsm"></a>
+
+```typescript
+public readonly warmAccountsFromSsm: boolean;
+```
+
+- *Type:* boolean
+
+Export per-stage account env vars on a self-mutating engine's synth step: before `cdk synth`, scan SSM Parameter Store under the pipeline's qualifier (`/<qualifier>/`) and export an `ACCOUNT_<STAGE>` env var for every parameter whose name contains `Account` (e.g. `/<qualifier>/AccountDev` -> `ACCOUNT_DEV`). This lets a `cdk.config.ts` that reads `process.env.ACCOUNT_<STAGE>` resolve target accounts at synth time from the values the bootstrap wrote to SSM. Off by default; only read by the self-mutating engines (`CDK_PIPELINES`, `GITHUB_ACTIONS`), whose synth step is the one that re-runs `cdk synth` under the pipeline. When on, the synth step is also granted `ssm:GetParametersByPath` on `/<qualifier>/*`, and fails loud if it finds no `Account*` parameter (a misconfigured qualifier is a hard error, not a silently-empty scan).
 
 ---
 
