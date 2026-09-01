@@ -178,9 +178,7 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
           Match.objectLike({
             Action: 'ssm:GetParametersByPath',
             Resource: {
-              'Fn::Join': Match.arrayWith([
-                Match.arrayWith([Match.stringLikeRegexp(':parameter/shop/\\*$')]),
-              ]),
+              'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp(':parameter/shop/\\*$')])]),
             },
           }),
         ]),
