@@ -21,12 +21,20 @@ import * as pipelines from 'aws-cdk-lib/pipelines';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { Repository, RepositorySourceType } from '../../config/repository';
-import { CodeArtifactConfig, PipelineRoleNames, ProxyConfig, ResolvedCicdConfig } from '../../config/types';
+import {
+  CodeArtifactConfig,
+  NpmRegistryConfig,
+  PipelineRoleNames,
+  ProxyConfig,
+  RegionOrder,
+  ResolvedCicdConfig,
+} from '../../config/types';
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { resolveVpcNetworking } from '../../support/Vpc';
 import { defaultCiCommands } from '../ci-commands';
 import { resolveCodeCommitRepository } from '../codepipeline/source';
+import { deployRoleExternalIdSecretArns } from '../external-id-secrets';
 
 /** Context passed to the stage factory for one deployment stage. */
 export interface CdkPipelinesStageContext {
@@ -111,6 +119,7 @@ export class CdkPipelinesEngine extends Construct {
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
       ...(config.warmAccountsFromSsm ? ssmWarmingCommands(config.qualifier) : []),
+      ...(config.npmRegistry ? npmRegistryLoginCommands(config.npmRegistry) : []),
       ...(config.codeArtifact
         ? [
             `aws codeartifact login --tool npm --domain ${config.codeArtifact.domain} ` +
@@ -121,6 +130,12 @@ export class CdkPipelinesEngine extends Construct {
         : []),
     ];
     const ciSteps = Object.values(config.ci.steps);
+    const deployRoleExternalIdSecrets = deployRoleExternalIdSecretArns(config);
+    const synthPartialBuildSpec = mergeSynthPartialBuildSpec(
+      config.ci.partialBuildSpec,
+      config.proxy,
+      config.npmRegistry,
+    );
     // Blueprint `VPCProvider`, applied by CDK Pipelines itself to EVERY CodeBuild project it creates (synth,
     // self-mutation, asset publishing) -- the uniform application Blueprint had.
     const vpcNetworking = resolveVpcNetworking(this, config.vpc, config.proxy !== undefined);
@@ -158,32 +173,67 @@ export class CdkPipelinesEngine extends Construct {
           AWS_REGION: region,
           ...(config.proxy ? proxyEnvVariables(Stack.of(this), config.proxy) : {}),
         },
-        // The proxy credentials/ports live in Secrets Manager, not in plain env vars.
-        partialBuildSpec: config.proxy
-          ? codebuild.BuildSpec.fromObject({ env: { 'secrets-manager': proxySecretsManagerVars(config.proxy) } })
-          : undefined,
+        // Only the Synth project receives ci.image. The pipeline-wide defaults continue to govern
+        // self-mutation and asset-publishing projects.
+        buildEnvironment:
+          config.ci.image !== undefined
+            ? { buildImage: codebuild.LinuxBuildImage.fromDockerRegistry(config.ci.image) }
+            : undefined,
+        // Proxy credentials/ports and the npm bearer token are resolved by CodeBuild at container
+        // start. Merge them with the caller's CI partial buildspec instead of replacing either side.
+        partialBuildSpec: synthPartialBuildSpec,
         // Grant the synth build the CodeArtifact/proxy-secret read permissions its
         // `codeartifact login`/`export`s need (the CodeBuildStep role has only logs/artifacts by
         // default) -- else they fail AccessDenied.
         rolePolicyStatements: [
           ...(config.codeArtifact ? codeArtifactReadStatements(Stack.of(this), config.codeArtifact) : []),
           ...(config.proxy ? proxySecretReadStatements(Stack.of(this), config.proxy) : []),
+          ...(config.npmRegistry
+            ? [
+                new iam.PolicyStatement({
+                  actions: ['secretsmanager:GetSecretValue'],
+                  resources: [config.npmRegistry.basicAuthSecretArn],
+                }),
+              ]
+            : []),
           ...(config.warmAccountsFromSsm ? ssmWarmingReadStatements(Stack.of(this), config.qualifier) : []),
+          ...(deployRoleExternalIdSecrets.length > 0
+            ? [
+                new iam.PolicyStatement({
+                  actions: ['secretsmanager:GetSecretValue'],
+                  resources: deployRoleExternalIdSecrets,
+                }),
+              ]
+            : []),
         ],
       }),
     });
 
-    // One wave per (stage x region), in config order, wrapping the app stacks the provider builds. A gated
-    // stage gets a manual-approval step ahead of its FIRST region -- the fail-closed promotion gate Blueprint had.
-    // A multi-region stage becomes one wave per region (Blueprint deployed each region), not a single dropped one.
+    // Sequential multi-region stages retain one wave per region. Parallel stages put every regional
+    // deployment in one wave so CDK Pipelines schedules them together. A gated stage is approved once,
+    // before either the first sequential region or the shared parallel wave.
     for (const stage of config.stages) {
       const regions = stage.env.regions.length > 0 ? stage.env.regions : [region];
-      regions.forEach((stageRegion, i) => {
+      const appStageFor = (stageRegion: string): Stage => {
         const env: Environment = { account: stage.env.account, region: stageRegion };
         const stageId = regions.length > 1 ? `${stage.name}-${stageRegion}` : stage.name;
         const appStage = new Stage(this, stageId, { env });
         props.stages.stacks(appStage, { stageName: stage.name, env });
-        this.pipeline.addStage(appStage, {
+        return appStage;
+      };
+
+      if (stage.env.regionOrder === RegionOrder.PARALLEL && regions.length > 1) {
+        const wave = this.pipeline.addWave(stage.name, {
+          pre: stage.manualApproval ? [new pipelines.ManualApprovalStep(`Approve-${stage.name}`)] : undefined,
+        });
+        for (const stageRegion of regions) {
+          wave.addStage(appStageFor(stageRegion));
+        }
+        continue;
+      }
+
+      regions.forEach((stageRegion, i) => {
+        this.pipeline.addStage(appStageFor(stageRegion), {
           pre:
             stage.manualApproval && i === 0 ? [new pipelines.ManualApprovalStep(`Approve-${stage.name}`)] : undefined,
         });
@@ -356,6 +406,42 @@ function proxySecretsManagerVars(proxy: ProxyConfig): Record<string, string> {
     HTTPS_PROXY_PORT: `${proxy.proxySecretArn}:https_proxy_port`,
     PROXY_DOMAIN: `${proxy.proxySecretArn}:proxy_domain`,
   };
+}
+
+/**
+ * Write a `.npmrc` for a generic npm-compatible registry. CodeBuild injects the token from
+ * Secrets Manager as `NPM_AUTH_TOKEN`, so the synthesized buildspec contains only the variable name.
+ * This runs before CodeArtifact login so that command can append its own scoped registry entries.
+ */
+function npmRegistryLoginCommands(npm: NpmRegistryConfig): string[] {
+  const host = npm.url.replace(/^https?:\/\//, '');
+  const scope = npm.scope !== undefined && npm.scope.length > 0 ? npm.scope : undefined;
+  const scopePrefix = scope !== undefined ? `${scope.startsWith('@') ? scope : `@${scope}`}:` : '';
+  return [
+    `echo "${scopePrefix}registry=${npm.url}" > ./.npmrc`,
+    `echo "//${host}:_authToken=$NPM_AUTH_TOKEN" >> ./.npmrc`,
+  ];
+}
+
+/** Merge caller CI buildspec additions with wrapper-owned secret bindings for the Synth project. */
+function mergeSynthPartialBuildSpec(
+  partialBuildSpec: codebuild.BuildSpec | undefined,
+  proxy: ProxyConfig | undefined,
+  npmRegistry: NpmRegistryConfig | undefined,
+): codebuild.BuildSpec | undefined {
+  if (proxy === undefined && npmRegistry === undefined) return partialBuildSpec;
+
+  const secretBuildSpec = codebuild.BuildSpec.fromObject({
+    env: {
+      'secrets-manager': {
+        ...(proxy !== undefined ? proxySecretsManagerVars(proxy) : {}),
+        ...(npmRegistry !== undefined ? { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } : {}),
+      },
+    },
+  });
+  return partialBuildSpec !== undefined
+    ? codebuild.mergeBuildSpecs(partialBuildSpec, secretBuildSpec)
+    : secretBuildSpec;
 }
 
 /** Export the proxy for every later shell command, then prove the tunnel works before install runs. */

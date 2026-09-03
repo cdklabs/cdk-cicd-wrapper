@@ -91,9 +91,13 @@ describe('m3-config: defineCICD top-level defaults', () => {
 
   test('synthesizer defaults to DEFAULT and an explicit type wins', () => {
     expect(defineCICD({ repository: REPO, stages: [] }).synthesizer.type).toBe(SynthesizerType.DEFAULT);
-    expect(
-      defineCICD({ repository: REPO, stages: [], synthesizer: { type: SynthesizerType.APP_STAGING } }).synthesizer.type,
-    ).toBe(SynthesizerType.APP_STAGING);
+    const appStaging = defineCICD({
+      repository: REPO,
+      stages: [],
+      synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
+    }).synthesizer;
+    expect(appStaging.type).toBe(SynthesizerType.APP_STAGING);
+    expect(appStaging.appId).toBe('payments-v2');
   });
 
   test('codeArtifact defaults to undefined (opt-in) and an explicit config passes through unchanged', () => {
@@ -151,6 +155,22 @@ describe('m3-config: defineCICD top-level defaults', () => {
 });
 
 describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
+  test('derives the deployer qualifier and preserves the app-staging identity', () => {
+    const cfg = defineDeployment({
+      application: 'Payments-Service',
+      synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-assets' },
+      image: 'img:tag',
+      targets: [{ stage: 'dev' }],
+    });
+
+    expect(cfg.application).toBe('Payments-Service');
+    expect(cfg.qualifier).toBe('paymentsse');
+    expect(cfg.synthesizer).toEqual({
+      type: SynthesizerType.APP_STAGING,
+      appId: 'payments-assets',
+    });
+  });
+
   test('the image passes through and targets keep their order', () => {
     const cfg = defineDeployment({
       image: 'acct.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2',

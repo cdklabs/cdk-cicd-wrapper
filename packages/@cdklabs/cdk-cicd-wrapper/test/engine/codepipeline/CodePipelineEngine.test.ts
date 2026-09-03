@@ -5,9 +5,10 @@ import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Runtime, RuntimeFamily } from 'aws-cdk-lib/aws-lambda';
+import { BuildImage } from '../../../src/config/build-image';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
-import { DeployModel } from '../../../src/config/types';
+import { DeployModel, RegionOrder, SynthesizerType } from '../../../src/config/types';
 import { CodePipelineEngine } from '../../../src/engine/codepipeline/CodePipelineEngine';
 
 function render(config: ReturnType<typeof defineCICD>): Template {
@@ -74,8 +75,67 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
           Match.objectLike({
             Action: 'sts:AssumeRole',
             Resource: Match.arrayWith([
-              arnEndingIn(':iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-west-2'),
+              arnEndingIn(':iam::111111111111:role/cdk-shop-deploy-role-111111111111-us-west-2'),
             ]),
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('the CI synth project may assume lookup roles in every resolved target account and region', () => {
+    const config = defineCICD({
+      application: 'shop',
+      qualifier: 'customq',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: [
+        { name: 'dev', env: { account: '222222222222', regions: ['us-west-2', 'us-west-1'] } },
+        { name: 'prod', env: { account: '333333333333', region: 'eu-west-1' } },
+      ],
+    });
+
+    render(config).hasResourceProperties('AWS::IAM::Policy', {
+      Roles: [{ Ref: Match.stringLikeRegexp('BuildProjectRole') }],
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sts:AssumeRole',
+            Resource: Match.arrayWith([
+              arnEndingIn(':iam::222222222222:role/cdk-customq-lookup-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-customq-lookup-role-222222222222-us-west-1'),
+              arnEndingIn(':iam::333333333333:role/cdk-customq-lookup-role-333333333333-eu-west-1'),
+            ]),
+          }),
+          Match.objectLike({
+            Action: 'ssm:GetParameter',
+            Resource: Match.arrayWith([
+              arnEndingIn(':ssm:us-west-2:222222222222:parameter/cdk-bootstrap/customq/version'),
+              arnEndingIn(':ssm:us-west-1:222222222222:parameter/cdk-bootstrap/customq/version'),
+              arnEndingIn(':ssm:eu-west-1:333333333333:parameter/cdk-bootstrap/customq/version'),
+            ]),
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('bootstrap grants fall back to the CDK default qualifier when the config has none', () => {
+    const config = defineCICD({
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: [{ name: 'dev', env: { account: '222222222222', region: 'us-west-1' } }],
+    });
+
+    render(config).hasResourceProperties('AWS::IAM::Policy', {
+      Roles: [{ Ref: Match.stringLikeRegexp('BuildProjectRole') }],
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sts:AssumeRole',
+            Resource: arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-lookup-role-222222222222-us-west-1'),
+          }),
+          Match.objectLike({
+            Action: 'ssm:GetParameter',
+            Resource: arnEndingIn(':ssm:us-west-1:222222222222:parameter/cdk-bootstrap/hnb659fds/version'),
           }),
         ]),
       }),
@@ -97,6 +157,78 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     t.hasResourceProperties('AWS::CodeBuild::Project', {
       Source: { BuildSpec: Match.stringLikeRegexp('cdk-cicd deploy --stage dev --yes') },
     });
+  });
+
+  test('a PARALLEL multi-region stage renders one region-scoped deploy action per region', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: [
+        {
+          name: 'prod',
+          env: {
+            account: '222222222222',
+            regions: ['us-west-2', 'us-west-1'],
+            regionOrder: RegionOrder.PARALLEL,
+          },
+        },
+      ],
+    });
+    const t = render(config);
+    const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prod = (pipeline.Properties.Stages as any[]).find((stage) => stage.Name === 'prod');
+
+    expect(prod.Actions.map((action: { Name: string; RunOrder: number }) => [action.Name, action.RunOrder])).toEqual([
+      ['Approve-prod', 1],
+      ['Deploy-prod-us-west-2', 2],
+      ['Deploy-prod-us-west-1', 2],
+    ]);
+
+    const deploySpecs = Object.values(t.findResources('AWS::CodeBuild::Project'))
+      .map((project) => project.Properties.Source.BuildSpec)
+      .filter((spec) => JSON.stringify(spec).includes('cdk-cicd deploy --stage prod'))
+      .map((spec) => JSON.parse(spec));
+    expect(deploySpecs).toHaveLength(2);
+    const deployCommands = deploySpecs.flatMap((spec) => spec.phases.build.commands);
+    expect(deployCommands).toEqual(
+      expect.arrayContaining([
+        'npx cdk-cicd deploy --stage prod --yes --from-assembly --region us-west-2',
+        'npx cdk-cicd deploy --stage prod --yes --from-assembly --region us-west-1',
+      ]),
+    );
+  });
+
+  test('parallel async deploys keep region plans and await actions independent', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      asyncDeploy: true,
+      stages: [
+        {
+          name: 'dev',
+          env: {
+            account: '111111111111',
+            regions: ['us-west-2', 'us-west-1'],
+            regionOrder: RegionOrder.PARALLEL,
+          },
+        },
+      ],
+    });
+    const t = render(config);
+    const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dev = (pipeline.Properties.Stages as any[]).find((stage) => stage.Name === 'dev');
+
+    expect(dev.Actions.map((action: { Name: string; RunOrder: number }) => [action.Name, action.RunOrder])).toEqual([
+      ['Deploy-dev-us-west-2', 1],
+      ['Deploy-dev-us-west-1', 1],
+      ['Await-dev-us-west-2', 2],
+      ['Await-dev-us-west-1', 2],
+    ]);
+    const buildSpecs = JSON.stringify(t.findResources('AWS::CodeBuild::Project'));
+    expect(buildSpecs).toContain('/shop-pipeline/dev/us-west-2/deploy-plan');
+    expect(buildSpecs).toContain('/shop-pipeline/dev/us-west-1/deploy-plan');
   });
 
   test('the S3 repository yields an S3 source action with the bucket and key split correctly', () => {
@@ -271,6 +403,71 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     expect(grantsCodeArtifact).toBe(false);
   });
 
+  test('a generic npm registry config authenticates every npm-ci project and scopes secret reads', () => {
+    const secretArn = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:npm-token-abc123';
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      npmRegistry: {
+        url: 'https://npm.example.com/',
+        scope: 'cdklabs',
+        basicAuthSecretArn: secretArn,
+      },
+    });
+    const t = render(config);
+
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    expect(projects).toHaveLength(3);
+    for (const project of projects) {
+      const spec = JSON.parse(project.Properties.Source.BuildSpec);
+      expect(spec.phases.pre_build.commands).toEqual([
+        'echo "@cdklabs:registry=https://npm.example.com/" > ./.npmrc',
+        'echo "//npm.example.com/:_authToken=$NPM_AUTH_TOKEN" >> ./.npmrc',
+      ]);
+      expect(spec.env['secrets-manager']).toEqual({ NPM_AUTH_TOKEN: secretArn });
+    }
+
+    const secretPolicies = Object.values(t.findResources('AWS::IAM::Policy')).filter((policy) => {
+      const document = JSON.stringify(policy.Properties.PolicyDocument);
+      return document.includes('secretsmanager:GetSecretValue') && document.includes(secretArn);
+    });
+    expect(secretPolicies).toHaveLength(3);
+  });
+
+  test('generic npm registry authentication is also wired into the container image build project', () => {
+    const secretArn = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:npm-token-abc123';
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      deployerImage: BuildImage.docker(),
+      npmRegistry: {
+        url: 'https://npm.example.com/',
+        basicAuthSecretArn: secretArn,
+      },
+    });
+    const t = render(config);
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+
+    expect(projects).toHaveLength(1);
+    const spec = JSON.stringify(projects[0].Properties.Source.BuildSpec);
+    expect(spec).toContain('registry=https://npm.example.com/');
+    expect(spec).toContain('//npm.example.com/:_authToken=$NPM_AUTH_TOKEN');
+    expect(spec).toContain('NPM_AUTH_TOKEN');
+    expect(spec).toContain(secretArn);
+    t.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'secretsmanager:GetSecretValue',
+            Resource: secretArn,
+          }),
+        ]),
+      }),
+    });
+  });
+
   test('a proxy config exports HTTP(S)_PROXY and curls the test URL before every build runs', () => {
     const config = defineCICD({
       application: 'shop',
@@ -374,7 +571,7 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     }
   });
 
-  test('a Docker-registry buildImage on the engine still wins over codeBuildEnvSettings.buildImage', () => {
+  test('a Docker-registry buildImage on the engine applies only to the CI Build project', () => {
     const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
     new CodePipelineEngine({ buildImage: 'public.ecr.aws/example/node:22' }).render(stack, {
       config: defineCICD({
@@ -387,21 +584,40 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     });
 
     const t = Template.fromStack(stack);
-    for (const p of Object.values(t.findResources('AWS::CodeBuild::Project'))) {
-      // The ctor's Docker image is used, not overridden by the (unset) codeBuildEnvSettings.buildImage.
-      expect(p.Properties.Environment.Image).toBe('public.ecr.aws/example/node:22');
-      // But the config's other settings still apply alongside it.
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project'));
+    const ciProjects = projects.filter((p) =>
+      JSON.stringify(p.Properties.Source.BuildSpec).includes('cdk-cicd synth --all'),
+    );
+    expect(ciProjects).toHaveLength(1);
+    expect(ciProjects[0].Properties.Environment.Image).toBe('public.ecr.aws/example/node:22');
+    for (const p of projects) {
       expect(p.Properties.Environment.ComputeType).toBe('BUILD_GENERAL1_MEDIUM');
+    }
+    for (const p of projects.filter((candidate) => candidate !== ciProjects[0])) {
+      expect(p.Properties.Environment.Image).not.toBe('public.ecr.aws/example/node:22');
     }
   });
 
-  test('without codeBuildEnvSettings every build project keeps the CDK-managed environment default', () => {
+  test('without codeBuildEnvSettings every normal project enables Docker assets by default', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] });
     const t = render(config);
 
     for (const p of Object.values(t.findResources('AWS::CodeBuild::Project'))) {
-      expect(p.Properties.Environment.PrivilegedMode).toBe(false);
+      expect(p.Properties.Environment.PrivilegedMode).toBe(true);
       expect(p.Properties.Environment.EnvironmentVariables).toBeUndefined();
+    }
+  });
+
+  test('an explicit privileged setting is preserved instead of being overwritten by the Docker default', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      codeBuildEnvSettings: { privileged: false },
+    });
+
+    for (const p of Object.values(render(config).findResources('AWS::CodeBuild::Project'))) {
+      expect(p.Properties.Environment.PrivilegedMode).toBe(false);
     }
   });
 
@@ -481,7 +697,7 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     }
   });
 
-  test('a user-supplied buildImage gets NO runtime-versions pin', () => {
+  test('a user-supplied CI buildImage removes the runtime pin only from the CI Build project', () => {
     const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
     new CodePipelineEngine({ buildImage: 'public.ecr.aws/example/node:18' }).render(stack, {
       config: defineCICD({ application: 'shop', repository: Repository.s3('shop-src/app.zip'), stages: ['dev'] }),
@@ -492,9 +708,14 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     // fixed set of Node versions. Emitting the pin for a custom image (or standard:5.0/6.0, where nodejs
     // 22 does not exist) turns a working pipeline into a hard YAML_FILE_ERROR in the install phase, so a
     // user who brings their own image owns its Node version.
-    for (const p of Object.values(Template.fromStack(stack).findResources('AWS::CodeBuild::Project'))) {
+    const projects = Object.values(Template.fromStack(stack).findResources('AWS::CodeBuild::Project'));
+    for (const p of projects) {
       const spec = JSON.parse(p.Properties.Source.BuildSpec);
-      expect(spec.phases.install).toBeUndefined();
+      if (JSON.stringify(spec.phases.build.commands).includes('cdk-cicd synth --all')) {
+        expect(spec.phases.install).toBeUndefined();
+      } else {
+        expect(spec.phases.install['runtime-versions'].nodejs).toBeGreaterThanOrEqual(20);
+      }
     }
   });
 
@@ -573,18 +794,43 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
           Match.objectLike({
             Action: 'sts:AssumeRole',
             Resource: Match.arrayWith([
-              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-deploy-role-222222222222-us-west-2'),
-              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-file-publishing-role-222222222222-us-west-2'),
-              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-image-publishing-role-222222222222-us-west-2'),
-              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-lookup-role-222222222222-us-west-2'),
-              arnEndingIn(':iam::222222222222:role/cdk-hnb659fds-deploy-role-222222222222-us-west-1'),
+              arnEndingIn(':iam::222222222222:role/cdk-shop-deploy-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-shop-file-publishing-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-shop-image-publishing-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-shop-lookup-role-222222222222-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-shop-deploy-role-222222222222-us-west-1'),
             ]),
           }),
           Match.objectLike({
             Action: 'ssm:GetParameter',
             Resource: Match.arrayWith([
-              arnEndingIn(':ssm:us-west-2:222222222222:parameter/cdk-bootstrap/hnb659fds/version'),
-              arnEndingIn(':ssm:us-west-1:222222222222:parameter/cdk-bootstrap/hnb659fds/version'),
+              arnEndingIn(':ssm:us-west-2:222222222222:parameter/cdk-bootstrap/shop/version'),
+              arnEndingIn(':ssm:us-west-1:222222222222:parameter/cdk-bootstrap/shop/version'),
+            ]),
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('APP_STAGING deploy projects may assume the app-scoped asset publishing roles', () => {
+    const config = defineCICD({
+      application: 'Payments Platform',
+      qualifier: 'pay123',
+      synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: [{ name: 'dev', env: { account: '222222222222', region: 'us-west-2' } }],
+    });
+
+    render(config).hasResourceProperties('AWS::IAM::Policy', {
+      Roles: [{ Ref: Match.stringLikeRegexp('DeploydevRole') }],
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sts:AssumeRole',
+            Resource: Match.arrayWith([
+              arnEndingIn(':iam::222222222222:role/cdk-payments-v2-file-role-us-west-2'),
+              arnEndingIn(':iam::222222222222:role/cdk-payments-v2-image-role-us-west-2'),
             ]),
           }),
         ]),
@@ -633,6 +879,110 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       ),
     );
     expect(resources).not.toContain('');
+  });
+
+  test('the CI synth role reads only effective secret-backed deploy-role ExternalIds', () => {
+    const fallbackSecret = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:fallback-external';
+    const overrideSecret = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:prod-external';
+    const ignoredSecret = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:ignored-external';
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      deployRoleExternalId: `resolve:secretsmanager:${fallbackSecret}`,
+      stages: [
+        {
+          name: 'dev',
+          deployment: { deployRole: 'arn:aws:iam::111111111111:role/dev-deployer' },
+        },
+        {
+          name: 'prod',
+          deployment: {
+            deployRole: 'arn:aws:iam::111111111111:role/prod-deployer',
+            externalId: `resolve:secretsmanager:${overrideSecret}`,
+          },
+        },
+        {
+          name: 'qa',
+          deployment: { externalId: `resolve:secretsmanager:${ignoredSecret}` },
+        },
+        {
+          name: 'res',
+          deployment: {
+            deployRole: 'arn:aws:iam::111111111111:role/res-deployer',
+            externalId: 'literal-external-id',
+          },
+        },
+      ],
+    });
+    const t = render(config);
+
+    t.hasResourceProperties('AWS::IAM::Policy', {
+      Roles: [{ Ref: Match.stringLikeRegexp('BuildProjectRole') }],
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'secretsmanager:GetSecretValue',
+            Resource: Match.arrayWith([fallbackSecret, overrideSecret]),
+          }),
+        ]),
+      }),
+    });
+    const secretPolicies = Object.values(t.findResources('AWS::IAM::Policy')).filter((policy) =>
+      JSON.stringify(policy.Properties.PolicyDocument).includes('secretsmanager:GetSecretValue'),
+    );
+    // Assembly promotion resolves every stage ExternalId in CI; deploy projects consume that assembly
+    // and must not receive the secret again.
+    expect(secretPolicies).toHaveLength(1);
+    expect(JSON.stringify(secretPolicies[0].Properties.PolicyDocument)).not.toContain(ignoredSecret);
+    expect(JSON.stringify(secretPolicies[0].Properties.PolicyDocument)).not.toContain('literal-external-id');
+  });
+
+  test('deploy-time synth grants the effective ExternalId secret only to projects that synth that stage', () => {
+    const fallbackSecret = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:dev-external';
+    const prodSecret = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:prod-external';
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      deployModel: DeployModel.DEPLOY_TIME_SYNTH,
+      deployRoleExternalId: `resolve:secretsmanager:${fallbackSecret}`,
+      stages: [
+        {
+          name: 'dev',
+          env: { account: '111111111111', region: 'us-west-2' },
+          deployment: { deployRole: 'arn:aws:iam::111111111111:role/dev-deployer' },
+        },
+        {
+          name: 'prod',
+          env: {
+            account: '222222222222',
+            regions: ['us-west-2', 'us-west-1'],
+            regionOrder: RegionOrder.PARALLEL,
+          },
+          deployment: {
+            deployRole: 'arn:aws:iam::222222222222:role/prod-deployer',
+            externalId: `resolve:secretsmanager:${prodSecret}`,
+          },
+        },
+      ],
+    });
+    const t = render(config);
+    const policies = Object.values(t.findResources('AWS::IAM::Policy'));
+    const policyForRole = (rolePattern: string) =>
+      policies.find((policy) => JSON.stringify(policy.Properties.Roles).includes(rolePattern));
+
+    expect(JSON.stringify(policyForRole('BuildProjectRole')?.Properties.PolicyDocument)).toContain(fallbackSecret);
+    // dev is synthesized in CI and promoted, so its deploy project does not resolve the secret.
+    expect(JSON.stringify(policyForRole('DeploydevRole')?.Properties.PolicyDocument)).not.toContain(
+      'secretsmanager:GetSecretValue',
+    );
+    // prod is not synthesized in CI; each parallel regional deploy project synthesizes it independently.
+    for (const role of ['Deployproduswest2Role', 'Deployproduswest1Role']) {
+      const policy = policyForRole(role);
+      expect(policy).toBeDefined();
+      expect(JSON.stringify(policy?.Properties.PolicyDocument)).toContain('secretsmanager:GetSecretValue');
+      expect(JSON.stringify(policy?.Properties.PolicyDocument)).toContain(prodSecret);
+    }
+    expect(JSON.stringify(policyForRole('BuildProjectRole')?.Properties.PolicyDocument)).not.toContain(prodSecret);
   });
 
   test('a gated stage gets a manual approval action ordered ahead of its deploy', () => {
@@ -1046,7 +1396,7 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
             Action: 'sts:AssumeRole',
             // account and region both come from the pipeline stack when the stage omits them.
             Resource: Match.arrayWith([
-              arnEndingIn(':iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-west-2'),
+              arnEndingIn(':iam::111111111111:role/cdk-shop-deploy-role-111111111111-us-west-2'),
             ]),
           }),
         ]),

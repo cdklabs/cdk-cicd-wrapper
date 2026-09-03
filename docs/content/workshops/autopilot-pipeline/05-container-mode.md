@@ -22,7 +22,11 @@ import { defineCICD, Repository, BuildImage } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.github('my-org/my-app'),
+  repository: Repository.codestarConnection(
+    'my-org/my-app',
+    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
+  ),
+  stages: ['dev'], // required by defineCICD; deployerImage mode creates no deploy actions
   deployerImage: BuildImage.docker({
     dockerfile: 'Dockerfile', // default; the image payload is your app + deps, NOT cdk.out
     // repositoryName: 'my-app-deployer',   // reference an existing ECR repo; omit to provision one
@@ -30,6 +34,9 @@ export default defineCICD({
   }),
 });
 ```
+
+`stages` remains required by the `defineCICD` API, but `deployerImage` mode does not render deployment
+actions for those stages.
 
 ### What the Repo 1 pipeline does
 
@@ -61,6 +68,10 @@ Repo 2 is a small, app-agnostic **config repo** (no CDK code) that says **which 
 import { defineDeployment, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineDeployment({
+  // Match the application/qualifier baked into the deployer image.
+  application: 'my-app',
+  qualifier: 'myapp',
+
   // The BASE deployer image repo (no tag). The per-stage version is appended at deploy time.
   image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer',
 

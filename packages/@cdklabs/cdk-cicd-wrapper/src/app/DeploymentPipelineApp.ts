@@ -6,7 +6,7 @@
 // the CD pipeline needs no file in the user's config repo -- the same zero-touch shape as PipelineApp for
 // the CI side. It renders exactly one stack: the CD pipeline (see DeploymentPipeline).
 
-import { App, Aspects, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { App, Aspects, DefaultStackSynthesizer, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { ResolvedDeploymentConfig } from '../config/types';
 import { DeploymentPipeline } from '../engine/codepipeline/DeploymentPipeline';
@@ -40,7 +40,9 @@ export class DeploymentPipelineApp extends App {
   public readonly pipelineStack: Stack;
 
   public constructor(props: DeploymentPipelineAppProps) {
-    super();
+    super({
+      defaultStackSynthesizer: new DefaultStackSynthesizer({ qualifier: props.config.qualifier }),
+    });
     const name = pipelineName(props.config);
     this.pipelineStack = new Stack(this, name, {
       stackName: name,

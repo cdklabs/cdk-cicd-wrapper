@@ -56,8 +56,9 @@ export function stageStackName(base: string, options: StageStackNameOptions = {}
     return base;
   }
   // Always `-`: CloudFormation stack names allow only [A-Za-z][A-Za-z0-9-]*, so any other separator would
-  // produce an invalid name. Default casing is lowercase; `uppercaseStage` opts into upper for Blueprint-default
-  // stage ids.
-  const seg = options.uppercaseStage ? stage.toUpperCase() : stage.toLowerCase();
+  // produce an invalid name. Preserve the configured stage id verbatim by default so Blueprint migrations
+  // keep their existing CloudFormation stack names; `uppercaseStage` is the explicit compatibility helper
+  // for Blueprint's built-in uppercase stage ids.
+  const seg = options.uppercaseStage ? stage.toUpperCase() : stage;
   return options.stageFirst ? `${seg}-${base}` : `${base}-${seg}`;
 }

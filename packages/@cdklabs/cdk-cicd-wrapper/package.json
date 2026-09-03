@@ -73,6 +73,7 @@
     "constructs": "^10.5.0"
   },
   "dependencies": {
+    "@aws-cdk/app-staging-synthesizer-alpha": "2.195.0-alpha.0",
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
     "yaml": "^2.8.1"

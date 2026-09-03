@@ -5,7 +5,13 @@
 // and aws) is proven end to end by the m3-verify real-AWS gate.
 
 import * as path from 'path';
-import { assertPromotedAssembly, deployArgs, planFromAssembly } from '../../src/cmds/autopilot/DeployCommand';
+import {
+  assertPromotedAssembly,
+  deployArgs,
+  RegionalDeploymentResult,
+  runRegionalDeployments,
+  planFromAssembly,
+} from '../../src/cmds/autopilot/DeployCommand';
 
 describe('m3-deploy: deployArgs', () => {
   test('deploys the assembly with no approval prompt and no role when none is configured', () => {
@@ -58,6 +64,47 @@ describe('m4-deploy-observer: deployArgs prepare mode', () => {
   test('without a change-set name the argv is unchanged, so the proven path is untouched', () => {
     expect(deployArgs('cdk.out/dev/us-west-2')).not.toContain('--no-execute');
     expect(deployArgs('cdk.out/dev/us-west-2', 'arn:aws:iam::111111111111:role/D')).not.toContain('--no-execute');
+  });
+});
+
+describe('regional deploy ordering', () => {
+  const plan = (region: string) => [{ stackName: `stack-${region}`, changeSetName: 'cs', region }];
+
+  test('parallel launches every region, then selects failures and plans in configured order', async () => {
+    const regions = ['eu-west-1', 'us-east-1', 'ap-southeast-2', 'sa-east-1'];
+    const started: string[] = [];
+    const pending = new Map<string, (result: RegionalDeploymentResult) => void>();
+    const deployment = runRegionalDeployments(regions, 'parallel', (region) => {
+      started.push(region);
+      return new Promise<RegionalDeploymentResult>((resolve) => pending.set(region, resolve));
+    });
+
+    expect(started).toEqual(regions);
+    pending.get('sa-east-1')!({ code: 0, plan: plan('sa-east-1') });
+    pending.get('ap-southeast-2')!({ code: 7, plan: [] });
+    pending.get('us-east-1')!({ code: 5, plan: [] });
+    pending.get('eu-west-1')!({ code: 0, plan: plan('eu-west-1') });
+
+    const result = await deployment;
+    expect(result.code).toBe(5);
+    expect(result.results.map((entry) => entry.code)).toEqual([0, 5, 7, 0]);
+    expect(result.plan.map((entry) => entry.region)).toEqual(['eu-west-1', 'sa-east-1']);
+  });
+
+  test('sequential preserves order and does not start regions after a failure', async () => {
+    const started: string[] = [];
+    const result = await runRegionalDeployments(
+      ['eu-west-1', 'us-east-1', 'ap-southeast-2'],
+      'sequential',
+      async (region) => {
+        started.push(region);
+        return region === 'us-east-1' ? { code: 2, plan: [] } : { code: 0, plan: plan(region) };
+      },
+    );
+
+    expect(started).toEqual(['eu-west-1', 'us-east-1']);
+    expect(result.code).toBe(2);
+    expect(result.plan.map((entry) => entry.region)).toEqual(['eu-west-1']);
   });
 });
 
