@@ -13,7 +13,7 @@
 // more than it looks, because cdk-nag's rules match resources with `instanceof` and go silently
 // inert across two copies (finding `qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert`).
 
-import { App, Aspects, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { App, Aspects, DefaultStackSynthesizer, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { EngineType, ResolvedCicdConfig } from '../config/types';
 import { CodePipelineEngine } from '../engine/codepipeline/CodePipelineEngine';
@@ -27,7 +27,10 @@ function engineFor(config: ResolvedCicdConfig, disposable: boolean): IEngine {
   // an unknown value is reachable and worth naming rather than rendering a pipeline-less stack.
   switch (config.engine) {
     case EngineType.CODEPIPELINE:
-      return new CodePipelineEngine({ removalPolicy: disposable ? RemovalPolicy.DESTROY : undefined });
+      return new CodePipelineEngine({
+        buildImage: config.ci.image,
+        removalPolicy: disposable ? RemovalPolicy.DESTROY : undefined,
+      });
     default:
       throw new Error(`cdk-cicd: unknown pipeline engine '${config.engine}' -- expected 'codepipeline'`);
   }
@@ -57,9 +60,12 @@ export class PipelineApp extends App {
   public readonly pipelineStack: Stack;
 
   public constructor(props: PipelineAppProps) {
-    super();
-
     const config = props.config;
+    // The engine-owned pipeline stack uses the standard bootstrap roles even when application
+    // stages opt into APP_STAGING. Thread the configured qualifier so self-update IAM and the stack's
+    // own cloud assembly name the same bootstrap roles.
+    super({ defaultStackSynthesizer: new DefaultStackSynthesizer({ qualifier: config.qualifier }) });
+
     const name = `${config.application ?? DEFAULT_APPLICATION}-pipeline`;
 
     this.pipelineStack = new Stack(this, name, {

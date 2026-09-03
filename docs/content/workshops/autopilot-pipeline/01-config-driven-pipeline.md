@@ -31,7 +31,7 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.codecommit('my-app'),   // or .github('org/my-app', 'main') / .s3('bucket/app.zip')
+  repository: Repository.codecommit('my-app'), // or .s3('bucket/app.zip')
   stages: ['dev', 'prod'],
 });
 ```
@@ -77,13 +77,13 @@ only ever write the few you need, because the wrapper resolves sensible defaults
 |---|---|---|
 | `application` | Logical name for the app and its resources. Defaults from `package.json#name`. | The prefix on pipeline and support-stack names — set it once so resources are recognizable. |
 | `qualifier` | Short (≤10 char) sanitized id used to disambiguate shared resources. Derived from `application`. | Only set it if two apps would otherwise collide on shared names. |
-| `repository` | The pipeline's source: `Repository.github('org/repo', branch?)`, `Repository.codecommit('name', branch?)`, or `Repository.s3('bucket/key', branch?)`. | This is *where* the pipeline reads code and *what* triggers it — the one field you almost always set explicitly. |
+| `repository` | The pipeline's source: `Repository.codestarConnection('org/repo', connectionArn, branch?)` for GitHub with the AWS-hosted engines, `Repository.codecommit(...)`, or `Repository.s3(...)`. `Repository.github(...)` is reserved for `GITHUB_ACTIONS`. | This is *where* the pipeline reads code and *what* triggers it — the one field you almost always set explicitly. |
 | `stages` | Ordered list of deployment stages — bare names or objects with `env`, `manualApproval`, `deployment`. | Your promotion path (dev → prod). Config-as-data, not pipeline code. Covered in the next chapter. |
 | `ci` | Customizes the CI phase: `steps`, `synthStages`, `image`. | Add your own build/test steps or a custom image. See [Customizing CI](#customizing-ci) below. |
 | `codeArtifact` | Authenticates builds to a private CodeArtifact repo (`domain`, `repository`, `account?`, `region?`, `npmScope?`). | Needed when your deps (or the wrapper itself, pre-release) live in a private registry. See chapter 4. |
 | `deployModel` | `DeployModel.ASSEMBLY_PROMOTION` (default) or `DeployModel.DEPLOY_TIME_SYNTH`. | Controls when synth happens — one synth per run vs per-stage at deploy time. See chapter 3. |
 | `asyncDeploy` | `boolean` (default `false`). Hands the CloudFormation wait to a Lambda instead of holding a build. | Saves build compute when the CloudFormation wait dominates. See chapter 3. |
-| `synthesizer` | `{ type?: SynthesizerType.DEFAULT \| SynthesizerType.APP_STAGING }`. | `DEFAULT` (`DefaultStackSynthesizer`) suits most apps; opt into `APP_STAGING` for per-app staging + roles-only bootstrap. |
+| `synthesizer` | `{ type?: SynthesizerType.DEFAULT \| SynthesizerType.APP_STAGING, appId?: string }`. | `DEFAULT` suits most apps. `APP_STAGING` uses `appId` (default: `application`) and currently works only with the default flat `CODEPIPELINE` engine. |
 | `engine` | Selects the CD engine (`EngineType`). | `EngineType.CODEPIPELINE` is the default and covers most cases — you rarely set it. Two alternates exist: `CDK_PIPELINES` (plain CDK Pipelines, no CodePipeline-specific extras) and `GITHUB_ACTIONS` (renders a `.github/workflows/deploy.yml` instead of an AWS-hosted pipeline — see [GitHub as source & CD engine](../../developer_guides/vcs_github.md)). Tuning for the default engine lives on the stages and `ci` (chapter 3), not here. |
 | `githubActions` | GitHub Actions engine config (`roleName`, `subjectClaims`, `workflowTriggers`, etc.). | Only read when `engine` is `EngineType.GITHUB_ACTIONS`. |
 | `deployerImage` | Turns the pipeline into a config-agnostic image builder (`BuildImage.docker({...})`). | The container-mode entry point. See chapter 5. |
@@ -107,7 +107,10 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.github('my-org/my-app'),
+  repository: Repository.codestarConnection(
+    'my-org/my-app',
+    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
+  ),
   stages: ['dev', 'prod'],
   ci: {
     steps: {

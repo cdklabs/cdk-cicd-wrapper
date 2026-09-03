@@ -10,18 +10,22 @@
 // require.cache (same reason bundled-diagnostic runs the compiled preload out of process).
 
 import { execFileSync } from 'child_process';
-import { existsSync, mkdtempSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { App, Stack, Stage } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { App, Aspects, CfnResource, IAspect, Stack, Stage } from 'aws-cdk-lib';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import { IConstruct } from 'constructs';
+import { AppConfig } from '../../src/appconfig/accessor';
 import { defineCICD } from '../../src/config/define';
 import { Repository } from '../../src/config/repository';
-import { EngineType } from '../../src/config/types';
+import { EngineType, SynthesizerType } from '../../src/config/types';
 import { CdkPipelinesStageContext, IStageProvider } from '../../src/engine/cdkpipelines/CdkPipelinesEngine';
 import { GitHubActionsEngine } from '../../src/engine/github/GitHubActionsEngine';
-import { buildPipelineApp } from '../../src/runtime/pipeline-assembler';
+import { buildPipelineApp, replayForcedRoleEnv } from '../../src/runtime/pipeline-assembler';
+import { registerPlugin } from '../../src/runtime/plugins';
 
 function config() {
   return defineCICD({
@@ -70,6 +74,181 @@ describe('CDK Pipelines assembler: pipeline structure (stub provider)', () => {
     const categories = (n: string) => (byName(n).Actions as any[]).map((a) => a.ActionTypeId.Category);
     expect(categories('prod')).toContain('Approval');
     expect(categories('dev')).not.toContain('Approval');
+  });
+
+  test('applies the full default wrapper aspect set to the self-mutating app', () => {
+    const app = buildPipelineApp(config(), new StubProvider());
+    const aspectNames = Aspects.of(app).all.map((aspect) => {
+      const delegated = (aspect as { delegate?: IAspect }).delegate;
+      return (delegated ?? aspect).constructor.name;
+    });
+    expect(aspectNames).toEqual(
+      expect.arrayContaining([
+        'AwsSolutionsChecks',
+        'LogRetentionAspect',
+        'EncryptBucketOnTransitAspect',
+        'EncryptSNSTopicOnTransitAspect',
+        'RotateEncryptionKeysAspect',
+        'DisablePublicIPAssignmentForEC2Aspect',
+      ]),
+    );
+  });
+
+  test('root pipeline aspects do not revisit resources in an independently wrapped application stage', () => {
+    const counter = new (class implements IAspect {
+      public bucketVisits = 0;
+
+      public visit(node: IConstruct): void {
+        if (CfnResource.isCfnResource(node) && node.cfnResourceType === 'AWS::S3::Bucket') {
+          this.bucketVisits += 1;
+        }
+      }
+    })();
+    let applicationStack: Stack | undefined;
+    const provider: IStageProvider = {
+      stacks(stage: Stage, context: CdkPipelinesStageContext): void {
+        registerPlugin(stage, {
+          ref: { name: 'CountBuckets', version: '1' },
+          aspect: counter,
+        });
+        applicationStack = new Stack(stage, 'shop-app', { env: context.env });
+        new s3.Bucket(applicationStack, 'Data');
+      },
+    };
+    buildPipelineApp(
+      defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        plugins: [{ name: 'CountBuckets', version: '1' }],
+      }),
+      provider,
+    );
+
+    Template.fromStack(applicationStack!);
+    expect(counter.bucketVisits).toBe(1);
+  });
+
+  test('honours plugins: [] for the self-mutating app', () => {
+    const app = buildPipelineApp(
+      defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        plugins: [],
+      }),
+      new StubProvider(),
+    );
+    expect(Aspects.of(app).all).toEqual([]);
+  });
+
+  test('loads per-stage application config before replay and applies its tags/plugin settings to that stage', () => {
+    const originalCwd = process.cwd();
+    const cwd = mkdtempSync(path.join(os.tmpdir(), 'cdk-cicd-stage-config-'));
+    mkdirSync(path.join(cwd, 'config'));
+    writeFileSync(
+      path.join(cwd, 'config', 'dev.json'),
+      JSON.stringify({ tags: { StageConfig: 'dev' }, logRetentionInDays: 14 }),
+    );
+
+    let appConfig: Record<string, unknown> | undefined;
+    let applicationStack: Stack | undefined;
+    const provider: IStageProvider = {
+      stacks(stage: Stage, context: CdkPipelinesStageContext): void {
+        appConfig = AppConfig.of(stage) as Record<string, unknown>;
+        applicationStack = new Stack(stage, 'shop-app', { env: context.env });
+        new s3.Bucket(applicationStack, 'Data');
+        new logs.CfnLogGroup(applicationStack, 'Logs');
+      },
+    };
+
+    try {
+      process.chdir(cwd);
+      buildPipelineApp(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev'],
+        }),
+        provider,
+      );
+
+      expect(appConfig).toMatchObject({ tags: { StageConfig: 'dev' }, logRetentionInDays: 14 });
+      const template = Template.fromStack(applicationStack!);
+      template.hasResourceProperties('AWS::Logs::LogGroup', { RetentionInDays: 14 });
+      template.hasResourceProperties('AWS::S3::Bucket', {
+        Tags: Match.arrayWith([{ Key: 'StageConfig', Value: 'dev' }]),
+      });
+    } finally {
+      process.chdir(originalCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects APP_STAGING for self-mutating engines until the pinned alpha supports CDK Pipelines', () => {
+    expect(() =>
+      buildPipelineApp(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev'],
+          synthesizer: { type: SynthesizerType.APP_STAGING },
+        }),
+        new StubProvider(),
+      ),
+    ).toThrow(/APP_STAGING is not supported by the CDK_PIPELINES or GITHUB_ACTIONS engines/);
+  });
+});
+
+describe('self-mutating assembler: stage forced-role contract', () => {
+  test('exports deploy, CFN execution, and ExternalId values for replay synthesis', () => {
+    const cicd = defineCICD({
+      application: 'shop',
+      repository: Repository.codecommit('shop'),
+      stages: [
+        {
+          name: 'prod',
+          deployment: {
+            deployRole: 'arn:aws:iam::222222222222:role/ForcedDeploy',
+            cfnExecutionRole: 'arn:aws:iam::222222222222:role/ForcedCfn',
+            externalId: 'prod-external',
+          },
+        },
+      ],
+    });
+    expect(replayForcedRoleEnv(cicd, 'prod')).toEqual({
+      CDK_CICD_DEPLOY_ROLE_ARN: 'arn:aws:iam::222222222222:role/ForcedDeploy',
+      CDK_CICD_CFN_EXEC_ROLE_ARN: 'arn:aws:iam::222222222222:role/ForcedCfn',
+      CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID: 'prod-external',
+    });
+  });
+
+  test('uses the pipeline ExternalId fallback only when a deployRole is configured', () => {
+    const cicd = defineCICD({
+      application: 'shop',
+      repository: Repository.codecommit('shop'),
+      deployRoleExternalId: 'pipeline-external',
+      stages: [
+        { name: 'dev', deployment: { deployRole: 'arn:dev' } },
+        { name: 'qa', deployment: { cfnExecutionRole: 'arn:cfn' } },
+      ],
+    });
+    expect(replayForcedRoleEnv(cicd, 'dev').CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID).toBe('pipeline-external');
+    expect(replayForcedRoleEnv(cicd, 'qa')).toEqual({ CDK_CICD_CFN_EXEC_ROLE_ARN: 'arn:cfn' });
+  });
+
+  test('fails explicitly if a direct assembler call receives an unresolved secret reference', () => {
+    const cicd = defineCICD({
+      application: 'shop',
+      repository: Repository.codecommit('shop'),
+      stages: [
+        {
+          name: 'prod',
+          deployment: { deployRole: 'arn:prod', externalId: 'resolve:secretsmanager:prod-external' },
+        },
+      ],
+    });
+    expect(() => replayForcedRoleEnv(cicd, 'prod')).toThrow(/unresolved Secrets Manager externalId reference/);
   });
 });
 
@@ -205,6 +384,9 @@ describe('CDK Pipelines assembler: real per-stage replay (subprocess)', () => {
       buckets: number;
       bucketIds: string[];
       account?: string;
+      assumeRoleArn?: string;
+      cfnRoleArn?: string;
+      assumeRoleExternalId?: string;
     }>;
     const byStage = Object.fromEntries(result.map((r) => [r.stage, r]));
     // Each replayed stage got exactly the plain bin's one bucket.
@@ -214,6 +396,9 @@ describe('CDK Pipelines assembler: real per-stage replay (subprocess)', () => {
     // ambient hub account (111…) -- so the replay set CDK_DEFAULT_ACCOUNT per stage, not once.
     expect(byStage.dev.account).toBe('111111111111');
     expect(byStage.prod.account).toBe('222222222222');
+    expect(byStage.prod.assumeRoleArn).toBe('arn:aws:iam::222222222222:role/ForcedDeploy');
+    expect(byStage.prod.cfnRoleArn).toBe('arn:aws:iam::222222222222:role/ForcedCfn');
+    expect(byStage.prod.assumeRoleExternalId).toBe('prod-external');
     // CDK_STAGE was pinned per stage: the bucket logical id (Data-${CDK_STAGE}) differs across stages.
     expect(byStage.dev.bucketIds[0]).not.toEqual(byStage.prod.bucketIds[0]);
   });

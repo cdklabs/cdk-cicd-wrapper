@@ -144,6 +144,11 @@
       "type": "peer"
     },
     {
+      "name": "@aws-cdk/app-staging-synthesizer-alpha",
+      "version": "2.195.0-alpha.0",
+      "type": "runtime"
+    },
+    {
       "name": "@cloudcomponents/cdk-pull-request-approval-rule",
       "type": "runtime"
     },

@@ -58,6 +58,37 @@ describe('m4-approval-selfupdate: PipelineApp', () => {
     expect(stack.environment.region).toEqual(REGION);
   });
 
+  test('the pipeline stack synthesizer uses the configured bootstrap qualifier', () => {
+    const resolved = defineCICD({
+      application: 'shop',
+      qualifier: 'customq',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+    });
+    const app = new PipelineApp({ config: resolved });
+    const artifact = app.synth().getStackArtifact(app.pipelineStack.artifactId);
+
+    expect(artifact.assumeRoleArn).toContain('cdk-customq-deploy-role-');
+    expect(artifact.cloudFormationExecutionRoleArn).toContain('cdk-customq-cfn-exec-role-');
+  });
+
+  test('ci.image is applied only to the CI Build project', () => {
+    const resolved = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      ci: { image: 'public.ecr.aws/example/node:22' },
+    });
+    const stack = new PipelineApp({ config: resolved }).synth().stacks[0];
+    const projects = Object.values(Template.fromJSON(stack.template).findResources('AWS::CodeBuild::Project'));
+    const customImageProjects = projects.filter(
+      (project) => project.Properties.Environment.Image === 'public.ecr.aws/example/node:22',
+    );
+
+    expect(customImageProjects).toHaveLength(1);
+    expect(JSON.stringify(customImageProjects[0].Properties.Source.BuildSpec)).toContain('cdk-cicd synth --all');
+  });
+
   test('the nag aspect is applied to the app', () => {
     // Only registration is asserted: this repository resolves two copies of aws-cdk-lib, and cdk-nag's
     // rules match resources with `instanceof`, so the checks produce nothing here regardless of the

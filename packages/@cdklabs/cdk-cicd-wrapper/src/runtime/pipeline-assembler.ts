@@ -13,11 +13,26 @@
 // re-`require` the entry -- the same App-construction seam register.ts owns for the flat engine. Not
 // jsii-exported: it uses dynamic require and module-level state, like register.ts.
 
+import { readFileSync } from 'fs';
 import * as path from 'path';
-import { App, Aspects, AppProps, Environment, Stack, Stage } from 'aws-cdk-lib';
-import { AwsSolutionsChecks } from 'cdk-nag';
-import { appExportTargets, assertAppModuleLayout, patchAppExports, restoreAppExports } from './inject';
-import { EngineType, ResolvedCicdConfig } from '../config/types';
+import { App, AppProps, DefaultStackSynthesizer, Environment, Stack, Stage } from 'aws-cdk-lib';
+import {
+  applyWrapper,
+  appExportTargets,
+  assertAppModuleLayout,
+  CFN_EXEC_ROLE_FLAG,
+  DEPLOY_ROLE_EXTERNAL_ID_FLAG,
+  DEPLOY_ROLE_FLAG,
+  patchAppExports,
+  resolveSynthesizer,
+  restoreAppExports,
+  wrapperApplied,
+  wrapperRuntimeConfig,
+  WRAPPER_CONFIG_CONTEXT_KEY,
+} from './inject';
+import { AppConfig } from '../appconfig/accessor';
+import { ConfigErrorKind } from '../appconfig/error';
+import { EngineType, ResolvedCicdConfig, SynthesizerType } from '../config/types';
 import {
   CdkPipelinesEngine,
   CdkPipelinesStageContext,
@@ -27,19 +42,25 @@ import { GitHubActionsEngine } from '../engine/github/GitHubActionsEngine';
 
 /** Name used when the config names no application (mirrors PipelineApp). */
 const DEFAULT_APPLICATION = 'cdk-cicd';
+const SECRET_REF_PREFIX = 'resolve:secretsmanager:';
+
+interface ReplayCdkBindings {
+  /** Every export object whose `App` property must point at the replay stand-in. */
+  readonly appExportTargets: object[];
+  /** One private default-synthesizer context key per distinct aws-cdk-lib copy. */
+  readonly synthesizerContextKeys: string[];
+}
 
 /**
- * Every place `App` is exported from every distinct aws-cdk-lib copy reachable from the ENTRY, this
- * module, and the cwd (leaf module + every re-export -- see `appExportTargets`). We must patch the
- * copy the ENTRY actually loads -- a monorepo/workspace can have a nested aws-cdk-lib next to the
- * entry AND one next to the wrapper, and Node caches by resolved path, so patching only one would
- * silently miss the entry's copy (its `new cdk.App()` would build a throwaway App and leave the stage
- * empty). Same strategy as register.ts's distinctCdkCopies. Direct file path bypasses the package
- * `exports` map (ERR_PACKAGE_PATH_NOT_EXPORTED).
+ * Every distinct aws-cdk-lib copy reachable from the ENTRY, this module, and the cwd. For each copy,
+ * collect both the App export targets and that copy's randomized private default-synthesizer context
+ * key. A monorepo can load Stack from one copy and Stage from another; setting every key on the replay
+ * Stage makes each Stack constructor observe the same stage-specific synthesizer.
  */
-function appLeafModules(entryResolved: string): object[] {
+function replayCdkBindings(entryResolved: string): ReplayCdkBindings {
   const seen = new Set<string>();
   const targets: object[] = [];
+  const synthesizerContextKeys: string[] = [];
   for (const from of [path.dirname(entryResolved), __dirname, process.cwd()]) {
     let pkgJson: string;
     try {
@@ -52,13 +73,83 @@ function appLeafModules(entryResolved: string): object[] {
     seen.add(root);
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require(path.join(root, 'core', 'lib', 'app.js')) as { App: new (props?: AppProps) => App };
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    assertAppModuleLayout(mod, require(pkgJson).version);
+    const cdkVersion = (JSON.parse(readFileSync(pkgJson, 'utf8')) as { version?: unknown }).version;
+    assertAppModuleLayout(mod, String(cdkVersion));
     for (const target of appExportTargets(root, mod)) {
       if (!targets.includes(target)) targets.push(target);
     }
+    // App stores its default synthesizer under a deliberately randomized private context key. Read the
+    // key from this exact aws-cdk-lib copy so a Stack imported from it can find our replay override.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const privateContext = require(path.join(root, 'core', 'lib', 'private', 'private-context.js')) as {
+      PRIVATE_CONTEXT_DEFAULT_STACK_SYNTHESIZER?: unknown;
+    };
+    if (typeof privateContext.PRIVATE_CONTEXT_DEFAULT_STACK_SYNTHESIZER !== 'string') {
+      throw new Error(
+        `cdk-cicd: aws-cdk-lib ${String(cdkVersion)} no longer exposes the private ` +
+          'default-stack-synthesizer context key required for self-mutating replay.',
+      );
+    }
+    synthesizerContextKeys.push(privateContext.PRIVATE_CONTEXT_DEFAULT_STACK_SYNTHESIZER);
   }
-  return targets;
+  return { appExportTargets: targets, synthesizerContextKeys };
+}
+
+/**
+ * Forced-role environment for one replayed stage. The register preload uses the same variables for
+ * flat-engine application synthesis; replay sets them while constructing this stage's stacks and
+ * installs the resulting synthesizer in the replay Stage's context.
+ */
+export function replayForcedRoleEnv(config: ResolvedCicdConfig, stageName: string): Record<string, string> {
+  const stage = config.stages.find((candidate) => candidate.name === stageName);
+  const deployment = stage?.deployment;
+  const env: Record<string, string> = {};
+  if (deployment?.deployRole !== undefined && deployment.deployRole.trim().length > 0) {
+    env[DEPLOY_ROLE_FLAG] = deployment.deployRole;
+  }
+  if (deployment?.cfnExecutionRole !== undefined && deployment.cfnExecutionRole.trim().length > 0) {
+    env[CFN_EXEC_ROLE_FLAG] = deployment.cfnExecutionRole;
+  }
+
+  // An ExternalId has semantics only for a forced deploy-role assumption. Secret references are
+  // resolved by `cdk-cicd exec` before it invokes the synchronous assembler; a direct assembler call
+  // must fail rather than passing the reference string to STS as though it were the ExternalId.
+  if (env[DEPLOY_ROLE_FLAG] !== undefined) {
+    const externalId = deployment?.externalId ?? config.deployRoleExternalId;
+    if (externalId?.startsWith(SECRET_REF_PREFIX)) {
+      throw new Error(
+        `cdk-cicd: stage '${stageName}' has an unresolved Secrets Manager externalId reference. ` +
+          'Render the pipeline through `cdk-cicd exec` so the reference is resolved before replay.',
+      );
+    }
+    if (externalId !== undefined && externalId.trim().length > 0) {
+      env[DEPLOY_ROLE_EXTERNAL_ID_FLAG] = externalId;
+    }
+  }
+  return env;
+}
+
+function setOrDeleteEnv(key: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+}
+
+/**
+ * Stack construction reads a private context key created independently by each aws-cdk-lib copy.
+ * Install this stage's synthesizer under every discovered key before the entry creates children.
+ * Explicit per-Stack synthesizers still win, while ordinary stacks carry this stage's forced roles.
+ */
+function installReplaySynthesizer(stage: Stage, config: ResolvedCicdConfig, synthesizerContextKeys: string[]): void {
+  if (stage.node.children.length > 0) {
+    throw new Error(
+      `cdk-cicd: replay stage '${stage.node.id}' already has children, so its stage-specific ` +
+        'synthesizer cannot be installed before stack construction.',
+    );
+  }
+  const synthesizer = resolveSynthesizer(wrapperRuntimeConfig(config as unknown as Record<string, unknown>));
+  for (const key of synthesizerContextKeys) {
+    stage.node.setContext(key, synthesizer);
+  }
 }
 
 /**
@@ -75,19 +166,25 @@ function appLeafModules(entryResolved: string): object[] {
  * (which flows through the pipeline App and is inherited by every stage) instead. Both are enforced/eased
  * elsewhere: an empty stage throws a clear error below; cdk.json context is inherited.
  */
-function replayEntryInto(entry: string, stage: Stage, context: CdkPipelinesStageContext): void {
+function replayEntryInto(
+  entry: string,
+  stage: Stage,
+  context: CdkPipelinesStageContext,
+  config: ResolvedCicdConfig,
+): void {
   const resolved = require.resolve(entry);
-  const targets = appLeafModules(resolved);
-  if (targets.length === 0) {
+  const bindings = replayCdkBindings(resolved);
+  if (bindings.appExportTargets.length === 0) {
     throw new Error(`cdk-cicd: cannot resolve aws-cdk-lib from '${entry}' to replay it into the pipeline stage.`);
   }
 
   const prevStage = process.env.CDK_STAGE;
   const prevAccount = process.env.CDK_DEFAULT_ACCOUNT;
   const prevRegion = process.env.CDK_DEFAULT_REGION;
-  process.env.CDK_STAGE = context.stageName;
-  if (context.env.account !== undefined) process.env.CDK_DEFAULT_ACCOUNT = context.env.account;
-  if (context.env.region !== undefined) process.env.CDK_DEFAULT_REGION = context.env.region;
+  const prevDeployRole = process.env[DEPLOY_ROLE_FLAG];
+  const prevCfnExecRole = process.env[CFN_EXEC_ROLE_FLAG];
+  const prevExternalId = process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG];
+  const forcedRoleEnv = replayForcedRoleEnv(config, context.stageName);
 
   // `new cdk.App()` in the entry yields this stage. A NON-derived class may return an object from its
   // constructor with no super() (TS forbids that in a derived constructor -- TS2377), so no throwaway App
@@ -95,7 +192,6 @@ function replayEntryInto(entry: string, stage: Stage, context: CdkPipelinesStage
   // pipeline synthesizes the stage.
   const hadOwnSynth = Object.prototype.hasOwnProperty.call(stage, 'synth');
   const originalSynth = Reflect.get(stage, 'synth');
-  Reflect.set(stage, 'synth', () => undefined);
   const ReplayApp = class {
     public constructor(_props?: AppProps) {
       return stage;
@@ -115,19 +211,33 @@ function replayEntryInto(entry: string, stage: Stage, context: CdkPipelinesStage
   // `aws-cdk-lib/core` re-exports self-memoize into a non-writable value on first read (see
   // appExportTargets), and a plain assignment silently no-ops against that -- the entry's
   // `new cdk.App()` would then build a real, unpatched App instead of landing in `stage`.
-  const originals = patchAppExports(targets, ReplayApp);
+  let originals: Map<object, PropertyDescriptor | undefined> | undefined;
 
   try {
+    process.env.CDK_STAGE = context.stageName;
+    // An omitted account/region is environment-agnostic and must retain the ambient credential
+    // target, matching the pre-replay behaviour. Concrete stage values override it for this replay.
+    if (context.env.account !== undefined) process.env.CDK_DEFAULT_ACCOUNT = context.env.account;
+    if (context.env.region !== undefined) process.env.CDK_DEFAULT_REGION = context.env.region;
+    setOrDeleteEnv(DEPLOY_ROLE_FLAG, forcedRoleEnv[DEPLOY_ROLE_FLAG]);
+    setOrDeleteEnv(CFN_EXEC_ROLE_FLAG, forcedRoleEnv[CFN_EXEC_ROLE_FLAG]);
+    setOrDeleteEnv(DEPLOY_ROLE_EXTERNAL_ID_FLAG, forcedRoleEnv[DEPLOY_ROLE_EXTERNAL_ID_FLAG]);
+    installReplaySynthesizer(stage, config, bindings.synthesizerContextKeys);
+    Reflect.set(stage, 'synth', () => undefined);
+    originals = patchAppExports(bindings.appExportTargets, ReplayApp);
     delete require.cache[resolved];
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require(resolved);
   } finally {
-    restoreAppExports(originals);
+    if (originals !== undefined) restoreAppExports(originals);
     if (hadOwnSynth) Reflect.set(stage, 'synth', originalSynth);
     else Reflect.deleteProperty(stage, 'synth');
     restoreEnv('CDK_STAGE', prevStage);
     restoreEnv('CDK_DEFAULT_ACCOUNT', prevAccount);
     restoreEnv('CDK_DEFAULT_REGION', prevRegion);
+    restoreEnv(DEPLOY_ROLE_FLAG, prevDeployRole);
+    restoreEnv(CFN_EXEC_ROLE_FLAG, prevCfnExecRole);
+    restoreEnv(DEPLOY_ROLE_EXTERNAL_ID_FLAG, prevExternalId);
   }
 
   // A stage with no stacks means the entry built nothing into it -- almost always because construction
@@ -148,12 +258,24 @@ function restoreEnv(key: string, value: string | undefined): void {
 }
 
 /** An IStageProvider that fills each pipeline stage by replaying the plain entry into it. */
-export function replayStageProvider(entry: string): IStageProvider {
+export function replayStageProvider(entry: string, config: ResolvedCicdConfig): IStageProvider {
   return {
     stacks(stage: Stage, context: CdkPipelinesStageContext): void {
-      replayEntryInto(entry, stage, context);
+      replayEntryInto(entry, stage, context, config);
     },
   };
+}
+
+/** Load the same per-stage application config as `cdk-cicd exec`, tolerating a missing file as `{}`. */
+function stageApplicationConfig(stageName: string): Record<string, unknown> {
+  try {
+    return AppConfig.load({ stage: stageName }) as Record<string, unknown>;
+  } catch (error) {
+    if ((error as { kind?: string }).kind === ConfigErrorKind.MISSING_FILE) {
+      return {};
+    }
+    throw error;
+  }
 }
 
 /**
@@ -164,7 +286,36 @@ export function replayStageProvider(entry: string): IStageProvider {
  * `cdk.Stage` inside one synth); `config.engine` picks which one renders the stages `provider` builds.
  */
 export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStageProvider): App {
-  const app = new App();
+  if (config.synthesizer.type === SynthesizerType.APP_STAGING) {
+    throw new Error(
+      'cdk-cicd: SynthesizerType.APP_STAGING is not supported by the CDK_PIPELINES or ' +
+        'GITHUB_ACTIONS engines in the pinned alpha module. Use the default CODEPIPELINE engine or ' +
+        'SynthesizerType.DEFAULT.',
+    );
+  }
+  const runtimeConfig = wrapperRuntimeConfig(config as unknown as Record<string, unknown>);
+  // The pipeline stack itself always uses the standard bootstrap roles. The configured application
+  // synthesizer is installed on each replay Stage; APP_STAGING is rejected above because the pinned
+  // alpha explicitly does not support CDK Pipelines.
+  const app = new App({
+    defaultStackSynthesizer: new DefaultStackSynthesizer({ qualifier: config.qualifier }),
+  });
+  const wrappedProvider: IStageProvider = {
+    stacks(stage: Stage, context: CdkPipelinesStageContext): void {
+      const appConfig = stageApplicationConfig(context.stageName);
+      // Set both contexts before the provider creates children: user code can call AppConfig.of()
+      // during construction, while attach()/the wrapper see pipeline-owned controls separately.
+      stage.node.setContext(AppConfig.CONTEXT_KEY, appConfig);
+      stage.node.setContext(WRAPPER_CONFIG_CONTEXT_KEY, runtimeConfig);
+      provider.stacks(stage, context);
+      // A bundled/explicit entry may already have called CdkCicd.attach(stage). Avoid applying the
+      // same custom plugins twice; normal replay reaches this branch and receives stage-specific tags
+      // and plugin configuration.
+      if (!wrapperApplied(stage)) {
+        applyWrapper(stage, appConfig);
+      }
+    },
+  };
   // The construct id stays `${application}-pipeline` regardless of any stack-name override: the
   // pipeline's child logical IDs derive from the construct node path (`<id>/Cd/Pipeline/…`), so
   // changing the id would churn every child logical ID. `pipelineStackName` overrides ONLY the
@@ -190,11 +341,13 @@ export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStagePro
   // engine embeds it as a stable literal the "commit the updated workflow file" self-mutation check
   // compares across runs, so it must not vary with a CloudFormation stack-name override.
   if (config.engine === EngineType.GITHUB_ACTIONS) {
-    new GitHubActionsEngine(stack, 'Cd', { config, pipelineName: constructId, stages: provider });
+    new GitHubActionsEngine(stack, 'Cd', { config, pipelineName: constructId, stages: wrappedProvider });
   } else {
-    new CdkPipelinesEngine(stack, 'Cd', { config, pipelineName: constructId, stages: provider });
+    new CdkPipelinesEngine(stack, 'Cd', { config, pipelineName: constructId, stages: wrappedProvider });
   }
-  Aspects.of(app).add(new AwsSolutionsChecks({ verbose: false }));
+  // Apply the same configured/default wrapper plugin set as the flat-engine preload, after replay has
+  // populated every stage (and registered any custom plugins on its App stand-in).
+  applyWrapper(app, runtimeConfig, { skipAppliedDescendants: true });
   return app;
 }
 
@@ -204,7 +357,7 @@ export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStagePro
  * GITHUB_ACTIONS; the entry path comes from the `CDK_CICD_ENTRY` env var the CLI sets.
  */
 export function assemblePipelineApp(config: ResolvedCicdConfig, entry: string): App {
-  return buildPipelineApp(config, replayStageProvider(entry));
+  return buildPipelineApp(config, replayStageProvider(entry, config));
 }
 
 /**

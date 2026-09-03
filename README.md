@@ -241,7 +241,10 @@ import { defineCICD, Repository, EngineType } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.github('my-org/my-app'),
+  repository: Repository.codestarConnection(
+    'my-org/my-app',
+    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
+  ),
   engine: EngineType.CDK_PIPELINES, // omit for the default CODEPIPELINE
   stages: ['dev', 'prod'],
 });

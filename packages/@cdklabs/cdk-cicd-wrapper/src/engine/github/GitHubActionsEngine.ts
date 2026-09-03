@@ -26,7 +26,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { AwsCredentials, GitHubActionRole, GitHubWorkflow, JsonPatch } from 'cdk-pipelines-github';
 import { Construct } from 'constructs';
 import { RepositorySourceType } from '../../config/repository';
-import { ProxyConfig, ResolvedCicdConfig } from '../../config/types';
+import { NpmRegistryConfig, ProxyConfig, RegionOrder, ResolvedCicdConfig } from '../../config/types';
 import {
   CdkPipelinesStageContext,
   IStageProvider,
@@ -34,6 +34,7 @@ import {
   ssmWarmingReadStatements,
 } from '../cdkpipelines/CdkPipelinesEngine';
 import { defaultCiCommands } from '../ci-commands';
+import { deployRoleExternalIdSecretArns } from '../external-id-secrets';
 
 /** Props for the GitHub Actions engine. */
 export interface GitHubActionsEngineProps {
@@ -125,6 +126,7 @@ export class GitHubActionsEngine extends Construct {
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
       ...(config.warmAccountsFromSsm ? ssmWarmingCommands(config.qualifier) : []),
+      ...(config.npmRegistry ? npmRegistryLoginCommands(config.npmRegistry) : []),
       ...(config.codeArtifact
         ? [
             `aws codeartifact login --tool npm --domain ${config.codeArtifact.domain} ` +
@@ -135,6 +137,7 @@ export class GitHubActionsEngine extends Construct {
         : []),
     ];
     const ciSteps = Object.values(config.ci.steps);
+    const deployRoleExternalIdSecrets = deployRoleExternalIdSecretArns(config);
 
     this.pipeline = new GitHubWorkflow(this, 'Workflow', {
       awsCreds: AwsCredentials.fromOpenIdConnect({ gitHubActionRoleArn, roleSessionName: 'cdk-cicd-github-actions' }),
@@ -142,6 +145,9 @@ export class GitHubActionsEngine extends Construct {
       workflowPath: options.workflowPath,
       workflowName: options.workflowName ?? props.pipelineName,
       workflowTriggers: options.workflowTriggers,
+      // cdk-pipelines-github renders buildContainer only on the Build-Synth job, so this is the
+      // faithful GitHub Actions equivalent of the CI-only CodeBuild image override.
+      buildContainer: config.ci.image !== undefined ? { image: config.ci.image } : undefined,
       synth: new CodeBuildStep('Synth', {
         installCommands: [],
         // With no ci.steps, run the default CI (its own `npm ci` first); with ci.steps, those steps ARE
@@ -166,7 +172,13 @@ export class GitHubActionsEngine extends Construct {
     // have applied -- so the credential step (when present) always lands ahead of the login step.
     const patches: JsonPatch[] = [];
     let insertAt = 1;
-    if (config.codeArtifact !== undefined || config.proxy !== undefined || config.warmAccountsFromSsm) {
+    if (
+      config.codeArtifact !== undefined ||
+      config.proxy !== undefined ||
+      config.npmRegistry !== undefined ||
+      config.warmAccountsFromSsm ||
+      deployRoleExternalIdSecrets.length > 0
+    ) {
       const credentialStep = AwsCredentials.fromOpenIdConnect({
         gitHubActionRoleArn,
         roleSessionName: 'cdk-cicd-github-actions',
@@ -182,6 +194,22 @@ export class GitHubActionsEngine extends Construct {
         this.gitHubActionRole.role.addToPrincipalPolicy(statement);
       }
     }
+    if (deployRoleExternalIdSecrets.length > 0) {
+      this.gitHubActionRole.role.addToPrincipalPolicy(
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'],
+          resources: deployRoleExternalIdSecrets,
+        }),
+      );
+    }
+    if (config.npmRegistry !== undefined) {
+      this.gitHubActionRole.role.addToPrincipalPolicy(
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'],
+          resources: [config.npmRegistry.basicAuthSecretArn],
+        }),
+      );
+    }
     if (installCommands.length > 0) {
       patches.push(
         JsonPatch.add(`/jobs/Build-Synth/steps/${insertAt}`, { name: 'Login', run: installCommands.join('\n') }),
@@ -191,19 +219,35 @@ export class GitHubActionsEngine extends Construct {
       this.pipeline.workflowFile.patch(...patches);
     }
 
-    // One job per (stage x region), in config order, each gated by its own GitHub Environment (a manual
-    // approval, if any, is a protection rule configured on that environment in GitHub -- not a CDK step).
+    // One job per (stage x region), each gated by its own GitHub Environment (a manual approval, if any,
+    // is a protection rule configured on that environment in GitHub -- not a CDK step). Sequential
+    // regions are separate waves; parallel regions share a GitHub wave and therefore have no dependency
+    // edge between their deployment jobs.
     // Unlike `CdkPipelinesEngine`, the account always resolves to a concrete value (defaulting to the
     // pipeline's own account): the deploy job is a static YAML step, with no CloudFormation-side
     // mechanism to defer an unresolved account the way an AWS-hosted CodePipeline deploy action can.
     for (const stage of config.stages) {
       const account = stage.env.account ?? stack.account;
       const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
-      for (const region of regions) {
+      const appStageFor = (region: string): { readonly appStage: Stage; readonly stageId: string } => {
         const stageId = regions.length > 1 ? `${stage.name}-${region}` : stage.name;
         const appStage = new Stage(this, stageId, { env: { account, region } });
         const context: CdkPipelinesStageContext = { stageName: stage.name, env: { account, region } };
         props.stages.stacks(appStage, context);
+        return { appStage, stageId };
+      };
+
+      if (stage.env.regionOrder === RegionOrder.PARALLEL && regions.length > 1) {
+        const wave = this.pipeline.addGitHubWave(stage.name);
+        for (const region of regions) {
+          const { appStage, stageId } = appStageFor(region);
+          wave.addStageWithGitHubOptions(appStage, { gitHubEnvironment: { name: stageId } });
+        }
+        continue;
+      }
+
+      for (const region of regions) {
+        const { appStage, stageId } = appStageFor(region);
         this.pipeline.addStageWithGitHubOptions(appStage, { gitHubEnvironment: { name: stageId } });
       }
     }
@@ -218,4 +262,36 @@ function proxyInstallCommands(proxy: ProxyConfig): string[] {
     'echo "--- Proxy Test ---"',
     `curl -Is --connect-timeout 5 ${proxy.proxyTestUrl} | grep "HTTP/"`,
   ];
+}
+
+/**
+ * Resolve a generic npm-registry token only after the Synth job has assumed its OIDC role, mask it
+ * before any later command can log it, and persist it solely in the job workspace's `.npmrc`.
+ */
+function npmRegistryLoginCommands(npm: NpmRegistryConfig): string[] {
+  const host = npm.url.replace(/^https?:\/\//, '');
+  const scope = npm.scope !== undefined && npm.scope.length > 0 ? npm.scope : undefined;
+  const scopePrefix = scope !== undefined ? `${scope.startsWith('@') ? scope : `@${scope}`}:` : '';
+  const secretRegion = secretsManagerRegion(npm.basicAuthSecretArn);
+  return [
+    `NPM_AUTH_TOKEN="$(aws secretsmanager get-secret-value --secret-id ${shellQuote(npm.basicAuthSecretArn)}` +
+      `${secretRegion !== undefined ? ` --region ${shellQuote(secretRegion)}` : ''} ` +
+      '--query SecretString --output text)"',
+    'if [ -z "$NPM_AUTH_TOKEN" ] || [ "$NPM_AUTH_TOKEN" = "None" ]; then echo "cdk-cicd: npm registry secret is empty" >&2; exit 1; fi',
+    'echo "::add-mask::$NPM_AUTH_TOKEN"',
+    `echo "${scopePrefix}registry=${npm.url}" > ./.npmrc`,
+    `echo "//${host}:_authToken=$NPM_AUTH_TOKEN" >> ./.npmrc`,
+    'unset NPM_AUTH_TOKEN',
+  ];
+}
+
+/** Use the secret ARN's region instead of assuming it matches the workflow's OIDC-auth region. */
+function secretsManagerRegion(secretArn: string): string | undefined {
+  const parts = secretArn.split(':');
+  return parts.length > 5 && parts[0] === 'arn' && parts[2] === 'secretsmanager' ? parts[3] : undefined;
+}
+
+/** Quote a literal for the POSIX shell emitted into the workflow. */
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
 }

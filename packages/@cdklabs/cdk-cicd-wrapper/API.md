@@ -156,11 +156,12 @@ public readonly pipeline: CodePipeline;
 
 ### DeploymentPipeline <a name="DeploymentPipeline" id="@cdklabs/cdk-cicd-wrapper.DeploymentPipeline"></a>
 
-Renders the CD CodePipeline into `scope` (a Stack): Source (the config repo) -> a "Deploy" stage with one privileged-CodeBuild action per ungated target (parallel), then a "DeployGated" stage with the gated targets, each behind its own manual approval.
+Renders the CD CodePipeline into `scope` (a Stack): Source (the config repo) -> a "Deploy" stage with privileged-CodeBuild actions for ungated targets, then a "DeployGated" stage with the gated targets, each behind its own manual approval.
 
-Each action runs `cdk-cicd deploy --from-image --target
-<stage>` -- pulling that target's own image version, read from deploy.config at run time. The CLI is
-installed from the source repo's `package.json` (`npm ci`), so the config repo carries no CDK code.
+A sequential target uses one action for all regions; a parallel
+multi-region target fans out one action per region. Each action runs `cdk-cicd deploy --from-image
+--target <stage>` -- pulling that target's own image version, read from deploy.config at run time. The
+CLI is installed from the source repo's `package.json` (`npm ci`), so the config repo carries no CDK code.
 
 #### Initializers <a name="Initializers" id="@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.Initializer"></a>
 
@@ -1988,7 +1989,7 @@ const codePipelineEngineProps: CodePipelineEngineProps = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineEngineProps.property.buildImage">buildImage</a></code> | <code>string</code> | CodeBuild image for the CI and deploy projects. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineEngineProps.property.buildImage">buildImage</a></code> | <code>string</code> | CodeBuild image for the CI Build project only. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineEngineProps.property.removalPolicy">removalPolicy</a></code> | <code>aws-cdk-lib.RemovalPolicy</code> | Removal policy for the pipeline's own support resources (artifact bucket, encryption key). |
 
 ---
@@ -2001,7 +2002,7 @@ public readonly buildImage: string;
 
 - *Type:* string
 
-CodeBuild image for the CI and deploy projects.
+CodeBuild image for the CI Build project only.
 
 Defaults to the standard Amazon Linux image.
 
@@ -2237,7 +2238,9 @@ ExternalId presented when assuming `deployRole` (the `sts:ExternalId` a hardened
 Overrides the pipeline-level `ResolvedCicdConfig.deployRoleExternalId` for
 this stage. A literal, or a `resolve:secretsmanager:<arn>` reference resolved at synth time (the
 same `resolve:` convention `VpcConfig.vpcId` uses). Ignored when `deployRole` is unset -- an
-ExternalId only applies to a role assumption the wrapper actually performs.
+ExternalId only applies to a role assumption the wrapper actually performs. Secret references
+currently require the Secrets Manager AWS-managed encryption key; customer-managed KMS keys need
+an additional `kms:Decrypt` grant that this config shape cannot identify.
 
 ---
 
@@ -3505,7 +3508,8 @@ Pipeline-level default ExternalId presented when assuming a stage's forced `depl
 
 A stage's
 own `DeploymentConfig.externalId` overrides this. A literal or a `resolve:secretsmanager:<arn>`
-reference resolved at synth time.
+reference resolved at synth time. Secret references currently require the Secrets Manager
+AWS-managed encryption key; customer-managed KMS keys are not supported without an external grant.
 
 ---
 
@@ -3669,11 +3673,28 @@ const resolvedDeploymentConfig: ResolvedDeploymentConfig = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.synthesizer">synthesizer</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerConfig">SynthesizerConfig</a></code> | Synthesizer used by the deployer image; |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.targets">targets</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget">ResolvedDeploymentTarget</a>[]</code> | The deployment targets, in order. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.application">application</a></code> | <code>string</code> | Application name baked into the deployer image. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.codeArtifact">codeArtifact</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeArtifactConfig">CodeArtifactConfig</a></code> | Private CodeArtifact repo the CD build authenticates against before `npm ci` (to install the wrapper CLI when it is pre-release / not on public npm). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.image">image</a></code> | <code>string</code> | The default deployer image to run targets against (an ECR/OCI reference, tag or digest). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the CD build authenticates against before `npm ci`. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier used by the deployer image. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.repository">repository</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.Repository">Repository</a></code> | The config-only source repository the CD pipeline watches (where `deploy.config.ts` lives -- no CDK code). Optional: when omitted, the config drives only the local `cdk-cicd deploy --from-image` executor; set it to provision a CD CodePipeline (`cdk-cicd deploy-ci`) whose CodeBuild pulls the image and deploys each target. This is the deploy-side twin of `ResolvedCicdConfig.repository`. |
+
+---
+
+##### `synthesizer`<sup>Required</sup> <a name="synthesizer" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.synthesizer"></a>
+
+```typescript
+public readonly synthesizer: SynthesizerConfig;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerConfig">SynthesizerConfig</a>
+
+Synthesizer used by the deployer image;
+
+must match its `cicd.config`.
 
 ---
 
@@ -3686,6 +3707,22 @@ public readonly targets: ResolvedDeploymentTarget[];
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget">ResolvedDeploymentTarget</a>[]
 
 The deployment targets, in order.
+
+---
+
+##### `application`<sup>Optional</sup> <a name="application" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.application"></a>
+
+```typescript
+public readonly application: string;
+```
+
+- *Type:* string
+
+Application name baked into the deployer image.
+
+Optional for the default synthesizer; required
+(or supply `synthesizer.appId`) when the image uses `APP_STAGING` so Repo 2 can grant its
+app-scoped asset roles.
 
 ---
 
@@ -3731,6 +3768,20 @@ Generic private npm registry the CD build authenticates against before `npm ci`.
 
 Same shape as the
 pipeline-config `npmRegistry`.
+
+---
+
+##### `qualifier`<sup>Optional</sup> <a name="qualifier" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.qualifier"></a>
+
+```typescript
+public readonly qualifier: string;
+```
+
+- *Type:* string
+
+Bootstrap qualifier used by the deployer image.
+
+Derived from `application` when omitted.
 
 ---
 
@@ -4136,6 +4187,7 @@ const synthesizerConfig: SynthesizerConfig = { ... }
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerConfig.property.type">type</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerType">SynthesizerType</a></code> | The synthesizer to install. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerConfig.property.appId">appId</a></code> | <code>string</code> | Application-unique id for `APP_STAGING` resources. |
 
 ---
 
@@ -4148,6 +4200,21 @@ public readonly type: SynthesizerType;
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerType">SynthesizerType</a>
 
 The synthesizer to install.
+
+---
+
+##### `appId`<sup>Optional</sup> <a name="appId" id="@cdklabs/cdk-cicd-wrapper.SynthesizerConfig.property.appId"></a>
+
+```typescript
+public readonly appId: string;
+```
+
+- *Type:* string
+
+Application-unique id for `APP_STAGING` resources.
+
+Defaults to `application`; the alpha
+synthesizer normalizes it to a lowercase, dash-separated value of at most 20 characters.
 
 ---
 

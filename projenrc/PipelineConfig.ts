@@ -41,7 +41,14 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         '@cloudcomponents/cdk-pull-request-check',
         'yaml',
       ],
-      deps: ['@cloudcomponents/cdk-pull-request-approval-rule', '@cloudcomponents/cdk-pull-request-check', 'yaml'],
+      deps: [
+        // SynthesizerType.APP_STAGING is a runtime option, so ship the alpha module whose version
+        // exactly matches aws-cdk-lib. Alpha CDK modules must not float independently of the core.
+        `@aws-cdk/app-staging-synthesizer-alpha@${root.cdkVersion}-alpha.0`,
+        '@cloudcomponents/cdk-pull-request-approval-rule',
+        '@cloudcomponents/cdk-pull-request-check',
+        'yaml',
+      ],
       jestOptions: {
         jestConfig: {
           // Force a SINGLE aws-cdk-lib copy in tests. This package bundles deps, which nests its own
@@ -135,7 +142,10 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
     // `cdk-pipelines-github` to the monorepo root, so copy them local FIRST -- prepended so it runs
     // before the docgen step, otherwise docgen fails with `Unable to locate assembly for dependency`.
     postCompile.prependExec(
-      'for DEP in cdk-nag cdk-pipelines-github; do cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null; done;',
+      'for DEP in cdk-nag cdk-pipelines-github; do cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null; done; ' +
+        'if [ -d ../../../node_modules/@aws-cdk/app-staging-synthesizer-alpha ]; then ' +
+        'mkdir -p ./node_modules/@aws-cdk; ' +
+        'cp -rf ../../../node_modules/@aws-cdk/app-staging-synthesizer-alpha ./node_modules/@aws-cdk/; fi;',
     );
   }
 }

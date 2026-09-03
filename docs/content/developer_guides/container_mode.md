@@ -28,7 +28,11 @@ import { defineCICD, Repository, BuildImage, ImageTagStrategy } from '@cdklabs/c
 
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.github('my-org/my-app'),
+  repository: Repository.codestarConnection(
+    'my-org/my-app',
+    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
+  ),
+  stages: ['dev'], // required by defineCICD; deployerImage mode creates no deploy actions
   deployerImage: BuildImage.docker({
     dockerfile: 'Dockerfile', // default; the image payload is your app + deps, NOT cdk.out
     // repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one
@@ -36,6 +40,9 @@ export default defineCICD({
   }),
 });
 ```
+
+`stages` remains required by the `defineCICD` API, but `deployerImage` mode does not render deployment
+actions for those stages.
 
 `cdk-cicd deploy-ci` provisions the CI pipeline. Its single build project:
 
@@ -63,6 +70,10 @@ image** to run and **where** to deploy it, via `defineDeployment` in a `deploy.c
 import { defineDeployment, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineDeployment({
+  // Repeat the deployer image's application/qualifier so Repo 2 can scope bootstrap-role IAM.
+  application: 'my-app',
+  qualifier: 'myapp',
+
   // The BASE deployer image repository (no tag). The per-stage version is appended at deploy time.
   image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer',
 
@@ -83,6 +94,10 @@ export default defineDeployment({
   ],
 });
 ```
+
+`application`, `qualifier`, and `synthesizer` must match the image's `cicd.config` when it uses a
+custom bootstrap qualifier or `APP_STAGING`; Repo 2 needs that identity to grant the correct
+bootstrap and app-scoped asset roles.
 
 Each stage's **version lives in its own config file** in the CD repository (a hash or semver) — _not_
 baked in the image:
