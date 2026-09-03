@@ -33,12 +33,17 @@ describe('m5: stageStackName', () => {
     expect(stageStackName('myapp', { stage: '' })).toBe('myapp');
   });
 
-  test('default casing preserves the configured stage verbatim', () => {
-    expect(stageStackName('myapp', { stage: 'DEV' })).toBe('myapp-DEV');
-    expect(stageStackName('myapp', { stage: 'Prod', stageFirst: true })).toBe('Prod-myapp');
+  test('default casing remains lowercase for backward compatibility', () => {
+    expect(stageStackName('myapp', { stage: 'DEV' })).toBe('myapp-dev');
+    expect(stageStackName('myapp', { stage: 'Prod', stageFirst: true })).toBe('prod-myapp');
   });
 
   test('uppercaseStage without stageFirst still applies (casing and order are independent)', () => {
     expect(stageStackName('myapp', { stage: 'dev', uppercaseStage: true })).toBe('myapp-DEV');
+  });
+
+  test('preserveStageCase is an explicit migration opt-in without changing the lowercase default', () => {
+    expect(stageStackName('myapp', { stage: 'Gamma', preserveStageCase: true })).toBe('myapp-Gamma');
+    expect(stageStackName('myapp', { stage: 'Gamma', stageFirst: true, preserveStageCase: true })).toBe('Gamma-myapp');
   });
 });

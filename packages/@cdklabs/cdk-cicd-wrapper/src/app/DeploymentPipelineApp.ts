@@ -40,8 +40,10 @@ export class DeploymentPipelineApp extends App {
   public readonly pipelineStack: Stack;
 
   public constructor(props: DeploymentPipelineAppProps) {
+    // Repo 2's pipeline stack belongs to the hub account. Its deployer image's config.qualifier must
+    // not leak into that stack, while an explicit CDK bootstrapQualifier context for the hub still must.
     super({
-      defaultStackSynthesizer: new DefaultStackSynthesizer({ qualifier: props.config.qualifier }),
+      defaultStackSynthesizer: new DefaultStackSynthesizer(),
     });
     const name = pipelineName(props.config);
     this.pipelineStack = new Stack(this, name, {

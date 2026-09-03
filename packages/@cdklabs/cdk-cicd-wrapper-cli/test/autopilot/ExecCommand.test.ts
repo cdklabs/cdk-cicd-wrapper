@@ -8,10 +8,15 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { defineCICD, EngineType, Repository } from '@cdklabs/cdk-cicd-wrapper';
+import { defineCICD, EngineType, RegionOrder, Repository } from '@cdklabs/cdk-cicd-wrapper';
 import {
+  appConfigForTarget,
   buildContextJson,
   CFN_EXEC_ROLE_FLAG,
+  COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG,
+  COMPLIANCE_LOG_BUCKET_NAME_FLAG,
+  COMPLIANCE_LOG_BUCKET_REGION_FLAG,
+  complianceLoggingEnv,
   DEPLOY_ROLE_EXTERNAL_ID_FLAG,
   DEPLOY_ROLE_FLAG,
   execInvocation,
@@ -77,8 +82,7 @@ describe('exec: resolveEnvTarget precedence', () => {
   const appConfig = { aws: { accountId: 'app-acct', region: 'app-region' } };
   const cicdStage = { env: { account: 'cicd-acct', regions: ['cicd-region', 'other'] } };
 
-  test('the app-config file wins (config-file-first for the inner loop)', () => {
-    // Even with a cicd.config stage, per-stage env vars, and CDK_DEFAULT_* all set, the config file wins.
+  test('configured application target wins over ambient CDK defaults rewritten by credentials', () => {
     expect(
       resolveEnvTarget(
         {
@@ -109,7 +113,7 @@ describe('exec: resolveEnvTarget precedence', () => {
     ).toEqual({ account: 'target-acct', region: 'app-region' });
   });
 
-  test('an empty Repo 2 account override clears image config and uses the ambient account', () => {
+  test('an empty Repo 2 account override clears image config without trusting ambient CDK defaults', () => {
     expect(
       resolveEnvTarget(
         {
@@ -120,7 +124,7 @@ describe('exec: resolveEnvTarget precedence', () => {
         cicdStage,
         'dev',
       ),
-    ).toEqual({ account: 'ambient-acct', region: 'app-region' });
+    ).toEqual({ account: undefined, region: 'app-region' });
   });
 
   test('the Repo 2 region override wins over app, pipeline, stage, and ambient regions', () => {
@@ -138,7 +142,7 @@ describe('exec: resolveEnvTarget precedence', () => {
     ).toEqual({ account: 'app-acct', region: 'target-region' });
   });
 
-  test('an empty Repo 2 region override clears image config and uses the ambient region', () => {
+  test('an empty Repo 2 region override clears image config without trusting ambient AWS defaults', () => {
     expect(
       resolveEnvTarget(
         {
@@ -149,7 +153,7 @@ describe('exec: resolveEnvTarget precedence', () => {
         cicdStage,
         'dev',
       ),
-    ).toEqual({ account: 'app-acct', region: 'ambient-region' });
+    ).toEqual({ account: 'app-acct', region: undefined });
   });
 
   test('with no config file, the cicd.config stage is next', () => {
@@ -157,17 +161,13 @@ describe('exec: resolveEnvTarget precedence', () => {
   });
 
   test('then the per-stage ACCOUNT_<STAGE>/REGION_<STAGE> env vars (keyed by the uppercased stage)', () => {
-    expect(
-      resolveEnvTarget(
-        { ACCOUNT_DEV: 'stage-acct', REGION_DEV: 'stage-region', CDK_DEFAULT_ACCOUNT: 'env-acct' },
-        {},
-        undefined,
-        'dev',
-      ),
-    ).toEqual({ account: 'stage-acct', region: 'stage-region' });
+    expect(resolveEnvTarget({ ACCOUNT_DEV: 'stage-acct', REGION_DEV: 'stage-region' }, {}, undefined, 'dev')).toEqual({
+      account: 'stage-acct',
+      region: 'stage-region',
+    });
   });
 
-  test('finally CDK_DEFAULT_* is the last resort', () => {
+  test('ambient CDK defaults remain a last resort when repository configuration is absent', () => {
     expect(
       resolveEnvTarget({ CDK_DEFAULT_ACCOUNT: 'env-acct', CDK_DEFAULT_REGION: 'env-region' }, {}, undefined, 'dev'),
     ).toEqual({ account: 'env-acct', region: 'env-region' });
@@ -175,6 +175,138 @@ describe('exec: resolveEnvTarget precedence', () => {
 
   test('nothing anywhere leaves the target agnostic', () => {
     expect(resolveEnvTarget({}, {}, undefined, 'dev')).toEqual({ account: undefined, region: undefined });
+  });
+});
+
+describe('exec: compliance logging env', () => {
+  const stage = (account: string | undefined, regions: string[]) => ({
+    name: 'dev',
+    env: { account, regions, regionOrder: RegionOrder.SEQUENTIAL },
+    manualApproval: false,
+  });
+  const cicd = {
+    complianceLogBucketName: 'application-compliance-logs',
+    stages: [stage('111111111111', ['eu-west-1'])],
+  };
+  const target = { account: '111111111111', region: 'eu-west-1' };
+
+  test('exports the single configured physical bucket location for an application-mode child', () => {
+    expect(complianceLoggingEnv(cicd, target)).toEqual({
+      [COMPLIANCE_LOG_BUCKET_NAME_FLAG]: 'application-compliance-logs',
+      [COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG]: '111111111111',
+      [COMPLIANCE_LOG_BUCKET_REGION_FLAG]: 'eu-west-1',
+    });
+  });
+
+  test.each([COMPLIANCE_LOG_BUCKET_NAME_FLAG, COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG, COMPLIANCE_LOG_BUCKET_REGION_FLAG])(
+    'treats present env key %s as authoritative even when empty',
+    (flag) => {
+      const overrides = { [flag]: '' };
+      expect(complianceLoggingEnv(cicd, target, overrides)).toEqual({});
+      expect({ ...overrides, ...complianceLoggingEnv(cicd, target, overrides) }).toEqual(overrides);
+    },
+  );
+
+  test('does nothing when no compliance bucket is configured', () => {
+    expect(complianceLoggingEnv(undefined, target)).toEqual({});
+    expect(complianceLoggingEnv({ stages: [] }, target)).toEqual({});
+  });
+
+  test.each([
+    ['accounts', [stage('111111111111', ['eu-west-1']), stage('222222222222', ['eu-west-1'])]],
+    ['Regions', [stage('111111111111', ['eu-west-1']), stage('111111111111', ['us-east-1'])]],
+    ['Regions', [stage('111111111111', ['eu-west-1', 'us-east-1'])]],
+  ])('rejects a configured bucket topology spanning multiple %s', (_dimension, stages) => {
+    expect(() => complianceLoggingEnv({ ...cicd, stages }, target)).toThrow(
+      /one physical bucket|one concrete shared account and Region/,
+    );
+  });
+
+  test('rejects an invocation target outside the configured physical bucket location', () => {
+    expect(() => complianceLoggingEnv(cicd, { account: '111111111111', region: 'us-east-1' })).toThrow(
+      /does not match compliance bucket 'application-compliance-logs' location 111111111111\/eu-west-1/,
+    );
+  });
+
+  test.each([
+    ['account', { region: 'eu-west-1' }],
+    ['Region', { account: '111111111111' }],
+  ])('fails closed when the target %s is unresolved', (_missing, unresolvedTarget) => {
+    expect(() => complianceLoggingEnv(cicd, unresolvedTarget)).toThrow(
+      /compliance bucket 'application-compliance-logs' requires a resolved target account and Region/,
+    );
+  });
+});
+
+describe('exec: Repo 2 AppConfig target overlay', () => {
+  test('overlays authoritative account and region into the injected AppConfig context', () => {
+    const imageConfig = {
+      application: 'shop',
+      aws: { accountId: '111111111111', region: 'us-west-2', partition: 'aws' },
+    };
+    const env = {
+      CDK_CICD_ACCOUNT_OVERRIDE: '222222222222',
+      CDK_CICD_REGION_OVERRIDE: 'eu-west-1',
+    };
+    const target = resolveEnvTarget(env, imageConfig, undefined, 'prod');
+    const context = JSON.parse(buildContextJson(appConfigForTarget(imageConfig, target, env), {}, {}, '/nonexistent'));
+
+    expect(target).toEqual({ account: '222222222222', region: 'eu-west-1' });
+    expect(context['cicd:config']).toEqual({
+      application: 'shop',
+      aws: { accountId: '222222222222', region: 'eu-west-1', partition: 'aws' },
+    });
+  });
+
+  test('present-but-empty overrides remove stale image values when the target stays agnostic', () => {
+    const imageConfig = {
+      application: 'shop',
+      aws: { accountId: '111111111111', region: 'us-west-2', partition: 'aws' },
+    };
+    const env = {
+      CDK_CICD_ACCOUNT_OVERRIDE: '',
+      CDK_CICD_REGION_OVERRIDE: '',
+    };
+    const target = resolveEnvTarget(env, imageConfig, undefined, 'dev');
+
+    expect(target).toEqual({ account: undefined, region: undefined });
+    expect(appConfigForTarget(imageConfig, target, env)).toEqual({
+      application: 'shop',
+      aws: { partition: 'aws' },
+    });
+  });
+
+  test('without Repo 2 override flags the application config is unchanged', () => {
+    const config = { aws: { accountId: '111111111111', region: 'us-west-2' } };
+    expect(appConfigForTarget(config, { account: '222222222222', region: 'eu-west-1' }, {})).toBe(config);
+  });
+
+  test('does not overlay ambient CDK defaults into AppConfig', () => {
+    const config = { aws: { accountId: '111111111111', region: 'us-west-2' } };
+    const env = {
+      CDK_DEFAULT_ACCOUNT: '222222222222',
+      CDK_DEFAULT_REGION: 'eu-central-1',
+      AWS_REGION: 'eu-central-1',
+    };
+    const target = resolveEnvTarget(env, config, undefined, 'prod');
+
+    expect(target).toEqual({ account: '111111111111', region: 'us-west-2' });
+    expect(appConfigForTarget(config, target, env)).toBe(config);
+  });
+
+  test('explicit synth-target flags survive ambient cross-account CDK rewrites', () => {
+    const config = { aws: { accountId: '222222222222', region: 'eu-west-1' } };
+    const env = {
+      CDK_CICD_ACCOUNT_OVERRIDE: '222222222222',
+      CDK_CICD_REGION_OVERRIDE: 'eu-west-1',
+      CDK_DEFAULT_ACCOUNT: '111111111111',
+      CDK_DEFAULT_REGION: 'us-east-1',
+      AWS_REGION: 'us-east-1',
+    };
+    const target = resolveEnvTarget(env, config, undefined, 'prod');
+
+    expect(target).toEqual({ account: '222222222222', region: 'eu-west-1' });
+    expect(appConfigForTarget(config, target, env)).toEqual(config);
   });
 });
 
@@ -481,6 +613,9 @@ describe('exec: cross-package env-flag literals match the constructs package', (
     expect(src).toContain(`const DEPLOY_ROLE_FLAG = '${inject.DEPLOY_ROLE_FLAG}'`);
     expect(src).toContain(`const CFN_EXEC_ROLE_FLAG = '${inject.CFN_EXEC_ROLE_FLAG}'`);
     expect(src).toContain(`const DEPLOY_ROLE_EXTERNAL_ID_FLAG = '${inject.DEPLOY_ROLE_EXTERNAL_ID_FLAG}'`);
+    expect(src).toContain(`const COMPLIANCE_LOG_BUCKET_NAME_FLAG = '${inject.COMPLIANCE_LOG_BUCKET_NAME_FLAG}'`);
+    expect(src).toContain(`const COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG = '${inject.COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG}'`);
+    expect(src).toContain(`const COMPLIANCE_LOG_BUCKET_REGION_FLAG = '${inject.COMPLIANCE_LOG_BUCKET_REGION_FLAG}'`);
     // This constant is new in the source under test, so read the constructs source rather than a
     // potentially stale pre-test lib/ build.
     const injectSrc = fs.readFileSync(path.join(__dirname, '../../../cdk-cicd-wrapper/src/runtime/inject.ts'), 'utf-8');

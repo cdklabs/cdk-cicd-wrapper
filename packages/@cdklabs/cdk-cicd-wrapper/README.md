@@ -15,6 +15,7 @@ The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper/) is a compre
   - [Defining Stages](#defining-stages)
   - [Configuring Stacks](#configuring-stacks)
   - [Customizing CI/CD Steps](#customizing-cicd-steps)
+- [Autopilot Deployment Contracts](#autopilot-deployment-contracts)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -82,6 +83,16 @@ Configure the CDK stacks you want to deploy in each stage. The CDK CI/CD Wrapper
 ### Customizing CI/CD Steps
 
 Tailor the CI/CD pipeline to meet your project's specific requirements. The CDK CI/CD Wrapper provides built-in dependency injection, allowing you to customize the CI/CD steps seamlessly.
+
+## Autopilot Deployment Contracts
+
+| Area                          | Contract                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_STAGING`                 | Valid for direct/local `cdk deploy` (including local `cdk-cicd deploy --from-image`) and Repo 1 container-image synthesis. Wrapper-generated deployment pipelines—flat `CODEPIPELINE`, Repo 2, `CDK_PIPELINES`, and `GITHUB_ACTIONS`—reject it. On direct/local paths, custom deploy and CloudFormation execution roles govern application stacks; staging support resources use caller/base credentials. |
+| Deploy-role `ExternalId`      | `CDK_PIPELINES` and `GITHUB_ACTIONS` reject configured deploy-role ExternalIds rather than silently dropping them. `APP_STAGING` accepts custom deployment identities but rejects a deploy-role ExternalId because the alpha API does not expose one.                                                                                                                               |
+| CloudFormation execution role | CodeBuild assumes the deployment role; that assumed role passes the configured CloudFormation execution role to CloudFormation. Grant `iam:PassRole` to the deployment role, not directly to the CodeBuild project role.                                                                                                                                                      |
+| Custom CodeBuild ECR image    | A private ECR environment image must be in the CodeBuild project's Region; flat CodePipeline and CDK Pipelines also require the pipeline account. Repo 2 supports its explicit cross-account image path only after the owner-side repository policy is configured and `crossAccountEcrRepositoryPolicyConfigured` is acknowledged; the build-image Region rule still applies. |
+| GitHub manual approval        | Configure required reviewers on each generated GitHub Environment, then set `githubActions.environmentProtectionConfigured: true`. Referencing an environment in workflow YAML does not configure its protection rules.                                                                                                                                                       |
 
 ## Contributing
 

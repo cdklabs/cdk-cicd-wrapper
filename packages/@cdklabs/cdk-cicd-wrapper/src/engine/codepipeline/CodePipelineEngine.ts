@@ -10,27 +10,42 @@
 
 import * as path from 'path';
 import {
-  Arn,
-  ArnFormat,
   AspectPriority,
   Aspects,
-  DefaultStackSynthesizer,
   Duration,
   RemovalPolicy,
   Stack,
+  Token,
   aws_lambda as lambda,
   aws_codebuild as codebuild,
   aws_codepipeline as codepipeline,
   aws_codepipeline_actions as actions,
   aws_ecr as ecr,
   aws_iam as iam,
+  aws_kms as kms,
+  aws_secretsmanager as secretsmanager,
 } from 'aws-cdk-lib';
+import { RegionInfo } from 'aws-cdk-lib/region-info';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { buildSourceAction } from './source';
-import { BuildImage, BuildImageKind, ImageTagStrategy } from '../../config/build-image';
+import {
+  assertValidCiImageReference,
+  BuildImage,
+  BuildImageKind,
+  ciImageRegistryHost,
+  ImageTagStrategy,
+  isPrivateEcrRegistryHost,
+  isPublicEcrRegistryHost,
+} from '../../config/build-image';
+import {
+  resolveDefaultSynthesizerQualifier,
+  specializeDefaultSynthesizerRoleArn,
+} from '../../config/default-synthesizer-role-arn';
+import { RepositorySourceType } from '../../config/repository';
 import {
   CodeArtifactConfig,
+  CodeBuildImageCredentials,
   CodePipelineRoleNames,
   DeployModel,
   NpmRegistryConfig,
@@ -39,6 +54,11 @@ import {
   ResolvedCicdConfig,
   SynthesizerType,
 } from '../../config/types';
+import {
+  COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG,
+  COMPLIANCE_LOG_BUCKET_NAME_FLAG,
+  COMPLIANCE_LOG_BUCKET_REGION_FLAG,
+} from '../../runtime/inject';
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
@@ -61,6 +81,21 @@ const BOOTSTRAP_ROLE_KINDS = ['deploy', 'file-publishing', 'image-publishing', '
  */
 const NODE_RUNTIME_VERSION = 22;
 
+/** Kept outside CODEBUILD_SRC_DIR so npm credentials can never enter a promoted source artifact. */
+const PRIVATE_NPM_CONFIG_PATH = '/tmp/cdk-cicd-npmrc';
+/** Fixed CodePipeline service quotas. */
+const MAX_ACTIONS_PER_STAGE = 100;
+const MAX_ACTIONS_PER_PIPELINE = 1_000;
+const MAX_STAGES_PER_PIPELINE = 50;
+const CODEPIPELINE_IDENTIFIER = /^[A-Za-z0-9.@_-]{1,100}$/;
+const FLAT_ENGINE_STAGE_NAMES = ['Source', 'Build', 'UpdatePipeline'] as const;
+
+interface ComplianceLoggingEnvironment {
+  readonly bucketName: string;
+  readonly account: string;
+  readonly region: string;
+}
+
 /**
  * The newest Node runtime the CONSUMER's `aws-cdk-lib` knows about, for the deploy-driver Lambda.
  *
@@ -80,9 +115,169 @@ function latestNodeRuntime(): lambda.Runtime {
   ).reduce((best, r) => (major(r) > major(best) ? r : best), lambda.Runtime.NODEJS_22_X);
 }
 
+/**
+ * One destination bucket is provisioned with the pipeline stack. S3 server access logging cannot
+ * cross accounts or Regions, so reject any application target that could not use that real bucket.
+ */
+function resolveComplianceLoggingEnvironment(
+  stack: Stack,
+  config: ResolvedCicdConfig,
+): ComplianceLoggingEnvironment | undefined {
+  const bucketName = config.complianceLogBucketName;
+  if (bucketName === undefined) return undefined;
+
+  if (Token.isUnresolved(stack.account) || Token.isUnresolved(stack.region)) {
+    throw new Error(
+      'cdk-cicd: compliance logging requires a concrete pipeline stack account and region so the ' +
+        'S3 same-account/same-region requirement can be verified.',
+    );
+  }
+
+  for (const stage of config.stages) {
+    const account = stage.env.account ?? stack.account;
+    const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
+    if (
+      Token.isUnresolved(account) ||
+      account !== stack.account ||
+      regions.some((region) => Token.isUnresolved(region) || region !== stack.region)
+    ) {
+      throw new Error(
+        `cdk-cicd: compliance logging cannot target stage '${stage.name}' from the pipeline bucket ` +
+          `'${bucketName}' in ${stack.account}/${stack.region}. S3 server access-log source and ` +
+          'destination buckets must be in the same account and region; configure only co-located ' +
+          'stages or omit complianceLogBucketName.',
+      );
+    }
+  }
+
+  return { bucketName, account: stack.account, region: stack.region };
+}
+
+/** Validate the exact flat-pipeline topology before constructs emit opaque service-limit errors. */
+function validateFlatPipelineTopology(config: ResolvedCicdConfig): void {
+  const duplicateStage = config.stages.find(
+    (stage, index) => config.stages.findIndex((candidate) => candidate.name === stage.name) !== index,
+  );
+  if (duplicateStage !== undefined) {
+    throw new Error(`cdk-cicd: duplicate stage name '${duplicateStage.name}' is not allowed`);
+  }
+
+  const renderedStages: Array<{ readonly name: string; readonly actionNames: string[] }> = FLAT_ENGINE_STAGE_NAMES.map(
+    (name) => ({ name, actionNames: [name] }),
+  );
+  for (const stage of config.stages) {
+    validateCodePipelineIdentifier('stage', stage.name);
+    if ((FLAT_ENGINE_STAGE_NAMES as readonly string[]).includes(stage.name)) {
+      throw new Error(
+        `cdk-cicd: stage name '${stage.name}' is reserved by the flat CodePipeline engine. ` +
+          `Choose a name other than ${FLAT_ENGINE_STAGE_NAMES.join(', ')}.`,
+      );
+    }
+
+    const regions = stage.env.regions;
+    const suffixes =
+      stage.env.regionOrder === RegionOrder.PARALLEL && regions.length > 1
+        ? regions.map((region) => `-${region}`)
+        : [''];
+    const actionNames = [
+      ...(stage.manualApproval ? [`Approve-${stage.name}`] : []),
+      ...suffixes.map((suffix) => `Deploy-${stage.name}${suffix}`),
+      ...(config.asyncDeploy ? suffixes.map((suffix) => `Await-${stage.name}${suffix}`) : []),
+    ];
+    for (const actionName of actionNames) {
+      validateCodePipelineIdentifier('action', actionName);
+    }
+    const duplicateAction = actionNames.find((actionName, index) => actionNames.indexOf(actionName) !== index);
+    if (duplicateAction !== undefined) {
+      throw new Error(
+        `cdk-cicd: stage '${stage.name}' would contain duplicate action name '${duplicateAction}'. ` +
+          'Remove duplicate parallel regions.',
+      );
+    }
+    if (actionNames.length > MAX_ACTIONS_PER_STAGE) {
+      throw new Error(
+        `cdk-cicd: stage '${stage.name}' would contain ${actionNames.length} actions, exceeding the ` +
+          `fixed ${MAX_ACTIONS_PER_STAGE}-action CodePipeline quota. Reduce parallel regions or disable ` +
+          'asyncDeploy.',
+      );
+    }
+    renderedStages.push({ name: stage.name, actionNames });
+  }
+
+  if (renderedStages.length > MAX_STAGES_PER_PIPELINE) {
+    throw new Error(
+      `cdk-cicd: the flat pipeline would contain ${renderedStages.length} stages, exceeding the fixed ` +
+        `${MAX_STAGES_PER_PIPELINE}-stage CodePipeline quota. Reduce deployment stages or split them ` +
+        'across pipelines.',
+    );
+  }
+  const actionCount = renderedStages.reduce((count, stage) => count + stage.actionNames.length, 0);
+  if (actionCount > MAX_ACTIONS_PER_PIPELINE) {
+    throw new Error(
+      `cdk-cicd: the flat pipeline would contain ${actionCount} actions, exceeding the fixed ` +
+        `${MAX_ACTIONS_PER_PIPELINE}-action CodePipeline quota. Reduce stages/parallel regions or split ` +
+        'the deployment across pipelines.',
+    );
+  }
+}
+
+function validateCodePipelineIdentifier(kind: 'stage' | 'action', name: string): void {
+  if (!CODEPIPELINE_IDENTIFIER.test(name)) {
+    throw new Error(
+      `cdk-cicd: generated CodePipeline ${kind} name '${name}' must match ` +
+        `${CODEPIPELINE_IDENTIFIER} (1-100 characters). Rename the stage or region.`,
+    );
+  }
+}
+
+function validateFlatPipelinePartitions(stack: Stack, config: ResolvedCicdConfig): void {
+  if (Token.isUnresolved(stack.region) || stack.region.length === 0) {
+    throw new Error(
+      'cdk-cicd: the flat deployment pipeline requires a concrete pipeline stack region so its AWS ' +
+        'partition and target bootstrap-role ARNs can be validated.',
+    );
+  }
+  const pipelinePartition = RegionInfo.get(stack.region).partition;
+  if (pipelinePartition === undefined) {
+    throw new Error(
+      `cdk-cicd: pipeline region '${stack.region}' has no known AWS partition in this aws-cdk-lib ` +
+        'version. Upgrade the wrapper/CDK before rendering the pipeline.',
+    );
+  }
+
+  for (const stage of config.stages) {
+    const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
+    for (const region of regions) {
+      if (Token.isUnresolved(region) || region.length === 0) {
+        throw new Error(
+          `cdk-cicd: stage '${stage.name}' has an unresolved target region; the flat engine must know ` +
+            'each target partition before it builds bootstrap-role ARNs.',
+        );
+      }
+      const targetPartition = RegionInfo.get(region).partition;
+      if (targetPartition === undefined) {
+        throw new Error(
+          `cdk-cicd: stage '${stage.name}' targets region '${region}', whose AWS partition is not known ` +
+            'to this aws-cdk-lib version. Upgrade the wrapper/CDK before using that region.',
+        );
+      }
+      if (targetPartition !== pipelinePartition) {
+        throw new Error(
+          `cdk-cicd: stage '${stage.name}' targets partition '${targetPartition}' (${region}), but the ` +
+            `flat pipeline runs in '${pipelinePartition}' (${stack.region}). IAM role assumption and ` +
+            'CodePipeline deployment cannot cross AWS partitions; use a pipeline in the target partition.',
+        );
+      }
+    }
+  }
+}
+
 /** Options for the CodePipeline engine. */
 export interface CodePipelineEngineProps {
-  /** CodeBuild image for the CI Build project only. Defaults to the standard Amazon Linux image. */
+  /**
+   * CodeBuild image for the CI Build project only. Overrides `config.ci.image`; defaults to the
+   * standard Amazon Linux image.
+   */
   readonly buildImage?: string;
   /**
    * Removal policy for the pipeline's own support resources (artifact bucket, encryption key).
@@ -104,20 +299,24 @@ export class CodePipelineEngine implements IEngine {
   public render(scope: Construct, props: EngineRenderProps): void {
     const config = props.config;
     const stack = Stack.of(scope);
+    const ciBuildImage = this.buildImage ?? config.ci.image;
+    if (config.deployerImage === undefined) {
+      validateFlatPipelineTopology(config);
+      validateFlatPipelinePartitions(stack, config);
+    }
     const sourceOutput = new codepipeline.Artifact();
     const support = new SupportResources(scope, 'Support', {
       removalPolicy: this.removalPolicy,
       vpc: config.vpc,
       useProxy: config.proxy !== undefined,
       complianceLogBucketName: config.complianceLogBucketName,
+      createComplianceLogBucket: config.createComplianceLogBucket,
     });
     const vpcNetworking = support.vpcNetworking;
     // v2 `ComplianceBucketProvider` provisioned this bucket eagerly whenever a name was configured
     // (default-on, not gated behind a separate opt-in); force the same here by reading the lazy
     // getter, so setting `complianceLogBucketName` alone is enough to get the bucket.
-    if (config.complianceLogBucketName !== undefined) {
-      void support.complianceLogBucket;
-    }
+    const complianceLogBucket = config.complianceLogBucketName !== undefined ? support.complianceLogBucket : undefined;
 
     const pipeline = new codepipeline.Pipeline(scope, 'Pipeline', {
       pipelineName: props.pipelineName,
@@ -133,6 +332,16 @@ export class CodePipelineEngine implements IEngine {
     if (config.deployerImage !== undefined && config.deployerImage.kind === BuildImageKind.DOCKER) {
       this.renderImageBuild(scope, pipeline, support, sourceOutput, config, config.deployerImage, vpcNetworking);
       return;
+    }
+    const complianceLogging = resolveComplianceLoggingEnvironment(stack, config);
+    if (synthesizerType(config) === SynthesizerType.APP_STAGING) {
+      throw new Error(
+        'cdk-cicd: APP_STAGING cannot be deployed by the flat CodePipeline engine. The pinned alpha emits ' +
+          'DefaultStagingStack with BootstraplessSynthesizer, so that support stack is deployed with the ' +
+          "CodeBuild project's base credentials instead of the configured deployment role. Use " +
+          'SynthesizerType.DEFAULT for pipeline deployment, or use container mode only to build the image ' +
+          'and run its APP_STAGING deployment directly with appropriately privileged credentials.',
+      );
     }
 
     // The pipeline stack contains ONLY the wrapper's own plumbing -- no user resources deploy here
@@ -175,7 +384,10 @@ export class CodePipelineEngine implements IEngine {
       publishAssembly: assembly !== undefined,
       partialBuildSpec: config.ci.partialBuildSpec,
       vpcNetworking,
-      buildImage: this.buildImage,
+      buildImage: ciBuildImage,
+      buildImageCredentials: config.ci.codeBuildImageCredentials,
+      requiresDocker: true,
+      complianceLogging,
     });
     this.grantLookupPermissions(
       buildProject,
@@ -227,7 +439,9 @@ export class CodePipelineEngine implements IEngine {
       codeBuildEnvSettings: config.codeBuildEnvSettings,
       vpcNetworking,
     });
-    this.grantDeployPermissions(selfUpdate, stack.account, [stack.region], config.qualifier);
+    // The pipeline stack does not inherit the application's config.qualifier, but its App may select a
+    // hub bootstrap qualifier through CDK context. Resolve that same context for self-update IAM.
+    this.grantDeployPermissions(selfUpdate, stack.account, [stack.region]);
     pipeline.addStage({
       stageName: 'UpdatePipeline',
       actions: [new actions.CodeBuildAction({ actionName: 'SelfMutate', project: selfUpdate, input: sourceOutput })],
@@ -288,15 +502,10 @@ export class CodePipelineEngine implements IEngine {
           proxy: config.proxy,
           codeBuildEnvSettings: config.codeBuildEnvSettings,
           vpcNetworking,
+          requiresDocker: true,
+          complianceLogging,
         });
-        this.grantDeployPermissions(
-          project,
-          account,
-          target.regions,
-          config.qualifier,
-          stage.deployment?.deployRole,
-          appStagingId(config),
-        );
+        this.grantDeployPermissions(project, account, target.regions, config.qualifier, stage.deployment?.deployRole);
         if (!reuse) {
           this.grantExternalIdSecretRead(project, [stage], config.deployRoleExternalId);
         }
@@ -371,15 +580,18 @@ export class CodePipelineEngine implements IEngine {
       true,
     );
 
-    // Compliance/access-log bucket: attach the per-region name-substituting aspect when a name is
-    // configured (the bucket itself is force-provisioned above via `void support.complianceLogBucket`).
+    // Compliance/access-log bucket: attach the destination aspect when a name is configured (the
+    // bucket itself is force-provisioned above via `support.complianceLogBucket`).
     // MUTATING priority so the L1 loggingConfiguration override lands before the readonly
-    // AwsSolutionsChecks, else AwsSolutions-S1 false-fails. No S1 suppression is added.
+    // AwsSolutionsChecks. The destination bucket alone carries the required S1 suppression because
+    // S3 server access logs must not be delivered back into the same bucket.
     if (config.complianceLogBucketName !== undefined) {
       Aspects.of(scope).add(
         new AccessLogsForBucketAspect({
           complianceLogBucketName: config.complianceLogBucketName,
-          mainRegion: Stack.of(scope).region,
+          complianceLogBucketAccount: stack.account,
+          complianceLogBucketRegion: stack.region,
+          complianceLogBucket,
         }),
         { priority: AspectPriority.MUTATING },
       );
@@ -430,7 +642,7 @@ export class CodePipelineEngine implements IEngine {
     configuredQualifier?: string,
   ): void {
     const stack = Stack.of(project);
-    const qualifier = configuredQualifier ?? DefaultStackSynthesizer.DEFAULT_QUALIFIER;
+    const qualifier = resolveDefaultSynthesizerQualifier(project, configuredQualifier);
     const roleArns = new Set<string>();
     const versionParams = new Set<string>();
 
@@ -479,8 +691,9 @@ export class CodePipelineEngine implements IEngine {
   /**
    * Let a `cdk deploy` project actually deploy into `account`/`regions` -- a stage's application
    * deploy, or the self-update stage deploying the pipeline into its own account. `cdk deploy` does
-   * everything through the CDK bootstrap roles, so the project's own role needs nothing but permission
-   * to assume them, plus any forced deployer role passed in. Without this the project fails AccessDenied.
+   * everything through the CDK bootstrap roles, so the project's own role needs permission to assume
+   * them, plus any forced deployment role. A separate CloudFormation execution role is passed to the
+   * service by the assumed deployment role; that role, not this project, must have iam:PassRole.
    *
    * The bootstrap version parameter is granted for the CLI's base-credentials path only; on the
    * normal path the CLI reads it under the *assumed* bootstrap role, not under this project's role.
@@ -491,31 +704,38 @@ export class CodePipelineEngine implements IEngine {
     regions: string[],
     configuredQualifier?: string,
     forcedDeployRole?: string,
-    stagingAppId?: string,
   ): void {
     const stack = Stack.of(project);
-    const qualifier = configuredQualifier ?? DefaultStackSynthesizer.DEFAULT_QUALIFIER;
+    const qualifier = resolveDefaultSynthesizerQualifier(project, configuredQualifier);
+    const normalizedForcedDeployRole = forcedDeployRole?.trim();
+    const roleArns = new Set<string>();
 
-    const roleArns = regions.flatMap((region) =>
-      BOOTSTRAP_ROLE_KINDS.map(
-        (kind) => `arn:${stack.partition}:iam::${account}:role/cdk-${qualifier}-${kind}-role-${account}-${region}`,
-      ),
-    );
-    // Same emptiness guard the CLI applies before passing --role-arn: a blank configured role is
-    // "no forced role", not an empty ARN (which would make the policy document malformed).
-    if (forcedDeployRole !== undefined && forcedDeployRole.length > 0) {
-      roleArns.push(forcedDeployRole);
-    }
-    if (stagingAppId !== undefined) {
-      for (const region of regions) {
-        roleArns.push(
-          `arn:${stack.partition}:iam::${account}:role/cdk-${stagingAppId}-file-role-${region}`,
-          `arn:${stack.partition}:iam::${account}:role/cdk-${stagingAppId}-image-role-${region}`,
+    for (const region of regions) {
+      for (const kind of BOOTSTRAP_ROLE_KINDS) {
+        roleArns.add(`arn:${stack.partition}:iam::${account}:role/cdk-${qualifier}-${kind}-role-${account}-${region}`);
+      }
+
+      // A blank configured deployment role means "no forced role", not an empty ARN. CDK specializes
+      // these placeholders per target stack before writing the assembly, so the project's IAM grant
+      // must name the same concrete role for every target Region.
+      if (normalizedForcedDeployRole !== undefined && normalizedForcedDeployRole.length > 0) {
+        const partition = RegionInfo.get(region).partition;
+        if (partition === undefined) {
+          throw new Error(
+            `cdk-cicd: target region '${region}' has no known AWS partition in this aws-cdk-lib version.`,
+          );
+        }
+        roleArns.add(
+          specializeDefaultSynthesizerRoleArn(normalizedForcedDeployRole, {
+            qualifier,
+            account,
+            region,
+            partition,
+          }),
         );
       }
     }
-
-    project.addToRolePolicy(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: roleArns }));
+    project.addToRolePolicy(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: [...roleArns] }));
     project.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['ssm:GetParameter'],
@@ -543,6 +763,7 @@ export class CodePipelineEngine implements IEngine {
   ): void {
     const stack = Stack.of(scope);
     const appName = config.application ?? 'cdk-cicd';
+    const ciBuildImage = this.buildImage ?? config.ci.image;
 
     // Reference an existing repo by name, else provision one. Provisioned repos follow the pipeline's
     // removal policy (a disposable pipeline deletes its repo, and empties images so the delete succeeds).
@@ -554,43 +775,68 @@ export class CodePipelineEngine implements IEngine {
             removalPolicy: this.removalPolicy,
             emptyOnDelete: this.removalPolicy === RemovalPolicy.DESTROY,
             imageScanOnPush: true,
+            imageTagMutability:
+              build.tagStrategy === ImageTagStrategy.GIT_SHA ? ecr.TagMutability.IMMUTABLE : ecr.TagMutability.MUTABLE,
           });
 
     pipeline.addStage({ stageName: 'Source', actions: [buildSourceAction(scope, config.repository, sourceOutput)] });
 
-    // The image tag: the resolved source commit, so the image is immutable and hash-versioned; `latest`
-    // when the strategy asks for it. `CODEBUILD_RESOLVED_SOURCE_VERSION` is the commit CodeBuild checked
-    // out. The registry URI is derived from the pipeline's own account/region at run time.
-    const tag =
-      build.tagStrategy === ImageTagStrategy.LATEST ? 'latest' : '${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}';
+    // GIT_SHA repositories are immutable. A retry reuses an already-published tag, while concurrent
+    // builds tolerate the other build winning the immutable-tag race. Imported repositories are
+    // verified at runtime because this stack cannot change their mutability setting.
+    const immutableTag = build.tagStrategy === ImageTagStrategy.GIT_SHA;
+    const tag = immutableTag ? '$IMAGE_TAG' : 'latest';
     const uri = `${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}/${repository.repositoryName}`;
+    const privateNpm = config.npmRegistry !== undefined || config.codeArtifact !== undefined;
     const commands = [
+      ...(privateNpm ? npmConfigSetupCommands() : []),
       ...(config.npmRegistry ? npmRegistryLoginCommands(config.npmRegistry) : []),
       ...(config.codeArtifact ? [codeArtifactLogin(stack, config.codeArtifact)] : []),
       ...defaultCiCommands(),
-      // Log in to ECR, build the deployer image from the source, tag by commit, push. The image payload
-      // is the app + deps (per the Dockerfile), NOT cdk.out -- Repo 2 synths at run time.
+      ...(immutableTag
+        ? [
+            ...immutableImageTagCommands(config.repository.repositoryType),
+            `test "$(aws ecr describe-repositories --region ${stack.region} --repository-names ${repository.repositoryName} --query 'repositories[0].imageTagMutability' --output text)" = "IMMUTABLE" || { echo "GIT_SHA requires an immutable ECR repository: ${repository.repositoryName}"; exit 1; }`,
+          ]
+        : []),
+      // Log in to ECR, build the deployer image from the source, tag by immutable source revision, and
+      // push. The image payload is the app + deps (per the Dockerfile), NOT cdk.out -- Repo 2 synths at
+      // run time.
       `aws ecr get-login-password --region ${stack.region} | docker login --username AWS --password-stdin ${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}`,
-      `docker build -f ${build.dockerfile} -t ${uri}:${tag} .`,
-      `docker push ${uri}:${tag}`,
+      ...(immutableTag
+        ? [
+            `if aws ecr describe-images --region ${stack.region} --repository-name ${repository.repositoryName} --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then echo "Immutable image ${uri}:$IMAGE_TAG already exists; reusing it"; else docker build -f ${build.dockerfile} -t ${uri}:$IMAGE_TAG . && (docker push ${uri}:$IMAGE_TAG || { aws ecr describe-images --region ${stack.region} --repository-name ${repository.repositoryName} --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1 && echo "Immutable image ${uri}:$IMAGE_TAG was published concurrently; reusing it"; }); fi`,
+          ]
+        : [`docker build -f ${build.dockerfile} -t ${uri}:${tag} .`, `docker push ${uri}:${tag}`]),
     ];
 
     // The proxy's exports run first, in `install` -- ahead of the codeArtifact login and `npm ci`, same
     // ordering as `project()` (NO_PROXY is what lets the AWS-API-bound `codeartifact login` skip the
     // proxy while `npm ci` against public npm goes through it).
     const install = {
-      ...(this.buildImage === undefined && config.codeBuildEnvSettings?.buildImage === undefined
+      ...(ciBuildImage === undefined && config.codeBuildEnvSettings?.buildImage === undefined
         ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } }
         : {}),
       ...(config.proxy ? { commands: proxyInstallCommands(config.proxy) } : {}),
     };
-    const buildSpecEnv = buildSpecEnvironment(stack, config.proxy, config.npmRegistry);
+    const buildSpecEnv = buildSpecEnvironment(stack, config.proxy, config.npmRegistry, config.codeArtifact);
+    const environment = withPrivateNpmConfig(
+      this.buildEnvironment(
+        scope,
+        'BuildImage',
+        config.codeBuildEnvSettings,
+        ciBuildImage,
+        config.ci.codeBuildImageCredentials,
+        true,
+      ),
+      privateNpm,
+    );
 
     const project = new codebuild.PipelineProject(scope, 'BuildImage', {
       // Docker builds need a privileged environment; runtime pinned like the deploy projects.
       // `codeBuildEnvSettings` still contributes computeType/environmentVariables here -- only
       // `privileged` is forced (Docker requires it regardless of what the config says).
-      environment: { ...this.buildEnvironment(config.codeBuildEnvSettings, this.buildImage), privileged: true },
+      environment: { ...environment, privileged: true },
       vpc: vpcNetworking?.vpc,
       securityGroups: vpcNetworking?.securityGroups,
       subnetSelection: vpcNetworking?.subnetSelection,
@@ -598,12 +844,20 @@ export class CodePipelineEngine implements IEngine {
         version: '0.2',
         phases: {
           ...(Object.keys(install).length > 0 ? { install } : {}),
-          build: { commands },
+          build: {
+            commands,
+            // CodeBuild runs a phase's `finally` commands even when an earlier command in that phase
+            // fails. Credentials are created in this same phase, so failed login/CI/build commands
+            // cannot strand the temporary npm config.
+            ...(privateNpm ? { finally: npmConfigCleanupCommands() } : {}),
+          },
         },
         ...(buildSpecEnv !== undefined ? { env: buildSpecEnv } : {}),
       }),
     });
+    grantCodeBuildImageCredentialKeyDecrypt(project, config.ci.codeBuildImageCredentials);
     repository.grantPullPush(project);
+    if (immutableTag) repository.grantRead(project);
     if (config.codeArtifact) grantCodeArtifactRead(project, config.codeArtifact);
     if (config.npmRegistry) grantNpmRegistrySecretRead(project, config.npmRegistry);
     if (config.proxy) grantProxySecretRead(project, config.proxy);
@@ -614,6 +868,24 @@ export class CodePipelineEngine implements IEngine {
       stageName: 'BuildImage',
       actions: [new actions.CodeBuildAction({ actionName: 'BuildAndPush', project, input: sourceOutput })],
     });
+
+    if (config.complianceLogBucketName !== undefined) {
+      if (Token.isUnresolved(stack.account) || Token.isUnresolved(stack.region)) {
+        throw new Error(
+          'cdk-cicd: compliance logging requires a concrete pipeline stack account and region so the ' +
+            'S3 same-account/same-region requirement can be verified.',
+        );
+      }
+      Aspects.of(scope).add(
+        new AccessLogsForBucketAspect({
+          complianceLogBucketName: config.complianceLogBucketName,
+          complianceLogBucketAccount: stack.account,
+          complianceLogBucketRegion: stack.region,
+          complianceLogBucket: support.complianceLogBucket,
+        }),
+        { priority: AspectPriority.MUTATING },
+      );
+    }
 
     NagSuppressions.addResourceSuppressions(
       pipeline,
@@ -692,10 +964,9 @@ export class CodePipelineEngine implements IEngine {
         resources: regions.map((region) => `arn:${stack.partition}:cloudformation:${region}:${account}:stack/*/*`),
       }),
     );
-    // NOTE: no sts:AssumeRole for a stage's `deployRole`. That role is a CloudFormation SERVICE role
-    // (trusted by cloudformation.amazonaws.com), baked into the change set as its RoleARN via
-    // `cdk deploy --role-arn`; CloudFormation assumes it at ExecuteChangeSet time. The Lambda executes
-    // the change set under its OWN identity and does not -- cannot -- assume that role.
+    // The driver assumes neither deployment role. CDK already used `deployRole` while preparing the
+    // change set, and baked `cfnExecutionRole` into it as CloudFormation's RoleARN. This Lambda only
+    // executes that prepared change set under its own identity.
 
     NagSuppressions.addResourceSuppressions(
       fn,
@@ -750,6 +1021,11 @@ export class CodePipelineEngine implements IEngine {
       readonly partialBuildSpec?: codebuild.BuildSpec;
       readonly vpcNetworking?: VpcNetworking;
       readonly buildImage?: string;
+      readonly buildImageCredentials?: CodeBuildImageCredentials;
+      /** Whether this project normally needs the local Docker daemon for CDK assets or bundling. */
+      readonly requiresDocker?: boolean;
+      /** Compliance destination exported into application synthesis performed by this project. */
+      readonly complianceLogging?: ComplianceLoggingEnvironment;
     } = {},
   ): codebuild.PipelineProject {
     const stack = Stack.of(scope);
@@ -762,6 +1038,9 @@ export class CodePipelineEngine implements IEngine {
       partialBuildSpec,
       vpcNetworking,
       buildImage,
+      buildImageCredentials,
+      requiresDocker = false,
+      complianceLogging,
     } = options;
     // Pin the Node runtime, but ONLY on the default (CodeBuild-managed) image. Without
     // `runtime-versions` the managed image's default applies, which on standard:7.0 is Node 18 -- and
@@ -780,33 +1059,49 @@ export class CodePipelineEngine implements IEngine {
         : {}),
       ...(proxy ? { commands: proxyInstallCommands(proxy) } : {}),
     };
-    // Private-registry setup has to run before npm ci. Write the generic registry first so a following
-    // CodeArtifact login can add its own scoped entries without the `.npmrc` rewrite deleting them.
-    const preBuildCommands = [
+    // Private-registry setup has to run before npm ci. Keep setup, login, CI, and cleanup in the same
+    // build phase: CodeBuild's phase-level `finally` is then guaranteed to run after any failed command.
+    // Write the generic registry first so a following CodeArtifact login can append scoped entries.
+    const privateNpm = npmRegistry !== undefined || codeArtifact !== undefined;
+    const privateNpmCommands = [
+      ...(privateNpm ? npmConfigSetupCommands() : []),
       ...(npmRegistry ? npmRegistryLoginCommands(npmRegistry) : []),
       ...(codeArtifact ? [codeArtifactLogin(stack, codeArtifact)] : []),
     ];
     const phases = {
       ...(Object.keys(install).length > 0 ? { install } : {}),
-      ...(preBuildCommands.length > 0 ? { pre_build: { commands: preBuildCommands } } : {}),
-      build: { commands },
+      build: {
+        commands: [...privateNpmCommands, ...commands],
+        ...(privateNpm ? { finally: npmConfigCleanupCommands() } : {}),
+      },
     };
 
-    const buildSpecEnv = buildSpecEnvironment(stack, proxy, npmRegistry);
+    const buildSpecEnv = buildSpecEnvironment(stack, proxy, npmRegistry, codeArtifact);
     const generatedBuildSpec = codebuild.BuildSpec.fromObject({
       version: '0.2',
       phases,
       ...(buildSpecEnv !== undefined ? { env: buildSpecEnv } : {}),
-      // Publish the WHOLE source tree plus the synthesized assembly, excluding only node_modules (the
-      // deploy re-runs `npm ci`). A hardcoded file allowlist was wrong: `cdk-cicd deploy --from-assembly`
-      // still loads `cicd.config.ts` under ts-node, so a config that imports another file, a tsconfig it
-      // compiles against, or a package.json `postinstall`/`prepare` that reads `scripts/`/`patches/` --
-      // all ordinary layouts -- would be missing from the artifact and fail at the deploy stage, after
-      // Build had already gone green. Excluding node_modules keeps the artifact from ballooning.
-      ...(publishAssembly ? { artifacts: { files: ['**/*'], 'exclude-paths': ['node_modules/**/*'] } } : {}),
+      // Publish the WHOLE source tree plus the synthesized assembly. node_modules is rebuilt downstream;
+      // npm credential files are excluded defensively even though generated credentials live in /tmp.
+      // A hardcoded source allowlist is intentionally avoided because deploy still loads cicd.config.ts
+      // and any files/scripts it imports.
+      ...(publishAssembly
+        ? {
+            artifacts: {
+              files: ['**/*'],
+              'exclude-paths': ['node_modules/**/*', '.npmrc', '**/.npmrc'],
+            },
+          }
+        : {}),
     });
 
-    const environment = this.buildEnvironment(codeBuildEnvSettings, buildImage);
+    const environment = withComplianceLoggingEnvironment(
+      withPrivateNpmConfig(
+        this.buildEnvironment(scope, id, codeBuildEnvSettings, buildImage, buildImageCredentials, requiresDocker),
+        privateNpm,
+      ),
+      complianceLogging,
+    );
     const project = new codebuild.PipelineProject(scope, id, {
       environment,
       vpc: vpcNetworking?.vpc,
@@ -819,6 +1114,7 @@ export class CodePipelineEngine implements IEngine {
           ? codebuild.mergeBuildSpecs(generatedBuildSpec, partialBuildSpec)
           : generatedBuildSpec,
     });
+    grantCodeBuildImageCredentialKeyDecrypt(project, buildImageCredentials);
     if (codeArtifact) {
       grantCodeArtifactRead(project, codeArtifact);
     }
@@ -845,8 +1141,6 @@ export class CodePipelineEngine implements IEngine {
             'sts:GetServiceBearerToken on Resource "*", which CodeArtifact requires and which IAM ' +
             'cannot express at resource level; it is constrained instead by a condition on ' +
             "sts:AWSServiceName = codeartifact.amazonaws.com, which cdk-nag's IAM5 rule does not read. " +
-            'When a proxy is configured this also covers the cross-account KMS grant on key/* under the ' +
-            "secret's own account/region -- Secrets Manager does not expose a per-key ARN to scope to. " +
             'When a VPC is configured this also covers the CodeBuild-managed network-interface permissions ' +
             '(ec2:CreateNetworkInterface/DescribeNetworkInterfaces/DeleteNetworkInterface/DescribeSubnets/' +
             'DescribeSecurityGroups/DescribeDhcpOptions/DescribeVpcs on Resource "*"), which CDK generates ' +
@@ -871,47 +1165,264 @@ export class CodePipelineEngine implements IEngine {
   }
 
   /**
-   * Merge v2 `codeBuildEnvSettings` (privileged mode, compute type, environment variables --
-   * `CodeBuildFactoryProvider` parity) into a project's `environment`. Docker support is on by default
-   * for CDK assets, but an explicit user `privileged` value wins. A project-specific Docker-registry
-   * image wins over `codeBuildEnvSettings.buildImage`; only the CI Build project receives `ci.image`.
+   * Merge v2 `codeBuildEnvSettings` into a project's environment. Projects that synthesize or deploy
+   * applications default to privileged mode so CDK Docker assets/bundling still work; plumbing-only
+   * projects do not. An explicit user setting wins. A project-specific image wins over the shared one.
    */
   private buildEnvironment(
+    scope: Construct,
+    projectId: string,
     settings?: codebuild.BuildEnvironment,
     projectBuildImage?: string,
+    buildImageCredentials?: CodeBuildImageCredentials,
+    requiresDocker = false,
   ): codebuild.BuildEnvironment {
+    if (projectBuildImage === undefined && buildImageCredentials !== undefined) {
+      throw new Error('cdk-cicd: ci.codeBuildImageCredentials requires ci.image.');
+    }
     const buildImage =
       projectBuildImage !== undefined
-        ? codebuild.LinuxBuildImage.fromDockerRegistry(projectBuildImage)
+        ? buildImageFromString(scope, `${projectId}BuildImageRepository`, projectBuildImage, buildImageCredentials)
         : settings?.buildImage;
     return {
       ...settings,
-      privileged: settings?.privileged ?? true,
+      privileged: settings?.privileged ?? requiresDocker,
       ...(buildImage !== undefined ? { buildImage } : {}),
     };
   }
 }
 
-/** The normalized id the pinned AppStagingSynthesizer uses in its asset-publishing role names. */
-function appStagingId(config: ResolvedCicdConfig): string | undefined {
-  if (config.synthesizer.type !== SynthesizerType.APP_STAGING) return undefined;
-  const raw = config.synthesizer.appId ?? config.application;
-  if (raw === undefined || raw.trim().length === 0) {
-    throw new Error(
-      'cdk-cicd: SynthesizerType.APP_STAGING requires `application` or `synthesizer.appId` ' +
-        'so deploy IAM can name its app-scoped asset roles.',
+interface EcrImageReference {
+  readonly account: string;
+  readonly partition: string;
+  readonly region: string;
+  readonly repositoryName: string;
+  readonly tagOrDigest?: string;
+}
+
+/**
+ * Build-image strings cover three credential models:
+ * - CodeBuild-managed images are pulled by the CodeBuild service.
+ * - Private ECR images are bound to an IRepository so CDK grants the project role pull access.
+ * - Other registry strings are public images pulled with service-role credentials.
+ */
+function buildImageFromString(
+  scope: Construct,
+  repositoryId: string,
+  image: string,
+  credentials?: CodeBuildImageCredentials,
+): codebuild.IBuildImage {
+  assertValidCiImageReference(image);
+  if (image.startsWith('aws/codebuild/')) {
+    assertNoCodeBuildRegistryCredentials(image, credentials, 'managed CodeBuild');
+    return codebuild.LinuxBuildImage.fromCodeBuildImageId(image);
+  }
+
+  if (isPublicEcrRegistryHost(ciImageRegistryHost(image))) {
+    assertNoCodeBuildRegistryCredentials(image, credentials, 'public ECR');
+  }
+
+  const parsed = parseEcrImageReference(image);
+  if (parsed === undefined) {
+    assertNoUnsupportedPrivateEcrEndpoint(image);
+    const secret =
+      credentials !== undefined
+        ? importCodeBuildRegistrySecret(scope, `${repositoryId}RegistryCredentials`, credentials)
+        : undefined;
+    return codebuild.LinuxBuildImage.fromDockerRegistry(
+      image,
+      secret !== undefined ? { secretsManagerCredentials: secret } : undefined,
     );
   }
-  const normalized = raw
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .slice(0, 20);
-  if (normalized.length === 0) {
+
+  assertNoCodeBuildRegistryCredentials(image, credentials, 'private ECR');
+  const stack = Stack.of(scope);
+  validatePrivateEcrBuildImageEnvironment(stack, parsed, image);
+  const repository = ecr.Repository.fromRepositoryAttributes(scope, repositoryId, {
+    repositoryName: parsed.repositoryName,
+    repositoryArn: `arn:${parsed.partition}:ecr:${parsed.region}:${parsed.account}:repository/${parsed.repositoryName}`,
+  });
+  return codebuild.LinuxBuildImage.fromEcrRepository(repository, parsed.tagOrDigest);
+}
+
+function assertNoUnsupportedPrivateEcrEndpoint(image: string): void {
+  const registryHost = ciImageRegistryHost(image);
+  if (!isPrivateEcrRegistryHost(registryHost)) return;
+
+  throw new Error(
+    `cdk-cicd: private ECR CodeBuild image '${image}' does not use the canonical registry form ` +
+      "'<account>.dkr.ecr.<region>.<AWS domain suffix>'. The installed aws-cdk-lib binds ECR build " +
+      'images through that canonical endpoint; use the repository URI returned by ECR.',
+  );
+}
+
+function validatePrivateEcrBuildImageEnvironment(stack: Stack, image: EcrImageReference, imageReference: string): void {
+  if (Token.isUnresolved(stack.account) || Token.isUnresolved(stack.region)) {
     throw new Error(
-      `cdk-cicd: APP_STAGING app id '${raw}' contains no letters, numbers, or dashes after normalization.`,
+      `cdk-cicd: private ECR CodeBuild image '${imageReference}' requires a concrete pipeline stack ` +
+        'account and region so image access can be validated. Set the pipeline stack env.',
     );
   }
-  return normalized;
+  if (image.region !== stack.region) {
+    throw new Error(
+      `cdk-cicd: private ECR CodeBuild image '${imageReference}' is in '${image.region}', but the ` +
+        `CodeBuild project is in '${stack.region}'. CodeBuild custom ECR images must be in the same ` +
+        'region; replicate or mirror the image into the pipeline region.',
+    );
+  }
+  if (image.account !== stack.account) {
+    throw new Error(
+      `cdk-cicd: private ECR CodeBuild image '${imageReference}' is owned by account '${image.account}', ` +
+        `but the flat pipeline runs in '${stack.account}'. This engine cannot create or verify the ` +
+        'owner-side repository policy required for a cross-account build image; mirror the image into ' +
+        'the pipeline account.',
+    );
+  }
+}
+
+function parseEcrImageReference(image: string): EcrImageReference | undefined {
+  const firstSlash = image.indexOf('/');
+  if (firstSlash < 1) return undefined;
+  const registryHost = image.slice(0, firstSlash).toLowerCase();
+  const repositoryReference = image.slice(firstSlash + 1);
+  if (/^\d{12}\.dkr(?:\.ecr-fips|-ecr-fips)\./.test(registryHost)) {
+    throw new Error(
+      `cdk-cicd: private ECR CodeBuild image '${image}' uses a FIPS registry endpoint. The installed ` +
+        'aws-cdk-lib CodeBuild image binding accepts an ECR repository and renders its canonical registry ' +
+        'URI, so it cannot preserve a requested FIPS endpoint.',
+    );
+  }
+  if (/^\d{12}\.dkr-ecr\.[a-z0-9-]+\.on\.aws$/.test(registryHost)) {
+    throw new Error(
+      `cdk-cicd: private ECR CodeBuild image '${image}' uses a dual-stack registry endpoint. The installed ` +
+        'aws-cdk-lib CodeBuild image binding renders the canonical dkr.ecr endpoint.',
+    );
+  }
+
+  const match = /^(\d{12})\.dkr\.ecr\.([a-z0-9-]+)\.(.+)$/.exec(registryHost);
+  if (match === null) return undefined;
+
+  const [, account, region, registrySuffix] = match;
+  const regionInfo = RegionInfo.get(region);
+  const expectedSuffix = regionInfo.domainSuffix;
+  const partition = regionInfo.partition;
+  if (expectedSuffix === undefined || partition === undefined) {
+    throw new Error(
+      `cdk-cicd: private ECR CodeBuild image '${image}' uses region '${region}', whose partition/domain ` +
+        'suffix is not known to this aws-cdk-lib version. Upgrade the wrapper/CDK before using this image.',
+    );
+  }
+  if (registrySuffix !== expectedSuffix) {
+    throw new Error(
+      `cdk-cicd: private ECR CodeBuild image '${image}' has registry suffix '${registrySuffix}', but ` +
+        `region '${region}' belongs to partition '${partition}' and requires '${expectedSuffix}'.`,
+    );
+  }
+
+  const digestSeparator = repositoryReference.indexOf('@');
+  if (digestSeparator >= 0) {
+    return {
+      account,
+      partition,
+      region,
+      repositoryName: repositoryReference.slice(0, digestSeparator),
+      tagOrDigest: repositoryReference.slice(digestSeparator + 1),
+    };
+  }
+
+  const tagSeparator = repositoryReference.lastIndexOf(':');
+  return {
+    account,
+    partition,
+    region,
+    repositoryName: tagSeparator >= 0 ? repositoryReference.slice(0, tagSeparator) : repositoryReference,
+    ...(tagSeparator >= 0 ? { tagOrDigest: repositoryReference.slice(tagSeparator + 1) } : {}),
+  };
+}
+
+function assertNoCodeBuildRegistryCredentials(
+  image: string,
+  credentials: CodeBuildImageCredentials | undefined,
+  imageKind: string,
+): void {
+  if (credentials === undefined) return;
+  throw new Error(
+    `cdk-cicd: ci.codeBuildImageCredentials cannot be used with ${imageKind} ci.image '${image}'; ` +
+      'only authenticated external registries use Secrets Manager registry credentials.',
+  );
+}
+
+function importCodeBuildRegistrySecret(
+  scope: Construct,
+  id: string,
+  credentials: CodeBuildImageCredentials,
+): secretsmanager.ISecret {
+  if (credentials.secretArn.trim().length === 0) {
+    throw new Error('cdk-cicd: ci.codeBuildImageCredentials.secretArn must not be empty.');
+  }
+  if (credentials.encryptionKeyArn !== undefined && credentials.encryptionKeyArn.trim().length === 0) {
+    throw new Error('cdk-cicd: ci.codeBuildImageCredentials.encryptionKeyArn must not be empty.');
+  }
+  const encryptionKey =
+    credentials.encryptionKeyArn !== undefined
+      ? kms.Key.fromKeyArn(scope, `${id}EncryptionKey`, credentials.encryptionKeyArn)
+      : undefined;
+  return secretsmanager.Secret.fromSecretAttributes(scope, id, {
+    secretCompleteArn: credentials.secretArn,
+    ...(encryptionKey !== undefined ? { encryptionKey } : {}),
+  });
+}
+
+/**
+ * `fromDockerRegistry` binds the secret and grants `GetSecretValue`. In aws-cdk-lib 2.195.0,
+ * `Secret.grantRead` expresses a CMK grant through `ViaServicePrincipal`; an imported key has no
+ * mutable resource policy, so add the project-role decrypt permission explicitly.
+ */
+function grantCodeBuildImageCredentialKeyDecrypt(
+  project: codebuild.PipelineProject,
+  credentials: CodeBuildImageCredentials | undefined,
+): void {
+  if (credentials?.encryptionKeyArn === undefined) return;
+  project.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['kms:Decrypt'],
+      resources: [credentials.encryptionKeyArn],
+    }),
+  );
+}
+
+/** Project-level values outrank buildspec env, so force the credential file outside the source tree here too. */
+function withPrivateNpmConfig(environment: codebuild.BuildEnvironment, enabled: boolean): codebuild.BuildEnvironment {
+  if (!enabled) return environment;
+  return {
+    ...environment,
+    environmentVariables: {
+      ...environment.environmentVariables,
+      NPM_CONFIG_USERCONFIG: { value: PRIVATE_NPM_CONFIG_PATH },
+    },
+  };
+}
+
+/** Wrapper-owned values win over user project settings so application synthesis cannot bypass logging. */
+function withComplianceLoggingEnvironment(
+  environment: codebuild.BuildEnvironment,
+  complianceLogging?: ComplianceLoggingEnvironment,
+): codebuild.BuildEnvironment {
+  if (complianceLogging === undefined) return environment;
+  return {
+    ...environment,
+    environmentVariables: {
+      ...environment.environmentVariables,
+      [COMPLIANCE_LOG_BUCKET_NAME_FLAG]: { value: complianceLogging.bucketName },
+      [COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG]: { value: complianceLogging.account },
+      [COMPLIANCE_LOG_BUCKET_REGION_FLAG]: { value: complianceLogging.region },
+    },
+  };
+}
+
+/** Older/direct JSII callers may omit the newly introduced synthesizer object. */
+function synthesizerType(config: ResolvedCicdConfig): SynthesizerType {
+  return config.synthesizer?.type ?? SynthesizerType.DEFAULT;
 }
 
 /**
@@ -989,8 +1500,45 @@ function grantCodeArtifactRead(project: codebuild.PipelineProject, ca: CodeArtif
   );
 }
 
+/** Create the private npm config with owner-only permissions before any login mutates it. */
+function npmConfigSetupCommands(): string[] {
+  return [
+    `export NPM_CONFIG_USERCONFIG="${PRIVATE_NPM_CONFIG_PATH}"`,
+    'rm -f "$NPM_CONFIG_USERCONFIG"',
+    'umask 077 && touch "$NPM_CONFIG_USERCONFIG"',
+  ];
+}
+
+/** Remove the credential-bearing file after the build, including failed build phases. */
+function npmConfigCleanupCommands(): string[] {
+  return ['rm -f "$NPM_CONFIG_USERCONFIG"'];
+}
+
 /**
- * Write a `.npmrc` for a generic npm-compatible registry. The token itself is injected by CodeBuild
+ * Turn CodePipeline's resolved source revision into a valid, deterministic OCI tag.
+ *
+ * Git-backed source actions normally supply a full commit hash, which remains useful as-is after
+ * lower-casing. S3 supplies an object revision/version identity instead, and other unexpected values
+ * are hashed so characters such as `/`, `+`, or `=` can never produce an invalid Docker/ECR tag.
+ */
+function immutableImageTagCommands(sourceType: RepositorySourceType): string[] {
+  const preserveGitCommit = sourceType !== RepositorySourceType.S3;
+  const expression = preserveGitCommit
+    ? '/^[0-9a-f]{40,64}$/i.test(value) ? value.toLowerCase() : hash(value)'
+    : 'hash(value)';
+  const nodeProgram =
+    'const crypto = require("crypto"); ' +
+    'const value = process.argv[1]; ' +
+    'const hash = (input) => crypto.createHash("sha256").update(input).digest("hex"); ' +
+    `process.stdout.write(${expression});`;
+  return [
+    'export SOURCE_REVISION="${CODEBUILD_RESOLVED_SOURCE_VERSION:?CODEBUILD_RESOLVED_SOURCE_VERSION is required for GIT_SHA image tagging}"',
+    `export IMAGE_TAG="$(node -e '${nodeProgram}' "$SOURCE_REVISION")"`,
+  ];
+}
+
+/**
+ * Write the generic registry into the temporary npm config. The token itself is injected by CodeBuild
  * from Secrets Manager as `NPM_AUTH_TOKEN`, so it never appears in the synthesized buildspec.
  */
 function npmRegistryLoginCommands(npm: NpmRegistryConfig): string[] {
@@ -998,8 +1546,8 @@ function npmRegistryLoginCommands(npm: NpmRegistryConfig): string[] {
   const scope = npm.scope !== undefined && npm.scope.length > 0 ? npm.scope : undefined;
   const scopePrefix = scope !== undefined ? `${scope.startsWith('@') ? scope : `@${scope}`}:` : '';
   return [
-    `echo "${scopePrefix}registry=${npm.url}" > ./.npmrc`,
-    `echo "//${host}:_authToken=$NPM_AUTH_TOKEN" >> ./.npmrc`,
+    `echo "${scopePrefix}registry=${npm.url}" > "$NPM_CONFIG_USERCONFIG"`,
+    `echo "//${host}:_authToken=$NPM_AUTH_TOKEN" >> "$NPM_CONFIG_USERCONFIG"`,
   ];
 }
 
@@ -1008,23 +1556,30 @@ function buildSpecEnvironment(
   stack: Stack,
   proxy?: ProxyConfig,
   npmRegistry?: NpmRegistryConfig,
+  codeArtifact?: CodeArtifactConfig,
 ):
   | {
       readonly variables?: Record<string, string>;
       readonly 'secrets-manager'?: Record<string, string>;
     }
   | undefined {
-  if (proxy === undefined && npmRegistry === undefined) return undefined;
+  const privateNpm = npmRegistry !== undefined || codeArtifact !== undefined;
+  if (proxy === undefined && !privateNpm) return undefined;
+  const variables = {
+    ...(proxy !== undefined ? proxyEnvVariables(stack, proxy) : {}),
+    ...(privateNpm ? { NPM_CONFIG_USERCONFIG: PRIVATE_NPM_CONFIG_PATH } : {}),
+  };
+  const secretsManager = {
+    ...(proxy !== undefined ? proxySecretsManagerVars(proxy) : {}),
+    ...(npmRegistry !== undefined ? { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } : {}),
+  };
   return {
-    ...(proxy !== undefined ? { variables: proxyEnvVariables(stack, proxy) } : {}),
-    'secrets-manager': {
-      ...(proxy !== undefined ? proxySecretsManagerVars(proxy) : {}),
-      ...(npmRegistry !== undefined ? { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } : {}),
-    },
+    ...(Object.keys(variables).length > 0 ? { variables } : {}),
+    ...(Object.keys(secretsManager).length > 0 ? { 'secrets-manager': secretsManager } : {}),
   };
 }
 
-/** The generic registry's bearer token is the whole secret string, scoped to that exact secret ARN. */
+/** The generic registry's bearer token and optional CMK are scoped to their exact ARNs. */
 function grantNpmRegistrySecretRead(project: codebuild.PipelineProject, npmRegistry: NpmRegistryConfig): void {
   project.addToRolePolicy(
     new iam.PolicyStatement({
@@ -1032,6 +1587,15 @@ function grantNpmRegistrySecretRead(project: codebuild.PipelineProject, npmRegis
       resources: [npmRegistry.basicAuthSecretArn],
     }),
   );
+  const encryptionKeyArn = npmRegistry.encryptionKeyArn?.trim();
+  if (encryptionKeyArn !== undefined && encryptionKeyArn.length > 0) {
+    project.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['kms:Decrypt'],
+        resources: [encryptionKeyArn],
+      }),
+    );
+  }
 }
 
 /**
@@ -1041,7 +1605,10 @@ function grantNpmRegistrySecretRead(project: codebuild.PipelineProject, npmRegis
  * through it.
  */
 function proxyEnvVariables(stack: Stack, proxy: ProxyConfig): Record<string, string> {
-  const noProxy = proxy.noProxy.length > 0 ? proxy.noProxy : [`${stack.region}.amazonaws.com`];
+  const domainSuffix = Token.isUnresolved(stack.region)
+    ? stack.urlSuffix
+    : (RegionInfo.get(stack.region).domainSuffix ?? stack.urlSuffix);
+  const noProxy = proxy.noProxy.length > 0 ? proxy.noProxy : [`${stack.region}.${domainSuffix}`];
   return {
     AWS_STS_REGIONAL_ENDPOINTS: 'regional',
     NO_PROXY: noProxy.join(','),
@@ -1070,22 +1637,20 @@ function proxyInstallCommands(proxy: ProxyConfig): string[] {
   ];
 }
 
-/** The read grant the proxy secret needs, plus cross-account KMS decrypt when the secret lives elsewhere. */
+/** The read grant the proxy secret and its optional customer-managed KMS key need. */
 function grantProxySecretRead(project: codebuild.PipelineProject, proxy: ProxyConfig): void {
-  const stack = Stack.of(project);
   project.addToRolePolicy(
     new iam.PolicyStatement({
       actions: ['secretsmanager:GetSecretValue'],
       resources: [proxy.proxySecretArn],
     }),
   );
-  const secretAccount = Arn.split(proxy.proxySecretArn, ArnFormat.SLASH_RESOURCE_NAME).account;
-  if (secretAccount !== undefined && secretAccount !== stack.account) {
-    const secretRegion = Arn.split(proxy.proxySecretArn, ArnFormat.SLASH_RESOURCE_NAME).region;
+  const encryptionKeyArn = proxy.encryptionKeyArn?.trim();
+  if (encryptionKeyArn !== undefined && encryptionKeyArn.length > 0) {
     project.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['kms:Decrypt', 'kms:DescribeKey', 'kms:Encrypt', 'kms:GenerateDataKey*', 'kms:ReEncrypt*'],
-        resources: [`arn:${stack.partition}:kms:${secretRegion}:${secretAccount}:key/*`],
+        actions: ['kms:Decrypt'],
+        resources: [encryptionKeyArn],
       }),
     );
   }

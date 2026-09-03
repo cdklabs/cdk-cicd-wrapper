@@ -156,12 +156,15 @@ public readonly pipeline: CodePipeline;
 
 ### DeploymentPipeline <a name="DeploymentPipeline" id="@cdklabs/cdk-cicd-wrapper.DeploymentPipeline"></a>
 
-Renders the CD CodePipeline into `scope` (a Stack): Source (the config repo) -> a "Deploy" stage with privileged-CodeBuild actions for ungated targets, then a "DeployGated" stage with the gated targets, each behind its own manual approval.
+Renders the CD CodePipeline into `scope` (a Stack): Source (the config repo) followed by ordered deployment stages.
 
-A sequential target uses one action for all regions; a parallel
-multi-region target fans out one action per region. Each action runs `cdk-cicd deploy --from-image
---target <stage>` -- pulling that target's own image version, read from deploy.config at run time. The
-CLI is installed from the source repo's `package.json` (`npm ci`), so the config repo carries no CDK code.
+Each contiguous run of ungated targets shares one stage and can deploy in parallel.
+Each gated target has its own stage, with its approval at run order 1 and only that target's deploy
+action(s) at run order 2, so the gate blocks every later target without reordering the declaration.
+A sequential target uses one action for all regions; a parallel multi-region target fans out one action
+per region. Each action runs `cdk-cicd deploy --from-image --target <stage>` -- pulling that target's own
+image version, read from deploy.config at run time. The CLI is installed from the source repo's
+`package.json` (`npm ci`), so the config repo carries no CDK code.
 
 #### Initializers <a name="Initializers" id="@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.Initializer"></a>
 
@@ -643,10 +646,9 @@ Exposed so a test or an opt-in `bin/` can reach it.
 A GitHub Actions workflow rendered from an Autopilot config + a stage factory.
 
 Reproduces the Blueprint shape: a
-`GitHubActionRole` the workflow assumes over OIDC, a Synth job, and one job (with a GitHub Environment,
-so an environment protection rule set up on GitHub's side gates it) per deployment stage. Manual-approval
-config is NOT translated into a CDK step here -- as in Blueprint, GitHub Environments are the gate; every stage
-gets its own environment regardless of `manualApproval`, and gating is configured in the GitHub UI.
+`GitHubActionRole` the workflow assumes over OIDC, a Synth job, and one job (with a GitHub Environment)
+per deployment stage. GitHub owns the environment protection rules, so approval-gated stages are accepted
+only when config explicitly acknowledges that required reviewers are configured on those environments.
 
 #### Initializers <a name="Initializers" id="@cdklabs/cdk-cicd-wrapper.GitHubActionsEngine.Initializer"></a>
 
@@ -1307,20 +1309,17 @@ The compliance/access-log destination bucket (Blueprint `ComplianceBucketProvide
 Created on first
 read, same as every other property here. Requires `complianceLogBucketName`: unlike
 `artifactBucket`, this bucket's name must be explicit and predictable so other buckets' logging
-configuration (and, cross-region, Blueprint's name-substitution convention) can reference it.
+configuration can reference it by name.
 
-Blueprint provisioned this bucket via a custom-resource Lambda so a redeploy could tolerate the bucket
-already existing (`BucketAlreadyOwnedByYou`); Autopilot provisions it as a plain, CloudFormation-managed
-`Bucket` instead -- simpler, and the "already exists" case Blueprint tolerated doesn't arise here since
-this construct's stack owns the bucket for the life of the pipeline.
+By default Autopilot provisions a plain, CloudFormation-managed `Bucket`. For an in-place Blueprint
+migration, set `createComplianceLogBucket: false` to reference the existing bucket by name instead.
+CDK intentionally cannot mutate an imported bucket policy, so that mode leaves the bucket and policy
+entirely under their current owner's lifecycle.
 
-Folds in the TLS/SSE policy fix Blueprint's Stage-1 change (`0b7ae02`) made and Autopilot must not regress:
-enforcing encryption-in-transit works with a plain `Bool` condition on `aws:SecureTransport`
-(`enforceSSL`, below) because that key is always present on every request. Enforcing encryption
-*at rest* does not: `s3:x-amz-server-side-encryption` is only present in the request context when
-the caller actually sets the header, so a `Bool` check against `"false"` never matches a request
-that omits the header entirely -- exactly the unencrypted upload this statement exists to block.
-The `Null` operator below checks for the header's *absence*, which a `Bool` check cannot.
+The bucket uses default SSE-S3 encryption. Writers, including the S3 server-access-log delivery
+service, do not need to send an `x-amz-server-side-encryption` header: S3 encrypts the object at
+rest after accepting it. A bucket-policy deny based on that header would block valid log delivery,
+so transport encryption is enforced here while at-rest encryption is enforced by bucket defaults.
 
 ---
 
@@ -1372,8 +1371,24 @@ const accessLogsForBucketAspectProps: AccessLogsForBucketAspectProps = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.complianceLogBucketAccount">complianceLogBucketAccount</a></code> | <code>string</code> | AWS account that owns the compliance bucket. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | The name of the bucket every visited bucket's access logs are delivered to. |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.mainRegion">mainRegion</a></code> | <code>string</code> | The region the compliance log bucket lives in. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.complianceLogBucketRegion">complianceLogBucketRegion</a></code> | <code>string</code> | AWS Region containing the compliance bucket. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.complianceLogBucket">complianceLogBucket</a></code> | <code>aws-cdk-lib.aws_s3.IBucket</code> | The concrete destination bucket when it exists in the same CDK app. |
+
+---
+
+##### `complianceLogBucketAccount`<sup>Required</sup> <a name="complianceLogBucketAccount" id="@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.complianceLogBucketAccount"></a>
+
+```typescript
+public readonly complianceLogBucketAccount: string;
+```
+
+- *Type:* string
+
+AWS account that owns the compliance bucket.
+
+S3 access-log delivery cannot cross accounts.
 
 ---
 
@@ -1389,19 +1404,32 @@ The name of the bucket every visited bucket's access logs are delivered to.
 
 ---
 
-##### `mainRegion`<sup>Required</sup> <a name="mainRegion" id="@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.mainRegion"></a>
+##### `complianceLogBucketRegion`<sup>Required</sup> <a name="complianceLogBucketRegion" id="@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.complianceLogBucketRegion"></a>
 
 ```typescript
-public readonly mainRegion: string;
+public readonly complianceLogBucketRegion: string;
 ```
 
 - *Type:* string
 
-The region the compliance log bucket lives in.
+AWS Region containing the compliance bucket.
 
-When a visited bucket's stack is deployed to a
-different region, `complianceLogBucketName` is rewritten by substituting `mainRegion` for that
-stack's region -- same cross-region name convention as Blueprint.
+S3 access-log delivery cannot cross Regions.
+
+---
+
+##### `complianceLogBucket`<sup>Optional</sup> <a name="complianceLogBucket" id="@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspectProps.property.complianceLogBucket"></a>
+
+```typescript
+public readonly complianceLogBucket: IBucket;
+```
+
+- *Type:* aws-cdk-lib.aws_s3.IBucket
+
+The concrete destination bucket when it exists in the same CDK app.
+
+Supplying it lets same-stack
+source buckets depend explicitly on the destination bucket and its policy.
 
 ---
 
@@ -1785,6 +1813,7 @@ const ciConfig: CiConfig = { ... }
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.steps">steps</a></code> | <code>{[ key: string ]: string}</code> | Named build steps as shell commands, e.g. `{ lint: 'npx cdk-cicd validate' }`. Empty means the engine applies its built-in default set. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.synthStages">synthStages</a></code> | <code>string[]</code> | Which stages CI synthesizes. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.codeBuildImageCredentials">codeBuildImageCredentials</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeBuildImageCredentials">CodeBuildImageCredentials</a></code> | Secrets Manager credentials for an authenticated external-registry `image`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.image">image</a></code> | <code>string</code> | Optional CodeBuild image override. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CiConfig.property.partialBuildSpec">partialBuildSpec</a></code> | <code>aws-cdk-lib.aws_codebuild.BuildSpec</code> | Escape hatch (Blueprint `CDKPipelineProps.ciBuildSpec`, migrated): deep-merged into the CI build project's generated buildspec via `codebuild.mergeBuildSpecs`, augmenting rather than replacing the engine's own phases. Scoped the same way Blueprint scoped it -- the CI build project only, not self-update or per-stage deploy projects. |
 
@@ -1815,6 +1844,21 @@ Which stages CI synthesizes.
 Empty means the engine's default -- every stage under
 `ASSEMBLY_PROMOTION`, one env under `DEPLOY_TIME_SYNTH`. A non-empty list names the stages
 explicitly; `defineCICD`'s `'all'` shorthand resolves to the full stage list here.
+
+---
+
+##### `codeBuildImageCredentials`<sup>Optional</sup> <a name="codeBuildImageCredentials" id="@cdklabs/cdk-cicd-wrapper.CiConfig.property.codeBuildImageCredentials"></a>
+
+```typescript
+public readonly codeBuildImageCredentials: CodeBuildImageCredentials;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.CodeBuildImageCredentials">CodeBuildImageCredentials</a>
+
+Secrets Manager credentials for an authenticated external-registry `image`.
+
+Supported by the CodeBuild engines only. Managed CodeBuild images and private ECR images use
+their own credential models and reject this setting.
 
 ---
 
@@ -1935,6 +1979,51 @@ Defaults to the pipeline's own region.
 
 ---
 
+### CodeBuildImageCredentials <a name="CodeBuildImageCredentials" id="@cdklabs/cdk-cicd-wrapper.CodeBuildImageCredentials"></a>
+
+Secrets Manager credentials used by CodeBuild to pull an authenticated external-registry image.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.CodeBuildImageCredentials.Initializer"></a>
+
+```typescript
+import { CodeBuildImageCredentials } from '@cdklabs/cdk-cicd-wrapper'
+
+const codeBuildImageCredentials: CodeBuildImageCredentials = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeBuildImageCredentials.property.secretArn">secretArn</a></code> | <code>string</code> | Complete ARN of the Secrets Manager secret containing the registry username and password. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeBuildImageCredentials.property.encryptionKeyArn">encryptionKeyArn</a></code> | <code>string</code> | Customer-managed KMS key encrypting `secretArn`, when one is used. |
+
+---
+
+##### `secretArn`<sup>Required</sup> <a name="secretArn" id="@cdklabs/cdk-cicd-wrapper.CodeBuildImageCredentials.property.secretArn"></a>
+
+```typescript
+public readonly secretArn: string;
+```
+
+- *Type:* string
+
+Complete ARN of the Secrets Manager secret containing the registry username and password.
+
+---
+
+##### `encryptionKeyArn`<sup>Optional</sup> <a name="encryptionKeyArn" id="@cdklabs/cdk-cicd-wrapper.CodeBuildImageCredentials.property.encryptionKeyArn"></a>
+
+```typescript
+public readonly encryptionKeyArn: string;
+```
+
+- *Type:* string
+
+Customer-managed KMS key encrypting `secretArn`, when one is used.
+
+---
+
 ### CodeCommitSourceOptions <a name="CodeCommitSourceOptions" id="@cdklabs/cdk-cicd-wrapper.CodeCommitSourceOptions"></a>
 
 Options for a CodeCommit source.
@@ -2004,7 +2093,8 @@ public readonly buildImage: string;
 
 CodeBuild image for the CI Build project only.
 
-Defaults to the standard Amazon Linux image.
+Overrides `config.ci.image`; defaults to the
+standard Amazon Linux image.
 
 ---
 
@@ -2043,7 +2133,7 @@ const codePipelineRoleNames: CodePipelineRoleNames = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames.property.buildRolePrefix">buildRolePrefix</a></code> | <code>string</code> | Prefix for the per-stage CodeBuild project roles: each stage's build role is named `<buildRolePrefix>-<stage>` (plus the CI/self-update projects, `<buildRolePrefix>-build` / `<buildRolePrefix>-selfupdate`). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames.property.buildRolePrefix">buildRolePrefix</a></code> | <code>string</code> | Prefix for every flat-engine CodeBuild project role. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames.property.pipeline">pipeline</a></code> | <code>string</code> | `RoleName` forced on the CodePipeline pipeline role. |
 
 ---
@@ -2056,7 +2146,11 @@ public readonly buildRolePrefix: string;
 
 - *Type:* string
 
-Prefix for the per-stage CodeBuild project roles: each stage's build role is named `<buildRolePrefix>-<stage>` (plus the CI/self-update projects, `<buildRolePrefix>-build` / `<buildRolePrefix>-selfupdate`).
+Prefix for every flat-engine CodeBuild project role.
+
+The suffix is the lower-cased construct id
+with a trailing `Project` removed: `BuildProject` -> `build`, `UpdatePipeline` ->
+`updatepipeline`, and `Deploy-dev` -> `deploy-dev`.
 
 Omit to keep CDK-generated names.
 
@@ -2179,6 +2273,81 @@ Fields whose absence is reported as `MISSING_KEY`.
 
 ---
 
+### DefaultSynthesizerRoleArnOptions <a name="DefaultSynthesizerRoleArnOptions" id="@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions"></a>
+
+Target values used to specialize a DefaultStackSynthesizer role ARN.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.Initializer"></a>
+
+```typescript
+import { DefaultSynthesizerRoleArnOptions } from '@cdklabs/cdk-cicd-wrapper'
+
+const defaultSynthesizerRoleArnOptions: DefaultSynthesizerRoleArnOptions = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.property.account">account</a></code> | <code>string</code> | Concrete target AWS account. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.property.region">region</a></code> | <code>string</code> | Concrete target AWS Region. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.property.partition">partition</a></code> | <code>string</code> | Concrete target AWS partition. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier. |
+
+---
+
+##### `account`<sup>Required</sup> <a name="account" id="@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.property.account"></a>
+
+```typescript
+public readonly account: string;
+```
+
+- *Type:* string
+
+Concrete target AWS account.
+
+---
+
+##### `region`<sup>Required</sup> <a name="region" id="@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.property.region"></a>
+
+```typescript
+public readonly region: string;
+```
+
+- *Type:* string
+
+Concrete target AWS Region.
+
+---
+
+##### `partition`<sup>Optional</sup> <a name="partition" id="@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.property.partition"></a>
+
+```typescript
+public readonly partition: string;
+```
+
+- *Type:* string
+
+Concrete target AWS partition.
+
+When omitted, `${AWS::Partition}` remains intact to match the role ARN emitted in a cloud assembly.
+
+---
+
+##### `qualifier`<sup>Optional</sup> <a name="qualifier" id="@cdklabs/cdk-cicd-wrapper.DefaultSynthesizerRoleArnOptions.property.qualifier"></a>
+
+```typescript
+public readonly qualifier: string;
+```
+
+- *Type:* string
+
+Bootstrap qualifier.
+
+Defaults to the CDK default qualifier (`hnb659fds`).
+
+---
+
 ### DeploymentConfig <a name="DeploymentConfig" id="@cdklabs/cdk-cicd-wrapper.DeploymentConfig"></a>
 
 Forced deployer / CloudFormation-execution roles for a stage.
@@ -2196,7 +2365,7 @@ const deploymentConfig: DeploymentConfig = { ... }
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentConfig.property.cfnExecutionRole">cfnExecutionRole</a></code> | <code>string</code> | ARN CloudFormation assumes to execute the change set. |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentConfig.property.deployRole">deployRole</a></code> | <code>string</code> | ARN the CLI assumes to deploy (passed as `cdk deploy --role-arn`). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentConfig.property.deployRole">deployRole</a></code> | <code>string</code> | ARN CDK assumes for deployment operations. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentConfig.property.externalId">externalId</a></code> | <code>string</code> | ExternalId presented when assuming `deployRole` (the `sts:ExternalId` a hardened cross-account trust policy requires). |
 
 ---
@@ -2221,7 +2390,10 @@ public readonly deployRole: string;
 
 - *Type:* string
 
-ARN the CLI assumes to deploy (passed as `cdk deploy --role-arn`).
+ARN CDK assumes for deployment operations.
+
+It is written to the cloud assembly as the stack's
+deployment-role assumption; it is not CloudFormation's execution `RoleARN`.
 
 ---
 
@@ -2516,6 +2688,8 @@ const gitHubActionsConfig: GitHubActionsConfig = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.buildContainerCredentials">buildContainerCredentials</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubBuildContainerCredentials">GitHubBuildContainerCredentials</a></code> | GitHub Actions secret names used as the Build-Synth container's registry credentials. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.environmentProtectionConfigured">environmentProtectionConfigured</a></code> | <code>boolean</code> | Confirms that every generated GitHub Environment used by a stage with `manualApproval: true` has a required-reviewer protection rule configured in GitHub. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.openIdConnectProviderArn">openIdConnectProviderArn</a></code> | <code>string</code> | An existing GitHub OIDC provider's ARN. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.publishAssetsAuthRegion">publishAssetsAuthRegion</a></code> | <code>string</code> | Region the workflow assumes the OIDC role in when publishing assets (NOT the region assets publish to). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.roleName">roleName</a></code> | <code>string</code> | Name of the OIDC role the workflow assumes to deploy. |
@@ -2524,6 +2698,38 @@ const gitHubActionsConfig: GitHubActionsConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.workflowName">workflowName</a></code> | <code>string</code> | Name of the generated workflow. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.workflowPath">workflowPath</a></code> | <code>string</code> | File path for the generated workflow. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.workflowTriggers">workflowTriggers</a></code> | <code>cdk-pipelines-github.WorkflowTriggers</code> | GitHub workflow triggers. |
+
+---
+
+##### `buildContainerCredentials`<sup>Optional</sup> <a name="buildContainerCredentials" id="@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.buildContainerCredentials"></a>
+
+```typescript
+public readonly buildContainerCredentials: GitHubBuildContainerCredentials;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.GitHubBuildContainerCredentials">GitHubBuildContainerCredentials</a>
+
+GitHub Actions secret names used as the Build-Synth container's registry credentials.
+
+Only external-registry `ci.image` values support this setting. Values are rendered as
+`${{ secrets.NAME }}` expressions; literal credentials are never accepted.
+
+---
+
+##### `environmentProtectionConfigured`<sup>Optional</sup> <a name="environmentProtectionConfigured" id="@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig.property.environmentProtectionConfigured"></a>
+
+```typescript
+public readonly environmentProtectionConfigured: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Confirms that every generated GitHub Environment used by a stage with `manualApproval: true` has a required-reviewer protection rule configured in GitHub.
+
+The workflow file can name an environment, but GitHub does not let CDK configure that
+environment's protection rules. The engine therefore fails closed for approval-gated stages
+unless this acknowledgement is explicitly set.
 
 ---
 
@@ -2548,7 +2754,7 @@ public readonly publishAssetsAuthRegion: string;
 ```
 
 - *Type:* string
-- *Default:* "us-west-2"
+- *Default:* the concrete pipeline stack region
 
 Region the workflow assumes the OIDC role in when publishing assets (NOT the region assets publish to).
 
@@ -2691,6 +2897,51 @@ public readonly pipelineName: string;
 - *Type:* string
 
 Falls back to `githubActions.workflowName` when set; otherwise `cdk-pipelines-github` defaults the workflow to "deploy". Named `pipelineName`, not `workflowName`, to keep this prop uniform with `CdkPipelinesEngineProps` -- there is no separate AWS-side "pipeline" resource to name here.
+
+---
+
+### GitHubBuildContainerCredentials <a name="GitHubBuildContainerCredentials" id="@cdklabs/cdk-cicd-wrapper.GitHubBuildContainerCredentials"></a>
+
+GitHub secret names used to authenticate the Build-Synth job container to an external registry.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.GitHubBuildContainerCredentials.Initializer"></a>
+
+```typescript
+import { GitHubBuildContainerCredentials } from '@cdklabs/cdk-cicd-wrapper'
+
+const gitHubBuildContainerCredentials: GitHubBuildContainerCredentials = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubBuildContainerCredentials.property.passwordSecretName">passwordSecretName</a></code> | <code>string</code> | GitHub Actions secret containing the registry password or access token. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubBuildContainerCredentials.property.usernameSecretName">usernameSecretName</a></code> | <code>string</code> | GitHub Actions secret containing the registry username. |
+
+---
+
+##### `passwordSecretName`<sup>Required</sup> <a name="passwordSecretName" id="@cdklabs/cdk-cicd-wrapper.GitHubBuildContainerCredentials.property.passwordSecretName"></a>
+
+```typescript
+public readonly passwordSecretName: string;
+```
+
+- *Type:* string
+
+GitHub Actions secret containing the registry password or access token.
+
+---
+
+##### `usernameSecretName`<sup>Required</sup> <a name="usernameSecretName" id="@cdklabs/cdk-cicd-wrapper.GitHubBuildContainerCredentials.property.usernameSecretName"></a>
+
+```typescript
+public readonly usernameSecretName: string;
+```
+
+- *Type:* string
+
+GitHub Actions secret containing the registry username.
 
 ---
 
@@ -2905,8 +3156,9 @@ is configured (no NAT egress; the CodeBuild VPC endpoints below cover AWS API ca
 A generic private npm registry the pipeline's builds authenticate against with a bearer token (Blueprint `NPMRegistryConfig`, migrated).
 
 Unlike `CodeArtifactConfig` (an `aws codeartifact login`), this covers
-any npm-compatible registry: when set, every build project writes a `.npmrc` -- scoped to `scope` when
-given, otherwise overriding the default registry -- with an auth token read from Secrets Manager.
+any npm-compatible registry: jobs that install packages use a temporary npm config outside the source
+checkout -- scoped to `scope` when given, otherwise overriding the default registry -- with an auth
+token read from Secrets Manager.
 
 #### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig.Initializer"></a>
 
@@ -2922,6 +3174,7 @@ const npmRegistryConfig: NpmRegistryConfig = { ... }
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig.property.basicAuthSecretArn">basicAuthSecretArn</a></code> | <code>string</code> | ARN of the Secrets Manager secret holding the bearer token (the secret's plain `SecretString`). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig.property.url">url</a></code> | <code>string</code> | The registry URL, e.g. `https://npm.example.com/`. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig.property.encryptionKeyArn">encryptionKeyArn</a></code> | <code>string</code> | Customer-managed KMS key encrypting `basicAuthSecretArn`, when one is used. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig.property.scope">scope</a></code> | <code>string</code> | npm scope to bind to the registry, e.g. `cdklabs` for `@cdklabs/*`. Omit to override the default registry. |
 
 ---
@@ -2947,6 +3200,18 @@ public readonly url: string;
 - *Type:* string
 
 The registry URL, e.g. `https://npm.example.com/`.
+
+---
+
+##### `encryptionKeyArn`<sup>Optional</sup> <a name="encryptionKeyArn" id="@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig.property.encryptionKeyArn"></a>
+
+```typescript
+public readonly encryptionKeyArn: string;
+```
+
+- *Type:* string
+
+Customer-managed KMS key encrypting `basicAuthSecretArn`, when one is used.
 
 ---
 
@@ -3143,6 +3408,7 @@ const proxyConfig: ProxyConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ProxyConfig.property.noProxy">noProxy</a></code> | <code>string[]</code> | Hosts that bypass the proxy. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ProxyConfig.property.proxySecretArn">proxySecretArn</a></code> | <code>string</code> | ARN of the Secrets Manager secret holding the proxy credentials, as the keys `username`, `password`, `http_proxy_port`, `https_proxy_port` and `proxy_domain`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ProxyConfig.property.proxyTestUrl">proxyTestUrl</a></code> | <code>string</code> | URL curl'd (through the proxy) to confirm it works before the install phase's real commands run. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ProxyConfig.property.encryptionKeyArn">encryptionKeyArn</a></code> | <code>string</code> | Customer-managed KMS key encrypting `proxySecretArn`, when one is used. |
 
 ---
 
@@ -3182,6 +3448,18 @@ public readonly proxyTestUrl: string;
 - *Type:* string
 
 URL curl'd (through the proxy) to confirm it works before the install phase's real commands run.
+
+---
+
+##### `encryptionKeyArn`<sup>Optional</sup> <a name="encryptionKeyArn" id="@cdklabs/cdk-cicd-wrapper.ProxyConfig.property.encryptionKeyArn"></a>
+
+```typescript
+public readonly encryptionKeyArn: string;
+```
+
+- *Type:* string
+
+Customer-managed KMS key encrypting `proxySecretArn`, when one is used.
 
 ---
 
@@ -3305,6 +3583,7 @@ const resolvedCicdConfig: ResolvedCicdConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.codeBuildEnvSettings">codeBuildEnvSettings</a></code> | <code>aws-cdk-lib.aws_codebuild.BuildEnvironment</code> | CodeBuild environment overrides -- privileged mode, compute type, environment variables -- applied to every CodeBuild project the pipeline creates (Blueprint `codeBuildEnvSettings`, migrated from `CodeBuildFactoryProvider`/`PipelineBlueprint.codeBuildEnvSettings(...)`). Reuses CDK's own `BuildEnvironment` rather than a bespoke type, so it stays a drop-in for Blueprint callers. `buildImage` here is a full `IBuildImage` (e.g. an ARM or GPU managed image); it is distinct from the engines' own `buildImage` constructor prop, which takes a Docker-registry image string -- that prop wins when both are set. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.codePipelineRoleNames">codePipelineRoleNames</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodePipelineRoleNames">CodePipelineRoleNames</a></code> | Forced IAM role names for the flat `CODEPIPELINE` engine's own roles. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | The name of the compliance/access-log destination bucket, if configured (Blueprint `ComplianceBucketProvider`/`ComplianceLogBucketStack`, migrated). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.createComplianceLogBucket">createComplianceLogBucket</a></code> | <code>boolean</code> | Whether the pipeline stack creates and manages `complianceLogBucketName`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployerImage">deployerImage</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage">BuildImage</a></code> | Container mode (Repo 1): when set, the pipeline runs CI then builds & pushes a config-agnostic deployer image to ECR instead of deploying stages. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployRoleExternalId">deployRoleExternalId</a></code> | <code>string</code> | Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.express">express</a></code> | <code>boolean</code> | Deploy with **CloudFormation express mode** (`cdk deploy --express`). |
@@ -3423,7 +3702,7 @@ public readonly application: string;
 
 Application name;
 
-drives the bootstrap qualifier and asset naming.
+drives the derived bootstrap qualifier and asset naming.
 
 ---
 
@@ -3478,6 +3757,23 @@ The name of the compliance/access-log destination bucket, if configured (Bluepri
 
 Threaded into
 `SupportResources.complianceLogBucket`; see there for the bucket's shape.
+
+---
+
+##### `createComplianceLogBucket`<sup>Optional</sup> <a name="createComplianceLogBucket" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.createComplianceLogBucket"></a>
+
+```typescript
+public readonly createComplianceLogBucket: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Whether the pipeline stack creates and manages `complianceLogBucketName`.
+
+Set to `false` during a Blueprint migration to reference an existing, owner-managed bucket.
+The pipeline then creates neither the bucket nor its bucket policy; the bucket owner must keep
+the encryption, TLS-enforcement, and S3 server-access-log delivery policy in place.
 
 ---
 
@@ -3673,28 +3969,16 @@ const resolvedDeploymentConfig: ResolvedDeploymentConfig = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.synthesizer">synthesizer</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerConfig">SynthesizerConfig</a></code> | Synthesizer used by the deployer image; |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.targets">targets</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget">ResolvedDeploymentTarget</a>[]</code> | The deployment targets, in order. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.application">application</a></code> | <code>string</code> | Application name baked into the deployer image. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.codeArtifact">codeArtifact</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeArtifactConfig">CodeArtifactConfig</a></code> | Private CodeArtifact repo the CD build authenticates against before `npm ci` (to install the wrapper CLI when it is pre-release / not on public npm). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | Default compliance/access-log destination bucket name for targets that do not provide their own. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.crossAccountEcrRepositoryPolicyConfigured">crossAccountEcrRepositoryPolicyConfigured</a></code> | <code>boolean</code> | Confirms that owner-side repository policies permit the generated pipeline role to pull every cross-account ECR image referenced by this deployment config. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.image">image</a></code> | <code>string</code> | The default deployer image to run targets against (an ECR/OCI reference, tag or digest). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the CD build authenticates against before `npm ci`. |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier used by the deployer image. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier used by the deployer image; |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.repository">repository</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.Repository">Repository</a></code> | The config-only source repository the CD pipeline watches (where `deploy.config.ts` lives -- no CDK code). Optional: when omitted, the config drives only the local `cdk-cicd deploy --from-image` executor; set it to provision a CD CodePipeline (`cdk-cicd deploy-ci`) whose CodeBuild pulls the image and deploys each target. This is the deploy-side twin of `ResolvedCicdConfig.repository`. |
-
----
-
-##### `synthesizer`<sup>Required</sup> <a name="synthesizer" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.synthesizer"></a>
-
-```typescript
-public readonly synthesizer: SynthesizerConfig;
-```
-
-- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerConfig">SynthesizerConfig</a>
-
-Synthesizer used by the deployer image;
-
-must match its `cicd.config`.
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.synthesizer">synthesizer</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerConfig">SynthesizerConfig</a></code> | Synthesizer used by the deployer image; must match its `cicd.config`. |
 
 ---
 
@@ -3721,8 +4005,9 @@ public readonly application: string;
 Application name baked into the deployer image.
 
 Optional for the default synthesizer; required
-(or supply `synthesizer.appId`) when the image uses `APP_STAGING` so Repo 2 can grant its
-app-scoped asset roles.
+(or supply `synthesizer.appId`) when the image uses `APP_STAGING` for direct `deploy --from-image`.
+The generated Repo 2 CodePipeline itself supports only `DEFAULT`. Direct APP_STAGING targets can
+configure deployment roles, but cannot attach an ExternalId to the deployment role.
 
 ---
 
@@ -3737,6 +4022,35 @@ public readonly codeArtifact: CodeArtifactConfig;
 Private CodeArtifact repo the CD build authenticates against before `npm ci` (to install the wrapper CLI when it is pre-release / not on public npm).
 
 Same shape as the pipeline-config `codeArtifact`.
+
+---
+
+##### `complianceLogBucketName`<sup>Optional</sup> <a name="complianceLogBucketName" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.complianceLogBucketName"></a>
+
+```typescript
+public readonly complianceLogBucketName: string;
+```
+
+- *Type:* string
+
+Default compliance/access-log destination bucket name for targets that do not provide their own.
+
+Repo 2 references an existing bucket; it does not create one. A target using this default must
+have a concrete account and exactly one concrete Region so S3's same-account/same-Region delivery
+requirement can be verified. Targets in other environments may override the name individually.
+
+---
+
+##### `crossAccountEcrRepositoryPolicyConfigured`<sup>Optional</sup> <a name="crossAccountEcrRepositoryPolicyConfigured" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.crossAccountEcrRepositoryPolicyConfigured"></a>
+
+```typescript
+public readonly crossAccountEcrRepositoryPolicyConfigured: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Confirms that owner-side repository policies permit the generated pipeline role to pull every cross-account ECR image referenced by this deployment config.
 
 ---
 
@@ -3779,9 +4093,9 @@ public readonly qualifier: string;
 
 - *Type:* string
 
-Bootstrap qualifier used by the deployer image.
+Bootstrap qualifier used by the deployer image;
 
-Derived from `application` when omitted.
+derived from `application` when omitted.
 
 ---
 
@@ -3794,6 +4108,21 @@ public readonly repository: Repository;
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.Repository">Repository</a>
 
 The config-only source repository the CD pipeline watches (where `deploy.config.ts` lives -- no CDK code). Optional: when omitted, the config drives only the local `cdk-cicd deploy --from-image` executor; set it to provision a CD CodePipeline (`cdk-cicd deploy-ci`) whose CodeBuild pulls the image and deploys each target. This is the deploy-side twin of `ResolvedCicdConfig.repository`.
+
+---
+
+##### `synthesizer`<sup>Optional</sup> <a name="synthesizer" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.synthesizer"></a>
+
+```typescript
+public readonly synthesizer: SynthesizerConfig;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.SynthesizerConfig">SynthesizerConfig</a>
+
+Synthesizer used by the deployer image; must match its `cicd.config`.
+
+Optional for compatibility with pre-synthesizer Repo 2 configs; consumers must treat omission
+as `SynthesizerType.DEFAULT`.
 
 ---
 
@@ -3820,6 +4149,9 @@ const resolvedDeploymentTarget: ResolvedDeploymentTarget = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.env">env</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.StageEnvironment">StageEnvironment</a></code> | Where this target deploys. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.manualApproval">manualApproval</a></code> | <code>boolean</code> | Whether a manual approval gates this target. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.stage">stage</a></code> | <code>string</code> | The stage in the image's app to deploy (passed to the in-container `cdk-cicd deploy --stage`). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketAccount">complianceLogBucketAccount</a></code> | <code>string</code> | Account containing `complianceLogBucketName`. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | Compliance/access-log destination bucket for this target, after applying the deployment-wide default. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketRegion">complianceLogBucketRegion</a></code> | <code>string</code> | Region containing `complianceLogBucketName`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.deployment">deployment</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentConfig">DeploymentConfig</a></code> | Forced roles for this target, if any. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.image">image</a></code> | <code>string</code> | The deployer image (tag/digest) to run for THIS target, overriding the config-level `image`. |
 
@@ -3858,6 +4190,45 @@ public readonly stage: string;
 - *Type:* string
 
 The stage in the image's app to deploy (passed to the in-container `cdk-cicd deploy --stage`).
+
+---
+
+##### `complianceLogBucketAccount`<sup>Optional</sup> <a name="complianceLogBucketAccount" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketAccount"></a>
+
+```typescript
+public readonly complianceLogBucketAccount: string;
+```
+
+- *Type:* string
+
+Account containing `complianceLogBucketName`.
+
+---
+
+##### `complianceLogBucketName`<sup>Optional</sup> <a name="complianceLogBucketName" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketName"></a>
+
+```typescript
+public readonly complianceLogBucketName: string;
+```
+
+- *Type:* string
+
+Compliance/access-log destination bucket for this target, after applying the deployment-wide default.
+
+When set, `complianceLogBucketAccount` and `complianceLogBucketRegion` are also set and
+exactly match this target's concrete, single-Region environment.
+
+---
+
+##### `complianceLogBucketRegion`<sup>Optional</sup> <a name="complianceLogBucketRegion" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketRegion"></a>
+
+```typescript
+public readonly complianceLogBucketRegion: string;
+```
+
+- *Type:* string
+
+Region containing `complianceLogBucketName`.
 
 ---
 
@@ -4040,9 +4411,25 @@ const stageStackNameOptions: StageStackNameOptions = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.StageStackNameOptions.property.preserveStageCase">preserveStageCase</a></code> | <code>boolean</code> | Preserve the stage segment's original casing. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.StageStackNameOptions.property.stage">stage</a></code> | <code>string</code> | The stage to fold into the name. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.StageStackNameOptions.property.stageFirst">stageFirst</a></code> | <code>boolean</code> | Put the stage BEFORE the base (`<stage>-<base>`) instead of after. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.StageStackNameOptions.property.uppercaseStage">uppercaseStage</a></code> | <code>boolean</code> | Uppercase the stage segment. |
+
+---
+
+##### `preserveStageCase`<sup>Optional</sup> <a name="preserveStageCase" id="@cdklabs/cdk-cicd-wrapper.StageStackNameOptions.property.preserveStageCase"></a>
+
+```typescript
+public readonly preserveStageCase: boolean;
+```
+
+- *Type:* boolean
+
+Preserve the stage segment's original casing.
+
+Use this only to match an existing stack whose stage
+id was custom-case; the backward-compatible default lowercases the segment.
 
 ---
 
@@ -4109,7 +4496,8 @@ const supportResourcesProps: SupportResourcesProps = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.SupportResourcesProps.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | The name of the compliance/access-log bucket -- Blueprint's `IComplianceBucket.bucketName` (`ComplianceBucketProvider`). Required only if `complianceLogBucket` is read; an explicit, predictable name is what lets other buckets' S3 server-access-logging destination (and Blueprint's cross-region name-substitution convention for multi-region deployments) point at it. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.SupportResourcesProps.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | The name of the compliance/access-log bucket -- Blueprint's `IComplianceBucket.bucketName` (`ComplianceBucketProvider`). Required only if `complianceLogBucket` is read; an explicit, predictable name is what lets same-account, same-Region application buckets point their S3 server-access logging at it without creating CloudFormation cross-stack references. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.SupportResourcesProps.property.createComplianceLogBucket">createComplianceLogBucket</a></code> | <code>boolean</code> | Whether this construct creates and manages `complianceLogBucketName`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.SupportResourcesProps.property.removalPolicy">removalPolicy</a></code> | <code>aws-cdk-lib.RemovalPolicy</code> | Removal policy for the support resources. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.SupportResourcesProps.property.useProxy">useProxy</a></code> | <code>boolean</code> | Whether an HTTP(S) proxy is configured (`ResolvedCicdConfig.proxy`). A managed VPC uses isolated subnets when true, matching Blueprint's `VPCProvider`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.SupportResourcesProps.property.vpc">vpc</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.VpcConfig">VpcConfig</a></code> | VPC every CodeBuild project the pipeline creates runs in, if configured. |
@@ -4124,7 +4512,26 @@ public readonly complianceLogBucketName: string;
 
 - *Type:* string
 
-The name of the compliance/access-log bucket -- Blueprint's `IComplianceBucket.bucketName` (`ComplianceBucketProvider`). Required only if `complianceLogBucket` is read; an explicit, predictable name is what lets other buckets' S3 server-access-logging destination (and Blueprint's cross-region name-substitution convention for multi-region deployments) point at it.
+The name of the compliance/access-log bucket -- Blueprint's `IComplianceBucket.bucketName` (`ComplianceBucketProvider`). Required only if `complianceLogBucket` is read; an explicit, predictable name is what lets same-account, same-Region application buckets point their S3 server-access logging at it without creating CloudFormation cross-stack references.
+
+---
+
+##### `createComplianceLogBucket`<sup>Optional</sup> <a name="createComplianceLogBucket" id="@cdklabs/cdk-cicd-wrapper.SupportResourcesProps.property.createComplianceLogBucket"></a>
+
+```typescript
+public readonly createComplianceLogBucket: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Whether this construct creates and manages `complianceLogBucketName`.
+
+Set to `false` to reference a pre-existing, owner-managed Blueprint compliance bucket. Imported
+buckets synthesize no `AWS::S3::Bucket` or `AWS::S3::BucketPolicy`; the owner must maintain the
+bucket's same-account/same-Region placement, SSE-S3 encryption, TLS enforcement, public-access
+block, disabled Object Lock and Requester Pays settings, and S3 server-access-log delivery policy.
+A name-only CDK import cannot inspect or validate those live settings.
 
 ---
 
@@ -4337,7 +4744,10 @@ Undefined for a looked-up VPC (CodeBuild then selects private subnets).
 
 - *Implements:* aws-cdk-lib.IAspect
 
-Configures S3 server access logging (destination + prefix) on every L1 `CfnBucket` it visits that does not already set a logging destination, matching Blueprint's default-on `AccessLogsForBucketPlugin`.
+Configures S3 server access logging on every L1 `CfnBucket` it visits.
+
+The compliance destination
+always wins; an existing user prefix is preserved, otherwise a bucket-specific prefix is generated.
 
 #### Initializers <a name="Initializers" id="@cdklabs/cdk-cicd-wrapper.AccessLogsForBucketAspect.Initializer"></a>
 
@@ -5557,14 +5967,14 @@ How the pushed image is tagged.
 
 | **Name** | **Description** |
 | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.ImageTagStrategy.GIT_SHA">GIT_SHA</a></code> | Tag with the resolved source commit sha (CODEBUILD_RESOLVED_SOURCE_VERSION). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ImageTagStrategy.GIT_SHA">GIT_SHA</a></code> | Tag with the resolved Git commit SHA, or a deterministic SHA-256 of a non-Git source revision. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ImageTagStrategy.LATEST">LATEST</a></code> | Tag `latest` only. |
 
 ---
 
 ##### `GIT_SHA` <a name="GIT_SHA" id="@cdklabs/cdk-cicd-wrapper.ImageTagStrategy.GIT_SHA"></a>
 
-Tag with the resolved source commit sha (CODEBUILD_RESOLVED_SOURCE_VERSION).
+Tag with the resolved Git commit SHA, or a deterministic SHA-256 of a non-Git source revision.
 
 The default.
 
@@ -5703,6 +6113,10 @@ Which stack synthesizer the wrapper installs.
 ##### `APP_STAGING` <a name="APP_STAGING" id="@cdklabs/cdk-cicd-wrapper.SynthesizerType.APP_STAGING"></a>
 
 `AppStagingSynthesizer` -- opt-in, still alpha.
+
+Supported for direct/local application
+deployments and Repo 1 image synthesis; wrapper-generated deployment pipelines reject it.
+Its staging support stack cannot honor a configured deploy or CloudFormation execution role.
 
 ---
 

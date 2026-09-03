@@ -76,14 +76,14 @@ only ever write the few you need, because the wrapper resolves sensible defaults
 | Field | What it does | Why it matters |
 |---|---|---|
 | `application` | Logical name for the app and its resources. Defaults from `package.json#name`. | The prefix on pipeline and support-stack names — set it once so resources are recognizable. |
-| `qualifier` | Short (≤10 char) sanitized id used to disambiguate shared resources. Derived from `application`. | Only set it if two apps would otherwise collide on shared names. |
+| `qualifier` | Short (≤10 char) sanitized bootstrap id. Derived from `application`; both synthesizers honor an explicit value. | Set it when the target accounts use a non-default bootstrap qualifier. |
 | `repository` | The pipeline's source: `Repository.codestarConnection('org/repo', connectionArn, branch?)` for GitHub with the AWS-hosted engines, `Repository.codecommit(...)`, or `Repository.s3(...)`. `Repository.github(...)` is reserved for `GITHUB_ACTIONS`. | This is *where* the pipeline reads code and *what* triggers it — the one field you almost always set explicitly. |
 | `stages` | Ordered list of deployment stages — bare names or objects with `env`, `manualApproval`, `deployment`. | Your promotion path (dev → prod). Config-as-data, not pipeline code. Covered in the next chapter. |
 | `ci` | Customizes the CI phase: `steps`, `synthStages`, `image`. | Add your own build/test steps or a custom image. See [Customizing CI](#customizing-ci) below. |
 | `codeArtifact` | Authenticates builds to a private CodeArtifact repo (`domain`, `repository`, `account?`, `region?`, `npmScope?`). | Needed when your deps (or the wrapper itself, pre-release) live in a private registry. See chapter 4. |
 | `deployModel` | `DeployModel.ASSEMBLY_PROMOTION` (default) or `DeployModel.DEPLOY_TIME_SYNTH`. | Controls when synth happens — one synth per run vs per-stage at deploy time. See chapter 3. |
 | `asyncDeploy` | `boolean` (default `false`). Hands the CloudFormation wait to a Lambda instead of holding a build. | Saves build compute when the CloudFormation wait dominates. See chapter 3. |
-| `synthesizer` | `{ type?: SynthesizerType.DEFAULT \| SynthesizerType.APP_STAGING, appId?: string }`. | `DEFAULT` suits most apps. `APP_STAGING` uses `appId` (default: `application`) and currently works only with the default flat `CODEPIPELINE` engine. |
+| `synthesizer` | `{ type?: SynthesizerType.DEFAULT \| SynthesizerType.APP_STAGING, appId?: string }`. | `DEFAULT` suits generated pipelines. `APP_STAGING` is limited to direct/local deployment and Repo 1 image-only builds; every generated deployment pipeline rejects it. |
 | `engine` | Selects the CD engine (`EngineType`). | `EngineType.CODEPIPELINE` is the default and covers most cases — you rarely set it. Two alternates exist: `CDK_PIPELINES` (plain CDK Pipelines, no CodePipeline-specific extras) and `GITHUB_ACTIONS` (renders a `.github/workflows/deploy.yml` instead of an AWS-hosted pipeline — see [GitHub as source & CD engine](../../developer_guides/vcs_github.md)). Tuning for the default engine lives on the stages and `ci` (chapter 3), not here. |
 | `githubActions` | GitHub Actions engine config (`roleName`, `subjectClaims`, `workflowTriggers`, etc.). | Only read when `engine` is `EngineType.GITHUB_ACTIONS`. |
 | `deployerImage` | Turns the pipeline into a config-agnostic image builder (`BuildImage.docker({...})`). | The container-mode entry point. See chapter 5. |
@@ -92,6 +92,13 @@ only ever write the few you need, because the wrapper resolves sensible defaults
     The minimum config is `repository` + `stages`. `application` defaults from `package.json#name`, the
     engine defaults to CodePipeline, and the synthesizer defaults to `DefaultStackSynthesizer`. Add fields
     only when a default doesn't fit.
+
+!!! warning "`APP_STAGING` is not a generated-pipeline synthesizer"
+    The installed alpha supports a custom bootstrap qualifier for direct/local `cdk deploy`, and Repo 1
+    may bake that configuration into a deployer image. Flat CodePipeline, Repo 2, CDK Pipelines, and
+    GitHub Actions deployment pipelines reject it. On the direct/local path, custom `deployRole` and
+    `cfnExecutionRole` values become the application stack's deployment identities. The separate
+    staging support stack uses caller/base credentials, and a deploy-role ExternalId is unsupported.
 
 ## Customizing CI
 
@@ -131,6 +138,14 @@ you need tools the default image doesn't ship:
     steps: { test: 'npm test' },
   },
 ```
+
+For an AWS-hosted engine, a private ECR `ci.image` must be in the pipeline account and the same Region
+as its CodeBuild project. Public ECR references such as `public.ecr.aws/...` are not subject to the
+private-repository pull contract. For an authenticated Docker Hub, GHCR, or custom registry image,
+add `ci.codeBuildImageCredentials` with the complete ARN of a Secrets Manager secret containing
+`username` and `password` (and `encryptionKeyArn` for a customer-managed KMS key). GitHub Actions uses
+GitHub secret names under `githubActions.buildContainerCredentials` instead; it rejects CodeBuild image
+IDs and private ECR job containers because those credentials cannot be established before the pull.
 
 **Synth scope (`ci.synthStages`)** — `'all'` synthesizes every stage as a validation gate; a list narrows
 it to specific stages when synth cost matters. This interacts with the deploy model, so it's covered in

@@ -21,7 +21,6 @@ import {
   appExportTargets,
   assertAppModuleLayout,
   CFN_EXEC_ROLE_FLAG,
-  DEPLOY_ROLE_EXTERNAL_ID_FLAG,
   DEPLOY_ROLE_FLAG,
   patchAppExports,
   resolveSynthesizer,
@@ -42,7 +41,6 @@ import { GitHubActionsEngine } from '../engine/github/GitHubActionsEngine';
 
 /** Name used when the config names no application (mirrors PipelineApp). */
 const DEFAULT_APPLICATION = 'cdk-cicd';
-const SECRET_REF_PREFIX = 'resolve:secretsmanager:';
 
 interface ReplayCdkBindings {
   /** Every export object whose `App` property must point at the replay stand-in. */
@@ -96,34 +94,28 @@ function replayCdkBindings(entryResolved: string): ReplayCdkBindings {
 }
 
 /**
- * Forced-role environment for one replayed stage. The register preload uses the same variables for
- * flat-engine application synthesis; replay sets them while constructing this stage's stacks and
- * installs the resulting synthesizer in the replay Stage's context.
+ * Forced-role environment for one replayed stage. The self-mutating engines preserve forced deploy
+ * and CloudFormation roles in the assembly, but their installed deployment paths cannot honor a custom
+ * deploy-role ExternalId. Reject that combination rather than synthesizing a pipeline that fails later.
  */
 export function replayForcedRoleEnv(config: ResolvedCicdConfig, stageName: string): Record<string, string> {
   const stage = config.stages.find((candidate) => candidate.name === stageName);
   const deployment = stage?.deployment;
   const env: Record<string, string> = {};
   if (deployment?.deployRole !== undefined && deployment.deployRole.trim().length > 0) {
-    env[DEPLOY_ROLE_FLAG] = deployment.deployRole;
+    env[DEPLOY_ROLE_FLAG] = deployment.deployRole.trim();
   }
   if (deployment?.cfnExecutionRole !== undefined && deployment.cfnExecutionRole.trim().length > 0) {
-    env[CFN_EXEC_ROLE_FLAG] = deployment.cfnExecutionRole;
+    env[CFN_EXEC_ROLE_FLAG] = deployment.cfnExecutionRole.trim();
   }
 
-  // An ExternalId has semantics only for a forced deploy-role assumption. Secret references are
-  // resolved by `cdk-cicd exec` before it invokes the synchronous assembler; a direct assembler call
-  // must fail rather than passing the reference string to STS as though it were the ExternalId.
   if (env[DEPLOY_ROLE_FLAG] !== undefined) {
     const externalId = deployment?.externalId ?? config.deployRoleExternalId;
-    if (externalId?.startsWith(SECRET_REF_PREFIX)) {
-      throw new Error(
-        `cdk-cicd: stage '${stageName}' has an unresolved Secrets Manager externalId reference. ` +
-          'Render the pipeline through `cdk-cicd exec` so the reference is resolved before replay.',
-      );
-    }
     if (externalId !== undefined && externalId.trim().length > 0) {
-      env[DEPLOY_ROLE_EXTERNAL_ID_FLAG] = externalId;
+      throw new Error(
+        `cdk-cicd: self-mutating engines cannot honor the deploy-role ExternalId configured for stage ` +
+          `'${stageName}'. Remove the ExternalId or use the CODEPIPELINE engine.`,
+      );
     }
   }
   return env;
@@ -183,7 +175,6 @@ function replayEntryInto(
   const prevRegion = process.env.CDK_DEFAULT_REGION;
   const prevDeployRole = process.env[DEPLOY_ROLE_FLAG];
   const prevCfnExecRole = process.env[CFN_EXEC_ROLE_FLAG];
-  const prevExternalId = process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG];
   const forcedRoleEnv = replayForcedRoleEnv(config, context.stageName);
 
   // `new cdk.App()` in the entry yields this stage. A NON-derived class may return an object from its
@@ -221,7 +212,6 @@ function replayEntryInto(
     if (context.env.region !== undefined) process.env.CDK_DEFAULT_REGION = context.env.region;
     setOrDeleteEnv(DEPLOY_ROLE_FLAG, forcedRoleEnv[DEPLOY_ROLE_FLAG]);
     setOrDeleteEnv(CFN_EXEC_ROLE_FLAG, forcedRoleEnv[CFN_EXEC_ROLE_FLAG]);
-    setOrDeleteEnv(DEPLOY_ROLE_EXTERNAL_ID_FLAG, forcedRoleEnv[DEPLOY_ROLE_EXTERNAL_ID_FLAG]);
     installReplaySynthesizer(stage, config, bindings.synthesizerContextKeys);
     Reflect.set(stage, 'synth', () => undefined);
     originals = patchAppExports(bindings.appExportTargets, ReplayApp);
@@ -237,13 +227,12 @@ function replayEntryInto(
     restoreEnv('CDK_DEFAULT_REGION', prevRegion);
     restoreEnv(DEPLOY_ROLE_FLAG, prevDeployRole);
     restoreEnv(CFN_EXEC_ROLE_FLAG, prevCfnExecRole);
-    restoreEnv(DEPLOY_ROLE_EXTERNAL_ID_FLAG, prevExternalId);
   }
 
   // A stage with no stacks means the entry built nothing into it -- almost always because construction
   // lives in the top level of a transitively-required module (cached, runs once). Fail with a clear
   // pointer instead of CDK Pipelines' generic "stage should contain at least one Stack".
-  if (stage.node.findAll().filter((c): c is Stack => c instanceof Stack).length === 0) {
+  if (stage.node.findAll().filter(Stack.isStack).length === 0) {
     throw new Error(
       `cdk-cicd: replaying '${entry}' into stage '${context.stageName}' produced no stacks. Build your ` +
         'stacks at the top level of the entry, or in a function the entry calls -- not in the top level of ' +
@@ -286,19 +275,21 @@ function stageApplicationConfig(stageName: string): Record<string, unknown> {
  * `cdk.Stage` inside one synth); `config.engine` picks which one renders the stages `provider` builds.
  */
 export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStageProvider): App {
-  if (config.synthesizer.type === SynthesizerType.APP_STAGING) {
+  if ((config.synthesizer?.type ?? SynthesizerType.DEFAULT) === SynthesizerType.APP_STAGING) {
     throw new Error(
       'cdk-cicd: SynthesizerType.APP_STAGING is not supported by the CDK_PIPELINES or ' +
-        'GITHUB_ACTIONS engines in the pinned alpha module. Use the default CODEPIPELINE engine or ' +
-        'SynthesizerType.DEFAULT.',
+        'GITHUB_ACTIONS engines: its DefaultStagingStack is created under the root App, but an ' +
+        'application stack inside a pipeline Stage cannot depend across that Stage boundary. This is ' +
+        'not a bootstrap-qualifier limitation. Use SynthesizerType.DEFAULT for generated pipelines; ' +
+        'APP_STAGING remains available for direct local CDK deployment.',
     );
   }
   const runtimeConfig = wrapperRuntimeConfig(config as unknown as Record<string, unknown>);
-  // The pipeline stack itself always uses the standard bootstrap roles. The configured application
-  // synthesizer is installed on each replay Stage; APP_STAGING is rejected above because the pinned
-  // alpha explicitly does not support CDK Pipelines.
+  // The pipeline stack does not inherit the application's config.qualifier. Its default synthesizer
+  // follows CDK's normal bootstrap-qualifier context fallback, then the standard default. The
+  // configured application synthesizer is installed independently on each replay Stage.
   const app = new App({
-    defaultStackSynthesizer: new DefaultStackSynthesizer({ qualifier: config.qualifier }),
+    defaultStackSynthesizer: new DefaultStackSynthesizer(),
   });
   const wrappedProvider: IStageProvider = {
     stacks(stage: Stage, context: CdkPipelinesStageContext): void {
@@ -325,10 +316,8 @@ export function buildPipelineApp(config: ResolvedCicdConfig, provider: IStagePro
   const stackName = config.pipelineStackName ?? constructId;
   // Ambient credentials win when present (a real `deploy-ci` run, or any locally-authenticated synth).
   // Falling back to the first stage's env keeps the pipeline stack's account/region reproducible when
-  // no credentials are active -- e.g. the GitHub Actions engine's own self-mutation "Synthesize" job,
-  // which runs `cdk synth` before assuming any role, and must render the SAME literal account each time
-  // to pass cdk-pipelines-github's "commit the updated workflow file" check (a token there is never
-  // stable across runs).
+  // no credentials are active -- for example a static local render. GitHub Build-Synth authenticates
+  // before invoking `cdk synth`, but this fallback also keeps direct assembly deterministic.
   const firstStage = config.stages[0];
   const stack = new Stack(app, constructId, {
     stackName,

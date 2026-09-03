@@ -6,7 +6,7 @@
 // from the application, environment taken from the ambient CDK_DEFAULT_* the CDK CLI resolves, the
 // disposable flag reaching the support resources, and the nag aspect being applied at all.
 
-import { Aspects } from 'aws-cdk-lib';
+import { Aspects, BOOTSTRAP_QUALIFIER_CONTEXT } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { PipelineApp } from '../../src/app/PipelineApp';
@@ -58,7 +58,7 @@ describe('m4-approval-selfupdate: PipelineApp', () => {
     expect(stack.environment.region).toEqual(REGION);
   });
 
-  test('the pipeline stack synthesizer uses the configured bootstrap qualifier', () => {
+  test('the pipeline stack keeps the standard hub bootstrap qualifier', () => {
     const resolved = defineCICD({
       application: 'shop',
       qualifier: 'customq',
@@ -68,8 +68,26 @@ describe('m4-approval-selfupdate: PipelineApp', () => {
     const app = new PipelineApp({ config: resolved });
     const artifact = app.synth().getStackArtifact(app.pipelineStack.artifactId);
 
-    expect(artifact.assumeRoleArn).toContain('cdk-customq-deploy-role-');
-    expect(artifact.cloudFormationExecutionRoleArn).toContain('cdk-customq-cfn-exec-role-');
+    expect(artifact.assumeRoleArn).toContain('cdk-hnb659fds-deploy-role-');
+    expect(artifact.cloudFormationExecutionRoleArn).toContain('cdk-hnb659fds-cfn-exec-role-');
+  });
+
+  test('the pipeline stack and self-update IAM honor the hub bootstrap qualifier from CDK context', () => {
+    const previous = process.env.CDK_CONTEXT_JSON;
+    process.env.CDK_CONTEXT_JSON = JSON.stringify({ [BOOTSTRAP_QUALIFIER_CONTEXT]: 'hubqual' });
+    try {
+      const app = new PipelineApp({ config: config('shop') });
+      const assembly = app.synth();
+      const artifact = assembly.getStackArtifact(app.pipelineStack.artifactId);
+      const policies = JSON.stringify(Template.fromJSON(artifact.template).findResources('AWS::IAM::Policy'));
+
+      expect(artifact.assumeRoleArn).toContain('cdk-hubqual-deploy-role-');
+      expect(artifact.cloudFormationExecutionRoleArn).toContain('cdk-hubqual-cfn-exec-role-');
+      expect(policies).toContain(`cdk-hubqual-deploy-role-${ACCOUNT}-${REGION}`);
+    } finally {
+      if (previous === undefined) delete process.env.CDK_CONTEXT_JSON;
+      else process.env.CDK_CONTEXT_JSON = previous;
+    }
   });
 
   test('ci.image is applied only to the CI Build project', () => {

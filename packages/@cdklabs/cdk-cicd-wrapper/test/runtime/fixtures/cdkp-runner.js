@@ -21,7 +21,6 @@ const config = defineCICD({
       deployment: {
         deployRole: 'arn:aws:iam::222222222222:role/ForcedDeploy',
         cfnExecutionRole: 'arn:aws:iam::222222222222:role/ForcedCfn',
-        externalId: 'prod-external',
       },
     },
   ],
@@ -43,7 +42,6 @@ const result = stages.map((s) => {
     account,
     assumeRoleArn: stack && stack.assumeRoleArn,
     cfnRoleArn: stack && stack.cloudFormationExecutionRoleArn,
-    assumeRoleExternalId: stack && stack.assumeRoleExternalId,
   };
 });
 process.stdout.write('RESULT=' + JSON.stringify(result) + '\n');

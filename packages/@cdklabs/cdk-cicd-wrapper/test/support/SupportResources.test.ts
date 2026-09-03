@@ -1,8 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
+import { App, Aspects, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
+import { AwsSolutionsChecks } from 'cdk-nag';
 import { SupportResources } from '../../src/support/SupportResources';
 
 function stack(): Stack {
@@ -140,6 +141,15 @@ describe('m4-support-resources: SupportResources', () => {
       t.resourceCountIs('AWS::S3::Bucket', 1);
       t.hasResourceProperties('AWS::S3::Bucket', {
         BucketName: 'my-compliance-bucket',
+        BucketEncryption: {
+          ServerSideEncryptionConfiguration: [
+            {
+              ServerSideEncryptionByDefault: {
+                SSEAlgorithm: 'AES256',
+              },
+            },
+          ],
+        },
         PublicAccessBlockConfiguration: {
           BlockPublicAcls: true,
           BlockPublicPolicy: true,
@@ -147,6 +157,16 @@ describe('m4-support-resources: SupportResources', () => {
           RestrictPublicBuckets: true,
         },
       });
+    });
+
+    test('suppresses recursive server-access logging on the dedicated destination bucket', () => {
+      const s = stack();
+      Aspects.of(s).add(new AwsSolutionsChecks());
+      const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+      expect(support.complianceLogBucket).toBeDefined();
+
+      Template.fromStack(s);
+      expect(Annotations.fromStack(s).findError('*', Match.stringLikeRegexp('AwsSolutions-S1'))).toHaveLength(0);
     });
 
     test('grants the S3 log-delivery service principal write access', () => {
@@ -162,10 +182,79 @@ describe('m4-support-resources: SupportResources', () => {
               Effect: 'Allow',
               Principal: { Service: 'logging.s3.amazonaws.com' },
               Action: 's3:PutObject',
+              Condition: {
+                StringEquals: {
+                  'aws:SourceAccount': '111111111111',
+                },
+                ArnLike: {
+                  'aws:SourceArn': Match.anyValue(),
+                },
+              },
             }),
           ]),
         }),
       });
+    });
+
+    test('RETAIN applies coherently to the managed bucket and its generated policy', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+      expect(support.complianceLogBucket).toBeDefined();
+
+      const t = Template.fromStack(s);
+      t.hasResource('AWS::S3::Bucket', {
+        DeletionPolicy: 'Retain',
+        UpdateReplacePolicy: 'Retain',
+      });
+      t.hasResource('AWS::S3::BucketPolicy', {
+        DeletionPolicy: 'Retain',
+        UpdateReplacePolicy: 'Retain',
+      });
+    });
+
+    test('DESTROY applies coherently to the managed bucket and its generated policy', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', {
+        complianceLogBucketName: 'my-compliance-bucket',
+        removalPolicy: RemovalPolicy.DESTROY,
+      });
+      expect(support.complianceLogBucket).toBeDefined();
+
+      const t = Template.fromStack(s);
+      t.hasResource('AWS::S3::Bucket', {
+        DeletionPolicy: 'Delete',
+        UpdateReplacePolicy: 'Delete',
+      });
+      t.hasResource('AWS::S3::BucketPolicy', {
+        DeletionPolicy: 'Delete',
+        UpdateReplacePolicy: 'Delete',
+      });
+      t.resourceCountIs('Custom::S3AutoDeleteObjects', 1);
+    });
+
+    test('existing-bucket mode imports by name without synthesizing a bucket or policy', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', {
+        complianceLogBucketName: 'blueprint-compliance-bucket',
+        createComplianceLogBucket: false,
+      });
+
+      expect(support.complianceLogBucket.bucketName).toBe('blueprint-compliance-bucket');
+      const t = Template.fromStack(s);
+      t.resourceCountIs('AWS::S3::Bucket', 0);
+      t.resourceCountIs('AWS::S3::BucketPolicy', 0);
+      t.resourceCountIs('Custom::S3AutoDeleteObjects', 0);
+    });
+
+    test('existing-bucket mode rejects DESTROY because the owner controls its lifecycle', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', {
+        complianceLogBucketName: 'blueprint-compliance-bucket',
+        createComplianceLogBucket: false,
+        removalPolicy: RemovalPolicy.DESTROY,
+      });
+
+      expect(() => support.complianceLogBucket).toThrow(/cannot be combined with RemovalPolicy\.DESTROY/);
     });
 
     test('denies non-TLS access -- the TLS half of the 0b7ae02 fix', () => {
@@ -186,29 +275,16 @@ describe('m4-support-resources: SupportResources', () => {
       });
     });
 
-    test(
-      'denies PutObject with no encryption header at all -- the SSE correctness the 0b7ae02 fix made ' +
-        '(a Bool condition on a header that is absent from the request context never matches, so it must ' +
-        'use Null instead)',
-      () => {
-        const s = stack();
-        const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
-        expect(support.complianceLogBucket).toBeDefined();
+    test('does not require an SSE request header that would block S3 log delivery', () => {
+      const s = stack();
+      const support = new SupportResources(s, 'Support', { complianceLogBucketName: 'my-compliance-bucket' });
+      expect(support.complianceLogBucket).toBeDefined();
 
-        Template.fromStack(s).hasResourceProperties('AWS::S3::BucketPolicy', {
-          PolicyDocument: Match.objectLike({
-            Statement: Match.arrayWith([
-              Match.objectLike({
-                Sid: 'EnforceEncryptionAtRest',
-                Effect: 'Deny',
-                Action: 's3:PutObject',
-                Condition: { Null: { 's3:x-amz-server-side-encryption': 'true' } },
-              }),
-            ]),
-          }),
-        });
-      },
-    );
+      const policies = Object.values(Template.fromStack(s).findResources('AWS::S3::BucketPolicy')) as any[];
+      const statements = policies.flatMap((policy) => policy.Properties.PolicyDocument.Statement);
+      expect(statements.some((statement) => statement.Sid === 'EnforceEncryptionAtRest')).toBe(false);
+      expect(JSON.stringify(statements)).not.toContain('s3:x-amz-server-side-encryption');
+    });
 
     test('repeated reads return the same bucket rather than a second one', () => {
       const s = stack();

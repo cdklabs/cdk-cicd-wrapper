@@ -5,83 +5,113 @@
 // no-op unless `complianceLogBucketName` was configured (it read the name off
 // `PipelineBlueprintProps.deploymentDefinition` and initialized `GlobalResources.COMPLIANCE_BUCKET`
 // as a side effect). In Autopilot the compliance bucket (`SupportResources.complianceLogBucket`) and its
-// `complianceLogBucketName` config field now exist, so this aspect takes the destination bucket name
-// explicitly. It is auto-attached by the engines that provision the bucket: the flat `CodePipelineEngine`
-// and the `CdkPipelinesEngine`, in both cases at `AspectPriority.MUTATING` so the L1 logging override
-// lands before the readonly `AwsSolutionsChecks` (otherwise `AwsSolutions-S1` false-fails). It remains
-// exported for a narrower explicit `Aspects.of(scope).add(...)` use.
+// `complianceLogBucketName` config field now exist, so this aspect takes the destination bucket and
+// environment explicitly. It is auto-attached by the engines that provision the bucket: the flat
+// `CodePipelineEngine` and the `CdkPipelinesEngine`, in both cases at `AspectPriority.MUTATING` so the
+// L1 logging override lands before the readonly `AwsSolutionsChecks` (otherwise `AwsSolutions-S1`
+// false-fails). It remains exported for a narrower explicit `Aspects.of(scope).add(...)` use.
 
-import { IAspect, Annotations, Names, Stack } from 'aws-cdk-lib';
-import { CfnBucket } from 'aws-cdk-lib/aws-s3';
+import { CfnResource, IAspect, Names, Stack, Token } from 'aws-cdk-lib';
+import { CfnBucket, CfnBucketPolicy, IBucket } from 'aws-cdk-lib/aws-s3';
 import { IConstruct } from 'constructs';
 
 /** Constructor props for {@link AccessLogsForBucketAspect}. */
 export interface AccessLogsForBucketAspectProps {
   /** The name of the bucket every visited bucket's access logs are delivered to. */
   readonly complianceLogBucketName: string;
-
+  /** AWS account that owns the compliance bucket. S3 access-log delivery cannot cross accounts. */
+  readonly complianceLogBucketAccount: string;
+  /** AWS Region containing the compliance bucket. S3 access-log delivery cannot cross Regions. */
+  readonly complianceLogBucketRegion: string;
   /**
-   * The region the compliance log bucket lives in. When a visited bucket's stack is deployed to a
-   * different region, `complianceLogBucketName` is rewritten by substituting `mainRegion` for that
-   * stack's region -- same cross-region name convention as Blueprint.
+   * The concrete destination bucket when it exists in the same CDK app. Supplying it lets same-stack
+   * source buckets depend explicitly on the destination bucket and its policy.
    */
-  readonly mainRegion: string;
+  readonly complianceLogBucket?: IBucket;
 }
 
 /**
- * Configures S3 server access logging (destination + prefix) on every L1 `CfnBucket` it visits that
- * does not already set a logging destination, matching Blueprint's default-on `AccessLogsForBucketPlugin`.
+ * Configures S3 server access logging on every L1 `CfnBucket` it visits. The compliance destination
+ * always wins; an existing user prefix is preserved, otherwise a bucket-specific prefix is generated.
  */
 export class AccessLogsForBucketAspect implements IAspect {
   private readonly complianceLogBucketName: string;
 
-  private readonly mainRegion: string;
+  private readonly complianceLogBucketAccount: string;
+
+  private readonly complianceLogBucketRegion: string;
+
+  private readonly complianceLogBucket?: IBucket;
 
   public constructor(props: AccessLogsForBucketAspectProps) {
     this.complianceLogBucketName = props.complianceLogBucketName;
-    this.mainRegion = props.mainRegion;
+    this.complianceLogBucketAccount = props.complianceLogBucketAccount;
+    this.complianceLogBucketRegion = props.complianceLogBucketRegion;
+    this.complianceLogBucket = props.complianceLogBucket;
   }
 
   public visit(node: IConstruct): void {
-    if (!(node instanceof CfnBucket)) {
+    if (!isCfnResourceType(node, CfnBucket.CFN_RESOURCE_TYPE_NAME)) {
+      return;
+    }
+    const bucket = node as unknown as CfnBucket;
+
+    const destinationResource = this.complianceLogBucket?.node.defaultChild;
+    if (
+      bucket === destinationResource ||
+      (bucket.bucketName !== undefined &&
+        !Token.isUnresolved(bucket.bucketName) &&
+        bucket.bucketName === this.complianceLogBucketName)
+    ) {
+      // A server-access-log destination must never log to itself.
       return;
     }
 
-    const stack = this.findStack(node);
-    if (!stack) {
-      throw new Error('Could not find stack for the bucket');
-    }
-
-    let complianceLogBucketName = this.complianceLogBucketName;
-    if (stack.region !== this.mainRegion) {
-      Annotations.of(node).addWarningV2(
-        'access-logs-for-bucket-aspect-cross-region-used',
-        'The Access Logs For Bucket aspect is used cross region',
+    const stack = Stack.of(bucket);
+    if (Token.isUnresolved(stack.account) || Token.isUnresolved(stack.region)) {
+      throw new Error(
+        `cdk-cicd: compliance logging for bucket '${bucket.node.path}' requires a concrete source ` +
+          'stack account and region so the S3 same-account/same-region requirement can be verified.',
       );
-      complianceLogBucketName = this.complianceLogBucketName.replace(this.mainRegion, stack.region);
+    }
+    if (stack.account !== this.complianceLogBucketAccount || stack.region !== this.complianceLogBucketRegion) {
+      throw new Error(
+        `cdk-cicd: bucket '${bucket.node.path}' is in ${stack.account}/${stack.region}, but compliance ` +
+          `bucket '${this.complianceLogBucketName}' is in ${this.complianceLogBucketAccount}/` +
+          `${this.complianceLogBucketRegion}. S3 server access logs require the source and destination ` +
+          'buckets to be in the same account and region.',
+      );
     }
 
-    if (node.loggingConfiguration === undefined) {
-      node.loggingConfiguration = {
-        destinationBucketName: complianceLogBucketName,
-        logFilePrefix: Names.uniqueId(node),
-      };
-    } else {
-      const currentLoggingConfig = node.loggingConfiguration as CfnBucket.LoggingConfigurationProperty;
-      if (currentLoggingConfig.logFilePrefix) {
-        node.loggingConfiguration = {
-          destinationBucketName: complianceLogBucketName,
-          logFilePrefix: currentLoggingConfig.logFilePrefix,
-        };
+    const currentLoggingConfig = bucket.loggingConfiguration as CfnBucket.LoggingConfigurationProperty | undefined;
+    bucket.loggingConfiguration = {
+      destinationBucketName: this.complianceLogBucketName,
+      logFilePrefix: currentLoggingConfig?.logFilePrefix ?? Names.uniqueId(bucket),
+      targetObjectKeyFormat: currentLoggingConfig?.targetObjectKeyFormat,
+    };
+
+    // The source now targets the concrete compliance bucket, so same-stack creation ordering matters.
+    this.addSameStackDependencies(bucket, stack);
+  }
+
+  private addSameStackDependencies(source: CfnBucket, sourceStack: Stack): void {
+    if (this.complianceLogBucket === undefined || Stack.of(this.complianceLogBucket) !== sourceStack) {
+      return;
+    }
+
+    for (const dependency of this.complianceLogBucket.node.findAll()) {
+      if (
+        dependency !== source &&
+        (isCfnResourceType(dependency, CfnBucket.CFN_RESOURCE_TYPE_NAME) ||
+          isCfnResourceType(dependency, CfnBucketPolicy.CFN_RESOURCE_TYPE_NAME))
+      ) {
+        source.addDependency(dependency as CfnResource);
       }
     }
   }
+}
 
-  private findStack(node: IConstruct): Stack | undefined {
-    let current: IConstruct | undefined = node;
-    while (current && current.node.scope && !('stackName' in current)) {
-      current = current.node.scope;
-    }
-    return current as Stack | undefined;
-  }
+/** CDK's symbol-backed L1 guard works across separately loaded aws-cdk-lib copies; instanceof does not. */
+function isCfnResourceType(node: IConstruct, resourceType: string): boolean {
+  return CfnResource.isCfnResource(node) && node.cfnResourceType === resourceType;
 }

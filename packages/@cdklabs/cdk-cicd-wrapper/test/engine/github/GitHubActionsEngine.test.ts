@@ -9,14 +9,14 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { App, Aspects, Stack, Stage } from 'aws-cdk-lib';
+import { App, Aspects, Aws, BOOTSTRAP_QUALIFIER_CONTEXT, Stack, Stage } from 'aws-cdk-lib';
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { parse } from 'yaml';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
-import { GitHubActionsConfig, RegionOrder, ResolvedCicdConfig } from '../../../src/config/types';
+import { GitHubActionsConfig, RegionOrder, ResolvedCicdConfig, SynthesizerType } from '../../../src/config/types';
 import { CdkPipelinesStageContext, IStageProvider } from '../../../src/engine/cdkpipelines/CdkPipelinesEngine';
 import { GitHubActionsEngine } from '../../../src/engine/github/GitHubActionsEngine';
 
@@ -42,20 +42,30 @@ function workflowPath(): string {
 }
 
 function config(overrides: Partial<Parameters<typeof defineCICD>[0]> = {}): ResolvedCicdConfig {
+  const githubActions: GitHubActionsConfig = {
+    workflowPath: workflowPath(),
+    environmentProtectionConfigured: true,
+    ...(overrides.githubActions ?? {}),
+  };
   return defineCICD({
     application: 'shop',
     repository: Repository.github('org/shop'),
     stages: ['dev', { name: 'prod', env: { account: '222222222222', region: 'us-east-1' }, manualApproval: true }],
-    githubActions: { workflowPath: workflowPath() },
     ...overrides,
+    githubActions,
   });
 }
 
-function render(overrides: Partial<Parameters<typeof defineCICD>[0]> = {}): {
+function render(
+  overrides: Partial<Parameters<typeof defineCICD>[0]> = {},
+  context: Record<string, unknown> = {},
+): {
   stack: Stack;
   engine: GitHubActionsEngine;
 } {
-  const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+  const stack = new Stack(new App({ context }), 'PipelineStack', {
+    env: { account: '111111111111', region: 'us-west-2' },
+  });
   const engine = new GitHubActionsEngine(stack, 'Cd', { config: config(overrides), stages: new StubStages() });
   // `doBuildPipeline()` (which populates `workflowFile`, incl. applying the JsonPatch calls) runs lazily
   // at synth time -- force it now so `engine.pipeline.workflowFile.toYaml()` reflects the real content.
@@ -75,6 +85,216 @@ describe('GitHubActionsEngine', () => {
     ).toThrow(/Repository\.github/);
   });
 
+  test('rejects APP_STAGING because the installed alpha does not support CDK Pipelines', () => {
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'us-west-2' },
+    });
+    expect(
+      () =>
+        new GitHubActionsEngine(stack, 'Cd', {
+          config: config({ synthesizer: { type: SynthesizerType.APP_STAGING } }),
+          stages: new StubStages(),
+        }),
+    ).toThrow(/GITHUB_ACTIONS cannot use SynthesizerType\.APP_STAGING.*does not support CDK Pipelines.*cross-Stage/);
+  });
+
+  test('requires a concrete pipeline account and region for the literal OIDC role ARN', () => {
+    const stack = new Stack(new App(), 'PipelineStack');
+    expect(
+      () =>
+        new GitHubActionsEngine(stack, 'Cd', {
+          config: config({ stages: ['dev'] }),
+          stages: new StubStages(),
+        }),
+    ).toThrow(/requires a concrete pipeline stack account and region.*literal OIDC role ARN/);
+  });
+
+  test('rejects a concrete pipeline region unknown to the installed CDK region table', () => {
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'unknown-future-1' },
+    });
+    expect(
+      () =>
+        new GitHubActionsEngine(stack, 'Cd', {
+          config: config({ stages: ['dev'] }),
+          stages: new StubStages(),
+        }),
+    ).toThrow(/pipeline region 'unknown-future-1' is not known/);
+  });
+
+  test('rejects a non-commercial pipeline partition unsupported by the installed GitHub OIDC helper', () => {
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'us-gov-west-1' },
+    });
+    expect(
+      () =>
+        new GitHubActionsEngine(stack, 'Cd', {
+          config: config({ stages: ['dev'] }),
+          stages: new StubStages(),
+        }),
+    ).toThrow(/does not support pipeline partition 'aws-us-gov'.*OIDC helper.*audience/);
+  });
+
+  test('requires concrete target account and region values for literal workflow jobs', () => {
+    expect(() =>
+      render({
+        stages: [
+          {
+            name: 'dev',
+            env: { account: Aws.ACCOUNT_ID, region: Aws.REGION },
+          },
+        ],
+      }),
+    ).toThrow(/stage 'dev' requires concrete account and region values.*literal deployment jobs/);
+  });
+
+  test('rejects target Regions in a different AWS partition', () => {
+    expect(() =>
+      render({
+        stages: [
+          {
+            name: 'isolated',
+            env: { account: '111111111111', region: 'us-iso-east-1' },
+          },
+        ],
+      }),
+    ).toThrow(/cannot mix AWS partitions.*'aws'.*stage 'isolated'.*'aws-iso'/);
+  });
+
+  test('rejects target Regions unknown to the installed CDK region table', () => {
+    expect(() =>
+      render({
+        stages: [
+          {
+            name: 'future',
+            env: { account: '111111111111', region: 'unknown-future-1' },
+          },
+        ],
+      }),
+    ).toThrow(/stage 'future' region 'unknown-future-1' is not known/);
+  });
+
+  test('rejects a CodeArtifact Region in another partition', () => {
+    expect(() =>
+      render({
+        stages: ['dev'],
+        codeArtifact: { domain: 'packages', repository: 'npm', region: 'cn-north-1' },
+      }),
+    ).toThrow(/CodeArtifact region 'cn-north-1'.*'aws-cn'.*pipeline partition 'aws'/);
+  });
+
+  test('rejects a CodeArtifact Region unknown to the installed CDK region table', () => {
+    expect(() =>
+      render({
+        stages: ['dev'],
+        codeArtifact: { domain: 'packages', repository: 'npm', region: 'unknown-future-1' },
+      }),
+    ).toThrow(/CodeArtifact region 'unknown-future-1' is not known/);
+  });
+
+  test('rejects a publish-assets authentication Region in another partition', () => {
+    expect(() =>
+      render({
+        stages: ['dev'],
+        githubActions: {
+          workflowPath: workflowPath(),
+          environmentProtectionConfigured: true,
+          publishAssetsAuthRegion: 'cn-north-1',
+        },
+      }),
+    ).toThrow(/publishAssetsAuthRegion 'cn-north-1'.*'aws-cn'.*pipeline is in 'aws'/);
+  });
+
+  test('provisions compliance logging and applies it inside application Stage boundaries', () => {
+    const { stack, engine } = render({
+      stages: ['dev'],
+      complianceLogBucketName: 'shop-compliance-log-bucket',
+    });
+    const pipelineTemplate = Template.fromStack(stack);
+    const destination = Object.values(pipelineTemplate.findResources('AWS::S3::Bucket')).find(
+      (bucket: any) => bucket.Properties.BucketName === 'shop-compliance-log-bucket',
+    ) as any;
+    expect(destination).toBeDefined();
+    expect(destination.Properties.LoggingConfiguration).toBeUndefined();
+
+    const applicationStack = engine.node.findAll().find((construct): construct is Stack => construct instanceof Stack);
+    expect(applicationStack).toBeDefined();
+    Template.fromStack(applicationStack!).hasResourceProperties('AWS::S3::Bucket', {
+      LoggingConfiguration: {
+        DestinationBucketName: 'shop-compliance-log-bucket',
+      },
+    });
+  });
+
+  test('imports an existing compliance destination without synthesizing its bucket or policy', () => {
+    const { stack, engine } = render({
+      stages: ['dev'],
+      complianceLogBucketName: 'shop-existing-compliance-log-bucket',
+      createComplianceLogBucket: false,
+    });
+    const pipelineTemplate = Template.fromStack(stack);
+    pipelineTemplate.resourceCountIs('AWS::S3::Bucket', 0);
+    pipelineTemplate.resourceCountIs('AWS::S3::BucketPolicy', 0);
+
+    const applicationStack = engine.node.findAll().find((construct): construct is Stack => construct instanceof Stack);
+    expect(applicationStack).toBeDefined();
+    Template.fromStack(applicationStack!).hasResourceProperties('AWS::S3::Bucket', {
+      LoggingConfiguration: {
+        DestinationBucketName: 'shop-existing-compliance-log-bucket',
+      },
+    });
+  });
+
+  test('rejects compliance logging for a cross-account or cross-region application stage', () => {
+    expect(() =>
+      render({
+        complianceLogBucketName: 'shop-compliance-log-bucket',
+        stages: [
+          {
+            name: 'prod',
+            env: { account: '222222222222', region: 'us-east-1' },
+          },
+        ],
+      }),
+    ).toThrow(/compliance logging cannot target GitHub Actions stage 'prod'.*same account and region/);
+  });
+
+  test('treats an omitted synthesizer in a legacy resolved config as DEFAULT', () => {
+    const resolved = config({ stages: ['dev'] });
+    const legacy = { ...resolved } as Partial<ResolvedCicdConfig>;
+    Reflect.deleteProperty(legacy, 'synthesizer');
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'us-west-2' },
+    });
+
+    expect(
+      () =>
+        new GitHubActionsEngine(stack, 'Cd', {
+          config: legacy as ResolvedCicdConfig,
+          stages: new StubStages(),
+        }),
+    ).not.toThrow();
+    expect(() => Template.fromStack(stack)).not.toThrow();
+  });
+
+  test('fails closed when manualApproval is configured without acknowledging GitHub environment protection', () => {
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'us-west-2' },
+    });
+    expect(
+      () =>
+        new GitHubActionsEngine(stack, 'Cd', {
+          config: config({
+            githubActions: {
+              workflowPath: workflowPath(),
+              environmentProtectionConfigured: false,
+            },
+          }),
+          stages: new StubStages(),
+        }),
+    ).toThrow(/Configure required reviewers.*environmentProtectionConfigured: true/);
+  });
+
   test('creates a GitHubActionRole with a literal name and trust scoped to the configured repository', () => {
     const { stack } = render();
     const t = Template.fromStack(stack);
@@ -83,7 +303,10 @@ describe('GitHubActionsEngine', () => {
       AssumeRolePolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
           Match.objectLike({
-            Condition: { StringLike: { 'token.actions.githubusercontent.com:sub': ['repo:org/shop:*'] } },
+            Condition: {
+              StringLike: { 'token.actions.githubusercontent.com:sub': ['repo:org/shop:*'] },
+              StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
+            },
           }),
         ]),
       }),
@@ -137,6 +360,9 @@ describe('GitHubActionsEngine', () => {
             Principal: {
               Federated: 'arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com',
             },
+            Condition: Match.objectLike({
+              StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
+            }),
           }),
         ]),
       }),
@@ -148,6 +374,39 @@ describe('GitHubActionsEngine', () => {
     const yaml = engine.pipeline.workflowFile.toYaml();
     expect(yaml).toContain('role-to-assume: arn:aws:iam::111111111111:role/shop-github-role');
     expect(yaml).not.toContain('Token[');
+  });
+
+  test('defaults OIDC authentication to the pipeline Region instead of us-west-2', () => {
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'eu-central-1' },
+    });
+    const engine = new GitHubActionsEngine(stack, 'Cd', {
+      config: config({ stages: ['dev'] }),
+      stages: new StubStages(),
+    });
+    const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
+      jobs: Record<string, { steps: Array<{ name?: string; with?: Record<string, string> }> }>;
+    };
+    const auth = workflow.jobs['Build-Synth'].steps.find((step) => step.name === 'Authenticate Via OIDC Role');
+    expect(auth?.with?.['aws-region']).toBe('eu-central-1');
+  });
+
+  test('builds deployment placeholders under the validated partition and restores ambient process state', () => {
+    const previousPartition = process.env.CDK_AWS_PARTITION;
+    process.env.CDK_AWS_PARTITION = 'aws-cn';
+    try {
+      const { engine } = render({ stages: ['dev'] });
+      const yaml = engine.pipeline.workflowFile.toYaml();
+      expect(process.env.CDK_AWS_PARTITION).toBe('aws-cn');
+      expect(yaml).toContain('CDK_AWS_PARTITION: aws');
+      expect(yaml).not.toContain('arn:aws-cn:');
+    } finally {
+      if (previousPartition === undefined) {
+        delete process.env.CDK_AWS_PARTITION;
+      } else {
+        process.env.CDK_AWS_PARTITION = previousPartition;
+      }
+    }
   });
 
   test('the Synth job runs npm ci + the default scripts + npm run cdk synth with CDK_CICD_MODE=pipeline', () => {
@@ -176,13 +435,165 @@ describe('GitHubActionsEngine', () => {
     }
   });
 
-  test('each stage gets its own GitHub Environment named after the stage', () => {
+  test('keeps a public external-registry Build-Synth container on the anonymous pull path', () => {
+    const image = 'registry.example.com/public/ci-image:stable';
+    const { engine } = render({ ci: { image } });
+    const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
+      jobs: Record<string, { container?: { image?: string; credentials?: unknown } }>;
+    };
+    expect(workflow.jobs['Build-Synth'].container).toEqual({ image });
+  });
+
+  test('renders external-registry credentials as GitHub secret expressions', () => {
+    const image = 'registry.example.com/private/ci-image:stable';
+    const { engine } = render({
+      ci: { image },
+      githubActions: {
+        buildContainerCredentials: {
+          usernameSecretName: 'REGISTRY_USERNAME',
+          passwordSecretName: 'REGISTRY_PASSWORD',
+        },
+      },
+    });
+    const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
+      jobs: Record<
+        string,
+        {
+          container?: {
+            image?: string;
+            credentials?: { username?: string; password?: string };
+          };
+        }
+      >;
+    };
+
+    expect(workflow.jobs['Build-Synth'].container).toEqual({
+      image,
+      credentials: {
+        username: '${{ secrets.REGISTRY_USERNAME }}',
+        password: '${{ secrets.REGISTRY_PASSWORD }}',
+      },
+    });
+  });
+
+  test('rejects GitHub container credentials without ci.image', () => {
+    expect(() =>
+      render({
+        githubActions: {
+          buildContainerCredentials: {
+            usernameSecretName: 'REGISTRY_USERNAME',
+            passwordSecretName: 'REGISTRY_PASSWORD',
+          },
+        },
+      }),
+    ).toThrow(/buildContainerCredentials requires ci\.image/);
+  });
+
+  test.each([
+    ['usernameSecretName', '1STARTS_WITH_NUMBER'],
+    ['usernameSecretName', 'GITHUB_TOKEN'],
+    ['passwordSecretName', 'contains-dash'],
+    ['passwordSecretName', ''],
+  ])('rejects invalid GitHub registry %s %p', (field, secretName) => {
+    expect(() =>
+      render({
+        ci: { image: 'registry.example.com/private/ci-image:stable' },
+        githubActions: {
+          buildContainerCredentials: {
+            usernameSecretName: field === 'usernameSecretName' ? secretName : 'REGISTRY_USERNAME',
+            passwordSecretName: field === 'passwordSecretName' ? secretName : 'REGISTRY_PASSWORD',
+          },
+        },
+      }),
+    ).toThrow(new RegExp(`buildContainerCredentials\\.${field}.*not a valid GitHub secret name`));
+  });
+
+  test('rejects CodeBuild registry credentials in the GitHub Actions engine', () => {
+    expect(() =>
+      render({
+        ci: {
+          image: 'registry.example.com/private/ci-image:stable',
+          codeBuildImageCredentials: {
+            secretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:registry-ABC123',
+          },
+        },
+      }),
+    ).toThrow(/codeBuildImageCredentials is supported only by the CodeBuild engines/);
+  });
+
+  test('accepts a public shorthand image pinned by digest', () => {
+    const image = `ubuntu@sha256:${'a'.repeat(64)}`;
+    const { engine } = render({ ci: { image } });
+    const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
+      jobs: Record<string, { container?: { image?: string; credentials?: unknown } }>;
+    };
+    expect(workflow.jobs['Build-Synth'].container).toEqual({ image });
+  });
+
+  test('rejects a managed CodeBuild image ID because it is not a pullable GitHub job container', () => {
+    expect(() => render({ ci: { image: 'aws/codebuild/standard:7.0' } })).toThrow(
+      /managed CodeBuild ci\.image.*not a pullable OCI job-container reference/,
+    );
+  });
+
+  test('rejects a private ECR Build-Synth container because it is pulled before OIDC authentication', () => {
+    expect(() =>
+      render({
+        ci: { image: '111111111111.dkr.ecr.us-west-2.amazonaws.com/platform/ci:stable' },
+      }),
+    ).toThrow(/cannot use private ECR ci\.image.*before the OIDC authentication step/);
+  });
+
+  test('rejects GitHub username/password credentials for private ECR images', () => {
+    expect(() =>
+      render({
+        ci: { image: '111111111111.dkr.ecr.us-west-2.amazonaws.com/platform/ci:stable' },
+        githubActions: {
+          buildContainerCredentials: {
+            usernameSecretName: 'REGISTRY_USERNAME',
+            passwordSecretName: 'REGISTRY_PASSWORD',
+          },
+        },
+      }),
+    ).toThrow(/cannot use private ECR ci\.image.*do not implement the AWS ECR authorization-token exchange/);
+  });
+
+  test('rejects private ECR Build-Synth containers in isolated partitions before OIDC authentication', () => {
+    expect(() =>
+      render({
+        ci: { image: '111111111111.dkr.ecr.us-iso-east-1.c2s.ic.gov/platform/ci:stable' },
+      }),
+    ).toThrow(/cannot use private ECR ci\.image.*before the OIDC authentication step/);
+  });
+
+  test.each([
+    ['dual-stack', '111111111111.dkr-ecr.us-west-2.on.aws/platform/ci:stable'],
+    ['FIPS', '111111111111.dkr.ecr-fips.us-west-2.amazonaws.com/platform/ci:stable'],
+    ['mixed-case host', '111111111111.DKR.ECR.us-west-2.amazonaws.com/platform/ci:stable'],
+    ['spoofed suffix', '111111111111.dkr.ecr.us-west-2.amazonaws.com.attacker.example/platform/ci:stable'],
+  ])('rejects a %s private ECR Build-Synth endpoint instead of treating it as public', (_case, image) => {
+    expect(() => render({ ci: { image } })).toThrow(
+      /cannot use private ECR ci\.image.*before the OIDC authentication step/,
+    );
+  });
+
+  test('rejects inline registry userinfo without echoing the credential', () => {
+    const password = 'do-not-log-this-password';
+    let failure: unknown;
+    try {
+      render({ ci: { image: `user:${password}@registry.example.com/private/ci-image:stable` } });
+    } catch (error) {
+      failure = error;
+    }
+    expect(String(failure)).toMatch(/must not embed registry credentials/);
+    expect(String(failure)).not.toContain(password);
+  });
+
+  test('acknowledged approval stages continue to use their generated GitHub Environments', () => {
     const { engine } = render();
     const yaml = engine.pipeline.workflowFile.toYaml();
     expect(yaml).toContain('environment: dev');
     expect(yaml).toContain('environment: prod');
-    // The gated ('prod') and ungated ('dev') stage are otherwise rendered the same way -- GitHub
-    // Environments (configured on GitHub's side), not a CDK ManualApprovalStep, are the gate.
   });
 
   test('a multi-region stage becomes one job per region, each its own GitHub Environment', () => {
@@ -240,8 +651,10 @@ describe('GitHubActionsEngine', () => {
     expect(() => Template.fromStack(stack)).not.toThrow();
   });
 
-  test('a codeArtifact config logs in ahead of the build, with credentials configured first', () => {
-    const { engine } = render({ codeArtifact: { domain: 'd', repository: 'r', npmScope: 'cdklabs' } });
+  test('a codeArtifact config logs in after OIDC auth and grants the role the required read permissions', () => {
+    const { stack, engine } = render({
+      codeArtifact: { domain: 'd', repository: 'r', npmScope: 'cdklabs' },
+    });
     const yaml = engine.pipeline.workflowFile.toYaml();
     const loginIdx = yaml.indexOf('aws codeartifact login');
     const credsIdx = yaml.indexOf('Authenticate Via OIDC Role');
@@ -249,27 +662,17 @@ describe('GitHubActionsEngine', () => {
     expect(credsIdx).toBeGreaterThan(-1);
     expect(credsIdx).toBeLessThan(loginIdx);
     expect(yaml).toContain('--namespace cdklabs');
+    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('codeartifact:GetAuthorizationToken');
+    expect(policies).toContain('codeartifact:GetRepositoryEndpoint');
+    expect(policies).toContain('codeartifact:ReadFromRepository');
+    expect(policies).toContain('sts:GetServiceBearerToken');
   });
 
-  test('a proxy config exports HTTP(S)_PROXY ahead of the build', () => {
-    const { engine } = render({
-      proxy: { proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123' },
-    });
-    const yaml = engine.pipeline.workflowFile.toYaml();
-    expect(yaml).toContain('export HTTP_PROXY=');
-    expect(yaml).toContain('curl -Is --connect-timeout 5 https://aws.amazon.com');
-  });
-
-  test('a generic npm registry fetches and masks its token after OIDC auth, then grants exact secret read', () => {
-    const secretArn = 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:npm-token-abc123';
+  test('a proxy config loads and masks its secret after OIDC auth, then persists the proxy environment', () => {
+    const proxySecretArn = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123';
     const { stack, engine } = render({
-      proxy: { proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123' },
-      npmRegistry: {
-        url: 'https://npm.example.com/',
-        scope: 'cdklabs',
-        basicAuthSecretArn: secretArn,
-      },
-      codeArtifact: { domain: 'domain', repository: 'repository', npmScope: 'internal' },
+      proxy: { proxySecretArn },
     });
     const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
       jobs: Record<string, { steps: Array<{ name?: string; run?: string }> }>;
@@ -279,8 +682,44 @@ describe('GitHubActionsEngine', () => {
     const loginIndex = steps.findIndex((step) => step.name === 'Login');
     const buildIndex = steps.findIndex((step) => step.name === 'Build');
     const login = steps[loginIndex].run ?? '';
+
+    expect(credentialsIndex).toBeGreaterThanOrEqual(0);
+    expect(loginIndex).toBeGreaterThan(credentialsIndex);
+    expect(buildIndex).toBeGreaterThan(loginIndex);
+    expect(login).toContain(`--secret-id '${proxySecretArn}' --region 'us-west-2'`);
+    expect(login).toContain("jq -er '.username'");
+    expect(login).toContain('::add-mask::$PROXY_PASSWORD');
+    expect(login).toContain('echo "HTTP_PROXY=$HTTP_PROXY" >> "$GITHUB_ENV"');
+    expect(login).toContain('export NO_PROXY=');
+    expect(login).toContain('curl -Is --connect-timeout 5 https://aws.amazon.com');
+    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('secretsmanager:GetSecretValue');
+    expect(policies).toContain(proxySecretArn);
+  });
+
+  test('a generic npm registry fetches and masks its token after OIDC auth, then grants exact secret read', () => {
+    const secretArn = 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:npm-token-abc123';
+    const proxySecretArn = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123';
+    const { stack, engine } = render({
+      proxy: { proxySecretArn },
+      npmRegistry: {
+        url: 'https://npm.example.com/',
+        scope: 'cdklabs',
+        basicAuthSecretArn: secretArn,
+      },
+      codeArtifact: { domain: 'domain', repository: 'repository', npmScope: 'internal' },
+    });
+    const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
+      jobs: Record<string, { steps: Array<{ name?: string; run?: string; if?: string }> }>;
+    };
+    const steps = workflow.jobs['Build-Synth'].steps;
+    const credentialsIndex = steps.findIndex((step) => step.name === 'Authenticate Via OIDC Role');
+    const loginIndex = steps.findIndex((step) => step.name === 'Login');
+    const buildIndex = steps.findIndex((step) => step.name === 'Build');
+    const login = steps[loginIndex].run ?? '';
+    const proxyFetchIndex = login.indexOf(`--secret-id '${proxySecretArn}'`);
     const proxyIndex = login.indexOf('export HTTP_PROXY=');
-    const fetchIndex = login.indexOf('aws secretsmanager get-secret-value');
+    const fetchIndex = login.indexOf(`--secret-id '${secretArn}'`);
     const maskIndex = login.indexOf('::add-mask::$NPM_AUTH_TOKEN');
     const npmrcIndex = login.indexOf('@cdklabs:registry=https://npm.example.com/');
     const codeArtifactIndex = login.indexOf('aws codeartifact login');
@@ -288,12 +727,25 @@ describe('GitHubActionsEngine', () => {
     expect(credentialsIndex).toBeGreaterThanOrEqual(0);
     expect(loginIndex).toBeGreaterThan(credentialsIndex);
     expect(buildIndex).toBeGreaterThan(loginIndex);
+    expect(proxyFetchIndex).toBeGreaterThanOrEqual(0);
+    expect(proxyIndex).toBeGreaterThan(proxyFetchIndex);
     expect(fetchIndex).toBeGreaterThan(proxyIndex);
     expect(maskIndex).toBeGreaterThan(fetchIndex);
     expect(npmrcIndex).toBeGreaterThan(maskIndex);
     expect(codeArtifactIndex).toBeGreaterThan(npmrcIndex);
     expect(login).toContain(`--secret-id '${secretArn}' --region 'eu-west-1'`);
     expect(login).toContain('//npm.example.com/:_authToken=$NPM_AUTH_TOKEN');
+    expect(login).toContain('export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/cdk-cicd-npmrc"');
+    expect(login).toContain('echo "NPM_CONFIG_USERCONFIG=$NPM_CONFIG_USERCONFIG" >> "$GITHUB_ENV"');
+    expect(login).toContain('> "$NPM_CONFIG_USERCONFIG"');
+    expect(login).not.toContain('./.npmrc');
+    const cleanup = steps.find((step) => step.name === 'Clean up npm credentials');
+    expect(cleanup).toEqual(
+      expect.objectContaining({
+        if: 'always()',
+        run: 'if [ -n "${NPM_CONFIG_USERCONFIG:-}" ]; then rm -f "$NPM_CONFIG_USERCONFIG"; fi',
+      }),
+    );
 
     Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: Match.objectLike({
@@ -307,28 +759,136 @@ describe('GitHubActionsEngine', () => {
     });
   });
 
-  test('a secret-backed deploy-role ExternalId authenticates the Synth job and grants secret read', () => {
+  test('rejects a deploy-role ExternalId because the installed GitHub engine cannot forward it', () => {
     const secretArn = 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:deploy-external-id-abc123';
-    const { stack, engine } = render({
-      deployRoleExternalId: `resolve:secretsmanager:${secretArn}`,
-      stages: [{ name: 'prod', deployment: { deployRole: 'arn:aws:iam::222222222222:role/Deploy' } }],
-    });
-    const yaml = engine.pipeline.workflowFile.toYaml();
-
-    expect(yaml.slice(yaml.indexOf('Build-Synth:'), yaml.indexOf('Assets-'))).toContain('Authenticate Via OIDC Role');
-    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
-    expect(policies).toContain('secretsmanager:GetSecretValue');
-    expect(policies).toContain(secretArn);
+    expect(() =>
+      render({
+        deployRoleExternalId: `resolve:secretsmanager:${secretArn}`,
+        stages: [{ name: 'prod', deployment: { deployRole: 'arn:aws:iam::222222222222:role/Deploy' } }],
+      }),
+    ).toThrow(/GITHUB_ACTIONS cannot honor deploy-role ExternalIds.*prod/);
   });
 
-  test('without AWS-backed install features the Synth job needs no extra credential step', () => {
+  test('trims and specializes configured deployment-role placeholders before granting AssumeRole', () => {
+    const deployRole =
+      '  arn:${AWS::Partition}:iam::${AWS::AccountId}:role/Custom-${Qualifier}-${AWS::AccountId}-${AWS::Region}  ';
+    const { stack } = render({
+      qualifier: 'customq',
+      stages: [
+        {
+          name: 'prod',
+          env: { account: '222222222222', regions: ['eu-west-1', 'us-east-1'] },
+          deployment: { deployRole },
+        },
+      ],
+    });
+    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('sts:AssumeRole');
+    expect(policies).toContain('arn:aws:iam::222222222222:role/Custom-customq-222222222222-eu-west-1');
+    expect(policies).toContain('arn:aws:iam::222222222222:role/Custom-customq-222222222222-us-east-1');
+    expect(policies).not.toContain('${Qualifier}');
+    expect(policies).not.toContain('${AWS::AccountId}');
+    expect(policies).not.toContain('${AWS::Region}');
+  });
+
+  test('uses the CDK bootstrap qualifier context when no config qualifier is resolved', () => {
+    const { stack } = render(
+      {
+        application: undefined,
+        stages: [
+          {
+            name: 'prod',
+            env: { account: '222222222222', region: 'eu-west-1' },
+            deployment: {
+              deployRole: 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/Custom-${Qualifier}-${AWS::Region}',
+            },
+          },
+        ],
+      },
+      { [BOOTSTRAP_QUALIFIER_CONTEXT]: 'ctxqual' },
+    );
+
+    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('arn:aws:iam::222222222222:role/Custom-ctxqual-eu-west-1');
+    expect(policies).not.toContain('Custom-hnb659fds-eu-west-1');
+  });
+
+  test('rejects a custom deployment-role name containing cfn-exec because the dependency rewrites it', () => {
+    expect(() =>
+      render({
+        stages: [
+          {
+            name: 'prod',
+            env: { account: '222222222222', region: 'eu-west-1' },
+            deployment: { deployRole: 'arn:aws:iam::222222222222:role/Custom-cfn-exec-Role' },
+          },
+        ],
+      }),
+    ).toThrow(/GITHUB_ACTIONS deployRole.*prod.*cannot contain literal `cfn-exec`.*rewrites.*`deploy`/);
+  });
+
+  test('rejects cfn-exec introduced by role placeholder specialization', () => {
+    expect(() =>
+      render({
+        qualifier: 'cfn-exec',
+        stages: [
+          {
+            name: 'prod',
+            env: { account: '222222222222', region: 'eu-west-1' },
+            deployment: {
+              deployRole: 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/Custom-${Qualifier}-Role',
+            },
+          },
+        ],
+      }),
+    ).toThrow(/GITHUB_ACTIONS deployRole.*prod.*cannot contain literal `cfn-exec`.*rewrites.*`deploy`/);
+  });
+
+  test('rejects cfn-exec in the effective qualifier when using the default deploy role', () => {
+    expect(() =>
+      render({
+        qualifier: 'cfn-exec',
+        stages: [{ name: 'prod', env: { account: '222222222222', region: 'eu-west-1' } }],
+      }),
+    ).toThrow(/GITHUB_ACTIONS deployRole.*prod.*cannot contain literal `cfn-exec`.*rewrites.*`deploy`/);
+  });
+
+  test('Build-Synth always authenticates even without AWS-backed install features', () => {
     const { engine } = render();
-    const yaml = engine.pipeline.workflowFile.toYaml();
-    // Exactly one "Authenticate Via OIDC Role" step in the Synth job: the one cdk-pipelines-github's own
-    // asset-publish/deploy jobs already add, not a second one this engine patched in.
-    const synthJob = yaml.slice(yaml.indexOf('Build-Synth:'), yaml.indexOf('Assets-'));
-    expect(synthJob).not.toContain('Authenticate Via OIDC Role');
-    expect(synthJob).not.toContain('Login');
+    const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
+      jobs: Record<string, { steps: Array<{ name?: string; with?: Record<string, string> }> }>;
+    };
+    const credentialSteps = workflow.jobs['Build-Synth'].steps.filter(
+      (step) => step.name === 'Authenticate Via OIDC Role',
+    );
+    expect(credentialSteps).toHaveLength(1);
+    expect(credentialSteps[0].with).toEqual(
+      expect.objectContaining({
+        'aws-region': 'us-west-2',
+        'role-to-assume': 'arn:aws:iam::111111111111:role/shop-github-role',
+      }),
+    );
+  });
+
+  test('registry secrets grant the OIDC role kms:Decrypt only on configured customer-managed keys', () => {
+    const proxyKeyArn = 'arn:aws:kms:us-west-2:111111111111:key/proxy-key';
+    const npmKeyArn = 'arn:aws:kms:eu-west-1:111111111111:key/npm-key';
+    const { stack } = render({
+      proxy: {
+        proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy',
+        encryptionKeyArn: proxyKeyArn,
+      },
+      npmRegistry: {
+        url: 'https://npm.example.com/',
+        basicAuthSecretArn: 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:npm',
+        encryptionKeyArn: npmKeyArn,
+      },
+    });
+
+    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('kms:Decrypt');
+    expect(policies).toContain(proxyKeyArn);
+    expect(policies).toContain(npmKeyArn);
   });
 
   test('warmAccountsFromSsm scans SSM in the Login step and exports the ACCOUNT_<STAGE> loop', () => {
@@ -361,6 +921,24 @@ describe('GitHubActionsEngine', () => {
         ]),
       }),
     });
+  });
+
+  test('grants the OIDC role target bootstrap lookup AssumeRole and version-parameter access', () => {
+    const { stack } = render({
+      qualifier: 'customq',
+      stages: [
+        {
+          name: 'prod',
+          env: { account: '222222222222', regions: ['eu-west-1', 'us-east-1'] },
+        },
+      ],
+    });
+    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('sts:AssumeRole');
+    expect(policies).toContain('cdk-customq-lookup-role-222222222222-eu-west-1');
+    expect(policies).toContain('cdk-customq-lookup-role-222222222222-us-east-1');
+    expect(policies).toContain('ssm:GetParameter');
+    expect(policies).toContain('parameter/cdk-bootstrap/customq/version');
   });
 
   test('without warmAccountsFromSsm neither the SSM scan nor the ssm:GetParametersByPath statement is present', () => {

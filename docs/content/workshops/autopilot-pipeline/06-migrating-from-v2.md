@@ -47,9 +47,9 @@ new MyStack(app, 'my-app', {
 ```
 
 `uppercaseStage` matches Blueprint's *default* stages (`RES`/`DEV`/`INT` — no `PROD` unless you called
-`.defineStages(...)` yourself). If your Blueprint stages were
-lowercase or custom-case, drop it (the stage is used verbatim), or set `stackName` to your literal Blueprint
-name.
+`.defineStages(...)` yourself). Lowercase custom stages already match the helper's default. For a
+custom-case id such as `Gamma`, use `{ stageFirst: true, preserveStageCase: true }`, or set `stackName`
+to your literal Blueprint name.
 
 ## Verify before switching the pipeline over
 

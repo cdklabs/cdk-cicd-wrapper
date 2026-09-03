@@ -77,6 +77,24 @@ describe('m3-config-discovery: load + stageByName', () => {
     expect(cfg?.application).toBe('from-ts');
     expect(cfg?.stages[0].name).toBe('dev');
   });
+
+  test('propagates a syntax error from an existing config', () => {
+    const dir = tempDir();
+    fs.writeFileSync(path.join(dir, 'cicd.config.js'), 'module.exports.default = {');
+    expect(() => load(dir)).toThrow();
+  });
+
+  test('propagates an import error from an existing config', () => {
+    const dir = tempDir();
+    fs.writeFileSync(path.join(dir, 'cicd.config.js'), "require('./missing-config-dependency');");
+    expect(() => load(dir)).toThrow(/missing-config-dependency/);
+  });
+
+  test('propagates validation failures raised while evaluating an existing config', () => {
+    const dir = tempDir();
+    fs.writeFileSync(path.join(dir, 'cicd.config.js'), "throw new Error('config validation failed');");
+    expect(() => load(dir)).toThrow(/config validation failed/);
+  });
 });
 
 describe('m6-container: loadDeployment (Repo 2 deploy.config discovery)', () => {

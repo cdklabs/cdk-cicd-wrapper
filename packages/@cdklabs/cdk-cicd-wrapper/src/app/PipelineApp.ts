@@ -61,10 +61,12 @@ export class PipelineApp extends App {
 
   public constructor(props: PipelineAppProps) {
     const config = props.config;
-    // The engine-owned pipeline stack uses the standard bootstrap roles even when application
-    // stages opt into APP_STAGING. Thread the configured qualifier so self-update IAM and the stack's
-    // own cloud assembly name the same bootstrap roles.
-    super({ defaultStackSynthesizer: new DefaultStackSynthesizer({ qualifier: config.qualifier }) });
+    // The engine-owned pipeline stack is infrastructure in the hub account, not an application stage.
+    // Do not apply config.qualifier here. Leaving the synthesizer qualifier unset still lets CDK honor
+    // the hub app's standard @aws-cdk/core:bootstrapQualifier context contract.
+    super({
+      defaultStackSynthesizer: new DefaultStackSynthesizer(),
+    });
 
     const name = `${config.application ?? DEFAULT_APPLICATION}-pipeline`;
 

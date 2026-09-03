@@ -60,6 +60,10 @@ CloudFormation execution role — the wrapper threads them into synth and deploy
     Forcing a controlled role per stage is exactly what enterprise "deploy only through role X" policies
     need. Container mode (chapter 5) uses the same `deployment.deployRole` shape on its deploy targets.
 
+The CodeBuild project assumes `deployment.deployRole`; that assumed deployment role passes
+`cfnExecutionRole` to CloudFormation. The deployment role therefore needs `iam:PassRole` on the
+execution role. The CodeBuild project role does not need that direct grant.
+
 ## Controlling the CloudFormation stack name
 
 Autopilot synthesizes the same `bin/` once per stage, so a bare `new MyStack(app, 'my-app')` deploys the same
