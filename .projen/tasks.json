@@ -50,6 +50,24 @@
         }
       ]
     },
+    "check:samples": {
+      "name": "check:samples",
+      "description": "Audit samples/ for dependency CVEs and EOL/not-latest Lambda runtimes",
+      "steps": [
+        {
+          "exec": "bash test/harness/check-samples.sh"
+        }
+      ]
+    },
+    "check:samples:test": {
+      "name": "check:samples:test",
+      "description": "Unit-test the sample-harness runtime policy logic",
+      "steps": [
+        {
+          "exec": "node --test test/harness/check-samples.test.mjs"
+        }
+      ]
+    },
     "clobber": {
       "name": "clobber",
       "description": "hard resets to HEAD of origin and cleans the local repo",
