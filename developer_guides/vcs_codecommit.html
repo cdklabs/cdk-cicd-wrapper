@@ -1128,6 +1128,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#repository-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repository creation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pushing-to-the-repository" class="md-nav__link">
     <span class="md-ellipsis">
       Pushing to the repository
@@ -2578,6 +2587,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#repository-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repository creation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pushing-to-the-repository" class="md-nav__link">
     <span class="md-ellipsis">
       Pushing to the repository
@@ -2630,7 +2648,13 @@
 <p>Pass a second argument to track a different branch:</p>
 <div class="highlight"><pre><span></span><code><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-repo'</span><span class="p">,</span><span class="w"> </span><span class="s1">'trunk'</span><span class="p">),</span>
 </code></pre></div>
-<p><code>Repository.codecommit(...)</code> is a bare source selector — it only names the CodeCommit repository the pipeline reads from. Unlike Blueprint (0.x)'s <code>RepositorySource.codecommit(...)</code>, there is no <code>enableCodeGuruReviewer</code>/<code>enablePullRequestChecks</code> option: Amazon CodeGuru Reviewer pull-request automation is <strong>not</strong> part of Autopilot. If you relied on that, <code>cdk-cicd security-scan</code>/<code>cdk-cicd check</code> (Bandit, Semgrep, ShellCheck, dependency audit — see the <a href="security.html">Security guide</a>) run in the pipeline's CI build instead, but they are not PR-time checks against a CodeCommit pull request specifically.</p>
+<h2 id="repository-creation">Repository creation</h2>
+<p>By default, <code>Repository.codecommit('my-repo')</code> <strong>creates</strong> the CodeCommit repository as part of the pipeline stack — so a single <code>cdk-cicd deploy-ci</code> gives you both the pipeline and an empty repository to push to. This matches the Blueprint (0.x) behaviour, where naming a CodeCommit source provisioned the repository for you.</p>
+<p>If the repository already exists (for example, it is managed elsewhere, or shared across pipelines), pass <code>{ existing: true }</code> to import it by name instead of creating it:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-repo'</span><span class="p">,</span><span class="w"> </span><span class="s1">'main'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">existing</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">}),</span>
+</code></pre></div>
+<p>An imported repository must already exist at deploy time; a created one is provisioned with the CDK default removal policy (retained on stack deletion, so your source history is not lost).</p>
+<p><code>Repository.codecommit(...)</code> names the CodeCommit repository the pipeline reads from. Unlike Blueprint (0.x)'s <code>RepositorySource.codecommit(...)</code>, there is no <code>enableCodeGuruReviewer</code>/<code>enablePullRequestChecks</code> option: Amazon CodeGuru Reviewer pull-request automation is <strong>not</strong> part of Autopilot. If you relied on that, <code>cdk-cicd security-scan</code>/<code>cdk-cicd check</code> (Bandit, Semgrep, ShellCheck, dependency audit — see the <a href="security.html">Security guide</a>) run in the pipeline's CI build instead, but they are not PR-time checks against a CodeCommit pull request specifically.</p>
 <h2 id="pushing-to-the-repository">Pushing to the repository</h2>
 <p>Once the pipeline is deployed (<code>cdk-cicd deploy-ci</code>), install <code>git-remote-codecommit</code> locally and push your branch:</p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>pip3<span class="w"> </span>install<span class="w"> </span>git-remote-codecommit
@@ -2664,7 +2688,7 @@ git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-09-01
+    2026-09-03
   </span>
 
     
