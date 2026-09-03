@@ -14,6 +14,21 @@ export enum RepositorySourceType {
   S3 = 's3',
 }
 
+/** Options for a CodeCommit source. */
+export interface CodeCommitSourceOptions {
+  /**
+   * Whether the CodeCommit repository already exists.
+   *
+   * When `false` (the default), the pipeline **creates** the CodeCommit repository as part of its own
+   * stack -- matching the Blueprint (0.x) behaviour, where naming a CodeCommit source provisioned the
+   * repository for you. When `true`, the repository must already exist and the pipeline only imports
+   * it by name.
+   *
+   * @default false
+   */
+  readonly existing?: boolean;
+}
+
 /**
  * The source repository for an Autopilot pipeline. Constructed through the static factories rather than
  * directly, so the shape a caller writes (`Repository.github('org/repo')`) is the shape that reads
@@ -25,9 +40,12 @@ export class Repository {
     return new Repository(RepositorySourceType.GITHUB, name, branch);
   }
 
-  /** An AWS CodeCommit repository by name. */
-  public static codecommit(name: string, branch?: string): Repository {
-    return new Repository(RepositorySourceType.CODECOMMIT, name, branch);
+  /**
+   * An AWS CodeCommit repository by name. By default the pipeline **creates** the repository (Blueprint
+   * parity); pass `{ existing: true }` to import a repository that already exists instead.
+   */
+  public static codecommit(name: string, branch?: string, options?: CodeCommitSourceOptions): Repository {
+    return new Repository(RepositorySourceType.CODECOMMIT, name, branch, undefined, options?.existing ?? false);
   }
 
   /** A provider reachable through an existing CodeStar/CodeConnections connection ARN. */
@@ -48,11 +66,23 @@ export class Repository {
   public readonly branch: string;
   /** The CodeStar/CodeConnections connection ARN, set only for `CODESTAR_CONNECTION`. */
   public readonly connectionArn?: string;
+  /**
+   * For a CodeCommit source, whether the repository already exists (import-only). When `false` the
+   * pipeline creates it. Unset for non-CodeCommit sources.
+   */
+  public readonly existing?: boolean;
 
-  private constructor(repositoryType: RepositorySourceType, name: string, branch?: string, connectionArn?: string) {
+  private constructor(
+    repositoryType: RepositorySourceType,
+    name: string,
+    branch?: string,
+    connectionArn?: string,
+    existing?: boolean,
+  ) {
     this.repositoryType = repositoryType;
     this.name = name;
     this.branch = branch ?? 'main';
     this.connectionArn = connectionArn;
+    this.existing = existing;
   }
 }

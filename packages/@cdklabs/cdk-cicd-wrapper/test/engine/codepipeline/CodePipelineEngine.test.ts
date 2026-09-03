@@ -122,9 +122,32 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
     });
   });
 
-  test('a CodeCommit repository yields a CodeCommit source action for that repo', () => {
+  test('a CodeCommit repository is created by default (Blueprint parity) and wired as the source', () => {
     const config = defineCICD({ application: 'shop', repository: Repository.codecommit('shop-repo'), stages: ['dev'] });
-    render(config).hasResourceProperties('AWS::CodePipeline::Pipeline', {
+    const template = render(config);
+    // Blueprint parity: naming a CodeCommit source provisions the repository in the pipeline stack.
+    template.hasResourceProperties('AWS::CodeCommit::Repository', { RepositoryName: 'shop-repo' });
+    // ...and the pipeline's Source stage reads from it via a CodeCommit source action.
+    template.hasResourceProperties('AWS::CodePipeline::Pipeline', {
+      Stages: Match.arrayWith([
+        Match.objectLike({
+          Name: 'Source',
+          Actions: Match.arrayWith([Match.objectLike({ ActionTypeId: Match.objectLike({ Provider: 'CodeCommit' }) })]),
+        }),
+      ]),
+    });
+  });
+
+  test('an existing CodeCommit repository is imported, not created', () => {
+    const config = defineCICD({
+      application: 'shop',
+      repository: Repository.codecommit('shop-repo', undefined, { existing: true }),
+      stages: ['dev'],
+    });
+    const template = render(config);
+    // `existing: true` imports by name -- no CodeCommit repository resource is synthesized.
+    template.resourceCountIs('AWS::CodeCommit::Repository', 0);
+    template.hasResourceProperties('AWS::CodePipeline::Pipeline', {
       Stages: Match.arrayWith([
         Match.objectLike({
           Name: 'Source',

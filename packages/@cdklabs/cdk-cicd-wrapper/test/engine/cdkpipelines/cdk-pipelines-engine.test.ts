@@ -429,4 +429,26 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
       expect(Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-S1'))).toHaveLength(0);
     });
   });
+
+  describe('CodeCommit source repository', () => {
+    function renderWithRepo(repo: Repository): Template {
+      const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+      const engine = new CdkPipelinesEngine(stack, 'Cd', {
+        config: defineCICD({ application: 'shop', repository: repo, stages: ['dev'] }),
+        stages: new StubStages(),
+      });
+      void engine;
+      return Template.fromStack(stack);
+    }
+
+    test('is created by default (Blueprint parity)', () => {
+      const t = renderWithRepo(Repository.codecommit('shop'));
+      t.hasResourceProperties('AWS::CodeCommit::Repository', { RepositoryName: 'shop' });
+    });
+
+    test('is imported, not created, when existing is true', () => {
+      const t = renderWithRepo(Repository.codecommit('shop', undefined, { existing: true }));
+      t.resourceCountIs('AWS::CodeCommit::Repository', 0);
+    });
+  });
 });

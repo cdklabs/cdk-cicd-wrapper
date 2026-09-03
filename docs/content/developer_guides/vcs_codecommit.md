@@ -22,7 +22,19 @@ Pass a second argument to track a different branch:
 repository: Repository.codecommit('my-repo', 'trunk'),
 ```
 
-`Repository.codecommit(...)` is a bare source selector — it only names the CodeCommit repository the pipeline reads from. Unlike Blueprint (0.x)'s `RepositorySource.codecommit(...)`, there is no `enableCodeGuruReviewer`/`enablePullRequestChecks` option: Amazon CodeGuru Reviewer pull-request automation is **not** part of Autopilot. If you relied on that, `cdk-cicd security-scan`/`cdk-cicd check` (Bandit, Semgrep, ShellCheck, dependency audit — see the [Security guide](./security.md)) run in the pipeline's CI build instead, but they are not PR-time checks against a CodeCommit pull request specifically.
+## Repository creation
+
+By default, `Repository.codecommit('my-repo')` **creates** the CodeCommit repository as part of the pipeline stack — so a single `cdk-cicd deploy-ci` gives you both the pipeline and an empty repository to push to. This matches the Blueprint (0.x) behaviour, where naming a CodeCommit source provisioned the repository for you.
+
+If the repository already exists (for example, it is managed elsewhere, or shared across pipelines), pass `{ existing: true }` to import it by name instead of creating it:
+
+```typescript
+repository: Repository.codecommit('my-repo', 'main', { existing: true }),
+```
+
+An imported repository must already exist at deploy time; a created one is provisioned with the CDK default removal policy (retained on stack deletion, so your source history is not lost).
+
+`Repository.codecommit(...)` names the CodeCommit repository the pipeline reads from. Unlike Blueprint (0.x)'s `RepositorySource.codecommit(...)`, there is no `enableCodeGuruReviewer`/`enablePullRequestChecks` option: Amazon CodeGuru Reviewer pull-request automation is **not** part of Autopilot. If you relied on that, `cdk-cicd security-scan`/`cdk-cicd check` (Bandit, Semgrep, ShellCheck, dependency audit — see the [Security guide](./security.md)) run in the pipeline's CI build instead, but they are not PR-time checks against a CodeCommit pull request specifically.
 
 ## Pushing to the repository
 

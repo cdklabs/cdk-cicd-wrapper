@@ -15,7 +15,6 @@
 
 import { Arn, ArnFormat, AspectPriority, Aspects, Environment, Stack, Stage } from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as pipelines from 'aws-cdk-lib/pipelines';
@@ -27,6 +26,7 @@ import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspe
 import { SupportResources } from '../../support/SupportResources';
 import { resolveVpcNetworking } from '../../support/Vpc';
 import { defaultCiCommands } from '../ci-commands';
+import { resolveCodeCommitRepository } from '../codepipeline/source';
 
 /** Context passed to the stage factory for one deployment stage. */
 export interface CdkPipelinesStageContext {
@@ -60,10 +60,7 @@ export interface CdkPipelinesEngineProps {
 function sourceFor(scope: Construct, repository: Repository): pipelines.CodePipelineSource {
   switch (repository.repositoryType) {
     case RepositorySourceType.CODECOMMIT:
-      return pipelines.CodePipelineSource.codeCommit(
-        codecommit.Repository.fromRepositoryName(scope, 'SourceRepo', repository.name),
-        repository.branch,
-      );
+      return pipelines.CodePipelineSource.codeCommit(resolveCodeCommitRepository(scope, repository), repository.branch);
     case RepositorySourceType.GITHUB:
     case RepositorySourceType.CODESTAR_CONNECTION:
       // Both need a CodeStar (CodeConnections) connection ARN to read the git provider.
