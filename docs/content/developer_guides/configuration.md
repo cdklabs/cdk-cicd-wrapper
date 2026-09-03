@@ -91,6 +91,8 @@ Repository.codecommit('my-repo'); // AWS CodeCommit
 Repository.codestarConnection('my-org/my-app', connArn); // any provider via an existing connection ARN
 Repository.s3('my-bucket/my-key'); // a versioned S3 object
 // each factory takes an optional trailing `branch` argument, e.g. Repository.github('my-org/my-app', 'develop')
+// CodeCommit is CREATED by default; pass { existing: true } to import an existing repo instead:
+Repository.codecommit('my-repo', 'main', { existing: true });
 ```
 
 When `engine` is `GITHUB_ACTIONS`, `repository` must be `Repository.github(...)` — the workflow runs

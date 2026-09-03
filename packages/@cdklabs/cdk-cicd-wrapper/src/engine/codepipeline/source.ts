@@ -13,6 +13,21 @@ import {
 import { Construct } from 'constructs';
 import { Repository, RepositorySourceType } from '../../config/repository';
 
+/**
+ * Resolve the CodeCommit repository for a source, creating it by default (Blueprint parity) or importing
+ * it when the caller passed `Repository.codecommit(name, branch, { existing: true })`.
+ *
+ * A created repository is provisioned in the pipeline's own stack; an imported one must already exist.
+ * The construct id is stable (`SourceRepo`) so the create/import switch does not churn the logical id of
+ * downstream resources that reference it.
+ */
+export function resolveCodeCommitRepository(scope: Construct, repository: Repository): codecommit.IRepository {
+  if (repository.existing) {
+    return codecommit.Repository.fromRepositoryName(scope, 'SourceRepo', repository.name);
+  }
+  return new codecommit.Repository(scope, 'SourceRepo', { repositoryName: repository.name });
+}
+
 /** Build the pipeline's source action for the configured repository, writing into `output`. */
 export function buildSourceAction(
   scope: Construct,
@@ -35,7 +50,7 @@ export function buildSourceAction(
     case RepositorySourceType.CODECOMMIT:
       return new actions.CodeCommitSourceAction({
         actionName: 'Source',
-        repository: codecommit.Repository.fromRepositoryName(scope, 'SourceRepo', repository.name),
+        repository: resolveCodeCommitRepository(scope, repository),
         branch: repository.branch,
         output,
       });

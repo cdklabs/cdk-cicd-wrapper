@@ -21,6 +21,16 @@ describe('m3-config: Repository', () => {
     expect(Repository.s3('bucket/key').repositoryType).toBe(RepositorySourceType.S3);
   });
 
+  test('codecommit creates the repository by default (existing is false)', () => {
+    expect(Repository.codecommit('svc').existing).toBe(false);
+  });
+
+  test('codecommit honours the branch positional and an existing-import option together', () => {
+    const r = Repository.codecommit('svc', 'trunk', { existing: true });
+    expect(r.branch).toBe('trunk');
+    expect(r.existing).toBe(true);
+  });
+
   test('codestarConnection is the only factory that records a connection ARN', () => {
     const arn = 'arn:aws:codestar-connections:us-west-2:111111111111:connection/abc';
     const r = Repository.codestarConnection('org/repo', arn);

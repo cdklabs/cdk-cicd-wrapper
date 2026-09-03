@@ -1934,6 +1934,44 @@ Defaults to the pipeline's own region.
 
 ---
 
+### CodeCommitSourceOptions <a name="CodeCommitSourceOptions" id="@cdklabs/cdk-cicd-wrapper.CodeCommitSourceOptions"></a>
+
+Options for a CodeCommit source.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.CodeCommitSourceOptions.Initializer"></a>
+
+```typescript
+import { CodeCommitSourceOptions } from '@cdklabs/cdk-cicd-wrapper'
+
+const codeCommitSourceOptions: CodeCommitSourceOptions = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeCommitSourceOptions.property.existing">existing</a></code> | <code>boolean</code> | Whether the CodeCommit repository already exists. |
+
+---
+
+##### `existing`<sup>Optional</sup> <a name="existing" id="@cdklabs/cdk-cicd-wrapper.CodeCommitSourceOptions.property.existing"></a>
+
+```typescript
+public readonly existing: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Whether the CodeCommit repository already exists.
+
+When `false` (the default), the pipeline **creates** the CodeCommit repository as part of its own
+stack -- matching the Blueprint (0.x) behaviour, where naming a CodeCommit source provisioned the
+repository for you. When `true`, the repository must already exist and the pipeline only imports
+it by name.
+
+---
+
 ### CodePipelineEngineProps <a name="CodePipelineEngineProps" id="@cdklabs/cdk-cicd-wrapper.CodePipelineEngineProps"></a>
 
 Options for the CodePipeline engine.
@@ -4980,10 +5018,13 @@ cleanly in every jsii language.
 ```typescript
 import { Repository } from '@cdklabs/cdk-cicd-wrapper'
 
-Repository.codecommit(name: string, branch?: string)
+Repository.codecommit(name: string, branch?: string, options?: CodeCommitSourceOptions)
 ```
 
 An AWS CodeCommit repository by name.
+
+By default the pipeline **creates** the repository (Blueprint
+parity); pass `{ existing: true }` to import a repository that already exists instead.
 
 ###### `name`<sup>Required</sup> <a name="name" id="@cdklabs/cdk-cicd-wrapper.Repository.codecommit.parameter.name"></a>
 
@@ -4994,6 +5035,12 @@ An AWS CodeCommit repository by name.
 ###### `branch`<sup>Optional</sup> <a name="branch" id="@cdklabs/cdk-cicd-wrapper.Repository.codecommit.parameter.branch"></a>
 
 - *Type:* string
+
+---
+
+###### `options`<sup>Optional</sup> <a name="options" id="@cdklabs/cdk-cicd-wrapper.Repository.codecommit.parameter.options"></a>
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.CodeCommitSourceOptions">CodeCommitSourceOptions</a>
 
 ---
 
@@ -5077,6 +5124,7 @@ A versioned S3 object (`bucket/key`) as the source.
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.Repository.property.name">name</a></code> | <code>string</code> | Provider-specific identifier: `owner/repo` for GitHub, the repository/bucket name otherwise. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.Repository.property.repositoryType">repositoryType</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.RepositorySourceType">RepositorySourceType</a></code> | The kind of source. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.Repository.property.connectionArn">connectionArn</a></code> | <code>string</code> | The CodeStar/CodeConnections connection ARN, set only for `CODESTAR_CONNECTION`. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.Repository.property.existing">existing</a></code> | <code>boolean</code> | For a CodeCommit source, whether the repository already exists (import-only). |
 
 ---
 
@@ -5127,6 +5175,21 @@ public readonly connectionArn: string;
 - *Type:* string
 
 The CodeStar/CodeConnections connection ARN, set only for `CODESTAR_CONNECTION`.
+
+---
+
+##### `existing`<sup>Optional</sup> <a name="existing" id="@cdklabs/cdk-cicd-wrapper.Repository.property.existing"></a>
+
+```typescript
+public readonly existing: boolean;
+```
+
+- *Type:* boolean
+
+For a CodeCommit source, whether the repository already exists (import-only).
+
+When `false` the
+pipeline creates it. Unset for non-CodeCommit sources.
 
 ---
 

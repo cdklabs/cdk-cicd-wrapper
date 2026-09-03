@@ -32,7 +32,7 @@ export { CdkCicd, AttachOptions } from './runtime/attach';
 // being a free function with a union-typed input, is invisible to jsii (Python/Java authoring parity
 // is a later concern -- design open-question O1); the input interfaces (CicdConfigProps/StageInput/
 // StageEnvInput) stay internal to ./config/define for the same union reason.
-export { Repository, RepositorySourceType } from './config/repository';
+export { Repository, RepositorySourceType, CodeCommitSourceOptions } from './config/repository';
 // Container mode (Repo 1): build & push a config-agnostic deployer image to ECR (two-repo split).
 export { BuildImage, BuildImageKind, DockerBuildProps, ImageTagStrategy } from './config/build-image';
 export {
