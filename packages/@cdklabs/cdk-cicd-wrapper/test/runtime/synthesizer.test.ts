@@ -6,6 +6,7 @@
 // the synthesized stack's roles, read from the environment (never from cicd.config).
 
 import { App, Stack } from 'aws-cdk-lib';
+import { SynthesizerType } from '../../src/config/types';
 import {
   CFN_EXEC_ROLE_FLAG,
   DEPLOY_ROLE_EXTERNAL_ID_FLAG,
@@ -17,10 +18,14 @@ const DEPLOY_ARN = 'arn:aws:iam::111111111111:role/ForcedDeploy';
 const CFN_ARN = 'arn:aws:iam::111111111111:role/ForcedCfnExec';
 
 /** Synthesize a stack whose synthesizer is resolveSynthesizer() under the given role env, return its roles. */
-function synthWithRoleEnv(env: { deploy?: string; cfn?: string; externalId?: string }): {
+function synthWithRoleEnv(
+  env: { deploy?: string; cfn?: string; externalId?: string },
+  config: Record<string, unknown> = {},
+): {
   assumeRoleArn?: string;
   cfnRoleArn?: string;
   assumeRoleExternalId?: string;
+  stackNames: string[];
 } {
   const prev = {
     d: process.env[DEPLOY_ROLE_FLAG],
@@ -35,14 +40,16 @@ function synthWithRoleEnv(env: { deploy?: string; cfn?: string; externalId?: str
   try {
     const app = new App();
     const stack = new Stack(app, 'S', {
-      synthesizer: resolveSynthesizer({}),
+      synthesizer: resolveSynthesizer(config),
       env: { account: '111111111111', region: 'us-west-2' },
     });
-    const artifact = app.synth().getStackArtifact(stack.artifactId);
+    const assembly = app.synth();
+    const artifact = assembly.getStackArtifact(stack.artifactId);
     return {
       assumeRoleArn: artifact.assumeRoleArn,
       cfnRoleArn: artifact.cloudFormationExecutionRoleArn,
       assumeRoleExternalId: artifact.assumeRoleExternalId,
+      stackNames: assembly.stacks.map((candidate) => candidate.stackName),
     };
   } finally {
     set(DEPLOY_ROLE_FLAG, prev.d);
@@ -79,5 +86,83 @@ describe('m3-forced-roles: resolveSynthesizer', () => {
     const { assumeRoleArn, cfnRoleArn } = synthWithRoleEnv({ deploy: DEPLOY_ARN, cfn: CFN_ARN });
     expect(assumeRoleArn).toBe(DEPLOY_ARN);
     expect(cfnRoleArn).toBe(CFN_ARN);
+  });
+
+  test('the configured qualifier controls the default bootstrap role names', () => {
+    const { assumeRoleArn, cfnRoleArn } = synthWithRoleEnv({}, { qualifier: 'shop123' });
+    expect(assumeRoleArn).toContain('cdk-shop123-deploy-role-');
+    expect(cfnRoleArn).toContain('cdk-shop123-cfn-exec-role-');
+  });
+
+  test('APP_STAGING keeps app identity separate from the bootstrap qualifier', () => {
+    const result = synthWithRoleEnv(
+      {},
+      {
+        application: 'payments-platform',
+        qualifier: 'shop123',
+        synthesizer: { type: SynthesizerType.APP_STAGING },
+      },
+    );
+    expect(result.assumeRoleArn).toContain('cdk-shop123-deploy-role-');
+    expect(result.cfnRoleArn).toContain('cdk-shop123-cfn-exec-role-');
+    expect(result.stackNames).toContain('StagingStack-payments-platform');
+  });
+
+  test('APP_STAGING accepts an explicit appId override', () => {
+    const result = synthWithRoleEnv(
+      {},
+      {
+        application: 'payments-platform',
+        qualifier: 'shop123',
+        synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
+      },
+    );
+    expect(result.stackNames).toContain('StagingStack-payments-v2');
+  });
+
+  test('APP_STAGING threads forced deploy and CloudFormation roles through DeploymentIdentities', () => {
+    const result = synthWithRoleEnv(
+      { deploy: DEPLOY_ARN, cfn: CFN_ARN },
+      {
+        application: 'payments',
+        qualifier: 'shop123',
+        synthesizer: { type: SynthesizerType.APP_STAGING },
+      },
+    );
+    expect(result.assumeRoleArn).toBe(DEPLOY_ARN);
+    expect(result.cfnRoleArn).toBe(CFN_ARN);
+  });
+
+  test('APP_STAGING fails fast when no application identity is available', () => {
+    expect(() => resolveSynthesizer({ synthesizer: { type: SynthesizerType.APP_STAGING } })).toThrow(
+      /requires an application-unique id/,
+    );
+  });
+
+  test('APP_STAGING fails fast for forced deploy-role ExternalIds unsupported by the alpha API', () => {
+    const previousDeploy = process.env[DEPLOY_ROLE_FLAG];
+    const previousExternalId = process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG];
+    process.env[DEPLOY_ROLE_FLAG] = DEPLOY_ARN;
+    process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG] = 'external-123';
+    try {
+      expect(() =>
+        resolveSynthesizer({
+          application: 'payments',
+          qualifier: 'shop123',
+          synthesizer: { type: SynthesizerType.APP_STAGING },
+        }),
+      ).toThrow(/cannot use a forced deploy-role ExternalId/);
+    } finally {
+      if (previousDeploy === undefined) delete process.env[DEPLOY_ROLE_FLAG];
+      else process.env[DEPLOY_ROLE_FLAG] = previousDeploy;
+      if (previousExternalId === undefined) delete process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG];
+      else process.env[DEPLOY_ROLE_EXTERNAL_ID_FLAG] = previousExternalId;
+    }
+  });
+
+  test('an unknown synthesizer type fails explicitly', () => {
+    expect(() => resolveSynthesizer({ synthesizer: { type: 'future' } })).toThrow(
+      /unsupported synthesizer type 'future'/,
+    );
   });
 });

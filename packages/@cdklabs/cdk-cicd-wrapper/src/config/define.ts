@@ -85,7 +85,7 @@ export interface CicdConfigProps {
   readonly repository: Repository;
   /** Each stage is either a bare name (`'dev'`) or a full object. */
   readonly stages: Array<string | StageInput>;
-  readonly synthesizer?: { readonly type?: SynthesizerType };
+  readonly synthesizer?: { readonly type?: SynthesizerType; readonly appId?: string };
   readonly engine?: EngineType;
   /** GitHub Actions engine configuration. Only read when `engine` is `EngineType.GITHUB_ACTIONS`. */
   readonly githubActions?: GitHubActionsConfig;
@@ -215,7 +215,10 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     pipelineStackName: props.pipelineStackName,
     repository: props.repository,
     stages,
-    synthesizer: { type: props.synthesizer?.type ?? SynthesizerType.DEFAULT },
+    synthesizer: {
+      type: props.synthesizer?.type ?? SynthesizerType.DEFAULT,
+      appId: props.synthesizer?.appId,
+    },
     engine: props.engine ?? EngineType.CODEPIPELINE,
     githubActions: props.githubActions,
     pipelineRoleNames: props.pipelineRoleNames,
@@ -265,6 +268,12 @@ export interface DeploymentTargetInput {
 
 /** What a user passes to `defineDeployment` (Repo 2). Deliberately permissive; normalized to resolved structs. */
 export interface DeploymentProps {
+  /** Application name used by the deployer image. */
+  readonly application?: string;
+  /** Bootstrap qualifier used by the deployer image; derived from `application` when omitted. */
+  readonly qualifier?: string;
+  /** Synthesizer used by the deployer image; must match its `cicd.config`. */
+  readonly synthesizer?: { readonly type?: SynthesizerType; readonly appId?: string };
   /** Default deployer image (an ECR/OCI reference, tag or digest); optional if every target pins its own `image`. */
   readonly image?: string;
   /** The targets to run the image against, in order. */
@@ -317,6 +326,12 @@ function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarge
  */
 export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConfig {
   return {
+    application: props.application,
+    qualifier: props.qualifier ?? (props.application !== undefined ? deriveQualifier(props.application) : undefined),
+    synthesizer: {
+      type: props.synthesizer?.type ?? SynthesizerType.DEFAULT,
+      appId: props.synthesizer?.appId,
+    },
     image: props.image,
     targets: props.targets.map(normalizeTarget),
     repository: props.repository,

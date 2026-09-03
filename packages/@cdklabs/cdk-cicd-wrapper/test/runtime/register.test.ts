@@ -13,7 +13,12 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { AppConfig } from '../../src/appconfig';
 import * as inject from '../../src/runtime/inject';
-import { appsConstructed, assertAppModuleLayout } from '../../src/runtime/inject';
+import {
+  appsConstructed,
+  assertAppModuleLayout,
+  readInjectedConfig,
+  WRAPPER_CONFIG_CONTEXT_KEY,
+} from '../../src/runtime/inject';
 import { DEFAULT_LOG_RETENTION_DAYS } from '../../src/support/LogRetentionAspect';
 // Side-effecting import: patches App. Must come after the other imports so the assertions
 // below observe the patched module.
@@ -107,6 +112,43 @@ describe('m2-register: the App patch', () => {
         process.env.CDK_CONTEXT_JSON = previous;
       }
     }
+  });
+
+  test('wrapper config is separate from the stage application config', () => {
+    const appConfig = { qualifier: 'business-value', feature: 'checkout' };
+    const app = new App({
+      context: {
+        [AppConfig.CONTEXT_KEY]: appConfig,
+        [WRAPPER_CONFIG_CONTEXT_KEY]: { qualifier: 'runtime01', plugins: [] },
+      },
+    });
+    const stack = new Stack(app, 'SeparatedConfigStack');
+
+    expect(AppConfig.of(stack)).toEqual(appConfig);
+    expect(hasNagAspect(app)).toBe(false);
+    const artifact = app.synth().getStackArtifact(stack.artifactId);
+    expect(artifact.assumeRoleArn).toContain('runtime01');
+    expect(artifact.assumeRoleArn).not.toContain('business-value');
+  });
+
+  test('readInjectedConfig strips wrapper-owned fields from app config when wrapper context is present', () => {
+    expect(
+      readInjectedConfig({
+        context: {
+          [AppConfig.CONTEXT_KEY]: {
+            tags: { Owner: 'platform' },
+            plugins: [{ name: 'application-data', version: '9' }],
+            qualifier: 'application-data',
+          },
+          [WRAPPER_CONFIG_CONTEXT_KEY]: { plugins: [], qualifier: 'runtime01', synthesizer: { type: 'default' } },
+        },
+      }),
+    ).toEqual({
+      tags: { Owner: 'platform' },
+      plugins: [],
+      qualifier: 'runtime01',
+      synthesizer: { type: 'default' },
+    });
   });
 
   test('a wrapped App forces the default log retention with no injected config', () => {

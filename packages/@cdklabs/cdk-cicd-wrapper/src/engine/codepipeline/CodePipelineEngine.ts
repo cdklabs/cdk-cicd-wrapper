@@ -33,14 +33,18 @@ import {
   CodeArtifactConfig,
   CodePipelineRoleNames,
   DeployModel,
+  NpmRegistryConfig,
   ProxyConfig,
+  RegionOrder,
   ResolvedCicdConfig,
+  SynthesizerType,
 } from '../../config/types';
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
 import { ssmWarmingCommands, ssmWarmingReadStatements } from '../cdkpipelines/CdkPipelinesEngine';
 import { defaultCiCommands } from '../ci-commands';
+import { deployRoleExternalIdSecretArnsForStages } from '../external-id-secrets';
 // Reuse the SSM account-warming helpers the CdkPipelines engine exports (same wiring GitHubActionsEngine
 // does) rather than redefining the scan/grant here -- one source of truth for both the shell and the IAM.
 import { EngineRenderProps, IEngine } from '../types';
@@ -78,7 +82,7 @@ function latestNodeRuntime(): lambda.Runtime {
 
 /** Options for the CodePipeline engine. */
 export interface CodePipelineEngineProps {
-  /** CodeBuild image for the CI and deploy projects. Defaults to the standard Amazon Linux image. */
+  /** CodeBuild image for the CI Build project only. Defaults to the standard Amazon Linux image. */
   readonly buildImage?: string;
   /**
    * Removal policy for the pipeline's own support resources (artifact bucket, encryption key).
@@ -99,6 +103,7 @@ export class CodePipelineEngine implements IEngine {
 
   public render(scope: Construct, props: EngineRenderProps): void {
     const config = props.config;
+    const stack = Stack.of(scope);
     const sourceOutput = new codepipeline.Artifact();
     const support = new SupportResources(scope, 'Support', {
       removalPolicy: this.removalPolicy,
@@ -162,16 +167,28 @@ export class CodePipelineEngine implements IEngine {
     // in deploy-time-synth mode is reused too, not synthesized a second time by its own deploy.
     const assembly = synthed.length > 0 ? new codepipeline.Artifact('Assembly') : undefined;
 
-    const buildProject = this.project(
-      scope,
-      'BuildProject',
-      this.ciCommands(config, synthed, promote),
-      config.codeArtifact,
-      config.proxy,
-      config.codeBuildEnvSettings,
-      assembly !== undefined,
-      config.ci.partialBuildSpec,
+    const buildProject = this.project(scope, 'BuildProject', this.ciCommands(config, synthed, promote), {
+      codeArtifact: config.codeArtifact,
+      npmRegistry: config.npmRegistry,
+      proxy: config.proxy,
+      codeBuildEnvSettings: config.codeBuildEnvSettings,
+      publishAssembly: assembly !== undefined,
+      partialBuildSpec: config.ci.partialBuildSpec,
       vpcNetworking,
+      buildImage: this.buildImage,
+    });
+    this.grantLookupPermissions(
+      buildProject,
+      config.stages.map((stage) => ({
+        account: stage.env.account ?? stack.account,
+        regions: stage.env.regions.length > 0 ? stage.env.regions : [stack.region],
+      })),
+      config.qualifier,
+    );
+    this.grantExternalIdSecretRead(
+      buildProject,
+      config.stages.filter((stage) => synthed.includes(stage.name)),
+      config.deployRoleExternalId,
     );
     // The synth build is where `ssmWarmingCommands` runs its `aws ssm get-parameters-by-path`, so its
     // role -- not the deploy roles -- needs the read grant. Same helper the CdkPipelines engine uses.
@@ -198,30 +215,27 @@ export class CodePipelineEngine implements IEngine {
     // run under the new definition, so a change to the config -- a new stage, a changed gate -- takes
     // effect on the same push that introduced it, with no separate `deploy-ci` by hand. The target is
     // the pipeline's own account/region, so it needs the bootstrap roles there just like a deploy does.
-    const stack = Stack.of(scope);
     // The self-update must re-emit the SAME pipeline it is part of. A disposable pipeline that ran a
     // bare `deploy-ci` here would re-synth itself with the default RETAIN and quietly un-dispose its own
     // bucket and key on the first run -- so thread the flag through, keyed off the removal policy in hand.
     const deployCi =
       this.removalPolicy === RemovalPolicy.DESTROY ? 'npx cdk-cicd deploy-ci --disposable' : 'npx cdk-cicd deploy-ci';
-    const selfUpdate = this.project(
-      scope,
-      'UpdatePipeline',
-      ['npm ci', deployCi],
-      config.codeArtifact,
-      config.proxy,
-      config.codeBuildEnvSettings,
-      false,
-      undefined,
+    const selfUpdate = this.project(scope, 'UpdatePipeline', ['npm ci', deployCi], {
+      codeArtifact: config.codeArtifact,
+      npmRegistry: config.npmRegistry,
+      proxy: config.proxy,
+      codeBuildEnvSettings: config.codeBuildEnvSettings,
       vpcNetworking,
-    );
-    this.grantDeployPermissions(selfUpdate, stack.account, [stack.region]);
+    });
+    this.grantDeployPermissions(selfUpdate, stack.account, [stack.region], config.qualifier);
     pipeline.addStage({
       stageName: 'UpdatePipeline',
       actions: [new actions.CodeBuildAction({ actionName: 'SelfMutate', project: selfUpdate, input: sourceOutput })],
     });
 
-    // One deploy action per stage; the region fan-out lives inside `cdk-cicd deploy`.
+    // Sequential stages keep one deploy action and let `cdk-cicd deploy` fan out across regions.
+    // PARALLEL multi-region stages use one region-scoped project/action per region in the same
+    // CodePipeline stage, all at the same run order.
     for (const stage of config.stages) {
       // `--from-assembly` makes the deploy use the promoted `cdk.out/<stage>/<region>` from its input
       // artifact instead of synthesizing. It refuses rather than falling back if the assembly is absent,
@@ -246,37 +260,80 @@ export class CodePipelineEngine implements IEngine {
         );
       }
 
-      // With asyncDeploy the build only PREPARES change sets and exits; a Lambda executes and awaits them,
-      // so no build minutes are billed for the CloudFormation wait (D-deploy-wait). The plan travels
-      // through an SSM parameter whose name is fixed at render time, so both halves can name it without
-      // the Lambda having to download and unzip a pipeline artifact.
-      const planParam = config.asyncDeploy ? `/cdk-cicd/${props.pipelineName}/${stage.name}/deploy-plan` : undefined;
-      const stageCmd =
-        planParam !== undefined ? `${deployCmd} --prepare-only --plan-parameter ${planParam}` : deployCmd;
+      const deployTargets: Array<{ readonly region?: string; readonly regions: string[] }> =
+        stage.env.regionOrder === RegionOrder.PARALLEL && regions.length > 1
+          ? regions.map((region) => ({ region, regions: [region] }))
+          : [{ regions }];
+      const deployActions: codepipeline.IAction[] = [];
+      const awaitActions: codepipeline.IAction[] = [];
 
-      const project = this.project(
-        scope,
-        `Deploy-${stage.name}`,
-        ['npm ci', stageCmd],
-        config.codeArtifact,
-        config.proxy,
-        config.codeBuildEnvSettings,
-        false,
-        undefined,
-        vpcNetworking,
-      );
-      this.grantDeployPermissions(project, account, regions, stage.deployment?.deployRole);
-      if (planParam !== undefined) {
-        project.addToRolePolicy(
-          new iam.PolicyStatement({
-            actions: ['ssm:PutParameter'],
-            resources: [`arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter${planParam}`],
+      for (const target of deployTargets) {
+        const suffix = target.region !== undefined ? `-${target.region}` : '';
+        const regionOption = target.region !== undefined ? ` --region ${target.region}` : '';
+        // With asyncDeploy the build only PREPARES change sets and exits; a Lambda executes and awaits
+        // them, so no build minutes are billed for the CloudFormation wait (D-deploy-wait). Parallel
+        // regions need distinct parameters and drivers so their plans cannot overwrite one another.
+        const planParam = config.asyncDeploy
+          ? `/cdk-cicd/${props.pipelineName}/${stage.name}${target.region ? `/${target.region}` : ''}/deploy-plan`
+          : undefined;
+        const regionalDeployCmd = `${deployCmd}${regionOption}`;
+        const stageCmd =
+          planParam !== undefined
+            ? `${regionalDeployCmd} --prepare-only --plan-parameter ${planParam}`
+            : regionalDeployCmd;
+
+        const project = this.project(scope, `Deploy-${stage.name}${suffix}`, ['npm ci', stageCmd], {
+          codeArtifact: config.codeArtifact,
+          npmRegistry: config.npmRegistry,
+          proxy: config.proxy,
+          codeBuildEnvSettings: config.codeBuildEnvSettings,
+          vpcNetworking,
+        });
+        this.grantDeployPermissions(
+          project,
+          account,
+          target.regions,
+          config.qualifier,
+          stage.deployment?.deployRole,
+          appStagingId(config),
+        );
+        if (!reuse) {
+          this.grantExternalIdSecretRead(project, [stage], config.deployRoleExternalId);
+        }
+        if (planParam !== undefined) {
+          project.addToRolePolicy(
+            new iam.PolicyStatement({
+              actions: ['ssm:PutParameter'],
+              resources: [`arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter${planParam}`],
+            }),
+          );
+        }
+
+        deployActions.push(
+          new actions.CodeBuildAction({
+            actionName: `Deploy-${stage.name}${suffix}`,
+            project,
+            // Per stage, not per pipeline: a reusing stage takes the Build output (cdk.out + the few
+            // source files `npm ci` needs), while a stage that still synthesizes must take the RAW
+            // SOURCE -- the assembly artifact deliberately omits bin/ and lib/, so synthesizing from it
+            // would fail.
+            input: reuse && assembly !== undefined ? assembly : sourceOutput,
+            runOrder: stage.manualApproval ? 2 : 1,
           }),
         );
-      }
 
-      const driver =
-        planParam !== undefined ? this.deployDriver(scope, stage.name, planParam, account, regions) : undefined;
+        if (planParam !== undefined) {
+          const driver = this.deployDriver(scope, `${stage.name}${suffix}`, planParam, account, target.regions);
+          awaitActions.push(
+            new actions.LambdaInvokeAction({
+              actionName: `Await-${stage.name}${suffix}`,
+              lambda: driver,
+              userParameters: { planParameterName: planParam },
+              runOrder: stage.manualApproval ? 3 : 2,
+            }),
+          );
+        }
+      }
 
       // A gated stage puts its approval in the SAME pipeline stage as the deploy, ordered ahead of it,
       // rather than in a stage of its own: run order already sequences them, and one stage per
@@ -287,27 +344,9 @@ export class CodePipelineEngine implements IEngine {
           ...(stage.manualApproval
             ? [new actions.ManualApprovalAction({ actionName: `Approve-${stage.name}`, runOrder: 1 })]
             : []),
-          new actions.CodeBuildAction({
-            actionName: `Deploy-${stage.name}`,
-            project,
-            // Per stage, not per pipeline: a reusing stage takes the Build output (cdk.out + the few
-            // source files `npm ci` needs), while a stage that still synthesizes must take the RAW
-            // SOURCE -- the assembly artifact deliberately omits bin/ and lib/, so synthesizing from it
-            // would fail.
-            input: reuse && assembly !== undefined ? assembly : sourceOutput,
-            runOrder: stage.manualApproval ? 2 : 1,
-          }),
-          // Ordered strictly after the prepare step: it reads the plan that step writes.
-          ...(driver !== undefined
-            ? [
-                new actions.LambdaInvokeAction({
-                  actionName: `Await-${stage.name}`,
-                  lambda: driver,
-                  userParameters: { planParameterName: planParam },
-                  runOrder: stage.manualApproval ? 3 : 2,
-                }),
-              ]
-            : []),
+          ...deployActions,
+          // Ordered strictly after the prepare steps: each reads its region-specific plan.
+          ...awaitActions,
         ],
       });
     }
@@ -381,6 +420,63 @@ export class CodePipelineEngine implements IEngine {
   }
 
   /**
+   * Let the CI synth project perform context lookups in every target environment it resolves. The
+   * synthesizer's lookup role is the least-privilege path for VPC, hosted-zone, AMI and other context
+   * providers; the bootstrap version parameter is read by the CLI before it assumes that role.
+   */
+  private grantLookupPermissions(
+    project: codebuild.PipelineProject,
+    targets: ReadonlyArray<{ readonly account: string; readonly regions: readonly string[] }>,
+    configuredQualifier?: string,
+  ): void {
+    const stack = Stack.of(project);
+    const qualifier = configuredQualifier ?? DefaultStackSynthesizer.DEFAULT_QUALIFIER;
+    const roleArns = new Set<string>();
+    const versionParams = new Set<string>();
+
+    for (const target of targets) {
+      for (const region of target.regions) {
+        roleArns.add(
+          `arn:${stack.partition}:iam::${target.account}:role/cdk-${qualifier}-lookup-role-${target.account}-${region}`,
+        );
+        versionParams.add(
+          `arn:${stack.partition}:ssm:${region}:${target.account}:parameter/cdk-bootstrap/${qualifier}/version`,
+        );
+      }
+    }
+
+    if (roleArns.size > 0) {
+      project.addToRolePolicy(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: [...roleArns] }));
+    }
+    if (versionParams.size > 0) {
+      project.addToRolePolicy(
+        new iam.PolicyStatement({ actions: ['ssm:GetParameter'], resources: [...versionParams] }),
+      );
+    }
+  }
+
+  /**
+   * Grant the stage synth process access to secret-backed deploy-role ExternalIds. A stage override
+   * wins over the pipeline fallback, matching the CLI, and an ExternalId is ignored unless a non-blank
+   * deployRole is configured because there is then no role assumption to supply it to.
+   */
+  private grantExternalIdSecretRead(
+    project: codebuild.PipelineProject,
+    stages: ReadonlyArray<ResolvedCicdConfig['stages'][number]>,
+    pipelineExternalId?: string,
+  ): void {
+    const secretArns = deployRoleExternalIdSecretArnsForStages(stages, pipelineExternalId);
+    if (secretArns.length === 0) return;
+
+    project.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: secretArns,
+      }),
+    );
+  }
+
+  /**
    * Let a `cdk deploy` project actually deploy into `account`/`regions` -- a stage's application
    * deploy, or the self-update stage deploying the pipeline into its own account. `cdk deploy` does
    * everything through the CDK bootstrap roles, so the project's own role needs nothing but permission
@@ -388,22 +484,17 @@ export class CodePipelineEngine implements IEngine {
    *
    * The bootstrap version parameter is granted for the CLI's base-credentials path only; on the
    * normal path the CLI reads it under the *assumed* bootstrap role, not under this project's role.
-   *
-   * The qualifier is the bootstrap default because that is what the wrapper's synthesizer uses --
-   * `resolveSynthesizer` builds a plain `DefaultStackSynthesizer` and does not thread the config's
-   * `qualifier` through, so keying these ARNs off `config.qualifier` would point at roles that do not
-   * exist. A user who sets the `@aws-cdk/core:bootstrapQualifier` context in their own `cdk.json`
-   * does move their app's roles, and this grant does NOT follow -- see finding
-   * `code-review-bootstrap-qualifier-not-single-source-of-truth`.
    */
   private grantDeployPermissions(
     project: codebuild.PipelineProject,
     account: string,
     regions: string[],
+    configuredQualifier?: string,
     forcedDeployRole?: string,
+    stagingAppId?: string,
   ): void {
     const stack = Stack.of(project);
-    const qualifier = DefaultStackSynthesizer.DEFAULT_QUALIFIER;
+    const qualifier = configuredQualifier ?? DefaultStackSynthesizer.DEFAULT_QUALIFIER;
 
     const roleArns = regions.flatMap((region) =>
       BOOTSTRAP_ROLE_KINDS.map(
@@ -414,6 +505,14 @@ export class CodePipelineEngine implements IEngine {
     // "no forced role", not an empty ARN (which would make the policy document malformed).
     if (forcedDeployRole !== undefined && forcedDeployRole.length > 0) {
       roleArns.push(forcedDeployRole);
+    }
+    if (stagingAppId !== undefined) {
+      for (const region of regions) {
+        roleArns.push(
+          `arn:${stack.partition}:iam::${account}:role/cdk-${stagingAppId}-file-role-${region}`,
+          `arn:${stack.partition}:iam::${account}:role/cdk-${stagingAppId}-image-role-${region}`,
+        );
+      }
     }
 
     project.addToRolePolicy(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: roleArns }));
@@ -466,6 +565,7 @@ export class CodePipelineEngine implements IEngine {
       build.tagStrategy === ImageTagStrategy.LATEST ? 'latest' : '${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}';
     const uri = `${stack.account}.dkr.ecr.${stack.region}.${stack.urlSuffix}/${repository.repositoryName}`;
     const commands = [
+      ...(config.npmRegistry ? npmRegistryLoginCommands(config.npmRegistry) : []),
       ...(config.codeArtifact ? [codeArtifactLogin(stack, config.codeArtifact)] : []),
       ...defaultCiCommands(),
       // Log in to ECR, build the deployer image from the source, tag by commit, push. The image payload
@@ -479,15 +579,18 @@ export class CodePipelineEngine implements IEngine {
     // ordering as `project()` (NO_PROXY is what lets the AWS-API-bound `codeartifact login` skip the
     // proxy while `npm ci` against public npm goes through it).
     const install = {
-      ...(this.buildImage === undefined ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } : {}),
+      ...(this.buildImage === undefined && config.codeBuildEnvSettings?.buildImage === undefined
+        ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } }
+        : {}),
       ...(config.proxy ? { commands: proxyInstallCommands(config.proxy) } : {}),
     };
+    const buildSpecEnv = buildSpecEnvironment(stack, config.proxy, config.npmRegistry);
 
     const project = new codebuild.PipelineProject(scope, 'BuildImage', {
       // Docker builds need a privileged environment; runtime pinned like the deploy projects.
       // `codeBuildEnvSettings` still contributes computeType/environmentVariables here -- only
       // `privileged` is forced (Docker requires it regardless of what the config says).
-      environment: { ...this.buildEnvironment(config.codeBuildEnvSettings), privileged: true },
+      environment: { ...this.buildEnvironment(config.codeBuildEnvSettings, this.buildImage), privileged: true },
       vpc: vpcNetworking?.vpc,
       securityGroups: vpcNetworking?.securityGroups,
       subnetSelection: vpcNetworking?.subnetSelection,
@@ -497,19 +600,12 @@ export class CodePipelineEngine implements IEngine {
           ...(Object.keys(install).length > 0 ? { install } : {}),
           build: { commands },
         },
-        // The proxy credentials/ports live in Secrets Manager, not in plain env vars.
-        ...(config.proxy
-          ? {
-              env: {
-                variables: proxyEnvVariables(stack, config.proxy),
-                'secrets-manager': proxySecretsManagerVars(config.proxy),
-              },
-            }
-          : {}),
+        ...(buildSpecEnv !== undefined ? { env: buildSpecEnv } : {}),
       }),
     });
     repository.grantPullPush(project);
     if (config.codeArtifact) grantCodeArtifactRead(project, config.codeArtifact);
+    if (config.npmRegistry) grantNpmRegistrySecretRead(project, config.npmRegistry);
     if (config.proxy) grantProxySecretRead(project, config.proxy);
     // Provisioned repos derive the URI from the pipeline account; a referenced repo may be elsewhere, but
     // grantPullPush + ECR's token endpoint cover same-account. (Cross-account push is a later slice.)
@@ -537,6 +633,11 @@ export class CodePipelineEngine implements IEngine {
           id: 'AwsSolutions-IAM5',
           reason:
             'ECR grantPullPush issues ecr:GetAuthorizationToken on "*" (the token endpoint is not resource-scopable) plus repo-scoped push actions; the CodeBuild log/report and artifact-bucket wildcards are the project\'s own, as in the deploy pipeline. When a VPC is configured this also covers the CodeBuild-managed network-interface permissions, as in the deploy pipeline\'s project() suppression.',
+        },
+        {
+          id: 'AwsSolutions-CB5',
+          reason:
+            'This project must build and push the deployer container image, which requires the local Docker daemon exposed by CodeBuild privileged mode.',
         },
       ],
       true,
@@ -640,14 +741,28 @@ export class CodePipelineEngine implements IEngine {
     scope: Construct,
     id: string,
     commands: string[],
-    codeArtifact?: CodeArtifactConfig,
-    proxy?: ProxyConfig,
-    codeBuildEnvSettings?: codebuild.BuildEnvironment,
-    publishAssembly = false,
-    partialBuildSpec?: codebuild.BuildSpec,
-    vpcNetworking?: VpcNetworking,
+    options: {
+      readonly codeArtifact?: CodeArtifactConfig;
+      readonly npmRegistry?: NpmRegistryConfig;
+      readonly proxy?: ProxyConfig;
+      readonly codeBuildEnvSettings?: codebuild.BuildEnvironment;
+      readonly publishAssembly?: boolean;
+      readonly partialBuildSpec?: codebuild.BuildSpec;
+      readonly vpcNetworking?: VpcNetworking;
+      readonly buildImage?: string;
+    } = {},
   ): codebuild.PipelineProject {
     const stack = Stack.of(scope);
+    const {
+      codeArtifact,
+      npmRegistry,
+      proxy,
+      codeBuildEnvSettings,
+      publishAssembly = false,
+      partialBuildSpec,
+      vpcNetworking,
+      buildImage,
+    } = options;
     // Pin the Node runtime, but ONLY on the default (CodeBuild-managed) image. Without
     // `runtime-versions` the managed image's default applies, which on standard:7.0 is Node 18 -- and
     // `aws-cdk-lib` declares `node >= 20`, so every `npm ci` warned EBADENGINE and the app then ran on an
@@ -660,25 +775,28 @@ export class CodePipelineEngine implements IEngine {
     // of which need HTTP(S)_PROXY/NO_PROXY already set (NO_PROXY is what lets the AWS-API-bound
     // `codeartifact login` skip the proxy while `npm ci` against public npm goes through it).
     const install = {
-      ...(this.buildImage === undefined ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } : {}),
+      ...(buildImage === undefined && codeBuildEnvSettings?.buildImage === undefined
+        ? { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } }
+        : {}),
       ...(proxy ? { commands: proxyInstallCommands(proxy) } : {}),
     };
-    // Every project runs `npm ci`; a private-registry login has to come first, or the install resolves
-    // against public npm and fails on the private packages (the wrapper's own, before it is published).
-    const preBuildCommands = codeArtifact ? [codeArtifactLogin(stack, codeArtifact)] : [];
+    // Private-registry setup has to run before npm ci. Write the generic registry first so a following
+    // CodeArtifact login can add its own scoped entries without the `.npmrc` rewrite deleting them.
+    const preBuildCommands = [
+      ...(npmRegistry ? npmRegistryLoginCommands(npmRegistry) : []),
+      ...(codeArtifact ? [codeArtifactLogin(stack, codeArtifact)] : []),
+    ];
     const phases = {
       ...(Object.keys(install).length > 0 ? { install } : {}),
       ...(preBuildCommands.length > 0 ? { pre_build: { commands: preBuildCommands } } : {}),
       build: { commands },
     };
 
+    const buildSpecEnv = buildSpecEnvironment(stack, proxy, npmRegistry);
     const generatedBuildSpec = codebuild.BuildSpec.fromObject({
       version: '0.2',
       phases,
-      // The proxy credentials/ports live in Secrets Manager, not in plain env vars.
-      ...(proxy
-        ? { env: { variables: proxyEnvVariables(stack, proxy), 'secrets-manager': proxySecretsManagerVars(proxy) } }
-        : {}),
+      ...(buildSpecEnv !== undefined ? { env: buildSpecEnv } : {}),
       // Publish the WHOLE source tree plus the synthesized assembly, excluding only node_modules (the
       // deploy re-runs `npm ci`). A hardcoded file allowlist was wrong: `cdk-cicd deploy --from-assembly`
       // still loads `cicd.config.ts` under ts-node, so a config that imports another file, a tsconfig it
@@ -688,8 +806,9 @@ export class CodePipelineEngine implements IEngine {
       ...(publishAssembly ? { artifacts: { files: ['**/*'], 'exclude-paths': ['node_modules/**/*'] } } : {}),
     });
 
+    const environment = this.buildEnvironment(codeBuildEnvSettings, buildImage);
     const project = new codebuild.PipelineProject(scope, id, {
-      environment: this.buildEnvironment(codeBuildEnvSettings),
+      environment,
       vpc: vpcNetworking?.vpc,
       securityGroups: vpcNetworking?.securityGroups,
       subnetSelection: vpcNetworking?.subnetSelection,
@@ -702,6 +821,9 @@ export class CodePipelineEngine implements IEngine {
     });
     if (codeArtifact) {
       grantCodeArtifactRead(project, codeArtifact);
+    }
+    if (npmRegistry) {
+      grantNpmRegistrySecretRead(project, npmRegistry);
     }
     if (proxy) {
       grantProxySecretRead(project, proxy);
@@ -731,6 +853,17 @@ export class CodePipelineEngine implements IEngine {
             "for every VPC-attached CodeBuild project and which EC2 cannot scope to an ENI that doesn't " +
             'exist yet.',
         },
+        ...(environment.privileged
+          ? [
+              {
+                id: 'AwsSolutions-CB5',
+                reason:
+                  'CDK applications can synthesize DockerImageAsset and Docker-based bundling inputs. ' +
+                  'CodeBuild privileged mode supplies the local Docker daemon those standard CDK asset ' +
+                  'paths require; bootstrap-role IAM grants still scope publishing to the target environments.',
+              },
+            ]
+          : []),
       ],
       true,
     );
@@ -739,19 +872,46 @@ export class CodePipelineEngine implements IEngine {
 
   /**
    * Merge v2 `codeBuildEnvSettings` (privileged mode, compute type, environment variables --
-   * `CodeBuildFactoryProvider` parity) into a project's `environment`, applied uniformly to every
-   * CodeBuild project like v2 did. The engine's own `buildImage` ctor prop (a Docker-registry image
-   * string) wins over `codeBuildEnvSettings.buildImage` (a full `IBuildImage`) when both are set -- it
-   * is the more specific, code-level choice.
+   * `CodeBuildFactoryProvider` parity) into a project's `environment`. Docker support is on by default
+   * for CDK assets, but an explicit user `privileged` value wins. A project-specific Docker-registry
+   * image wins over `codeBuildEnvSettings.buildImage`; only the CI Build project receives `ci.image`.
    */
-  private buildEnvironment(settings?: codebuild.BuildEnvironment): codebuild.BuildEnvironment | undefined {
+  private buildEnvironment(
+    settings?: codebuild.BuildEnvironment,
+    projectBuildImage?: string,
+  ): codebuild.BuildEnvironment {
     const buildImage =
-      this.buildImage !== undefined
-        ? codebuild.LinuxBuildImage.fromDockerRegistry(this.buildImage)
+      projectBuildImage !== undefined
+        ? codebuild.LinuxBuildImage.fromDockerRegistry(projectBuildImage)
         : settings?.buildImage;
-    if (settings === undefined && buildImage === undefined) return undefined;
-    return { ...settings, ...(buildImage !== undefined ? { buildImage } : {}) };
+    return {
+      ...settings,
+      privileged: settings?.privileged ?? true,
+      ...(buildImage !== undefined ? { buildImage } : {}),
+    };
   }
+}
+
+/** The normalized id the pinned AppStagingSynthesizer uses in its asset-publishing role names. */
+function appStagingId(config: ResolvedCicdConfig): string | undefined {
+  if (config.synthesizer.type !== SynthesizerType.APP_STAGING) return undefined;
+  const raw = config.synthesizer.appId ?? config.application;
+  if (raw === undefined || raw.trim().length === 0) {
+    throw new Error(
+      'cdk-cicd: SynthesizerType.APP_STAGING requires `application` or `synthesizer.appId` ' +
+        'so deploy IAM can name its app-scoped asset roles.',
+    );
+  }
+  const normalized = raw
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .slice(0, 20);
+  if (normalized.length === 0) {
+    throw new Error(
+      `cdk-cicd: APP_STAGING app id '${raw}' contains no letters, numbers, or dashes after normalization.`,
+    );
+  }
+  return normalized;
 }
 
 /**
@@ -825,6 +985,51 @@ function grantCodeArtifactRead(project: codebuild.PipelineProject, ca: CodeArtif
       actions: ['sts:GetServiceBearerToken'],
       resources: ['*'],
       conditions: { StringEquals: { 'sts:AWSServiceName': 'codeartifact.amazonaws.com' } },
+    }),
+  );
+}
+
+/**
+ * Write a `.npmrc` for a generic npm-compatible registry. The token itself is injected by CodeBuild
+ * from Secrets Manager as `NPM_AUTH_TOKEN`, so it never appears in the synthesized buildspec.
+ */
+function npmRegistryLoginCommands(npm: NpmRegistryConfig): string[] {
+  const host = npm.url.replace(/^https?:\/\//, '');
+  const scope = npm.scope !== undefined && npm.scope.length > 0 ? npm.scope : undefined;
+  const scopePrefix = scope !== undefined ? `${scope.startsWith('@') ? scope : `@${scope}`}:` : '';
+  return [
+    `echo "${scopePrefix}registry=${npm.url}" > ./.npmrc`,
+    `echo "//${host}:_authToken=$NPM_AUTH_TOKEN" >> ./.npmrc`,
+  ];
+}
+
+/** Buildspec environment shared by proxy and generic npm-registry authentication. */
+function buildSpecEnvironment(
+  stack: Stack,
+  proxy?: ProxyConfig,
+  npmRegistry?: NpmRegistryConfig,
+):
+  | {
+      readonly variables?: Record<string, string>;
+      readonly 'secrets-manager'?: Record<string, string>;
+    }
+  | undefined {
+  if (proxy === undefined && npmRegistry === undefined) return undefined;
+  return {
+    ...(proxy !== undefined ? { variables: proxyEnvVariables(stack, proxy) } : {}),
+    'secrets-manager': {
+      ...(proxy !== undefined ? proxySecretsManagerVars(proxy) : {}),
+      ...(npmRegistry !== undefined ? { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } : {}),
+    },
+  };
+}
+
+/** The generic registry's bearer token is the whole secret string, scoped to that exact secret ARN. */
+function grantNpmRegistrySecretRead(project: codebuild.PipelineProject, npmRegistry: NpmRegistryConfig): void {
+  project.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: [npmRegistry.basicAuthSecretArn],
     }),
   );
 }
