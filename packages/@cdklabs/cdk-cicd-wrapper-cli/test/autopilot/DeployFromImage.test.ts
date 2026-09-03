@@ -2,16 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SpawnSyncReturns } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { ResolvedDeploymentConfig } from '@cdklabs/cdk-cicd-wrapper';
 import {
   DockerSpawnOptions,
   dockerRunArgs,
+  readVersionFromConfig,
   resolveTargetImage,
   runFromImage,
   targetRuns,
 } from '../../src/cmds/autopilot/DeployFromImage';
 import {
   CFN_EXEC_ROLE_FLAG,
+  COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG,
+  COMPLIANCE_LOG_BUCKET_NAME_FLAG,
+  COMPLIANCE_LOG_BUCKET_REGION_FLAG,
   DEPLOY_ROLE_EXTERNAL_ID_FLAG,
   DEPLOY_ROLE_FLAG,
 } from '../../src/cmds/autopilot/ExecCommand';
@@ -29,6 +36,12 @@ const ok = (): SpawnSyncReturns<Buffer> => ({
 });
 
 describe('m6-container: dockerRunArgs', () => {
+  test('uses the exact runtime compliance-injection environment contract', () => {
+    expect(COMPLIANCE_LOG_BUCKET_NAME_FLAG).toBe('CDK_CICD_COMPLIANCE_LOG_BUCKET_NAME');
+    expect(COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG).toBe('CDK_CICD_COMPLIANCE_LOG_BUCKET_ACCOUNT');
+    expect(COMPLIANCE_LOG_BUCKET_REGION_FLAG).toBe('CDK_CICD_COMPLIANCE_LOG_BUCKET_REGION');
+  });
+
   test('a full target renders env pins, creds-by-name, image and the inner single-region deploy', () => {
     const args = dockerRunArgs(IMAGE, {
       stage: 'prod',
@@ -37,6 +50,9 @@ describe('m6-container: dockerRunArgs', () => {
       deployRole: 'arn:aws:iam::333333333333:role/deployer',
       cfnExecutionRole: 'arn:aws:iam::333333333333:role/cfn-exec',
       externalId: 'repo-2-external-id',
+      complianceLogBucketName: 'prod-compliance-logs',
+      complianceLogBucketAccount: '333333333333',
+      complianceLogBucketRegion: 'eu-west-1',
     });
 
     // structure: docker run --rm <env...> <image> <inner cmd...>
@@ -60,6 +76,9 @@ describe('m6-container: dockerRunArgs', () => {
         `${DEPLOY_ROLE_FLAG}=arn:aws:iam::333333333333:role/deployer`,
         `${CFN_EXEC_ROLE_FLAG}=arn:aws:iam::333333333333:role/cfn-exec`,
         DEPLOY_ROLE_EXTERNAL_ID_FLAG,
+        `${COMPLIANCE_LOG_BUCKET_NAME_FLAG}=prod-compliance-logs`,
+        `${COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG}=333333333333`,
+        `${COMPLIANCE_LOG_BUCKET_REGION_FLAG}=eu-west-1`,
       ]),
     );
     expect(envPart).not.toContain(`${DEPLOY_ROLE_EXTERNAL_ID_FLAG}=repo-2-external-id`);
@@ -70,7 +89,8 @@ describe('m6-container: dockerRunArgs', () => {
     );
     expect(envPart.some((e) => e.startsWith('AWS_ACCESS_KEY_ID='))).toBe(false);
 
-    // inner command deploys the one stage, one region, with the forced role, non-interactively
+    // The role is synthesized from its presence-sensitive env flag; it must never be forwarded as
+    // `cdk deploy --role-arn`, whose CDK semantics are CloudFormation execution role.
     expect(args.slice(imageIdx + 1)).toEqual([
       'cdk-cicd',
       'deploy',
@@ -79,9 +99,8 @@ describe('m6-container: dockerRunArgs', () => {
       '--yes',
       '--region',
       'eu-west-1',
-      '--deploy-role',
-      'arn:aws:iam::333333333333:role/deployer',
     ]);
+    expect(args).not.toContain('--deploy-role');
   });
 
   test('a network option inserts --network right after run --rm, before the env flags', () => {
@@ -131,8 +150,33 @@ describe('m6-container: dockerRunArgs', () => {
     expect(args).toContain(`${DEPLOY_ROLE_FLAG}=`);
     expect(args).toContain(`${CFN_EXEC_ROLE_FLAG}=`);
     expect(args).toContain(`${DEPLOY_ROLE_EXTERNAL_ID_FLAG}=`);
+    expect(args).toContain(`${COMPLIANCE_LOG_BUCKET_NAME_FLAG}=`);
+    expect(args).toContain(`${COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG}=`);
+    expect(args).toContain(`${COMPLIANCE_LOG_BUCKET_REGION_FLAG}=`);
     // region-only target still pins the region
     expect(args).toContain('CDK_DEFAULT_REGION=us-west-2');
+  });
+
+  test('partial or cross-environment compliance coordinates fail before Docker can run', () => {
+    expect(() =>
+      dockerRunArgs(IMAGE, {
+        stage: 'dev',
+        account: '111111111111',
+        region: 'eu-west-1',
+        complianceLogBucketName: 'compliance-logs',
+      }),
+    ).toThrow(/must provide compliance bucket name, account, and Region together/);
+
+    expect(() =>
+      dockerRunArgs(IMAGE, {
+        stage: 'dev',
+        account: '111111111111',
+        region: 'eu-west-1',
+        complianceLogBucketName: 'compliance-logs',
+        complianceLogBucketAccount: '222222222222',
+        complianceLogBucketRegion: 'eu-west-1',
+      }),
+    ).toThrow(/must match the deployment account and Region/);
   });
 });
 
@@ -171,6 +215,55 @@ describe('m6-container: targetRuns', () => {
     ]);
   });
 
+  test('a single-region target carries resolved compliance coordinates', () => {
+    const runs = targetRuns(
+      {
+        stage: 'dev',
+        env: { account: '111111111111', regions: ['eu-west-1'], regionOrder: 'sequential' as any },
+        manualApproval: false,
+      },
+      undefined,
+      {
+        bucketName: 'dev-compliance-logs',
+        account: '111111111111',
+        region: 'eu-west-1',
+      },
+    );
+
+    expect(runs).toEqual([
+      expect.objectContaining({
+        stage: 'dev',
+        account: '111111111111',
+        region: 'eu-west-1',
+        complianceLogBucketName: 'dev-compliance-logs',
+        complianceLogBucketAccount: '111111111111',
+        complianceLogBucketRegion: 'eu-west-1',
+      }),
+    ]);
+  });
+
+  test('a multi-region target cannot carry one compliance destination', () => {
+    expect(() =>
+      targetRuns(
+        {
+          stage: 'prod',
+          env: {
+            account: '111111111111',
+            regions: ['eu-west-1', 'us-east-1'],
+            regionOrder: 'sequential' as any,
+          },
+          manualApproval: true,
+        },
+        undefined,
+        {
+          bucketName: 'prod-compliance-logs',
+          account: '111111111111',
+          region: 'eu-west-1',
+        },
+      ),
+    ).toThrow(/must match its concrete account and single Region/);
+  });
+
   test('an env-agnostic target yields a single region-less run', () => {
     const runs = targetRuns({
       stage: 'dev',
@@ -185,6 +278,9 @@ describe('m6-container: targetRuns', () => {
         deployRole: undefined,
         cfnExecutionRole: undefined,
         externalId: undefined,
+        complianceLogBucketName: undefined,
+        complianceLogBucketAccount: undefined,
+        complianceLogBucketRegion: undefined,
       },
     ]);
   });
@@ -216,6 +312,10 @@ describe('m6-container: resolveTargetImage (version from config/<stage>.json)', 
       /pinned by digest.*config\/dev\.json version '1\.5\.0'/,
     );
   });
+  test('a target-level digest remains authoritative even when the stage version file exists', () => {
+    const digest = `repo/app@sha256:${'b'.repeat(64)}`;
+    expect(resolveTargetImage(target('dev', digest), config('repo/app'), '/x', () => '1.5.0')).toBe(digest);
+  });
   test('a target image overrides the config base repo', () => {
     expect(resolveTargetImage(target('dev', 'repo/app'), config('other/base'), '/x', () => '2.0.0')).toBe(
       'repo/app:2.0.0',
@@ -223,6 +323,40 @@ describe('m6-container: resolveTargetImage (version from config/<stage>.json)', 
   });
   test('no base image at all -> undefined', () => {
     expect(resolveTargetImage(target('dev'), config(undefined), '/x', () => '1.0.0')).toBeUndefined();
+  });
+});
+
+describe('m6-container: version file validation', () => {
+  let cwd: string;
+
+  beforeEach(() => {
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'deploy-version-'));
+    fs.mkdirSync(path.join(cwd, 'config'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  });
+
+  test('an absent version file leaves the configured image unchanged', () => {
+    expect(readVersionFromConfig(cwd, 'dev')).toBeUndefined();
+  });
+
+  test.each([
+    ['malformed JSON', '{'],
+    ['missing version', '{}'],
+    ['non-string version', '{"version":42}'],
+    ['empty version', '{"version":""}'],
+    ['whitespace-only version', '{"version":"  "}'],
+    ['surrounding whitespace', '{"version":" 1.2.3 "}'],
+  ])('rejects an existing %s file instead of silently selecting the base image', (_name, contents) => {
+    fs.writeFileSync(path.join(cwd, 'config', 'dev.json'), contents);
+    expect(() => readVersionFromConfig(cwd, 'dev')).toThrow(/deploy --from-image: .*config.*dev\.json/);
+  });
+
+  test('returns a valid non-empty string version', () => {
+    fs.writeFileSync(path.join(cwd, 'config', 'dev.json'), '{"version":"1.2.3"}');
+    expect(readVersionFromConfig(cwd, 'dev')).toBe('1.2.3');
   });
 });
 
@@ -251,6 +385,82 @@ describe('m6-container: runFromImage', () => {
     // 1 (dev) + 2 (prod regions) = 3 docker runs
     expect(calls).toHaveLength(3);
     expect(calls.map((c) => c[c.indexOf('--stage') + 1])).toEqual(['dev', 'prod', 'prod']);
+  });
+
+  test('forwards resolved Repo 2 compliance coordinates into the application container', async () => {
+    const calls: string[][] = [];
+    const cfg = {
+      image: IMAGE,
+      complianceLogBucketName: 'dev-compliance-logs',
+      targets: [
+        {
+          stage: 'dev',
+          env: { account: '111111111111', regions: ['eu-west-1'], regionOrder: 'sequential' },
+          manualApproval: false,
+          complianceLogBucketName: 'dev-compliance-logs',
+          complianceLogBucketAccount: '111111111111',
+          complianceLogBucketRegion: 'eu-west-1',
+        },
+      ],
+    } as unknown as ResolvedDeploymentConfig;
+
+    const code = await runFromImage(cfg, {
+      yes: true,
+      spawn: (args) => {
+        calls.push(args);
+        return ok();
+      },
+    });
+
+    expect(code).toBe(0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual(
+      expect.arrayContaining([
+        `${COMPLIANCE_LOG_BUCKET_NAME_FLAG}=dev-compliance-logs`,
+        `${COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG}=111111111111`,
+        `${COMPLIANCE_LOG_BUCKET_REGION_FLAG}=eu-west-1`,
+      ]),
+    );
+  });
+
+  test.each([
+    {
+      name: 'partial coordinates',
+      target: {
+        stage: 'dev',
+        env: { account: '111111111111', regions: ['eu-west-1'], regionOrder: 'sequential' },
+        manualApproval: false,
+        complianceLogBucketName: 'dev-compliance-logs',
+      },
+    },
+    {
+      name: 'coordinates that differ from the target environment',
+      target: {
+        stage: 'dev',
+        env: { account: '111111111111', regions: ['eu-west-1'], regionOrder: 'sequential' },
+        manualApproval: false,
+        complianceLogBucketName: 'dev-compliance-logs',
+        complianceLogBucketAccount: '222222222222',
+        complianceLogBucketRegion: 'eu-west-1',
+      },
+    },
+  ])('rejects $name before invoking Docker', async ({ target }) => {
+    const calls: string[][] = [];
+    const cfg = {
+      image: IMAGE,
+      targets: [target],
+    } as unknown as ResolvedDeploymentConfig;
+
+    const code = await runFromImage(cfg, {
+      yes: true,
+      spawn: (args) => {
+        calls.push(args);
+        return ok();
+      },
+    });
+
+    expect(code).toBe(1);
+    expect(calls).toHaveLength(0);
   });
 
   test('resolves each target version from config/<stage>.json at run time (base repo + version)', async () => {
@@ -358,6 +568,71 @@ describe('m6-container: runFromImage', () => {
     });
     expect(code).toBe(1);
     expect(calls).toHaveLength(0);
+  });
+
+  test('a target-level digest bypasses the stage version and is passed to Docker unchanged', async () => {
+    const calls: string[][] = [];
+    const digest = `acct.dkr.ecr.eu-west-1.amazonaws.com/app@sha256:${'b'.repeat(64)}`;
+    const cfg = {
+      image: 'acct.dkr.ecr.eu-west-1.amazonaws.com/app',
+      targets: [
+        {
+          stage: 'dev',
+          image: digest,
+          env: { regions: ['us-west-2'], regionOrder: 'sequential' },
+          manualApproval: false,
+        },
+      ],
+    } as unknown as ResolvedDeploymentConfig;
+    const code = await runFromImage(cfg, {
+      yes: true,
+      readVersion: () => '9.9.9',
+      spawn: (args) => {
+        calls.push(args);
+        return ok();
+      },
+    });
+
+    expect(code).toBe(0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain(digest);
+    expect(calls[0]).not.toContain('acct.dkr.ecr.eu-west-1.amazonaws.com/app:9.9.9');
+  });
+
+  test('a target-level digest still rejects malformed stage version metadata before Docker', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'deploy-version-'));
+    const calls: string[][] = [];
+    const digest = `acct.dkr.ecr.eu-west-1.amazonaws.com/app@sha256:${'c'.repeat(64)}`;
+    fs.mkdirSync(path.join(cwd, 'config'));
+    fs.writeFileSync(path.join(cwd, 'config', 'dev.json'), '{');
+
+    try {
+      const cfg = {
+        image: 'acct.dkr.ecr.eu-west-1.amazonaws.com/app',
+        targets: [
+          {
+            stage: 'dev',
+            image: digest,
+            env: { regions: ['us-west-2'], regionOrder: 'sequential' },
+            manualApproval: false,
+          },
+        ],
+      } as unknown as ResolvedDeploymentConfig;
+
+      const code = await runFromImage(cfg, {
+        yes: true,
+        cwd,
+        spawn: (args) => {
+          calls.push(args);
+          return ok();
+        },
+      });
+
+      expect(code).toBe(1);
+      expect(calls).toHaveLength(0);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
   });
 
   test('--target deploys just that one target (its own image version)', async () => {

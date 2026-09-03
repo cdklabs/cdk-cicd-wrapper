@@ -234,7 +234,9 @@ new DefaultStackSynthesizer({
 
 Mechanics (bin stays untouched):
 - The CLI exports the configured role ARNs as env vars (`CDK_CICD_DEPLOY_ROLE_ARN`, …) during synth
-  and passes them at deploy time (`--role-arn`, cdk-assets role overrides).
+  so `DefaultStackSynthesizer` records the deployment and CloudFormation execution identities in the
+  cloud assembly. Deploy consumes that assembly without reinterpreting the deployment role as CDK's
+  `--role-arn` flag.
 - If full synthesizer control is required (asset-publishing roles are baked into the asset manifest
   at synth), the wrapper offers an optional one-liner for the bin file:
   `new App({ defaultStackSynthesizer: CicdSynthesizer.fromConfig() })` — the documented escape

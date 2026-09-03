@@ -3,6 +3,7 @@
 
 import * as path from 'path';
 import { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
+import { ACCOUNT_OVERRIDE_FLAG, REGION_OVERRIDE_FLAG, resolveEnvTarget } from '../../src/cmds/autopilot/ExecCommand';
 import { synthTargets } from '../../src/cmds/autopilot/SynthCommand';
 
 // A minimal resolved config: one single-region stage, one multi-region stage.
@@ -42,6 +43,7 @@ describe('m3-synth: synthTargets', () => {
     // The override carries into the env pins, so the synth actually targets that region.
     const [only] = synthTargets(CONFIG, 'prod', 'ap-southeast-2');
     expect(only.env.CDK_DEFAULT_REGION).toBe('ap-southeast-2');
+    expect(only.env[REGION_OVERRIDE_FLAG]).toBe('ap-southeast-2');
     expect(only.env.AWS_REGION).toBe('ap-southeast-2');
     expect(only.account).toBe('222222222222');
   });
@@ -104,6 +106,56 @@ describe('m3-synth: synthTargets', () => {
     expect(target.region).toBe('eu-central-1');
     expect(target.env.CDK_DEFAULT_ACCOUNT).toBe('999999999999');
     expect(target.env.CDK_DEFAULT_REGION).toBe('eu-central-1');
+    expect(target.env[ACCOUNT_OVERRIDE_FLAG]).toBe('999999999999');
+    expect(target.env[REGION_OVERRIDE_FLAG]).toBe('eu-central-1');
+  });
+
+  test('an intentionally account-agnostic target carries an empty explicit account contract', () => {
+    const agnostic = {
+      ...CONFIG,
+      stages: [
+        {
+          name: 'dev',
+          env: { account: undefined, regions: ['eu-west-1'], regionOrder: 'sequential' as any },
+          manualApproval: false,
+        },
+      ],
+    } as unknown as ResolvedCicdConfig;
+    const [target] = synthTargets(agnostic, 'dev', undefined, {
+      CDK_DEFAULT_ACCOUNT: '111111111111',
+    });
+
+    expect(target.account).toBeUndefined();
+    expect(target.env[ACCOUNT_OVERRIDE_FLAG]).toBe('');
+    expect(
+      resolveEnvTarget(
+        { ...target.env, CDK_DEFAULT_ACCOUNT: '111111111111' },
+        { aws: { accountId: '999999999999' } },
+        undefined,
+        'dev',
+      ).account,
+    ).toBeUndefined();
+  });
+
+  test('configured cross-account targets survive ambient CDK CLI account and region rewrites', () => {
+    const [target] = synthTargets(CONFIG, 'prod', undefined, {
+      CDK_DEFAULT_ACCOUNT: '111111111111',
+      CDK_DEFAULT_REGION: 'us-east-1',
+      AWS_REGION: 'us-east-1',
+    });
+    const rewrittenByCdk = {
+      ...target.env,
+      CDK_DEFAULT_ACCOUNT: '111111111111',
+      CDK_DEFAULT_REGION: 'us-east-1',
+      AWS_REGION: 'us-east-1',
+    };
+
+    expect(target.env[ACCOUNT_OVERRIDE_FLAG]).toBe('222222222222');
+    expect(target.env[REGION_OVERRIDE_FLAG]).toBe('us-west-1');
+    expect(resolveEnvTarget(rewrittenByCdk, {}, undefined, 'prod')).toEqual({
+      account: '222222222222',
+      region: 'us-west-1',
+    });
   });
 
   test('each target carries the per-region env and a segregated output dir', () => {
@@ -113,8 +165,10 @@ describe('m3-synth: synthTargets', () => {
       CDK_STAGE: 'prod',
       CDK_DEFAULT_ACCOUNT: '222222222222',
       CDK_DEPLOY_ACCOUNT: '222222222222',
+      [ACCOUNT_OVERRIDE_FLAG]: '222222222222',
       CDK_DEFAULT_REGION: 'us-west-1',
       CDK_DEPLOY_REGION: 'us-west-1',
+      [REGION_OVERRIDE_FLAG]: 'us-west-1',
       // steer the CDK CLI's own region derivation, not just the app's CDK_DEFAULT_REGION
       AWS_REGION: 'us-west-1',
       AWS_DEFAULT_REGION: 'us-west-1',

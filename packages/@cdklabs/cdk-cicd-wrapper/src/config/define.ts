@@ -14,10 +14,12 @@
 
 import { aws_codebuild as codebuild } from 'aws-cdk-lib';
 import { BuildImage } from './build-image';
+import { normalizeDefaultSynthesizerQualifier } from './default-synthesizer-role-arn';
 import { Repository } from './repository';
 import {
   CiConfig,
   CodeArtifactConfig,
+  CodeBuildImageCredentials,
   CodePipelineRoleNames,
   DeployModel,
   DeploymentConfig,
@@ -61,6 +63,8 @@ export interface CiConfigInput {
   readonly steps?: { [key: string]: string };
   readonly synthStages?: string[] | 'all';
   readonly image?: string;
+  /** Secrets Manager credentials for an authenticated external-registry CodeBuild image. */
+  readonly codeBuildImageCredentials?: CodeBuildImageCredentials;
   /** Escape hatch: a CodeBuild spec fragment merged into the CI build project. See `CiConfig.partialBuildSpec`. */
   readonly partialBuildSpec?: codebuild.BuildSpec;
 }
@@ -68,6 +72,7 @@ export interface CiConfigInput {
 /** Proxy config as written: `noProxy`/`proxyTestUrl` are optional, defaulted by `normalizeProxy`. */
 export interface ProxyConfigInput {
   readonly proxySecretArn: string;
+  readonly encryptionKeyArn?: string;
   readonly noProxy?: string[];
   readonly proxyTestUrl?: string;
 }
@@ -75,6 +80,7 @@ export interface ProxyConfigInput {
 /** What a user passes to `defineCICD`. Deliberately permissive; normalized to `ResolvedCicdConfig`. */
 export interface CicdConfigProps {
   readonly application?: string;
+  /** Explicit bootstrap qualifier. Surrounding whitespace is trimmed; the result must match `[A-Za-z0-9_-]{1,10}`. */
   readonly qualifier?: string;
   /**
    * CloudFormation stack name for the engine-owned self-mutating pipeline stack. See
@@ -85,6 +91,11 @@ export interface CicdConfigProps {
   readonly repository: Repository;
   /** Each stage is either a bare name (`'dev'`) or a full object. */
   readonly stages: Array<string | StageInput>;
+  /**
+   * Application synthesizer. `APP_STAGING` remains available for direct/local deployment and Repo 1
+   * image synthesis, but wrapper-generated deployment pipelines require `DEFAULT`. Direct use supports
+   * custom deployment and CloudFormation execution roles, but not a deploy-role ExternalId.
+   */
   readonly synthesizer?: { readonly type?: SynthesizerType; readonly appId?: string };
   readonly engine?: EngineType;
   /** GitHub Actions engine configuration. Only read when `engine` is `EngineType.GITHUB_ACTIONS`. */
@@ -111,6 +122,13 @@ export interface CicdConfigProps {
   readonly vpc?: VpcConfig;
   /** Compliance/access-log destination bucket name. See `ResolvedCicdConfig.complianceLogBucketName`. */
   readonly complianceLogBucketName?: string;
+  /**
+   * Create and manage `complianceLogBucketName`. Set to `false` to reference a pre-existing,
+   * owner-managed Blueprint compliance bucket.
+   *
+   * @default true
+   */
+  readonly createComplianceLogBucket?: boolean;
   /**
    * CodeBuild environment overrides (privileged mode, compute type, environment variables) applied to
    * every CodeBuild project. See `ResolvedCicdConfig.codeBuildEnvSettings`.
@@ -145,10 +163,14 @@ export interface CicdConfigProps {
  * only the first stage, contradicting the field's own doc.
  */
 function normalizeCi(ci: CiConfigInput | undefined, stageNames: string[]): CiConfig {
+  if (ci?.codeBuildImageCredentials !== undefined && ci.image === undefined) {
+    throw new Error('cdk-cicd: ci.codeBuildImageCredentials requires ci.image.');
+  }
   return {
     steps: ci?.steps ?? {},
     synthStages: ci?.synthStages === undefined ? [] : ci.synthStages === 'all' ? [...stageNames] : ci.synthStages,
     image: ci?.image,
+    codeBuildImageCredentials: ci?.codeBuildImageCredentials,
     partialBuildSpec: ci?.partialBuildSpec,
   };
 }
@@ -158,6 +180,7 @@ function normalizeProxy(proxy: ProxyConfigInput | undefined): ProxyConfig | unde
   if (proxy === undefined) return undefined;
   return {
     proxySecretArn: proxy.proxySecretArn,
+    encryptionKeyArn: proxy.encryptionKeyArn,
     noProxy: proxy.noProxy ?? [],
     proxyTestUrl: proxy.proxyTestUrl ?? 'https://aws.amazon.com',
   };
@@ -197,8 +220,34 @@ function normalizeStage(stage: string | StageInput): ResolvedStage {
 export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
   const application = props.application;
   const stages = props.stages.map(normalizeStage);
-  const qualifier = props.qualifier ?? (application !== undefined ? deriveQualifier(application) : undefined);
+  const synthesizerType = props.synthesizer?.type ?? SynthesizerType.DEFAULT;
+  const engine = props.engine ?? EngineType.CODEPIPELINE;
+  const qualifier =
+    props.qualifier !== undefined
+      ? normalizeDefaultSynthesizerQualifier(props.qualifier)
+      : application !== undefined
+        ? deriveQualifier(application)
+        : undefined;
   const warmAccountsFromSsm = props.warmAccountsFromSsm ?? false;
+  const createComplianceLogBucket = props.createComplianceLogBucket ?? true;
+  if (!createComplianceLogBucket && !props.complianceLogBucketName?.trim()) {
+    throw new Error(
+      'cdk-cicd: createComplianceLogBucket: false requires complianceLogBucketName for the existing bucket.',
+    );
+  }
+  if (synthesizerType === SynthesizerType.APP_STAGING) {
+    const stageWithExternalId = stages.find((stage) => {
+      const deployRole = stage.deployment?.deployRole?.trim();
+      const externalId = (stage.deployment?.externalId ?? props.deployRoleExternalId)?.trim();
+      return deployRole !== undefined && deployRole.length > 0 && externalId !== undefined && externalId.length > 0;
+    });
+    if (stageWithExternalId !== undefined) {
+      throw new Error(
+        `cdk-cicd: SynthesizerType.APP_STAGING cannot use a deploy-role ExternalId ` +
+          `(stage '${stageWithExternalId.name}'). The installed alpha deployment identities do not expose it.`,
+      );
+    }
+  }
   // Account warming scans SSM under the qualifier and grants ssm:GetParametersByPath on
   // `parameter/<qualifier>/*`. Without a resolvable qualifier the grant could only widen to
   // `parameter/*/*` (every parameter in the account) -- so require a qualifier rather than emit an
@@ -216,10 +265,10 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     repository: props.repository,
     stages,
     synthesizer: {
-      type: props.synthesizer?.type ?? SynthesizerType.DEFAULT,
+      type: synthesizerType,
       appId: props.synthesizer?.appId,
     },
-    engine: props.engine ?? EngineType.CODEPIPELINE,
+    engine,
     githubActions: props.githubActions,
     pipelineRoleNames: props.pipelineRoleNames,
     codePipelineRoleNames: props.codePipelineRoleNames,
@@ -234,6 +283,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     warmAccountsFromSsm,
     vpc: props.vpc,
     complianceLogBucketName: props.complianceLogBucketName,
+    createComplianceLogBucket,
     codeBuildEnvSettings: props.codeBuildEnvSettings,
     deployModel: props.deployModel ?? DeployModel.ASSEMBLY_PROMOTION,
     asyncDeploy: props.asyncDeploy ?? false,
@@ -264,18 +314,36 @@ export interface DeploymentTargetInput {
   readonly deployment?: DeploymentConfig;
   /** This target's deployer image (tag/digest), overriding the top-level `image` -- the per-stage version. */
   readonly image?: string;
+  /**
+   * Existing compliance/access-log destination bucket for this target, overriding the deployment-wide
+   * default. The target must declare a concrete account and exactly one concrete Region.
+   */
+  readonly complianceLogBucketName?: string;
 }
 
 /** What a user passes to `defineDeployment` (Repo 2). Deliberately permissive; normalized to resolved structs. */
 export interface DeploymentProps {
   /** Application name used by the deployer image. */
   readonly application?: string;
-  /** Bootstrap qualifier used by the deployer image; derived from `application` when omitted. */
+  /**
+   * Bootstrap qualifier used by the deployer image; derived from `application` when omitted.
+   * Surrounding whitespace is trimmed; the result must match `[A-Za-z0-9_-]{1,10}`.
+   */
   readonly qualifier?: string;
-  /** Synthesizer used by the deployer image; must match its `cicd.config`. */
+  /**
+   * Synthesizer used by the deployer image; must match its `cicd.config`. `APP_STAGING` is supported
+   * by direct `deploy --from-image`, not by the generated Repo 2 CodePipeline. Direct use supports
+   * custom deployment and CloudFormation execution roles, but not a deploy-role ExternalId.
+   */
   readonly synthesizer?: { readonly type?: SynthesizerType; readonly appId?: string };
   /** Default deployer image (an ECR/OCI reference, tag or digest); optional if every target pins its own `image`. */
   readonly image?: string;
+  /**
+   * Existing compliance/access-log destination bucket name used by targets that do not override it.
+   * Repo 2 does not create this bucket. Every target using it must be in the bucket's same account and
+   * Region, represented by a concrete account and exactly one concrete Region on that target.
+   */
+  readonly complianceLogBucketName?: string;
   /** The targets to run the image against, in order. */
   readonly targets: DeploymentTargetInput[];
   /**
@@ -288,11 +356,58 @@ export interface DeploymentProps {
   readonly codeArtifact?: CodeArtifactConfig;
   /** Generic private npm registry the CD build authenticates against before `npm ci`. */
   readonly npmRegistry?: NpmRegistryConfig;
+  /**
+   * Confirms that every cross-account ECR repository referenced by `image` or a target override has
+   * an owner-side repository policy granting the generated Repo 2 CodeBuild role pull access.
+   */
+  readonly crossAccountEcrRepositoryPolicyConfigured?: boolean;
 }
 
-function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarget {
+const AWS_ACCOUNT_ID = /^\d{12}$/;
+const AWS_REGION = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+-\d+$/;
+const S3_BUCKET_NAME = /^(?!\d{1,3}(?:\.\d{1,3}){3}$)(?!.*\.\.)[a-z0-9](?:[a-z0-9.-]{1,61}[a-z0-9])$/;
+
+function normalizeComplianceBucketName(value: string | undefined, context: string): string | undefined {
+  if (value === undefined) return undefined;
+  const name = value.trim();
+  if (name !== value || !S3_BUCKET_NAME.test(name)) {
+    throw new Error(
+      `cdk-cicd: ${context} complianceLogBucketName must be a valid 3-63 character S3 bucket name ` +
+        'with no surrounding whitespace.',
+    );
+  }
+  return name;
+}
+
+function normalizeTarget(
+  target: DeploymentTargetInput,
+  defaultComplianceLogBucketName?: string,
+): ResolvedDeploymentTarget {
   const env: StageEnvInput = target.env ?? {};
   const regions = env.regions ?? (env.region !== undefined ? [env.region] : []);
+  const complianceLogBucketName = normalizeComplianceBucketName(
+    target.complianceLogBucketName ?? defaultComplianceLogBucketName,
+    `target '${target.stage}'`,
+  );
+
+  let complianceLogBucketAccount: string | undefined;
+  let complianceLogBucketRegion: string | undefined;
+  if (complianceLogBucketName !== undefined) {
+    if (env.account === undefined || !AWS_ACCOUNT_ID.test(env.account)) {
+      throw new Error(
+        `cdk-cicd: target '${target.stage}' compliance logging requires a concrete 12-digit env.account.`,
+      );
+    }
+    if (regions.length !== 1 || !AWS_REGION.test(regions[0])) {
+      throw new Error(
+        `cdk-cicd: target '${target.stage}' compliance logging requires exactly one concrete AWS Region; ` +
+          'S3 server access logs cannot cross Regions.',
+      );
+    }
+    complianceLogBucketAccount = env.account;
+    complianceLogBucketRegion = regions[0];
+  }
+
   return {
     stage: target.stage,
     env: {
@@ -304,6 +419,9 @@ function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarge
     manualApproval: target.manualApproval ?? !AUTO_APPROVE_STAGES.has(target.stage),
     deployment: target.deployment,
     image: target.image,
+    complianceLogBucketName,
+    complianceLogBucketAccount,
+    complianceLogBucketRegion,
   };
 }
 
@@ -325,17 +443,54 @@ function normalizeTarget(target: DeploymentTargetInput): ResolvedDeploymentTarge
  * `ResolvedDeploymentConfig` is jsii-modeled.
  */
 export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConfig {
+  const synthesizerType = props.synthesizer?.type ?? SynthesizerType.DEFAULT;
+  const qualifier =
+    props.qualifier !== undefined
+      ? normalizeDefaultSynthesizerQualifier(props.qualifier)
+      : props.application !== undefined
+        ? deriveQualifier(props.application)
+        : undefined;
+  const complianceLogBucketName = normalizeComplianceBucketName(props.complianceLogBucketName, 'deployment');
+  if (synthesizerType === SynthesizerType.APP_STAGING) {
+    const targetWithExternalId = props.targets.find((target) => {
+      const deployRole = target.deployment?.deployRole?.trim();
+      const externalId = target.deployment?.externalId?.trim();
+      return deployRole !== undefined && deployRole.length > 0 && externalId !== undefined && externalId.length > 0;
+    });
+    if (targetWithExternalId !== undefined) {
+      throw new Error(
+        `cdk-cicd: SynthesizerType.APP_STAGING cannot use a deploy-role ExternalId ` +
+          `(target '${targetWithExternalId.stage}'). The installed alpha deployment identities do not expose it.`,
+      );
+    }
+  }
+  const targets = props.targets.map((target) => normalizeTarget(target, complianceLogBucketName));
+  const bucketCoordinates = new Map<string, string>();
+  for (const target of targets) {
+    if (target.complianceLogBucketName === undefined) continue;
+    const coordinates = `${target.complianceLogBucketAccount}/${target.complianceLogBucketRegion}`;
+    const previous = bucketCoordinates.get(target.complianceLogBucketName);
+    if (previous !== undefined && previous !== coordinates) {
+      throw new Error(
+        `cdk-cicd: compliance bucket '${target.complianceLogBucketName}' is assigned to both ${previous} ` +
+          `and ${coordinates}. An S3 bucket has one account and Region; use distinct bucket names.`,
+      );
+    }
+    bucketCoordinates.set(target.complianceLogBucketName, coordinates);
+  }
   return {
     application: props.application,
-    qualifier: props.qualifier ?? (props.application !== undefined ? deriveQualifier(props.application) : undefined),
+    qualifier,
     synthesizer: {
-      type: props.synthesizer?.type ?? SynthesizerType.DEFAULT,
+      type: synthesizerType,
       appId: props.synthesizer?.appId,
     },
     image: props.image,
-    targets: props.targets.map(normalizeTarget),
+    complianceLogBucketName,
+    targets,
     repository: props.repository,
     codeArtifact: props.codeArtifact,
     npmRegistry: props.npmRegistry,
+    crossAccountEcrRepositoryPolicyConfigured: props.crossAccountEcrRepositoryPolicyConfigured,
   };
 }

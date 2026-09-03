@@ -30,7 +30,7 @@ export default defineCICD({
   deployerImage: BuildImage.docker({
     dockerfile: 'Dockerfile', // default; the image payload is your app + deps, NOT cdk.out
     // repositoryName: 'my-app-deployer',   // reference an existing ECR repo; omit to provision one
-    // tagStrategy: ImageTagStrategy.GIT_SHA,  // default: tag by commit; or LATEST
+    // tagStrategy: ImageTagStrategy.GIT_SHA,  // default: immutable revision tag; or LATEST
   }),
 });
 ```
@@ -38,13 +38,20 @@ export default defineCICD({
 `stages` remains required by the `defineCICD` API, but `deployerImage` mode does not render deployment
 actions for those stages.
 
+Repo 1 may preserve `APP_STAGING` in the image because this pipeline performs no application deployment.
+The generated Repo 2 pipeline rejects that synthesizer; an `APP_STAGING` image must be run through the
+local/direct `cdk-cicd deploy --from-image` path. Its targets may configure `deployRole` and
+`cfnExecutionRole` for application-stack deployment; staging support resources still use caller/base
+credentials. A deploy-role ExternalId remains unsupported.
+
 ### What the Repo 1 pipeline does
 
 `cdk-cicd deploy-ci` provisions a **secondary CodePipeline** whose single build project:
 
 1. runs `npm ci` and your CI scripts (`npm run audit`/`build`/`test`, CI as a validation gate),
 2. logs in to ECR (`aws ecr get-login-password | docker login …`),
-3. `docker build`s your Dockerfile and pushes the image, tagged by the resolved commit.
+3. `docker build`s your Dockerfile and pushes the image, tagged by the lowercase Git commit SHA or,
+   for a non-Git source revision, a deterministic SHA-256 of that revision.
 
 <!-- SCREENSHOT: CodePipeline console showing the Repo 1 pipeline as Source → BuildImage (no deploy stages) -->
 
@@ -53,10 +60,10 @@ disposable pipeline empties and deletes it on teardown.
 
 ### Why the image, not `cdk.out`
 
-The image bakes code + deps but **never** `cdk.out`, so Repo 2 can synth-and-deploy it **offline** against
-any target's config — no `npm install` and no registry access at deploy time. That's what collapses the
-per-target pipeline sprawl: targets become config rows a single image is run against, not pipeline
-resources.
+The image bakes code + deps but **never** `cdk.out`, so the deployer container can synth-and-deploy
+without installing the application or contacting its package registry. Repo 2's small outer CodeBuild
+step still runs `npm ci` to install the wrapper before launching the image, so configure its package
+registry access when the wrapper is not available from public npm.
 
 ## Repo 2 — the CD pipeline that deploys the image
 
@@ -80,7 +87,11 @@ export default defineDeployment({
 
   // Targets say WHERE (account/region/role) + gating. The VERSION each runs comes from config/<stage>.json.
   targets: [
-    { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } },
+    {
+      stage: 'dev',
+      env: { account: '111111111111', region: 'eu-west-1' },
+      complianceLogBucketName: 'my-app-compliance-111111111111-eu-west-1',
+    },
     { stage: 'int', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
     {
       stage: 'prod',
@@ -92,6 +103,22 @@ export default defineDeployment({
 });
 ```
 
+`complianceLogBucketName` references an existing destination; Repo 2 does not create it. A target using
+one must provide a concrete 12-digit account and exactly one Region. The executor verifies that complete
+bucket/account/Region coordinate and passes the exact
+`CDK_CICD_COMPLIANCE_LOG_BUCKET_NAME`, `CDK_CICD_COMPLIANCE_LOG_BUCKET_ACCOUNT`, and
+`CDK_CICD_COMPLIANCE_LOG_BUCKET_REGION` variables into the deployer container. Use a different bucket
+name for a target in another account or Region; multi-Region targets cannot share one S3 logging
+destination.
+
+If the deployer image belongs to a different AWS account than the Repo 2 pipeline, its repository owner
+must grant the generated CodeBuild role `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, and
+`ecr:BatchCheckLayerAvailability`, plus `ecr:DescribeImages` so a mutable tag is fingerprinted by its
+current digest. Only then set
+`crossAccountEcrRepositoryPolicyConfigured: true`; rendering fails closed without that acknowledgement.
+This is a runtime pull of the deployer image. Any private ECR image used as CodeBuild's own environment
+image must still be in the pipeline Region.
+
 Each stage's **version lives in its own config file** in the CD repo (a hash or semver) — _not_ baked in
 the image:
 
@@ -100,8 +127,9 @@ the image:
 { "version": "1.5.0" }      { "version": "1.4.2" }     { "version": "1.4.2" }
 ```
 
-The deploy resolves `image = <base-repo>:<version-from-config/<stage>.json>`. Provision the CD pipeline —
-the deploy-side twin of `deploy-ci` for a CI pipeline:
+The deploy resolves `image = <base-repo>:<version-from-config/<stage>.json>`. An existing malformed
+version file fails deployment rather than silently selecting the base image. Provision the CD pipeline
+— the deploy-side twin of `deploy-ci` for a CI pipeline:
 
 ```bash
 npx cdk-cicd deploy-ci     # sees deploy.config.ts (not cicd.config.ts) → provisions the CD pipeline
@@ -113,8 +141,8 @@ This renders a second CodePipeline with **one Deploy action per target**. Each a
 
 - **Per-stage versions in config:** bump `config/dev.json`'s `version`, commit → only `dev` redeploys on it.
   `dev` can run a newer version than `prod`, and the version is plain config, reviewable in a PR.
-- **Parallel deploys:** ungated targets deploy in parallel; a gated target (e.g. `int`/`prod`) waits on its
-  **manual-approval** action, then runs — so `int` and `prod` promote in parallel once approved.
+- **Deployment order:** adjacent ungated targets share a parallel wave. Each gated target gets its own
+  approval/deploy stage, and declaration order is preserved, so its approval blocks every later target.
 - **Two pipelines total:** the CI pipeline (Repo 1) _pushes_ the image; the CD pipeline (Repo 2) _pulls_ it.
 
 <!-- SCREENSHOT: CodePipeline console showing the Repo 2 CD pipeline as Source → Deploy (per-target actions) -->
@@ -139,10 +167,9 @@ through to each target's deploy.
 
 !!! info "Manual-approval gates"
 A target's `manualApproval: true` is honored on both paths. The **CD pipeline** renders two deploy
-stages: a `Deploy` stage runs every ungated target in parallel, then a `DeployGated` stage places each
-gated target behind its own manual-approval action (so `int` and `prod` each wait on their own
-approval, then deploy). The **local executor** (`cdk-cicd deploy --from-image`) is fail-closed — it
-refuses a gated target unless you pass `--yes`.
+shapes: one `Deploy` stage runs every ungated target in parallel, then each gated target gets its own
+pairwise approval/deploy stage in config order. The **local executor**
+(`cdk-cicd deploy --from-image`) is fail-closed—it refuses a gated target unless you pass `--yes`.
 
 !!! tip "Rollback is a retag"
 To roll back, point `image:` at the previous version tag (e.g. `:1.4.1`) and re-run

@@ -76,6 +76,11 @@
       "type": "build"
     },
     {
+      "name": "@aws-cdk/cloud-assembly-schema",
+      "version": "^48.12.0",
+      "type": "runtime"
+    },
+    {
       "name": "@aws-sdk/client-s3",
       "type": "runtime"
     },

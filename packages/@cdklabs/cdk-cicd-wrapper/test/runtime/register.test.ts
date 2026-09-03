@@ -6,7 +6,14 @@
 // contained to this file. The pure-guard tests deliberately import from inject.ts (no
 // side effect) rather than register.ts.
 
-import { App, Aspects, DefaultStackSynthesizer, IReusableStackSynthesizer, Stack } from 'aws-cdk-lib';
+import {
+  App,
+  Aspects,
+  BOOTSTRAP_QUALIFIER_CONTEXT,
+  DefaultStackSynthesizer,
+  IReusableStackSynthesizer,
+  Stack,
+} from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
@@ -71,6 +78,38 @@ describe('m2-register: the App patch', () => {
       expect(JSON.stringify(Template.fromStack(stack).toJSON())).toContain('sentinel99');
     } finally {
       spy.mockRestore();
+    }
+  });
+
+  test('a valid CDK bootstrap-qualifier context controls the wrapper-owned synthesizer', () => {
+    const app = new App({ context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: 'context_1' } });
+    const stack = new Stack(app, 'ContextQualifierStack');
+
+    expect(app.synth().getStackArtifact(stack.artifactId).assumeRoleArn).toContain('cdk-context_1-deploy-role-');
+  });
+
+  test.each([' context1 ', '', 'invalid!', '12345678901', 123])(
+    'rejects invalid CDK bootstrap-qualifier context before user stacks are constructed: %j',
+    (qualifier) => {
+      expect(() => new App({ context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: qualifier } })).toThrow(
+        new RegExp(`context '${BOOTSTRAP_QUALIFIER_CONTEXT}'.*\\[A-Za-z0-9_-\\]\\{1,10\\}`),
+      );
+    },
+  );
+
+  test('validates bootstrap-qualifier context loaded through CDK_CONTEXT_JSON', () => {
+    const previous = process.env.CDK_CONTEXT_JSON;
+    process.env.CDK_CONTEXT_JSON = JSON.stringify({ [BOOTSTRAP_QUALIFIER_CONTEXT]: ' invalid ' });
+    try {
+      expect(() => new App()).toThrow(
+        new RegExp(`context '${BOOTSTRAP_QUALIFIER_CONTEXT}'.*\\[A-Za-z0-9_-\\]\\{1,10\\}`),
+      );
+    } finally {
+      if (previous === undefined) {
+        delete process.env.CDK_CONTEXT_JSON;
+      } else {
+        process.env.CDK_CONTEXT_JSON = previous;
+      }
     }
   });
 

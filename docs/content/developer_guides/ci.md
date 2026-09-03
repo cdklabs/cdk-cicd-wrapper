@@ -97,6 +97,68 @@ ci: {
 },
 ```
 
-### Custom CI CodeBuild image
+### Custom CI build image
 
-Set `ci.image` to override the CodeBuild image the CI build project runs on.
+`ci.image` is engine-specific:
+
+- `CODEPIPELINE` and `CDK_PIPELINES` use it as the CI/Synth CodeBuild environment image.
+  - `aws/codebuild/...` selects an AWS-managed image with CodeBuild-managed pull credentials.
+  - A private ECR image must be in the pipeline account and the same Region as the CodeBuild project.
+    The wrapper grants the project role permission to pull that repository.
+  - An external registry image is anonymous by default. For an authenticated registry, configure a
+    Secrets Manager credential containing the registry `username` and `password`:
+
+    ```typescript
+    ci: {
+      image: 'registry.example.com/private/ci:2026-09',
+      codeBuildImageCredentials: {
+        secretArn:
+          'arn:aws:secretsmanager:eu-west-1:111111111111:secret:ci-registry-AbCdEf',
+        // Include this only when the secret uses a customer-managed KMS key.
+        encryptionKeyArn:
+          'arn:aws:kms:eu-west-1:111111111111:key/EXAMPLE_NOT_A_SECRET',
+      },
+    },
+    ```
+
+    The wrapper passes the imported secret to
+    `LinuxBuildImage.fromDockerRegistry(..., { secretsManagerCredentials })`; CDK renders the
+    CodeBuild registry credential and grants the CI/Synth role secret read. When the secret uses an
+    imported customer-managed key, the wrapper also grants that role `kms:Decrypt` on the exact key
+    ARN. `codeBuildImageCredentials` is rejected for managed CodeBuild and private ECR images because
+    those image classes use different pull-credential models.
+
+- `GITHUB_ACTIONS` uses `ci.image` as the Build-Synth GitHub job container.
+  - `aws/codebuild/...` is rejected: it is a CodeBuild image ID, not a pullable OCI job-container
+    reference.
+  - Private ECR is rejected because GitHub pulls the job container before the workflow can obtain AWS
+    credentials and exchange them for an ECR authorization token.
+  - Authenticate an external registry with GitHub Actions secret names:
+
+    ```typescript
+    ci: {
+      image: 'registry.example.com/private/ci:2026-09',
+    },
+    githubActions: {
+      buildContainerCredentials: {
+        usernameSecretName: 'REGISTRY_USERNAME',
+        passwordSecretName: 'REGISTRY_PASSWORD',
+      },
+    },
+    ```
+
+    The workflow contains `${{ secrets.REGISTRY_USERNAME }}` and
+    `${{ secrets.REGISTRY_PASSWORD }}` expressions, never literal credentials. Secret names may use
+    letters, numbers, and underscores, must not start with a number, and must not start with
+    `GITHUB_`.
+
+All engines reject image references containing inline registry userinfo such as
+`user:password@registry.example.com/image`.
+
+For the CodeBuild engines, the same-Region ECR requirement is imposed when CodeBuild provisions the
+build environment; logging in from the buildspec happens too late to make a cross-Region ECR
+environment image usable. Repo 2's cross-account deployer-image acknowledgement is a separate runtime
+pull path and does not change this `ci.image` contract.
+
+For GitHub Actions, `githubActions.publishAssetsAuthRegion` controls the Region used to assume the OIDC
+role while publishing assets. When omitted, it defaults to the concrete pipeline stack Region.

@@ -12,7 +12,7 @@ import * as path from 'path';
 import type { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, stageByName } from './CicdConfig';
-import { stageEnv } from './ExecCommand';
+import { ACCOUNT_OVERRIDE_FLAG, REGION_OVERRIDE_FLAG, stageEnv } from './ExecCommand';
 import { logger } from '../../utils/Logging';
 
 /** One synth target: a single (stage, region), its output dir and the environment overrides it needs. */
@@ -42,8 +42,9 @@ function firstNonEmpty(...values: Array<string | undefined>): string | undefined
  * with no regions, which then still yields one target rather than nothing.
  *
  * A stage with no configured regions falls back to the ambient CDK/AWS region. Container mode also
- * supplies `CDK_CICD_ACCOUNT_OVERRIDE`; it is authoritative over the account baked into the image's
- * cicd.config so Repo 2 controls both parts of WHERE.
+ * supplies wrapper-owned overrides; a present empty override clears image configuration and is resolved
+ * against the ambient process before entering the CDK CLI. Every resulting target then carries explicit
+ * wrapper override flags so later CDK CLI rewrites of `CDK_DEFAULT_*` cannot change its authority.
  */
 export function synthTargets(
   config: ResolvedCicdConfig,
@@ -54,9 +55,9 @@ export function synthTargets(
   const stages = stageName !== undefined ? config.stages.filter((s) => s.name === stageName) : config.stages;
   const targets: SynthTarget[] = [];
   for (const stage of stages) {
-    const hasRegionOverride = Object.prototype.hasOwnProperty.call(ambient, 'CDK_CICD_REGION_OVERRIDE');
+    const hasRegionOverride = Object.prototype.hasOwnProperty.call(ambient, REGION_OVERRIDE_FLAG);
     const ambientRegion = firstNonEmpty(
-      ambient.CDK_CICD_REGION_OVERRIDE,
+      ambient[REGION_OVERRIDE_FLAG],
       ambient.CDK_DEFAULT_REGION,
       ambient.AWS_REGION,
       ambient.AWS_DEFAULT_REGION,
@@ -73,9 +74,9 @@ export function synthTargets(
             : ambientRegion !== undefined
               ? [ambientRegion]
               : [];
-    const hasAccountOverride = Object.prototype.hasOwnProperty.call(ambient, 'CDK_CICD_ACCOUNT_OVERRIDE');
+    const hasAccountOverride = Object.prototype.hasOwnProperty.call(ambient, ACCOUNT_OVERRIDE_FLAG);
     const account = hasAccountOverride
-      ? firstNonEmpty(ambient.CDK_CICD_ACCOUNT_OVERRIDE, ambient.CDK_DEFAULT_ACCOUNT)
+      ? firstNonEmpty(ambient[ACCOUNT_OVERRIDE_FLAG], ambient.CDK_DEFAULT_ACCOUNT)
       : stage.env.account;
     for (const region of regions) {
       targets.push({
@@ -89,6 +90,8 @@ export function synthTargets(
         // CLI's own region resolution.
         env: {
           ...stageEnv(stage.name, { account, region }),
+          [ACCOUNT_OVERRIDE_FLAG]: account ?? '',
+          [REGION_OVERRIDE_FLAG]: region,
           AWS_REGION: region,
           AWS_DEFAULT_REGION: region,
         },

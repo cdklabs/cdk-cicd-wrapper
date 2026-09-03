@@ -13,9 +13,9 @@
 // NAME is sufficient for a clean in-place update.
 //
 // `stageStackName` gives that control from `bin/`: a stage-qualified name for new projects, and the
-// options to reproduce Blueprint's name. `stageFirst` puts the stage first (as Blueprint did); `uppercaseStage` matches
-// Blueprint's DEFAULT uppercase stage ids -- if your Blueprint stages were lowercase/custom-case, pass the stage
-// verbatim instead (default casing) so the name matches EXACTLY. It is a TS-authoring helper (a free
+// options to reproduce Blueprint's name. `stageFirst` puts the stage first (as Blueprint did);
+// `uppercaseStage` matches Blueprint's DEFAULT uppercase stage ids, while `preserveStageCase` handles
+// a custom-case Blueprint stage without changing the established lowercase default. It is a TS-authoring helper (a free
 // function, invisible to jsii, like `defineCICD`); importing it in `bin/` is the opt-in, not the default.
 
 /** Options for {@link stageStackName}. */
@@ -35,6 +35,11 @@ export interface StageStackNameOptions {
    * not uppercase.
    */
   readonly uppercaseStage?: boolean;
+  /**
+   * Preserve the stage segment's original casing. Use this only to match an existing stack whose stage
+   * id was custom-case; the backward-compatible default lowercases the segment.
+   */
+  readonly preserveStageCase?: boolean;
 }
 
 /**
@@ -45,8 +50,8 @@ export interface StageStackNameOptions {
  * Migrating from Blueprint without recreating resources: Blueprint prefixed the stack name with the stage id verbatim,
  * so with its default (uppercase) stages `stageStackName('myapp', { stageFirst: true, uppercaseStage:
  * true })` -> `DEV-myapp`, exactly what Blueprint deployed, and CloudFormation UPDATES it in place. If your Blueprint
- * stages were lowercase/custom-case, drop `uppercaseStage` (or pass an explicit `stage`) so the casing
- * matches. Always confirm with `cdk-cicd synth --stage <s>` + `cdk diff` before switching the pipeline.
+ * stages were custom-case, set `preserveStageCase: true` so the casing matches. Always confirm with
+ * `cdk-cicd synth --stage <s>` + `cdk diff` before switching the pipeline.
  *
  * TS-authoring only (a free function; jsii does not model it) -- import it in `bin/` as the opt-in.
  */
@@ -56,9 +61,8 @@ export function stageStackName(base: string, options: StageStackNameOptions = {}
     return base;
   }
   // Always `-`: CloudFormation stack names allow only [A-Za-z][A-Za-z0-9-]*, so any other separator would
-  // produce an invalid name. Preserve the configured stage id verbatim by default so Blueprint migrations
-  // keep their existing CloudFormation stack names; `uppercaseStage` is the explicit compatibility helper
-  // for Blueprint's built-in uppercase stage ids.
-  const seg = options.uppercaseStage ? stage.toUpperCase() : stage;
+  // produce an invalid name. Keep the established lowercase default; `uppercaseStage` is the explicit
+  // compatibility helper for Blueprint's built-in uppercase stage ids.
+  const seg = options.uppercaseStage ? stage.toUpperCase() : options.preserveStageCase ? stage : stage.toLowerCase();
   return options.stageFirst ? `${seg}-${base}` : `${base}-${seg}`;
 }

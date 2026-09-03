@@ -222,7 +222,7 @@ This provisions the pipeline from `cicd.config.ts` alone — nothing else needs 
 
 #### What the pipeline does
 
-**Source** → **Build** (`npm ci`, then your `ci.steps` or the default `npx cdk-cicd check`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, each gated by a manual approval except the inner-loop stage names `dev` and `res` (auto-approved by default), unless you set `manualApproval` explicitly. Autopilot reserves no stage names — `dev`/`res` are simply the two that default to auto-approve; every other name is gated.
+**Source** → **Build** (`npm ci`, then your `ci.steps` or the default `npx cdk-cicd check`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, each gated by a manual approval except the inner-loop stage names `dev` and `res` (auto-approved by default), unless you set `manualApproval` explicitly. `dev`/`res` are simply approval defaults; the flat CodePipeline engine reserves only its plumbing stage names: `Source`, `Build`, and `UpdatePipeline`.
 
 Supporting resources — the encryption key, VPC networking for the pipeline's own CodeBuild projects, a compliance bucket — are **lazily provisioned**, so a pipeline only pays for what its configuration actually references.
 
@@ -235,6 +235,26 @@ The `engine` field in `cicd.config.ts` selects how the pipeline is rendered. The
 - **`EngineType.CODEPIPELINE`** (default) — a lightweight, flat AWS CodePipeline. Deploy stages re-invoke your app per stage, so `bin/` stays a plain single-stage app. Smallest footprint, and the only engine that supports [container mode](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/container_mode.html).
 - **`EngineType.CDK_PIPELINES`** — the Blueprint-compatible self-mutating pipeline built on `aws-cdk-lib/pipelines` (Source → Synth → Assets → one wave per stage). Choose it when you want a pipeline shaped like a Blueprint (`0.x`) one, e.g. to keep a migration's topology familiar.
 - **`EngineType.GITHUB_ACTIONS`** — renders a GitHub Actions workflow instead of an AWS-hosted pipeline. Requires `repository: Repository.github(...)` and a `githubActions` config block.
+
+#### Deployment contracts
+
+- **`APP_STAGING` is direct-deploy only.** It is valid for local/direct `cdk deploy` (including local
+  `cdk-cicd deploy --from-image`) and may be preserved while Repo 1 builds a deployer image, because that
+  pipeline deploys no application stacks. Every wrapper-generated deployment pipeline rejects it: flat
+  `CODEPIPELINE`, Repo 2, `CDK_PIPELINES`, and `GITHUB_ACTIONS`. On the direct/local path, a custom
+  bootstrap qualifier and custom `deployRole` / `cfnExecutionRole` identities are supported for
+  application stacks. The separate staging support stack deploys with caller/base credentials, and
+  deploy-role `ExternalId` values remain unsupported.
+- **Deployment and CloudFormation roles are distinct.** CodeBuild assumes the configured deployment
+  role. That assumed role passes the CloudFormation execution role to CloudFormation, so
+  `iam:PassRole` belongs on the deployment role—not directly on the CodeBuild project role.
+- **Private ECR build images are environment-bound.** A custom ECR image used as a CodeBuild environment
+  image must be in the same Region as the project; the flat and CDK Pipelines CI paths also require the
+  pipeline account. Repo 2's explicit cross-account image path requires an owner-side repository policy
+  and `crossAccountEcrRepositoryPolicyConfigured: true`; it does not relax the build-image Region rule.
+- **GitHub approvals are configured in GitHub.** When `manualApproval` is used, configure required
+  reviewers on every generated GitHub Environment, then acknowledge that setup with
+  `githubActions.environmentProtectionConfigured: true`.
 
 ```typescript
 import { defineCICD, Repository, EngineType } from '@cdklabs/cdk-cicd-wrapper';

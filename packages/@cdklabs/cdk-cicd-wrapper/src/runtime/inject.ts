@@ -14,12 +14,22 @@
 
 import * as path from 'path';
 import { AppStagingSynthesizer, BootstrapRole, DeploymentIdentities } from '@aws-cdk/app-staging-synthesizer-alpha';
-import { Aspects, DefaultStackSynthesizer, IAspect, IReusableStackSynthesizer, Tags } from 'aws-cdk-lib';
+import {
+  AspectPriority,
+  Aspects,
+  DefaultStackSynthesizer,
+  IAspect,
+  IReusableStackSynthesizer,
+  Stage,
+  Tags,
+} from 'aws-cdk-lib';
 import { BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { IConstruct } from 'constructs';
 import { configPluginRefs, registeredPlugins, resolvePlugins } from './plugins';
 import { AppConfig } from '../appconfig/accessor';
+import { normalizeDefaultSynthesizerQualifier } from '../config/default-synthesizer-role-arn';
 import { SynthesizerType } from '../config/types';
+import { AccessLogsForBucketAspect } from '../support/AccessLogsForBucketAspect';
 
 /**
  * Environment flag that `cdk-cicd exec` (m2-exec) sets to arm the bundled-app diagnostic. It is a
@@ -75,6 +85,12 @@ export const DEPLOY_ROLE_FLAG = 'CDK_CICD_DEPLOY_ROLE_ARN';
 export const CFN_EXEC_ROLE_FLAG = 'CDK_CICD_CFN_EXEC_ROLE_ARN';
 /** ExternalId presented when assuming the forced deploy role (m-external-id). See `DeploymentConfig.externalId`. */
 export const DEPLOY_ROLE_EXTERNAL_ID_FLAG = 'CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID';
+/** Compliance destination name injected by a pipeline build into application synthesis. */
+export const COMPLIANCE_LOG_BUCKET_NAME_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_NAME';
+/** Account containing the compliance destination; paired with {@link COMPLIANCE_LOG_BUCKET_NAME_FLAG}. */
+export const COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_ACCOUNT';
+/** Region containing the compliance destination; paired with {@link COMPLIANCE_LOG_BUCKET_NAME_FLAG}. */
+export const COMPLIANCE_LOG_BUCKET_REGION_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_REGION';
 
 function envArn(value: string | undefined): string | undefined {
   return value !== undefined && value.trim().length > 0 ? value.trim() : undefined;
@@ -95,9 +111,32 @@ function stagingAppId(value: string): string {
 
 const WRAPPER_CONFIG_FIELDS = ['application', 'plugins', 'qualifier', 'synthesizer'] as const;
 const WRAPPER_APPLIED = Symbol.for('@cdklabs/cdk-cicd-wrapper.WrapperApplied');
+const RUNTIME_COMPLIANCE_CONFIG = Symbol.for('@cdklabs/cdk-cicd-wrapper.RuntimeComplianceConfig');
+const COMPLIANCE_ASPECT_CONFIG = Symbol.for('@cdklabs/cdk-cicd-wrapper.ComplianceAspectConfig');
+const COMPLIANCE_STAGE_SYNTH_PATCH = Symbol.for('@cdklabs/cdk-cicd-wrapper.ComplianceStageSynthPatch');
 
 interface WrapperCarrier {
   [WRAPPER_APPLIED]?: boolean;
+}
+
+interface RuntimeComplianceConfig {
+  readonly bucketName: string;
+  readonly account: string;
+  readonly region: string;
+}
+
+interface ComplianceCarrier {
+  [RUNTIME_COMPLIANCE_CONFIG]?: RuntimeComplianceConfig;
+  [COMPLIANCE_ASPECT_CONFIG]?: string;
+}
+
+interface StageSynthesisCarrier {
+  readonly assembly?: unknown;
+}
+
+interface StageSynthPrototype {
+  [COMPLIANCE_STAGE_SYNTH_PATCH]?: boolean;
+  synth(this: IConstruct, ...args: unknown[]): unknown;
 }
 
 /** Internal controls for applying the wrapper to a composite construct tree. */
@@ -125,6 +164,84 @@ class SkipAppliedDescendantsAspect implements IAspect {
     }
     this.delegate.visit(node);
   }
+}
+
+function complianceConfigKey(config: RuntimeComplianceConfig): string {
+  return `${config.bucketName}\0${config.account}\0${config.region}`;
+}
+
+function nearestRuntimeComplianceConfig(scope: IConstruct): RuntimeComplianceConfig | undefined {
+  let current: IConstruct | undefined = scope;
+  while (current !== undefined) {
+    const config = (current as ComplianceCarrier)[RUNTIME_COMPLIANCE_CONFIG];
+    if (config !== undefined) return config;
+    current = current.node.scope;
+  }
+  return undefined;
+}
+
+function attachRuntimeComplianceAspects(scope: IConstruct): void {
+  for (const candidate of scope.node.findAll()) {
+    if (!Stage.isStage(candidate)) continue;
+
+    const config = nearestRuntimeComplianceConfig(candidate);
+    if (config === undefined) continue;
+
+    const carrier = candidate as ComplianceCarrier;
+    const configKey = complianceConfigKey(config);
+    if (carrier[COMPLIANCE_ASPECT_CONFIG] === configKey) continue;
+    if ((candidate as unknown as StageSynthesisCarrier).assembly !== undefined) {
+      throw new Error(
+        `cdk-cicd-wrapper: Stage '${candidate.node.path}' was synthesized before compliance logging ` +
+          'was attached. Its cached cloud assembly cannot be retrofitted; call CdkCicd.attach(app) before synth.',
+      );
+    }
+    if (carrier[COMPLIANCE_ASPECT_CONFIG] !== undefined) {
+      throw new Error(
+        `cdk-cicd-wrapper: Stage '${candidate.node.path}' received conflicting compliance logging destinations.`,
+      );
+    }
+
+    Aspects.of(candidate).add(
+      new AccessLogsForBucketAspect({
+        complianceLogBucketName: config.bucketName,
+        complianceLogBucketAccount: config.account,
+        complianceLogBucketRegion: config.region,
+      }),
+      { priority: AspectPriority.MUTATING },
+    );
+    carrier[COMPLIANCE_ASPECT_CONFIG] = configKey;
+  }
+}
+
+/**
+ * CDK deliberately stops inherited Aspect traversal at child Stage boundaries and synthesizes
+ * nested Stages before invoking a parent Stage's Aspects. Patch the concrete CDK copy's Stage
+ * synthesis method once so stages created after the wrapper was applied receive the compliance
+ * aspect before any nested assembly is emitted.
+ */
+function installRuntimeComplianceTraversal(scope: IConstruct, config: RuntimeComplianceConfig): void {
+  (scope as ComplianceCarrier)[RUNTIME_COMPLIANCE_CONFIG] = config;
+  attachRuntimeComplianceAspects(scope);
+
+  if (!Stage.isStage(scope)) return;
+
+  let prototype: StageSynthPrototype | null = Object.getPrototypeOf(scope) as StageSynthPrototype | null;
+  while (prototype !== null && !Object.prototype.hasOwnProperty.call(prototype, 'synth')) {
+    prototype = Object.getPrototypeOf(prototype) as StageSynthPrototype | null;
+  }
+  if (prototype === null || prototype[COMPLIANCE_STAGE_SYNTH_PATCH] === true) return;
+
+  const originalSynth = prototype.synth;
+  Object.defineProperty(prototype, 'synth', {
+    configurable: true,
+    writable: true,
+    value: function complianceAwareSynth(this: IConstruct, ...args: unknown[]): unknown {
+      attachRuntimeComplianceAspects(this);
+      return originalSynth.apply(this, args);
+    },
+  });
+  Object.defineProperty(prototype, COMPLIANCE_STAGE_SYNTH_PATCH, { value: true });
 }
 
 /**
@@ -190,7 +307,7 @@ export function resolveSynthesizer(config: Record<string, unknown>): IReusableSt
     if (typeof config.qualifier !== 'string') {
       throw new Error('cdk-cicd-wrapper: `qualifier` must be a string.');
     }
-    qualifier = envArn(config.qualifier);
+    qualifier = normalizeDefaultSynthesizerQualifier(config.qualifier);
   }
   const deployRoleArn = envArn(process.env[DEPLOY_ROLE_FLAG]);
   const cloudFormationExecutionRole = envArn(process.env[CFN_EXEC_ROLE_FLAG]);
@@ -211,17 +328,11 @@ export function resolveSynthesizer(config: Record<string, unknown>): IReusableSt
       );
     }
     const appId = stagingAppId(rawAppId);
-    if (qualifier !== undefined && !/^[a-z0-9]{1,10}$/.test(qualifier)) {
-      throw new Error(
-        `cdk-cicd-wrapper: APP_STAGING qualifier '${qualifier}' must contain 1-10 lowercase ` +
-          'alphanumeric characters so it is valid for both bootstrap and staging resources.',
-      );
-    }
     if (deployRoleExternalId !== undefined) {
       throw new Error(
         'cdk-cicd-wrapper: SynthesizerType.APP_STAGING cannot use a forced deploy-role ExternalId. ' +
-          '@aws-cdk/app-staging-synthesizer-alpha does not expose ExternalId on BootstrapRole or ' +
-          'DeploymentIdentities; remove the ExternalId or use SynthesizerType.DEFAULT.',
+          '@aws-cdk/app-staging-synthesizer-alpha supports custom deployment identities but does not ' +
+          'expose an ExternalId for them; remove the ExternalId or use SynthesizerType.DEFAULT.',
       );
     }
 
@@ -232,8 +343,8 @@ export function resolveSynthesizer(config: Record<string, unknown>): IReusableSt
             cloudFormationExecutionRole: BootstrapRole.fromRoleArn(
               cloudFormationExecutionRole ?? AppStagingSynthesizer.DEFAULT_CLOUDFORMATION_ROLE_ARN,
             ),
-            // Supply this explicitly: the pinned alpha's partial-role fallback does not populate a
-            // lookup role for DeploymentIdentities.specifyRoles().
+            // The pinned alpha's partial-role fallback accidentally references `identities.lookupRole`
+            // twice, so provide the standard lookup role explicitly.
             lookupRole: BootstrapRole.fromRoleArn(AppStagingSynthesizer.DEFAULT_LOOKUP_ROLE_ARN),
           })
         : undefined;
@@ -267,6 +378,27 @@ export function applyWrapper(
   const wrapperContext = scope.node.tryGetContext(WRAPPER_CONFIG_CONTEXT_KEY);
   const effectiveConfig = mergeRuntimeConfig(config, isConfigObject(wrapperContext) ? wrapperContext : undefined);
   const pluginCarriers = Array.from(new Set([scope, ...scope.node.findAll()]));
+
+  // Flat-engine application stacks synthesize in a separate CodeBuild process from the pipeline stack.
+  // The engine exports the real destination environment into that process; attach the mutating aspect
+  // here so it reaches the application templates rather than only the pipeline's own construct tree.
+  const complianceLogBucketName = envArn(process.env[COMPLIANCE_LOG_BUCKET_NAME_FLAG]);
+  const complianceLogBucketAccount = envArn(process.env[COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG]);
+  const complianceLogBucketRegion = envArn(process.env[COMPLIANCE_LOG_BUCKET_REGION_FLAG]);
+  const complianceValues = [complianceLogBucketName, complianceLogBucketAccount, complianceLogBucketRegion];
+  if (complianceValues.some((value) => value !== undefined)) {
+    if (complianceValues.some((value) => value === undefined)) {
+      throw new Error(
+        'cdk-cicd-wrapper: compliance logging runtime configuration is incomplete; bucket name, ' +
+          'account, and region must be injected together.',
+      );
+    }
+    installRuntimeComplianceTraversal(scope, {
+      bucketName: complianceLogBucketName!,
+      account: complianceLogBucketAccount!,
+      region: complianceLogBucketRegion!,
+    });
+  }
 
   // Resolve which security plugins (Aspects) apply from the injected config's `plugins` selection and
   // any custom plugins registered in bin/ via CdkCicd.addPlugin (issue #241). No `plugins` in config

@@ -10,6 +10,11 @@
     ansi-styles "^6.2.1"
     is-fullwidth-code-point "^5.0.0"
 
+"@aws-cdk/app-staging-synthesizer-alpha@2.195.0-alpha.0":
+  version "2.195.0-alpha.0"
+  resolved "https://registry.npmjs.org/@aws-cdk/app-staging-synthesizer-alpha/-/app-staging-synthesizer-alpha-2.195.0-alpha.0.tgz"
+  integrity sha512-7FHZ8n6BDjbDWgAPZO9vJJYRDlGrIooE/kLyzoxQ0dBwzx3iHrBRC03MflMvnbrsDRyxG+kXHTnMk8Hx3E3cKw==
+
 "@aws-cdk/asset-awscli-v1@^2.2.229":
   version "2.2.255"
   resolved "https://registry.npmjs.org/@aws-cdk/asset-awscli-v1/-/asset-awscli-v1-2.2.255.tgz"
@@ -19,11 +24,6 @@
   version "2.1.0"
   resolved "https://registry.npmjs.org/@aws-cdk/asset-node-proxy-agent-v6/-/asset-node-proxy-agent-v6-2.1.0.tgz"
   integrity sha512-7bY3J8GCVxLupn/kNmpPc5VJz8grx+4RKfnnJiO1LG+uxkZfANZG3RMHhE+qQxxwkyQ9/MfPtTpf748UhR425A==
-
-"@aws-cdk/app-staging-synthesizer-alpha@2.195.0-alpha.0":
-  version "2.195.0-alpha.0"
-  resolved "https://registry.npmjs.org/@aws-cdk/app-staging-synthesizer-alpha/-/app-staging-synthesizer-alpha-2.195.0-alpha.0.tgz"
-  integrity sha512-7FHZ8n6BDjbDWgAPZO9vJJYRDlGrIooE/kLyzoxQ0dBwzx3iHrBRC03MflMvnbrsDRyxG+kXHTnMk8Hx3E3cKw==
 
 "@aws-cdk/aws-service-spec@0.1.98":
   version "0.1.98"
@@ -40,6 +40,14 @@
   dependencies:
     jsonschema "~1.4.1"
     semver "^7.7.1"
+
+"@aws-cdk/cloud-assembly-schema@^48.12.0":
+  version "48.20.0"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/cloud-assembly-schema/-/cloud-assembly-schema-48.20.0.tgz#a2b60373cfbe228f901f62f0d7e2c5e2fe40702d"
+  integrity sha512-+eeiav9LY4wbF/EFuCt/vfvi/Zoxo8bf94PW5clbMraChEliq83w4TbRVy0jB9jE0v1ooFTtIjSQkowSPkfISg==
+  dependencies:
+    jsonschema "~1.4.1"
+    semver "^7.7.2"
 
 "@aws-cdk/integ-runner@^2.186.0-alpha.0":
   version "2.190.8"

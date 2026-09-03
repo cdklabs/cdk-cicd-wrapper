@@ -86,6 +86,7 @@ function requireConfigFile<T>(file: string): T {
 /**
  * Load and return the resolved pipeline config, or undefined when there is no config file. The file's
  * `default` export is the `defineCICD(...)` result -- already normalized to `ResolvedCicdConfig`.
+ * Errors from an existing file deliberately propagate; only an absent file means "not configured".
  */
 export function load(cwd: string): ResolvedCicdConfig | undefined {
   const file = discover(cwd);

@@ -16,30 +16,57 @@ import { spawn as spawnProcess } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import type { ResolvedDeploymentConfig, ResolvedDeploymentTarget } from '@cdklabs/cdk-cicd-wrapper';
-import { CFN_EXEC_ROLE_FLAG, DEPLOY_ROLE_EXTERNAL_ID_FLAG, DEPLOY_ROLE_FLAG, resolveExternalId } from './ExecCommand';
+import {
+  CFN_EXEC_ROLE_FLAG,
+  COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG,
+  COMPLIANCE_LOG_BUCKET_NAME_FLAG,
+  COMPLIANCE_LOG_BUCKET_REGION_FLAG,
+  DEPLOY_ROLE_EXTERNAL_ID_FLAG,
+  DEPLOY_ROLE_FLAG,
+  resolveExternalId,
+} from './ExecCommand';
 import { logger } from '../../utils/Logging';
+
+const AWS_ACCOUNT_ID = /^\d{12}$/;
+const AWS_REGION = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+-\d+$/;
+const S3_BUCKET_NAME = /^(?!\d{1,3}(?:\.\d{1,3}){3}$)(?!.*\.\.)[a-z0-9](?:[a-z0-9.-]{1,61}[a-z0-9])$/;
 
 /** Reads the deployed `version` (hash or semver) for a stage from `config/<stage>.json`. Injectable for tests. */
 export type VersionReader = (cwd: string, stage: string) => string | undefined;
-const readVersionFromConfig: VersionReader = (cwd, stage) => {
+export const readVersionFromConfig: VersionReader = (cwd, stage) => {
   const file = path.join(cwd, 'config', `${stage}.json`);
   if (!existsSync(file)) return undefined;
+
+  let document: unknown;
   try {
-    const value = JSON.parse(readFileSync(file, 'utf-8')).version;
-    return typeof value === 'string' && value.length > 0 ? value : undefined;
-  } catch {
-    return undefined;
+    document = JSON.parse(readFileSync(file, 'utf-8'));
+  } catch (error) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: ${file} exists but could not be read as JSON ` +
+        `(${error instanceof Error ? error.message : String(error)})`,
+    );
   }
+
+  const version =
+    document !== null && typeof document === 'object' && !Array.isArray(document)
+      ? (document as { version?: unknown }).version
+      : undefined;
+  if (typeof version !== 'string' || version.length === 0 || version.trim() !== version) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: ${file} must contain a non-empty string 'version' with no surrounding whitespace`,
+    );
+  }
+  return version;
 };
 
 /**
- * The full deployer image to run for a target. The base repo comes from the target's `image` (override) or
- * the config-level `image`; the VERSION (tag) comes from the CD repo's `config/<stage>.json` `version`
- * field (a hash or semver) -- so bumping a stage's version file and committing redeploys just that stage.
- * If a version is present it replaces any tag on the base (`repo[:oldtag]` -> `repo:<version>`); with no
- * version file the base is used as-is. A digest-pinned base is preserved as-is, but cannot be combined
- * with a separate version because that would discard its immutable identity. Returns undefined when
- * there is no base image at all.
+ * The full deployer image to run for a target. A target-level digest is the strongest possible pin and
+ * remains authoritative even when `config/<stage>.json` contains a version. Otherwise the base repo
+ * comes from the target's `image` (override) or the config-level `image`; the VERSION (tag) comes from
+ * the stage version file, so bumping that file and committing redeploys just that stage. If a version is
+ * present it replaces any tag on the base (`repo[:oldtag]` -> `repo:<version>`). A config-level digest
+ * still conflicts with a separate per-stage version because neither source is target-specific enough to
+ * choose silently. Returns undefined when there is no base image at all.
  */
 export function resolveTargetImage(
   target: ResolvedDeploymentTarget,
@@ -47,9 +74,14 @@ export function resolveTargetImage(
   cwd: string,
   readVersion: VersionReader = readVersionFromConfig,
 ): string | undefined {
+  // Validate existing stage metadata before applying image precedence. A target-level digest remains
+  // authoritative, but it must not let a malformed config/<stage>.json bypass fail-closed validation.
+  const version = readVersion(cwd, target.stage);
+  if (target.image?.includes('@')) {
+    return target.image;
+  }
   const base = target.image ?? config.image;
   if (base === undefined) return undefined;
-  const version = readVersion(cwd, target.stage);
   if (version === undefined) return base;
   if (base.includes('@')) {
     throw new Error(
@@ -71,12 +103,53 @@ export interface DockerTarget {
   /** Undefined for an environment-agnostic target (deploy against the container's ambient region). */
   readonly region?: string;
   readonly account?: string;
-  /** Forced deploy role for this target, passed through to the inner synth and deploy. */
+  /** Forced deploy role for this target, passed through to the inner synth via environment. */
   readonly deployRole?: string;
   /** Forced CloudFormation execution role for this target, passed through to the inner synth. */
   readonly cfnExecutionRole?: string;
   /** Resolved ExternalId for the forced deploy role. Never a `resolve:secretsmanager:` reference. */
   readonly externalId?: string;
+  /** Existing same-account/same-Region compliance destination for application S3 access logs. */
+  readonly complianceLogBucketName?: string;
+  readonly complianceLogBucketAccount?: string;
+  readonly complianceLogBucketRegion?: string;
+}
+
+interface ComplianceLoggingCoordinates {
+  readonly bucketName: string;
+  readonly account: string;
+  readonly region: string;
+}
+
+function complianceLoggingForTarget(
+  config: ResolvedDeploymentConfig,
+  target: ResolvedDeploymentTarget,
+): ComplianceLoggingCoordinates | undefined {
+  const bucketName = target.complianceLogBucketName ?? config.complianceLogBucketName;
+  const account = target.complianceLogBucketAccount;
+  const region = target.complianceLogBucketRegion;
+  const values = [bucketName, account, region];
+  if (values.every((value) => value === undefined)) return undefined;
+  if (
+    values.some((value) => value === undefined || value.trim().length === 0) ||
+    !S3_BUCKET_NAME.test(bucketName!) ||
+    !AWS_ACCOUNT_ID.test(account!) ||
+    !AWS_REGION.test(region!)
+  ) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: target '${target.stage}' has incomplete or invalid compliance ` +
+        'logging coordinates; bucket name, 12-digit account, and AWS Region must be resolved together.',
+    );
+  }
+  if (target.env.account !== account || target.env.regions.length !== 1 || target.env.regions[0] !== region) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: target '${target.stage}' is ${target.env.account ?? 'account-agnostic'}/` +
+        `${target.env.regions.length === 1 ? target.env.regions[0] : 'multi-or-region-agnostic'}, but compliance ` +
+        `bucket '${bucketName}' is resolved for ${account}/${region}. S3 server access logs require the source ` +
+        'and destination buckets to be in the same account and Region.',
+    );
+  }
+  return { bucketName: bucketName!, account: account!, region: region! };
 }
 
 /**
@@ -129,15 +202,53 @@ export function dockerRunArgs(image: string, target: DockerTarget, options: { ne
   } else {
     setEnv(DEPLOY_ROLE_EXTERNAL_ID_FLAG, '');
   }
+  const complianceValues = [
+    target.complianceLogBucketName,
+    target.complianceLogBucketAccount,
+    target.complianceLogBucketRegion,
+  ];
+  if (
+    complianceValues.some((value) => value !== undefined) &&
+    complianceValues.some((value) => value === undefined || value.trim().length === 0)
+  ) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: target '${target.stage}' must provide compliance bucket name, ` +
+        'account, and Region together.',
+    );
+  }
+  if (target.complianceLogBucketName !== undefined) {
+    if (
+      !S3_BUCKET_NAME.test(target.complianceLogBucketName) ||
+      !AWS_ACCOUNT_ID.test(target.complianceLogBucketAccount!) ||
+      !AWS_REGION.test(target.complianceLogBucketRegion!)
+    ) {
+      throw new Error(
+        `cdk-cicd deploy --from-image: target '${target.stage}' has invalid compliance bucket, ` +
+          'account, or Region coordinates.',
+      );
+    }
+    if (target.account !== target.complianceLogBucketAccount || target.region !== target.complianceLogBucketRegion) {
+      throw new Error(
+        `cdk-cicd deploy --from-image: target '${target.stage}' compliance destination must match the ` +
+          'deployment account and Region.',
+      );
+    }
+    setEnv(COMPLIANCE_LOG_BUCKET_NAME_FLAG, target.complianceLogBucketName);
+    setEnv(COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG, target.complianceLogBucketAccount!);
+    setEnv(COMPLIANCE_LOG_BUCKET_REGION_FLAG, target.complianceLogBucketRegion!);
+  } else {
+    // Presence is authoritative here too: clear any image-baked values so Repo 2 config decides whether
+    // runtime injection applies the compliance aspect.
+    setEnv(COMPLIANCE_LOG_BUCKET_NAME_FLAG, '');
+    setEnv(COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG, '');
+    setEnv(COMPLIANCE_LOG_BUCKET_REGION_FLAG, '');
+  }
   // Creds inherited from the caller (who assumed the target account, for cross-account deploys).
   ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'].forEach(passEnv);
 
   const inner = ['cdk-cicd', 'deploy', '--stage', target.stage, '--yes'];
   if (target.region !== undefined) {
     inner.push('--region', target.region);
-  }
-  if (target.deployRole !== undefined) {
-    inner.push('--deploy-role', target.deployRole);
   }
 
   // `--network` lets the caller pick the container's network mode. The default docker bridge is right for
@@ -148,13 +259,31 @@ export function dockerRunArgs(image: string, target: DockerTarget, options: { ne
 }
 
 /** The (target x region) runs for one target: one per region, or a single region-agnostic run. */
-export function targetRuns(target: ResolvedDeploymentTarget, resolvedExternalId?: string): DockerTarget[] {
+export function targetRuns(
+  target: ResolvedDeploymentTarget,
+  resolvedExternalId?: string,
+  complianceLogging?: ComplianceLoggingCoordinates,
+): DockerTarget[] {
+  if (
+    complianceLogging !== undefined &&
+    (target.env.account !== complianceLogging.account ||
+      target.env.regions.length !== 1 ||
+      target.env.regions[0] !== complianceLogging.region)
+  ) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: target '${target.stage}' compliance destination must match its ` +
+        'concrete account and single Region.',
+    );
+  }
   const base = {
     stage: target.stage,
     account: target.env.account,
     deployRole: target.deployment?.deployRole,
     cfnExecutionRole: target.deployment?.cfnExecutionRole,
     externalId: resolvedExternalId,
+    complianceLogBucketName: complianceLogging?.bucketName,
+    complianceLogBucketAccount: complianceLogging?.account,
+    complianceLogBucketRegion: complianceLogging?.region,
   };
   if (target.env.regions.length === 0) {
     return [base];
@@ -249,11 +378,31 @@ export async function runFromImage(
     return 1;
   }
 
+  const bucketCoordinates = new Map<string, string>();
   for (const target of targets) {
     if (target.manualApproval && !options.yes) {
       logger.error(
         `cdk-cicd deploy --from-image: target '${target.stage}' requires manual approval -- re-run with --yes`,
       );
+      return 1;
+    }
+
+    let complianceLogging: ComplianceLoggingCoordinates | undefined;
+    try {
+      complianceLogging = complianceLoggingForTarget(config, target);
+      if (complianceLogging !== undefined) {
+        const coordinates = `${complianceLogging.account}/${complianceLogging.region}`;
+        const previous = bucketCoordinates.get(complianceLogging.bucketName);
+        if (previous !== undefined && previous !== coordinates) {
+          throw new Error(
+            `cdk-cicd deploy --from-image: compliance bucket '${complianceLogging.bucketName}' is ` +
+              `assigned to both ${previous} and ${coordinates}.`,
+          );
+        }
+        bucketCoordinates.set(complianceLogging.bucketName, coordinates);
+      }
+    } catch (error) {
+      logger.error(error instanceof Error ? error.message : String(error));
       return 1;
     }
 
@@ -286,7 +435,7 @@ export async function runFromImage(
       }
     }
 
-    const runs = targetRuns(target, externalId);
+    const runs = targetRuns(target, externalId, complianceLogging);
     const results = await runRegionalInvocations(runs, target.env.regionOrder, async (run) => {
       logger.info(`cdk-cicd deploy --from-image: ${run.stage} -> ${run.region ?? 'ambient region'} (${image})`);
       try {

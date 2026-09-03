@@ -13,28 +13,42 @@
 // builds the app's stacks for a given stage, exactly as Blueprint's `.addStack(...)` did. So it is used from an
 // explicit `bin/` (the documented opt-in path), not the `deploy-ci` zero-touch flow.
 
-import { Arn, ArnFormat, AspectPriority, Aspects, Environment, Stack, Stage } from 'aws-cdk-lib';
+import { AspectPriority, Aspects, Environment, Stack, Stage, Token } from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as pipelines from 'aws-cdk-lib/pipelines';
+import { RegionInfo } from 'aws-cdk-lib/region-info';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
+import {
+  assertValidCiImageReference,
+  ciImageRegistryHost,
+  isPrivateEcrRegistryHost,
+  isPublicEcrRegistryHost,
+} from '../../config/build-image';
+import { resolveDefaultSynthesizerQualifier } from '../../config/default-synthesizer-role-arn';
 import { Repository, RepositorySourceType } from '../../config/repository';
 import {
   CodeArtifactConfig,
+  CodeBuildImageCredentials,
   NpmRegistryConfig,
   PipelineRoleNames,
   ProxyConfig,
   RegionOrder,
   ResolvedCicdConfig,
+  SynthesizerType,
 } from '../../config/types';
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { resolveVpcNetworking } from '../../support/Vpc';
 import { defaultCiCommands } from '../ci-commands';
 import { resolveCodeCommitRepository } from '../codepipeline/source';
-import { deployRoleExternalIdSecretArns } from '../external-id-secrets';
+
+const PRIVATE_NPM_CONFIG_PATH = '/tmp/cdk-cicd-npmrc';
 
 /** Context passed to the stage factory for one deployment stage. */
 export interface CdkPipelinesStageContext {
@@ -95,6 +109,116 @@ function sourceFor(scope: Construct, repository: Repository): pipelines.CodePipe
   }
 }
 
+/** Fail closed until the installed CDK Pipelines deployment path can forward deploy-role ExternalIds. */
+function assertNoDeployRoleExternalIds(config: ResolvedCicdConfig): void {
+  const unsupportedStages = config.stages
+    .filter((stage) => {
+      const deployRole = stage.deployment?.deployRole?.trim();
+      const externalId = (stage.deployment?.externalId ?? config.deployRoleExternalId)?.trim();
+      return deployRole !== undefined && deployRole.length > 0 && externalId !== undefined && externalId.length > 0;
+    })
+    .map((stage) => stage.name);
+
+  if (unsupportedStages.length > 0) {
+    throw new Error(
+      `cdk-cicd: CDK_PIPELINES cannot honor deploy-role ExternalIds for stage(s): ` +
+        `${unsupportedStages.join(', ')}. Remove the ExternalId or use the CODEPIPELINE engine.`,
+    );
+  }
+}
+
+/** The installed alpha synthesizer explicitly excludes CDK Pipelines and replay would cross Stage boundaries. */
+function assertSupportedSynthesizer(config: ResolvedCicdConfig): void {
+  if ((config.synthesizer?.type ?? SynthesizerType.DEFAULT) === SynthesizerType.APP_STAGING) {
+    throw new Error(
+      'cdk-cicd: CDK_PIPELINES cannot use SynthesizerType.APP_STAGING: the installed ' +
+        '@aws-cdk/app-staging-synthesizer-alpha does not support CDK Pipelines, and Stage replay would ' +
+        'create an invalid cross-Stage dependency on DefaultStagingStack. Use SynthesizerType.DEFAULT ' +
+        'for generated pipelines; APP_STAGING remains available for direct local CDK deployment.',
+    );
+  }
+}
+
+/**
+ * CDK Pipelines can deploy across accounts and Regions, but a single pipeline cannot cross AWS
+ * partitions. Resolve every participating Region through the installed RegionInfo table so unknown
+ * or mixed partitions fail before placeholder ARNs are stamped with the pipeline partition.
+ */
+function assertSingleKnownPartition(stack: Stack, config: ResolvedCicdConfig, engine: string): string {
+  const pipelinePartition = partitionForRegion(stack.region, `${engine} pipeline`);
+
+  for (const stage of config.stages) {
+    const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
+    for (const region of regions) {
+      const targetPartition = partitionForRegion(region, `${engine} stage '${stage.name}'`);
+      if (targetPartition !== pipelinePartition) {
+        throw new Error(
+          `cdk-cicd: ${engine} cannot mix AWS partitions: pipeline region '${stack.region}' is in ` +
+            `'${pipelinePartition}', but stage '${stage.name}' region '${region}' is in '${targetPartition}'.`,
+        );
+      }
+    }
+  }
+
+  if (config.codeArtifact?.region !== undefined) {
+    const codeArtifactPartition = partitionForRegion(config.codeArtifact.region, `${engine} CodeArtifact`);
+    if (codeArtifactPartition !== pipelinePartition) {
+      throw new Error(
+        `cdk-cicd: ${engine} cannot use CodeArtifact region '${config.codeArtifact.region}' in partition ` +
+          `'${codeArtifactPartition}' from pipeline partition '${pipelinePartition}'.`,
+      );
+    }
+  }
+
+  return pipelinePartition;
+}
+
+function partitionForRegion(region: string, context: string): string {
+  if (region.length === 0 || Token.isUnresolved(region)) {
+    throw new Error(`cdk-cicd: ${context} requires a concrete Region so its AWS partition can be verified.`);
+  }
+  const partition = RegionInfo.get(region).partition;
+  if (partition === undefined) {
+    throw new Error(
+      `cdk-cicd: ${context} region '${region}' is not known to this aws-cdk-lib version. ` +
+        'Upgrade the wrapper/CDK before using that Region.',
+    );
+  }
+  return partition;
+}
+
+/**
+ * This engine provisions one destination bucket with the pipeline stack. Fail closed instead of
+ * inventing per-Region bucket names: S3 server access logging requires each source and destination
+ * bucket to be in the same account and Region.
+ */
+function assertSupportedComplianceLogging(stack: Stack, config: ResolvedCicdConfig): void {
+  if (config.complianceLogBucketName === undefined) return;
+  if (Token.isUnresolved(stack.account) || Token.isUnresolved(stack.region)) {
+    throw new Error(
+      'cdk-cicd: compliance logging requires a concrete pipeline stack account and region so the ' +
+        'S3 same-account/same-region requirement can be verified.',
+    );
+  }
+
+  for (const stage of config.stages) {
+    const account = stage.env.account ?? stack.account;
+    const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
+    if (
+      Token.isUnresolved(account) ||
+      account !== stack.account ||
+      regions.some((stageRegion) => Token.isUnresolved(stageRegion) || stageRegion !== stack.region)
+    ) {
+      throw new Error(
+        `cdk-cicd: compliance logging cannot target stage '${stage.name}' from the pipeline bucket ` +
+          `'${config.complianceLogBucketName}' in ${stack.account}/${stack.region}. S3 server access-log ` +
+          'source and destination buckets must be in the same account and region; configure only ' +
+          'co-located stages or omit complianceLogBucketName.',
+      );
+    }
+  }
+}
+
 /**
  * A CDK Pipelines pipeline rendered from an Autopilot config + a stage factory. Reproduces the Blueprint shape:
  * Source -> Synth (self-mutating) -> Assets -> one wave per stage (with a pre-approval when the stage is
@@ -106,11 +230,24 @@ export class CdkPipelinesEngine extends Construct {
   constructor(scope: Construct, id: string, props: CdkPipelinesEngineProps) {
     super(scope, id);
     const config = props.config;
+    assertSupportedSynthesizer(config);
+    assertNoDeployRoleExternalIds(config);
     const name = props.pipelineName ?? `${config.application ?? 'cdk-cicd'}-pipeline`;
-    const region = Stack.of(this).region;
+    const stack = Stack.of(this);
+    const region = stack.region;
+    const partition = assertSingleKnownPartition(stack, config, 'CDK_PIPELINES');
+    const privateNpm = config.npmRegistry !== undefined || config.codeArtifact !== undefined;
+    assertSupportedComplianceLogging(stack, config);
+    const complianceLogBucket =
+      config.complianceLogBucketName !== undefined
+        ? new SupportResources(this, 'Support', {
+            complianceLogBucketName: config.complianceLogBucketName,
+            createComplianceLogBucket: config.createComplianceLogBucket,
+          }).complianceLogBucket
+        : undefined;
 
-    // The Synth step: install (proxy exports, then CodeArtifact login for private/pre-release deps)
-    // then `npm run cdk synth`, run with `CDK_CICD_MODE=pipeline` on the step env (below) so
+    // The Synth step: install proxy/account-warming prerequisites, then configure private npm and run
+    // CI plus `npm run cdk synth`, with `CDK_CICD_MODE=pipeline` on the step env (below) so
     // `cdk.json`'s single `cdk-cicd exec` entry renders THIS pipeline -- so CDK Pipelines self-mutation,
     // which reruns this step and redeploys the pipeline stack from the fresh assembly, still sees itself.
     // Without the mode set, that same entry synthesizes only the application stacks. The proxy's exports
@@ -119,6 +256,9 @@ export class CdkPipelinesEngine extends Construct {
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
       ...(config.warmAccountsFromSsm ? ssmWarmingCommands(config.qualifier) : []),
+    ];
+    const privateNpmCommands = [
+      ...(privateNpm ? npmConfigSetupCommands() : []),
       ...(config.npmRegistry ? npmRegistryLoginCommands(config.npmRegistry) : []),
       ...(config.codeArtifact
         ? [
@@ -130,12 +270,25 @@ export class CdkPipelinesEngine extends Construct {
         : []),
     ];
     const ciSteps = Object.values(config.ci.steps);
-    const deployRoleExternalIdSecrets = deployRoleExternalIdSecretArns(config);
+    const synthCommands = [
+      ...privateNpmCommands,
+      ...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()),
+      'npm run cdk synth',
+    ];
     const synthPartialBuildSpec = mergeSynthPartialBuildSpec(
       config.ci.partialBuildSpec,
       config.proxy,
       config.npmRegistry,
+      privateNpm,
     );
+    if (config.ci.image === undefined && config.ci.codeBuildImageCredentials !== undefined) {
+      throw new Error('cdk-cicd: ci.codeBuildImageCredentials requires ci.image.');
+    }
+    const synthBuildImage =
+      config.ci.image !== undefined
+        ? resolveSynthBuildImage(this, config.ci.image, partition, config.ci.codeBuildImageCredentials)
+        : undefined;
+    const lookupStatements = targetLookupStatements(stack, config, partition);
     // Blueprint `VPCProvider`, applied by CDK Pipelines itself to EVERY CodeBuild project it creates (synth,
     // self-mutation, asset publishing) -- the uniform application Blueprint had.
     const vpcNetworking = resolveVpcNetworking(this, config.vpc, config.proxy !== undefined);
@@ -165,20 +318,18 @@ export class CdkPipelinesEngine extends Construct {
         // synth`, which runs `cdk.json`'s single `cdk-cicd exec` entry. `CDK_CICD_MODE=pipeline` (below)
         // makes that entry render THIS pipeline, so CDK Pipelines self-mutation re-renders itself; a plain
         // `cdk synth` without the mode set renders only the application stacks.
-        commands: [...(ciSteps.length > 0 ? ciSteps : defaultCiCommands()), 'npm run cdk synth'],
+        commands: synthCommands,
         env: {
           // Render the pipeline (not the app stacks) from the single cdk.json entry during self-mutation.
           CDK_CICD_MODE: 'pipeline',
           ...(config.qualifier ? { CDK_QUALIFIER: config.qualifier } : {}),
           AWS_REGION: region,
+          ...(privateNpm ? { NPM_CONFIG_USERCONFIG: PRIVATE_NPM_CONFIG_PATH } : {}),
           ...(config.proxy ? proxyEnvVariables(Stack.of(this), config.proxy) : {}),
         },
         // Only the Synth project receives ci.image. The pipeline-wide defaults continue to govern
         // self-mutation and asset-publishing projects.
-        buildEnvironment:
-          config.ci.image !== undefined
-            ? { buildImage: codebuild.LinuxBuildImage.fromDockerRegistry(config.ci.image) }
-            : undefined,
+        buildEnvironment: synthBuildImage !== undefined ? { buildImage: synthBuildImage } : undefined,
         // Proxy credentials/ports and the npm bearer token are resolved by CodeBuild at container
         // start. Merge them with the caller's CI partial buildspec instead of replacing either side.
         partialBuildSpec: synthPartialBuildSpec,
@@ -187,24 +338,13 @@ export class CdkPipelinesEngine extends Construct {
         // default) -- else they fail AccessDenied.
         rolePolicyStatements: [
           ...(config.codeArtifact ? codeArtifactReadStatements(Stack.of(this), config.codeArtifact) : []),
-          ...(config.proxy ? proxySecretReadStatements(Stack.of(this), config.proxy) : []),
+          ...(config.proxy ? proxySecretReadStatements(config.proxy) : []),
           ...(config.npmRegistry
-            ? [
-                new iam.PolicyStatement({
-                  actions: ['secretsmanager:GetSecretValue'],
-                  resources: [config.npmRegistry.basicAuthSecretArn],
-                }),
-              ]
+            ? secretReadStatements(config.npmRegistry.basicAuthSecretArn, config.npmRegistry.encryptionKeyArn)
             : []),
+          ...codeBuildImageCredentialKeyDecryptStatements(config.ci.codeBuildImageCredentials),
           ...(config.warmAccountsFromSsm ? ssmWarmingReadStatements(Stack.of(this), config.qualifier) : []),
-          ...(deployRoleExternalIdSecrets.length > 0
-            ? [
-                new iam.PolicyStatement({
-                  actions: ['secretsmanager:GetSecretValue'],
-                  resources: deployRoleExternalIdSecrets,
-                }),
-              ]
-            : []),
+          ...lookupStatements,
         ],
       }),
     });
@@ -215,9 +355,26 @@ export class CdkPipelinesEngine extends Construct {
     for (const stage of config.stages) {
       const regions = stage.env.regions.length > 0 ? stage.env.regions : [region];
       const appStageFor = (stageRegion: string): Stage => {
-        const env: Environment = { account: stage.env.account, region: stageRegion };
+        const env: Environment = {
+          account:
+            config.complianceLogBucketName !== undefined ? (stage.env.account ?? stack.account) : stage.env.account,
+          region: stageRegion,
+        };
         const stageId = regions.length > 1 ? `${stage.name}-${stageRegion}` : stage.name;
         const appStage = new Stage(this, stageId, { env });
+        if (config.complianceLogBucketName !== undefined && complianceLogBucket !== undefined) {
+          // CDK aspects do not cross Stage boundaries. Attach directly to every application Stage so
+          // its stacks receive logging, while the engine-level aspect below handles pipeline resources.
+          Aspects.of(appStage).add(
+            new AccessLogsForBucketAspect({
+              complianceLogBucketName: config.complianceLogBucketName,
+              complianceLogBucketAccount: stack.account,
+              complianceLogBucketRegion: stack.region,
+              complianceLogBucket,
+            }),
+            { priority: AspectPriority.MUTATING },
+          );
+        }
         props.stages.stacks(appStage, { stageName: stage.name, env });
         return appStage;
       };
@@ -253,23 +410,18 @@ export class CdkPipelinesEngine extends Construct {
       this.enforceRoleNames(config.pipelineRoleNames);
     }
 
-    // Compliance/access-log bucket, at parity with the flat CodePipelineEngine: provision it when a name
-    // is configured, and attach the per-region name-substituting access-logs aspect so secondary-region
-    // stacks log to the region-substituted bucket name (Blueprint's AccessLogsForBucketPlugin behavior).
-    if (config.complianceLogBucketName !== undefined) {
-      const support = new SupportResources(this, 'Support', {
-        complianceLogBucketName: config.complianceLogBucketName,
-      });
-      // Force-read the lazy getter so the bucket is provisioned by merely configuring the name (Blueprint's
-      // ComplianceBucketProvider was default-on, not behind a separate opt-in).
-      void support.complianceLogBucket;
-      // MUTATING priority so the aspect sets each bucket's L1 loggingConfiguration BEFORE the readonly
-      // AwsSolutionsChecks (added in pipeline-assembler) visits -- otherwise AwsSolutions-S1 false-fails
-      // because nag sees the bucket before the logging config is applied. No S1 suppression is added.
+    // Attach separately to pipeline resources. Application stacks sit below cdk.Stage boundaries and
+    // receive their own aspect in appStageFor() above.
+    if (config.complianceLogBucketName !== undefined && complianceLogBucket !== undefined) {
+      // MUTATING priority so the aspect sets each source bucket's L1 loggingConfiguration BEFORE the
+      // readonly AwsSolutionsChecks visits. The destination bucket alone carries the required S1
+      // suppression because S3 server access logs must not be delivered back into the same bucket.
       Aspects.of(this).add(
         new AccessLogsForBucketAspect({
           complianceLogBucketName: config.complianceLogBucketName,
-          mainRegion: region,
+          complianceLogBucketAccount: stack.account,
+          complianceLogBucketRegion: stack.region,
+          complianceLogBucket,
         }),
         { priority: AspectPriority.MUTATING },
       );
@@ -361,6 +513,241 @@ export class CdkPipelinesEngine extends Construct {
   }
 }
 
+interface ParsedEcrImage {
+  readonly account: string;
+  readonly region: string;
+  readonly partition: string;
+  readonly repositoryName: string;
+  readonly tagOrDigest?: string;
+}
+
+/**
+ * Resolve the string convenience config to the CDK image type CodeBuild expects:
+ * managed CodeBuild IDs use CODEBUILD credentials, private ECR images carry a repository object so
+ * CDK grants the Synth role pull access, and all other registries are treated as anonymous/public
+ * Docker registries, optionally with a Secrets Manager credential that CDK grants to the Synth role.
+ */
+function resolveSynthBuildImage(
+  scope: Construct,
+  image: string,
+  pipelinePartition: string,
+  credentials?: CodeBuildImageCredentials,
+): codebuild.IBuildImage {
+  assertValidCiImageReference(image);
+  if (image.startsWith('aws/codebuild/')) {
+    assertNoCodeBuildRegistryCredentials(image, credentials, 'managed CodeBuild');
+    return codebuild.LinuxBuildImage.fromCodeBuildImageId(image);
+  }
+
+  if (isPublicEcrRegistryHost(ciImageRegistryHost(image))) {
+    assertNoCodeBuildRegistryCredentials(image, credentials, 'public ECR');
+  }
+
+  const parsedEcr = parsePrivateEcrImage(image);
+  if (parsedEcr !== undefined) {
+    assertNoCodeBuildRegistryCredentials(image, credentials, 'private ECR');
+    const stack = Stack.of(scope);
+    if (Token.isUnresolved(stack.account) || Token.isUnresolved(stack.region)) {
+      throw new Error(
+        `cdk-cicd: private ECR ci.image '${image}' requires a concrete pipeline stack account and region.`,
+      );
+    }
+    if (parsedEcr.partition !== pipelinePartition) {
+      throw new Error(
+        `cdk-cicd: private ECR ci.image '${image}' is in partition '${parsedEcr.partition}', but the ` +
+          `pipeline is in '${pipelinePartition}'.`,
+      );
+    }
+    if (parsedEcr.account !== stack.account || parsedEcr.region !== stack.region) {
+      throw new Error(
+        `cdk-cicd: private ECR ci.image '${image}' must be in the pipeline stack account and region ` +
+          `(${stack.account}/${stack.region}); cross-account and cross-region CodeBuild images are not supported.`,
+      );
+    }
+    const repository = ecr.Repository.fromRepositoryArn(
+      scope,
+      'CiImageRepository',
+      `arn:${parsedEcr.partition}:ecr:${parsedEcr.region}:${parsedEcr.account}:repository/${parsedEcr.repositoryName}`,
+    );
+    return codebuild.LinuxBuildImage.fromEcrRepository(repository, parsedEcr.tagOrDigest);
+  }
+
+  const secret =
+    credentials !== undefined
+      ? importCodeBuildRegistrySecret(scope, 'CiImageRegistryCredentials', credentials)
+      : undefined;
+  return codebuild.LinuxBuildImage.fromDockerRegistry(
+    image,
+    secret !== undefined ? { secretsManagerCredentials: secret } : undefined,
+  );
+}
+
+function parsePrivateEcrImage(image: string): ParsedEcrImage | undefined {
+  const firstSlash = image.indexOf('/');
+  if (firstSlash < 1) return undefined;
+  const normalizedRegistryHost = ciImageRegistryHost(image)!;
+  const repositoryAndVersion = image.slice(firstSlash + 1);
+  if (!isPrivateEcrRegistryHost(normalizedRegistryHost)) return undefined;
+
+  if (/^\d{12}\.dkr(?:\.ecr-fips|-ecr-fips)\./.test(normalizedRegistryHost)) {
+    throw new Error(
+      `cdk-cicd: private ECR ci.image '${image}' uses a FIPS registry endpoint. The installed ` +
+        'aws-cdk-lib CodeBuild image binding accepts an ECR repository and renders its canonical registry ' +
+        'URI, so it cannot preserve a requested FIPS endpoint.',
+    );
+  }
+  if (/^\d{12}\.dkr-ecr\.[a-z0-9-]+\.on\.aws$/.test(normalizedRegistryHost)) {
+    throw new Error(
+      `cdk-cicd: private ECR ci.image '${image}' uses a dual-stack registry endpoint. The installed ` +
+        'aws-cdk-lib CodeBuild image binding renders the canonical dkr.ecr endpoint, and the installed ' +
+        'CodeBuild contract does not expose a dual-stack build-image option.',
+    );
+  }
+
+  const match = normalizedRegistryHost.match(/^(\d{12})\.dkr\.ecr\.([a-z0-9-]+)\.(.+)$/);
+  if (match === null) {
+    throw new Error(
+      `cdk-cicd: private ECR ci.image '${image}' does not use a supported canonical registry endpoint ` +
+        "('<account>.dkr.ecr.<region>.<AWS domain suffix>').",
+    );
+  }
+
+  const [, account, region, registrySuffix] = match;
+  const regionInfo = RegionInfo.get(region);
+  const expectedSuffix = regionInfo.domainSuffix;
+  const partition = regionInfo.partition;
+  if (expectedSuffix === undefined || partition === undefined) {
+    throw new Error(
+      `cdk-cicd: private ECR ci.image '${image}' uses region '${region}', whose partition/domain ` +
+        'suffix is not known to this aws-cdk-lib version. Upgrade the wrapper/CDK before using this image.',
+    );
+  }
+  if (registrySuffix !== expectedSuffix) {
+    throw new Error(
+      `cdk-cicd: private ECR ci.image '${image}' has registry suffix '${registrySuffix}', but region ` +
+        `'${region}' belongs to partition '${partition}' and requires '${expectedSuffix}'.`,
+    );
+  }
+  if (repositoryAndVersion.length === 0) {
+    throw new Error(`cdk-cicd: private ECR ci.image '${image}' is missing a repository name.`);
+  }
+
+  const digestSeparator = repositoryAndVersion.indexOf('@');
+  if (digestSeparator >= 0) {
+    const repositoryName = repositoryAndVersion.slice(0, digestSeparator);
+    const tagOrDigest = repositoryAndVersion.slice(digestSeparator + 1);
+    if (repositoryName.length === 0 || !/^sha256:[0-9a-fA-F]{64}$/.test(tagOrDigest)) {
+      throw new Error(`cdk-cicd: private ECR ci.image '${image}' must use a non-empty repository and a sha256 digest.`);
+    }
+    return {
+      account,
+      region,
+      partition,
+      repositoryName,
+      tagOrDigest,
+    };
+  }
+
+  const tagSeparator = repositoryAndVersion.lastIndexOf(':');
+  const finalSlash = repositoryAndVersion.lastIndexOf('/');
+  if (tagSeparator > finalSlash) {
+    const repositoryName = repositoryAndVersion.slice(0, tagSeparator);
+    const tagOrDigest = repositoryAndVersion.slice(tagSeparator + 1);
+    if (repositoryName.length === 0 || tagOrDigest.length === 0) {
+      throw new Error(`cdk-cicd: private ECR ci.image '${image}' has an empty repository name or tag.`);
+    }
+    return {
+      account,
+      region,
+      partition,
+      repositoryName,
+      tagOrDigest,
+    };
+  }
+
+  return { account, region, partition, repositoryName: repositoryAndVersion };
+}
+
+function assertNoCodeBuildRegistryCredentials(
+  image: string,
+  credentials: CodeBuildImageCredentials | undefined,
+  imageKind: string,
+): void {
+  if (credentials === undefined) return;
+  throw new Error(
+    `cdk-cicd: ci.codeBuildImageCredentials cannot be used with ${imageKind} ci.image '${image}'; ` +
+      'only authenticated external registries use Secrets Manager registry credentials.',
+  );
+}
+
+function importCodeBuildRegistrySecret(
+  scope: Construct,
+  id: string,
+  credentials: CodeBuildImageCredentials,
+): secretsmanager.ISecret {
+  if (credentials.secretArn.trim().length === 0) {
+    throw new Error('cdk-cicd: ci.codeBuildImageCredentials.secretArn must not be empty.');
+  }
+  if (credentials.encryptionKeyArn !== undefined && credentials.encryptionKeyArn.trim().length === 0) {
+    throw new Error('cdk-cicd: ci.codeBuildImageCredentials.encryptionKeyArn must not be empty.');
+  }
+  const encryptionKey =
+    credentials.encryptionKeyArn !== undefined
+      ? kms.Key.fromKeyArn(scope, `${id}EncryptionKey`, credentials.encryptionKeyArn)
+      : undefined;
+  return secretsmanager.Secret.fromSecretAttributes(scope, id, {
+    secretCompleteArn: credentials.secretArn,
+    ...(encryptionKey !== undefined ? { encryptionKey } : {}),
+  });
+}
+
+/**
+ * `fromDockerRegistry` grants the imported secret read. aws-cdk-lib 2.195.0 cannot add the
+ * `ViaServicePrincipal` statement to an imported CMK's resource policy, so place the exact decrypt
+ * grant on the generated Synth role through `CodeBuildStep.rolePolicyStatements`.
+ */
+function codeBuildImageCredentialKeyDecryptStatements(
+  credentials: CodeBuildImageCredentials | undefined,
+): iam.PolicyStatement[] {
+  return credentials?.encryptionKeyArn !== undefined
+    ? [new iam.PolicyStatement({ actions: ['kms:Decrypt'], resources: [credentials.encryptionKeyArn] })]
+    : [];
+}
+
+/**
+ * Let Synth resolve uncached CDK context in every target environment. The lookup role performs the
+ * actual read; the bootstrap version parameter is also listed explicitly to match the CLI's bootstrap
+ * validation contract.
+ */
+export function targetLookupStatements(
+  stack: Stack,
+  config: ResolvedCicdConfig,
+  validatedPartition?: string,
+): iam.PolicyStatement[] {
+  const partition = validatedPartition ?? assertSingleKnownPartition(stack, config, 'self-mutating pipeline');
+  const qualifier = resolveDefaultSynthesizerQualifier(stack, config.qualifier);
+  const roleArns = new Set<string>();
+  const versionParameters = new Set<string>();
+
+  for (const stage of config.stages) {
+    const account = stage.env.account ?? stack.account;
+    const regions = stage.env.regions.length > 0 ? stage.env.regions : [stack.region];
+    for (const region of regions) {
+      roleArns.add(`arn:${partition}:iam::${account}:role/cdk-${qualifier}-lookup-role-${account}-${region}`);
+      versionParameters.add(`arn:${partition}:ssm:${region}:${account}:parameter/cdk-bootstrap/${qualifier}/version`);
+    }
+  }
+
+  const statements: iam.PolicyStatement[] = [];
+  if (roleArns.size > 0) {
+    statements.push(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: [...roleArns] }));
+  }
+  if (versionParameters.size > 0) {
+    statements.push(new iam.PolicyStatement({ actions: ['ssm:GetParameter'], resources: [...versionParameters] }));
+  }
+  return statements;
+}
+
 /** The CodeArtifact read permissions a `codeartifact login` + `npm ci` need (mirrors the flat engine). */
 function codeArtifactReadStatements(stack: Stack, ca: CodeArtifactConfig): iam.PolicyStatement[] {
   const account = ca.account ?? stack.account;
@@ -389,7 +776,10 @@ function codeArtifactReadStatements(stack: Stack, ca: CodeArtifactConfig): iam.P
  * `codeartifact login`) bypass the proxy while `npm ci` against public npm goes through it.
  */
 function proxyEnvVariables(stack: Stack, proxy: ProxyConfig): Record<string, string> {
-  const noProxy = proxy.noProxy.length > 0 ? proxy.noProxy : [`${stack.region}.amazonaws.com`];
+  const domainSuffix = Token.isUnresolved(stack.region)
+    ? stack.urlSuffix
+    : (RegionInfo.get(stack.region).domainSuffix ?? stack.urlSuffix);
+  const noProxy = proxy.noProxy.length > 0 ? proxy.noProxy : [`${stack.region}.${domainSuffix}`];
   return {
     AWS_STS_REGIONAL_ENDPOINTS: 'regional',
     NO_PROXY: noProxy.join(','),
@@ -409,17 +799,32 @@ function proxySecretsManagerVars(proxy: ProxyConfig): Record<string, string> {
 }
 
 /**
- * Write a `.npmrc` for a generic npm-compatible registry. CodeBuild injects the token from
- * Secrets Manager as `NPM_AUTH_TOKEN`, so the synthesized buildspec contains only the variable name.
- * This runs before CodeArtifact login so that command can append its own scoped registry entries.
+ * Create the credential-bearing npm config outside the source workspace before either registry login.
+ */
+function npmConfigSetupCommands(): string[] {
+  return [
+    `export NPM_CONFIG_USERCONFIG="${PRIVATE_NPM_CONFIG_PATH}"`,
+    'rm -f "$NPM_CONFIG_USERCONFIG"',
+    'umask 077 && touch "$NPM_CONFIG_USERCONFIG"',
+  ];
+}
+
+/** Remove the temporary credential file after CodeBuild's build phase. */
+function npmConfigCleanupCommands(): string[] {
+  return ['rm -f "$NPM_CONFIG_USERCONFIG"'];
+}
+
+/**
+ * Write a generic npm-compatible registry to the temporary config. CodeBuild injects the token from
+ * Secrets Manager as `NPM_AUTH_TOKEN`; a following CodeArtifact login can append its scoped entries.
  */
 function npmRegistryLoginCommands(npm: NpmRegistryConfig): string[] {
   const host = npm.url.replace(/^https?:\/\//, '');
   const scope = npm.scope !== undefined && npm.scope.length > 0 ? npm.scope : undefined;
   const scopePrefix = scope !== undefined ? `${scope.startsWith('@') ? scope : `@${scope}`}:` : '';
   return [
-    `echo "${scopePrefix}registry=${npm.url}" > ./.npmrc`,
-    `echo "//${host}:_authToken=$NPM_AUTH_TOKEN" >> ./.npmrc`,
+    `echo "${scopePrefix}registry=${npm.url}" > "$NPM_CONFIG_USERCONFIG"`,
+    `echo "//${host}:_authToken=$NPM_AUTH_TOKEN" >> "$NPM_CONFIG_USERCONFIG"`,
   ];
 }
 
@@ -428,20 +833,36 @@ function mergeSynthPartialBuildSpec(
   partialBuildSpec: codebuild.BuildSpec | undefined,
   proxy: ProxyConfig | undefined,
   npmRegistry: NpmRegistryConfig | undefined,
+  privateNpm: boolean,
 ): codebuild.BuildSpec | undefined {
-  if (proxy === undefined && npmRegistry === undefined) return partialBuildSpec;
+  if (proxy === undefined && npmRegistry === undefined && !privateNpm) return partialBuildSpec;
 
-  const secretBuildSpec = codebuild.BuildSpec.fromObject({
-    env: {
-      'secrets-manager': {
-        ...(proxy !== undefined ? proxySecretsManagerVars(proxy) : {}),
-        ...(npmRegistry !== undefined ? { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } : {}),
-      },
-    },
+  const wrapperBuildSpec = codebuild.BuildSpec.fromObject({
+    ...(proxy !== undefined || npmRegistry !== undefined
+      ? {
+          env: {
+            'secrets-manager': {
+              ...(proxy !== undefined ? proxySecretsManagerVars(proxy) : {}),
+              ...(npmRegistry !== undefined ? { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } : {}),
+            },
+          },
+        }
+      : {}),
+    ...(privateNpm
+      ? {
+          phases: {
+            build: {
+              // Setup/login and CI all run in CodeBuild's build phase. Its `finally` commands execute
+              // even after a failed command, so credentials cannot be stranded by a failed synth.
+              finally: npmConfigCleanupCommands(),
+            },
+          },
+        }
+      : {}),
   });
   return partialBuildSpec !== undefined
-    ? codebuild.mergeBuildSpecs(partialBuildSpec, secretBuildSpec)
-    : secretBuildSpec;
+    ? codebuild.mergeBuildSpecs(partialBuildSpec, wrapperBuildSpec)
+    : wrapperBuildSpec;
 }
 
 /** Export the proxy for every later shell command, then prove the tunnel works before install runs. */
@@ -516,21 +937,17 @@ export function ssmWarmingReadStatements(stack: Stack, qualifier?: string): iam.
   ];
 }
 
-/** The read grant the proxy secret needs, plus cross-account KMS decrypt when the secret lives elsewhere. */
-function proxySecretReadStatements(stack: Stack, proxy: ProxyConfig): iam.PolicyStatement[] {
-  const secretArn = Arn.split(proxy.proxySecretArn, ArnFormat.SLASH_RESOURCE_NAME);
-  const statements = [
-    new iam.PolicyStatement({ actions: ['secretsmanager:GetSecretValue'], resources: [proxy.proxySecretArn] }),
-  ];
-  if (secretArn.account !== undefined && secretArn.account !== stack.account) {
-    statements.push(
-      new iam.PolicyStatement({
-        actions: ['kms:Decrypt', 'kms:DescribeKey', 'kms:Encrypt', 'kms:GenerateDataKey*', 'kms:ReEncrypt*'],
-        resources: [`arn:${stack.partition}:kms:${secretArn.region}:${secretArn.account}:key/*`],
-      }),
-    );
+/** Secret read plus an exact CMK decrypt grant when the config identifies one. */
+function secretReadStatements(secretArn: string, encryptionKeyArn?: string): iam.PolicyStatement[] {
+  const statements = [new iam.PolicyStatement({ actions: ['secretsmanager:GetSecretValue'], resources: [secretArn] })];
+  if (encryptionKeyArn !== undefined && encryptionKeyArn.trim().length > 0) {
+    statements.push(new iam.PolicyStatement({ actions: ['kms:Decrypt'], resources: [encryptionKeyArn] }));
   }
   return statements;
+}
+
+function proxySecretReadStatements(proxy: ProxyConfig): iam.PolicyStatement[] {
+  return secretReadStatements(proxy.proxySecretArn, proxy.encryptionKeyArn);
 }
 
 // NOTE: the old `cdkPipelinesApp(config, factory)` explicit-factory entry has been RETIRED. The single

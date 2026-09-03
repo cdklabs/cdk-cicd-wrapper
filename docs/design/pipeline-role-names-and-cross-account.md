@@ -51,7 +51,7 @@ export interface PipelineRoleNames {
 /** Flat CODEPIPELINE engine role names. */
 export interface CodePipelineRoleNames {
   readonly pipeline?: string;        // the CodePipeline role
-  readonly buildRolePrefix?: string; // per-stage CodeBuild roles → `<prefix>-<stage>`
+  readonly buildRolePrefix?: string; // CodeBuild roles → `<prefix>-<normalized-project-id>`
 }
 ```
 
@@ -91,10 +91,9 @@ match does not apply.
   that sets `RoleName` on the CodePipeline role and the two asset roles, distinguishing them by their
   path segment under the pipeline scope. Aspect runs at `AspectPriority.MUTATING` (before the readonly
   `AwsSolutionsChecks` added in `pipeline-assembler.ts`).
-- **CODEPIPELINE (flat)**: the engine constructs its own `codepipeline.Pipeline` and per-stage
-  `PipelineProject`s, so it can set names directly at construct time (pipeline role) / via an Aspect on
-  its scope (per-stage build roles → `<buildRolePrefix>-<stage>`). Preferred: construct-time where the
-  role object is in hand, Aspect only where CDK generates the role lazily.
+- **CODEPIPELINE (flat)**: after every `PipelineProject` exists, the engine names its role
+  `<buildRolePrefix>-<normalized-project-id>` (`BuildProject` -> `build`, `UpdatePipeline` ->
+  `updatepipeline`, `Deploy-dev` -> `deploy-dev`). The pipeline role is named directly.
 - Omitting a field ⇒ no `RoleName` override ⇒ CDK default. No regression for existing users.
 
 ## externalId mechanism (honest end-to-end path)
@@ -103,8 +102,8 @@ The wrapper's `sts:AssumeRole` policy grants only say a project *may* assume a r
 supplied by the **caller at assume time** and enforced by the **target role's trust policy**. The one
 place the wrapper actually assumes the forced deploy role is the synthesizer:
 `inject.ts:resolveSynthesizer` builds `new DefaultStackSynthesizer({ deployRoleArn, cloudFormationExecutionRole })`
-from `DEPLOY_ROLE_FLAG`/`CFN_EXEC_ROLE_FLAG` env vars the CLI sets (`ExecCommand.forcedRoleEnv`), and
-`DeployCommand` passes `--role-arn`.
+from `DEPLOY_ROLE_FLAG`/`CFN_EXEC_ROLE_FLAG` env vars the CLI sets (`ExecCommand.forcedRoleEnv`).
+Those identities are persisted in the synthesized cloud assembly.
 
 `DefaultStackSynthesizer` natively supports `deployRoleExternalId` (verified in the installed
 aws-cdk-lib). So the wiring is:
@@ -115,9 +114,9 @@ DeploymentConfig.externalId ?? ResolvedCicdConfig.deployRoleExternalId
   → resolveSynthesizer reads it → DefaultStackSynthesizer({ deployRoleArn, deployRoleExternalId, ... })
 ```
 
-`--role-arn` on `cdk deploy` (DeployCommand) is the flat engine's per-stage deploy action path; the
-synthesizer path above is what bakes the externalId into the change-set assumption, so the env-var
-seam is the single source of truth both consume.
+`DeployCommand` deliberately does not pass `--role-arn`: in the CDK CLI that flag is the
+CloudFormation execution role, not the deployment role. The synthesized assembly is the single source
+of truth for both role identities and the deployment-role ExternalId.
 
 **Value source**: a literal, or a `resolve:secretsmanager:<arn>` reference resolved at synth time —
 the same `resolve:` convention `VpcConfig.vpcId` already uses. See Open questions on the secrecy
@@ -128,10 +127,10 @@ trade-off.
 - In `CdkPipelinesEngine`, when `config.complianceLogBucketName` is set, construct a `SupportResources`
   and force-read `support.complianceLogBucket` (mirroring `CodePipelineEngine`'s
   `void support.complianceLogBucket`), so the bucket is provisioned in the pipeline stack.
-- Attach `AccessLogsForBucketAspect({ complianceLogBucketName, mainRegion })` to the app at
-  `AspectPriority.MUTATING`, so its L1 `loggingConfiguration` override lands **before** the readonly
-  `AwsSolutionsChecks` runs — otherwise `AwsSolutions-S1` false-fails (nag sees the bucket before the
-  logging config is applied). No `NagSuppression` is added for S1; ordering is the fix.
+- Attach `AccessLogsForBucketAspect` with the destination name, account, Region, and concrete bucket
+  reference at `AspectPriority.MUTATING`, so its L1 `loggingConfiguration` override lands **before**
+  the readonly `AwsSolutionsChecks` runs — otherwise `AwsSolutions-S1` false-fails (nag sees the bucket
+  before the logging config is applied). No `NagSuppression` is added for S1; ordering is the fix.
 - Reconcile the `AccessLogsForBucketAspect` header comment (it currently says the compliance bucket
   and its config field don't exist yet — they do, and this wires it).
 
@@ -141,13 +140,13 @@ trade-off.
    `AWS::IAM::Role` `RoleName` properties equal the configured values. A control synth without the field
    asserts no `RoleName` override (CDK default preserved).
 2. **Role names — flat**: synthesize with `codePipelineRoleNames`; assert the CodePipeline role name and
-   `<prefix>-<stage>` build-role names; control synth for the default.
+   `<prefix>-<normalized-project-id>` build-role names; control synth for the default.
 3. **externalId**: unit-test the CLI env seam (`forcedRoleEnv` emits the flag from per-stage and from the
    pipeline-level default, per-stage wins) and `resolveSynthesizer` (the synthesizer artifact carries
    `assumeRoleExternalId`); test the `resolve:secretsmanager:` parse path.
 4. **Compliance bucket**: synthesize a CDK_PIPELINES pipeline with `complianceLogBucketName`; assert the
-   `ComplianceLogBucket` is present, that a secondary-region stack's bucket logs to the region-substituted
-   name, and that nag passes S1 (no suppression).
+   destination is present, application stacks in the same account/Region log to it, cross-Region targets
+   fail closed, and nag passes S1 (no suppression).
 5. Local synth proof (step 4 of SDLC): a CDK_PIPELINES pipeline showing (a) the three deterministic role
    names and (b) the compliance bucket with the per-region name in a secondary-region stack.
 
@@ -160,9 +159,9 @@ trade-off.
 
 ## Open questions
 
-- **O1 — flat-engine build-role granularity.** `buildRolePrefix` yields `<prefix>-<stage>` for the
-  per-stage CodeBuild roles. Per-stage explicit names are possible but add surface; the prefix is the
-  proposed shape. (Maintainer decision welcome.)
+- **O1 — flat-engine build-role granularity.** `buildRolePrefix` yields
+  `<prefix>-<normalized-project-id>` for every flat-engine CodeBuild role. Per-project explicit names
+  remain intentionally out of scope.
 - **O2 — externalId secrecy.** A `resolve:secretsmanager:` value is resolved at **synth** time, so the
   ExternalId is baked into the synthesized synthesizer config / template. That matches the existing
   `resolve:` convention but does not keep the value secret at rest in the artifact. If secrecy at rest

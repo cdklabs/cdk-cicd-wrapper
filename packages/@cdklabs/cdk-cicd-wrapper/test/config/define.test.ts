@@ -56,12 +56,21 @@ describe('m3-config: defineCICD top-level defaults', () => {
     );
   });
 
-  test('an explicit qualifier wins, and no application means no derived qualifier', () => {
-    expect(defineCICD({ application: 'app', qualifier: 'custom', repository: REPO, stages: [] }).qualifier).toBe(
-      'custom',
+  test('an explicit qualifier wins and is trimmed, while no application means no derived qualifier', () => {
+    expect(defineCICD({ application: 'app', qualifier: '  custom_1  ', repository: REPO, stages: [] }).qualifier).toBe(
+      'custom_1',
     );
     expect(defineCICD({ repository: REPO, stages: [] }).qualifier).toBeUndefined();
   });
+
+  test.each(['', '   ', 'invalid qualifier', 'invalid!', '12345678901'])(
+    'rejects an invalid explicit qualifier %j',
+    (qualifier) => {
+      expect(() => defineCICD({ qualifier, repository: REPO, stages: [] })).toThrow(
+        /explicit bootstrap qualifier.*\[A-Za-z0-9_-\]\{1,10\}/,
+      );
+    },
+  );
 
   test('an application that sanitizes to nothing falls back to a valid qualifier', () => {
     // e.g. an all-punctuation name -> no alphanumerics left -> must not yield an empty qualifier.
@@ -71,7 +80,12 @@ describe('m3-config: defineCICD top-level defaults', () => {
   test('engine defaults to CODEPIPELINE and ci defaults to empty (engine supplies its own steps)', () => {
     const cfg = defineCICD({ repository: REPO, stages: [] });
     expect(cfg.engine).toBe(EngineType.CODEPIPELINE);
-    expect(cfg.ci).toEqual({ steps: {}, synthStages: [], image: undefined });
+    expect(cfg.ci).toEqual({
+      steps: {},
+      synthStages: [],
+      image: undefined,
+      codeBuildImageCredentials: undefined,
+    });
   });
 
   test("ci.synthStages 'all' collapses to an empty list; an explicit list is kept", () => {
@@ -79,25 +93,112 @@ describe('m3-config: defineCICD top-level defaults', () => {
     expect(defineCICD({ repository: REPO, stages: [], ci: { synthStages: ['dev'] } }).ci.synthStages).toEqual(['dev']);
   });
 
-  test('ci.steps overrides and image pass through', () => {
+  test('ci.steps, image, and CodeBuild image credentials pass through', () => {
+    const codeBuildImageCredentials = {
+      secretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:registry-ABC123',
+      encryptionKeyArn: 'arn:aws:kms:us-west-2:111111111111:key/EXAMPLE_NOT_A_SECRET',
+    };
     const cfg = defineCICD({
       repository: REPO,
       stages: [],
-      ci: { steps: { lint: 'npx cdk-cicd validate' }, image: 'node:24' },
+      ci: {
+        steps: { lint: 'npx cdk-cicd validate' },
+        image: 'registry.example.com/private/node:24',
+        codeBuildImageCredentials,
+      },
     });
     expect(cfg.ci.steps).toEqual({ lint: 'npx cdk-cicd validate' });
-    expect(cfg.ci.image).toBe('node:24');
+    expect(cfg.ci.image).toBe('registry.example.com/private/node:24');
+    expect(cfg.ci.codeBuildImageCredentials).toEqual(codeBuildImageCredentials);
+  });
+
+  test('CodeBuild image credentials require ci.image', () => {
+    expect(() =>
+      defineCICD({
+        repository: REPO,
+        stages: [],
+        ci: {
+          codeBuildImageCredentials: {
+            secretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:registry-ABC123',
+          },
+        },
+      }),
+    ).toThrow(/ci\.codeBuildImageCredentials requires ci\.image/);
   });
 
   test('synthesizer defaults to DEFAULT and an explicit type wins', () => {
     expect(defineCICD({ repository: REPO, stages: [] }).synthesizer.type).toBe(SynthesizerType.DEFAULT);
     const appStaging = defineCICD({
+      application: 'payments',
       repository: REPO,
       stages: [],
       synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
-    }).synthesizer;
-    expect(appStaging.type).toBe(SynthesizerType.APP_STAGING);
-    expect(appStaging.appId).toBe('payments-v2');
+    });
+    expect(appStaging.qualifier).toBe('payments');
+    expect(appStaging.synthesizer.type).toBe(SynthesizerType.APP_STAGING);
+    expect(appStaging.synthesizer.appId).toBe('payments-v2');
+  });
+
+  test('APP_STAGING preserves custom qualifiers and deployment identities for direct use', () => {
+    const deployment = {
+      deployRole: 'arn:aws:iam::111111111111:role/deploy',
+      cfnExecutionRole: 'arn:aws:iam::111111111111:role/cfn-exec',
+    };
+    const config = defineCICD({
+      repository: REPO,
+      stages: [{ name: 'prod', deployment }],
+      qualifier: 'custom123',
+      synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
+    });
+
+    expect(config.qualifier).toBe('custom123');
+    expect(config.stages[0].deployment).toEqual(deployment);
+    expect(
+      defineCICD({
+        repository: REPO,
+        stages: [],
+        engine: EngineType.CDK_PIPELINES,
+        synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
+      }).synthesizer.type,
+    ).toBe(SynthesizerType.APP_STAGING);
+  });
+
+  test('APP_STAGING rejects deploy-role ExternalIds but permits role-only and blank identity values', () => {
+    expect(() =>
+      defineCICD({
+        repository: REPO,
+        stages: [
+          {
+            name: 'prod',
+            deployment: {
+              deployRole: 'arn:aws:iam::111111111111:role/deploy',
+              externalId: 'stage-external-id',
+            },
+          },
+        ],
+        synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
+      }),
+    ).toThrow(/cannot use a deploy-role ExternalId.*stage 'prod'/s);
+    expect(() =>
+      resolveCicdConfig({
+        repository: REPO,
+        deployRoleExternalId: 'pipeline-external-id',
+        stages: [
+          {
+            name: 'prod',
+            deployment: { deployRole: 'arn:aws:iam::111111111111:role/deploy' },
+          },
+        ],
+        synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
+      }),
+    ).toThrow(/cannot use a deploy-role ExternalId.*stage 'prod'/s);
+    expect(() =>
+      defineCICD({
+        repository: REPO,
+        stages: [{ name: 'prod', deployment: { deployRole: ' ', cfnExecutionRole: ' ', externalId: ' ' } }],
+        synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-v2' },
+      }),
+    ).not.toThrow();
   });
 
   test('codeArtifact defaults to undefined (opt-in) and an explicit config passes through unchanged', () => {
@@ -120,12 +221,40 @@ describe('m3-config: defineCICD top-level defaults', () => {
     expect(defineCICD({ repository: REPO, stages: [], vpc }).vpc).toEqual(vpc);
   });
 
-  test('m9-migrate-compliance-bucket: complianceLogBucketName defaults to undefined and passes through unchanged', () => {
-    expect(defineCICD({ repository: REPO, stages: [] }).complianceLogBucketName).toBeUndefined();
-    expect(
-      defineCICD({ repository: REPO, stages: [], complianceLogBucketName: 'my-compliance-bucket' })
-        .complianceLogBucketName,
-    ).toEqual('my-compliance-bucket');
+  test('private dependency KMS key ARNs survive normalization', () => {
+    const npmRegistry = {
+      url: 'https://npm.example.com/',
+      basicAuthSecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:npm',
+      encryptionKeyArn: 'arn:aws:kms:us-west-2:111111111111:key/npm-key',
+    };
+    const proxy = {
+      proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy',
+      encryptionKeyArn: 'arn:aws:kms:us-west-2:111111111111:key/proxy-key',
+    };
+    const cfg = defineCICD({ repository: REPO, stages: [], npmRegistry, proxy });
+    expect(cfg.npmRegistry).toEqual(npmRegistry);
+    expect(cfg.proxy?.encryptionKeyArn).toBe(proxy.encryptionKeyArn);
+  });
+
+  test('m9-migrate-compliance-bucket: managed creation defaults on and an existing bucket is explicit', () => {
+    const defaults = defineCICD({ repository: REPO, stages: [] });
+    expect(defaults.complianceLogBucketName).toBeUndefined();
+    expect(defaults.createComplianceLogBucket).toBe(true);
+
+    const existing = defineCICD({
+      repository: REPO,
+      stages: [],
+      complianceLogBucketName: 'my-compliance-bucket',
+      createComplianceLogBucket: false,
+    });
+    expect(existing.complianceLogBucketName).toEqual('my-compliance-bucket');
+    expect(existing.createComplianceLogBucket).toBe(false);
+  });
+
+  test('m9-migrate-compliance-bucket: existing-bucket mode requires a name', () => {
+    expect(() => defineCICD({ repository: REPO, stages: [], createComplianceLogBucket: false })).toThrow(
+      /requires complianceLogBucketName/,
+    );
   });
 
   test('warmAccountsFromSsm defaults to false (opt-in) and an explicit true passes through', () => {
@@ -155,7 +284,23 @@ describe('m3-config: defineCICD top-level defaults', () => {
 });
 
 describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
-  test('derives the deployer qualifier and preserves the app-staging identity', () => {
+  test('normalizes and validates explicit qualifiers with the same contract as defineCICD', () => {
+    expect(
+      defineDeployment({
+        qualifier: '  deploy_1 ',
+        image: 'img:tag',
+        targets: [{ stage: 'dev' }],
+      }).qualifier,
+    ).toBe('deploy_1');
+
+    for (const qualifier of ['', '   ', 'invalid qualifier', 'invalid!', '12345678901']) {
+      expect(() => defineDeployment({ qualifier, image: 'img:tag', targets: [{ stage: 'dev' }] })).toThrow(
+        /explicit bootstrap qualifier.*\[A-Za-z0-9_-\]\{1,10\}/,
+      );
+    }
+  });
+
+  test('derives the qualifier and preserves the app-staging identity', () => {
     const cfg = defineDeployment({
       application: 'Payments-Service',
       synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-assets' },
@@ -169,6 +314,59 @@ describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
       type: SynthesizerType.APP_STAGING,
       appId: 'payments-assets',
     });
+  });
+
+  test('Repo 2 APP_STAGING preserves custom qualifiers and deployment identities for direct use', () => {
+    const deployment = {
+      deployRole: 'arn:aws:iam::111111111111:role/deploy',
+      cfnExecutionRole: 'arn:aws:iam::111111111111:role/cfn-exec',
+    };
+    const config = defineDeployment({
+      qualifier: 'custom123',
+      synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-assets' },
+      image: 'img:tag',
+      targets: [{ stage: 'prod', deployment }],
+    });
+
+    expect(config.qualifier).toBe('custom123');
+    expect(config.targets[0].deployment).toEqual(deployment);
+  });
+
+  test('Repo 2 APP_STAGING rejects deploy-role ExternalIds but permits role-only and blank identity values', () => {
+    expect(() =>
+      defineDeployment({
+        synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-assets' },
+        image: 'img:tag',
+        targets: [
+          {
+            stage: 'prod',
+            deployment: {
+              deployRole: 'arn:aws:iam::111111111111:role/deploy',
+              externalId: 'target-external-id',
+            },
+          },
+        ],
+      }),
+    ).toThrow(/cannot use a deploy-role ExternalId.*target 'prod'/s);
+    expect(() =>
+      defineDeployment({
+        synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-assets' },
+        image: 'img:tag',
+        targets: [
+          {
+            stage: 'prod',
+            deployment: { cfnExecutionRole: 'arn:aws:iam::111111111111:role/cfn-exec' },
+          },
+        ],
+      }),
+    ).not.toThrow();
+    expect(() =>
+      defineDeployment({
+        synthesizer: { type: SynthesizerType.APP_STAGING, appId: 'payments-assets' },
+        image: 'img:tag',
+        targets: [{ stage: 'prod', deployment: { deployRole: ' ', cfnExecutionRole: ' ', externalId: ' ' } }],
+      }),
+    ).not.toThrow();
   });
 
   test('the image passes through and targets keep their order', () => {
@@ -187,6 +385,9 @@ describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
       env: { account: undefined, regions: [], regionOrder: RegionOrder.SEQUENTIAL },
       manualApproval: false,
       deployment: undefined,
+      complianceLogBucketName: undefined,
+      complianceLogBucketAccount: undefined,
+      complianceLogBucketRegion: undefined,
     });
   });
 
@@ -215,6 +416,16 @@ describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
     expect(defineDeployment({ image: 'img:1', targets: [{ stage: 'dev' }] }).repository).toBeUndefined();
     const repo = Repository.codecommit('my-deploy-config');
     expect(defineDeployment({ image: 'img:1', repository: repo, targets: [{ stage: 'dev' }] }).repository).toBe(repo);
+  });
+
+  test('cross-account ECR repository-policy acknowledgement passes through', () => {
+    expect(
+      defineDeployment({
+        image: '222222222222.dkr.ecr.us-west-2.amazonaws.com/deployer:1',
+        targets: [{ stage: 'dev' }],
+        crossAccountEcrRepositoryPolicyConfigured: true,
+      }).crossAccountEcrRepositoryPolicyConfigured,
+    ).toBe(true);
   });
 
   test('a per-target image pins that stage version; top-level image is optional (the default)', () => {
@@ -252,5 +463,87 @@ describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
     });
     expect(cfg.targets[0].env.account).toBe('333333333333');
     expect(cfg.targets[0].deployment).toEqual({ deployRole: 'arn:role/deploy' });
+  });
+
+  test('Repo 2 compliance logging resolves a config default and a per-target override to concrete coordinates', () => {
+    const cfg = defineDeployment({
+      image: 'img:tag',
+      complianceLogBucketName: 'shared-compliance-111111111111',
+      targets: [
+        { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } },
+        {
+          stage: 'prod',
+          env: { account: '222222222222', region: 'us-east-1' },
+          complianceLogBucketName: 'prod-compliance-222222222222',
+        },
+      ],
+    });
+
+    expect(cfg.complianceLogBucketName).toBe('shared-compliance-111111111111');
+    expect(cfg.targets[0]).toEqual(
+      expect.objectContaining({
+        complianceLogBucketName: 'shared-compliance-111111111111',
+        complianceLogBucketAccount: '111111111111',
+        complianceLogBucketRegion: 'eu-west-1',
+      }),
+    );
+    expect(cfg.targets[1]).toEqual(
+      expect.objectContaining({
+        complianceLogBucketName: 'prod-compliance-222222222222',
+        complianceLogBucketAccount: '222222222222',
+        complianceLogBucketRegion: 'us-east-1',
+      }),
+    );
+  });
+
+  test.each([
+    {
+      name: 'an account-agnostic target',
+      target: { stage: 'dev', env: { region: 'eu-west-1' } },
+      error: /requires a concrete 12-digit env\.account/,
+    },
+    {
+      name: 'a region-agnostic target',
+      target: { stage: 'dev', env: { account: '111111111111' } },
+      error: /requires exactly one concrete AWS Region/,
+    },
+    {
+      name: 'a multi-region target',
+      target: {
+        stage: 'dev',
+        env: { account: '111111111111', regions: ['eu-west-1', 'us-east-1'] },
+      },
+      error: /requires exactly one concrete AWS Region/,
+    },
+    {
+      name: 'an invalid bucket name',
+      target: {
+        stage: 'dev',
+        env: { account: '111111111111', region: 'eu-west-1' },
+        complianceLogBucketName: 'Invalid Bucket',
+      },
+      error: /must be a valid 3-63 character S3 bucket name/,
+    },
+  ])('Repo 2 compliance logging rejects $name', ({ target, error }) => {
+    expect(() =>
+      defineDeployment({
+        image: 'img:tag',
+        complianceLogBucketName: target.complianceLogBucketName === undefined ? 'compliance-logs' : undefined,
+        targets: [target],
+      }),
+    ).toThrow(error);
+  });
+
+  test('Repo 2 rejects one bucket name assigned to different account/Region coordinates', () => {
+    expect(() =>
+      defineDeployment({
+        image: 'img:tag',
+        complianceLogBucketName: 'shared-compliance-logs',
+        targets: [
+          { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } },
+          { stage: 'prod', env: { account: '222222222222', region: 'us-east-1' } },
+        ],
+      }),
+    ).toThrow(/assigned to both 111111111111\/eu-west-1 and 222222222222\/us-east-1/);
   });
 });
