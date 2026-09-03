@@ -8494,10 +8494,10 @@ tslib@^2.4.0, tslib@^2.6.2:
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.8.1.tgz#612efe4ed235d567e8aba5f2a5fab70280ade83f"
   integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
 
-tslog@^4.10.2:
-  version "4.10.2"
-  resolved "https://registry.npmjs.org/tslog/-/tslog-4.10.2.tgz"
-  integrity sha512-XuELoRpMR+sq8fuWwX7P0bcj+PRNiicOKDEb3fGNURhxWVyykCi9BNq7c4uVz7h7P0sj8qgBsr5SWS6yBClq3g==
+tslog@^5.1.0:
+  version "5.1.0"
+  resolved "https://registry.yarnpkg.com/tslog/-/tslog-5.1.0.tgz#80760c1d175fd498c1a230b9a2a17fe863ce094f"
+  integrity sha512-g77ALovust2HNBX/63ePEJwetIeX0Vi/dlzqBO+ZAg+aERB54KMmaz/khNPxhFpaxKQ6RQj65sK6vIhj1SJgjQ==
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
