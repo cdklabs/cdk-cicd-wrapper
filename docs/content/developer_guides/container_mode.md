@@ -67,6 +67,19 @@ config rows a single image is run against, not pipeline resources.
 The CD repository is a small, app-agnostic **config repository** (no CDK code). It declares **which
 image** to run and **where** to deploy it, via `defineDeployment` in a `deploy.config.ts`:
 
+Pin the wrapper packages in Repo 2's lockfile and expose the installed CLI through a project script:
+
+```json
+{
+  "scripts": {
+    "cdk-cicd": "cdk-cicd"
+  }
+}
+```
+
+The generated pipeline runs `npm ci` followed by `npm run cdk-cicd -- deploy ...`. A missing dependency
+or script therefore fails deterministically; deployment never asks `npx` to fetch a registry version.
+
 ```typescript
 // deploy.config.ts
 import { defineDeployment, Repository } from '@cdklabs/cdk-cicd-wrapper';
@@ -162,8 +175,8 @@ environment image must still be in the pipeline Region.
 The same executor runs locally without any pipeline:
 
 ```bash
-npx cdk-cicd deploy --from-image           # every target (gated targets require --yes)
-npx cdk-cicd deploy --from-image --target dev
+npm run cdk-cicd -- deploy --from-image           # every target (gated targets require --yes)
+npm run cdk-cicd -- deploy --from-image --target dev
 ```
 
 On a runner whose default Docker network cannot reach AWS, add `--docker-network host`. The local

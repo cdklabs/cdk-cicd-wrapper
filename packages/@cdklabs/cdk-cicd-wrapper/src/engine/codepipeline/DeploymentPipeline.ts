@@ -194,6 +194,7 @@ export class DeploymentPipeline extends Construct {
     const prepareParallelTarget =
       `TS_NODE_COMPILER_OPTIONS='{"module":"commonjs"}' ` +
       `node -r ts-node/register/transpile-only -e ${shellQuote(parallelTargetConfigScript())}`;
+    const deployTarget = 'npm run cdk-cicd -- deploy --from-image --target "$TARGET_STAGE" --yes';
     const readPreviousFingerprint = [
       'if PREVIOUS_TARGET_FINGERPRINT=$(aws ssm get-parameter --name "$TARGET_STATE_PARAMETER" ' +
         '--query "Parameter.Value" --output text 2>/tmp/cdk-cicd-target-state-error); then',
@@ -209,10 +210,9 @@ export class DeploymentPipeline extends Construct {
       '{',
       '  if [ -n "${TARGET_REGION:-}" ]; then',
       `    ${prepareParallelTarget} &&`,
-      '      (cd .cdk-cicd-target && ../node_modules/.bin/cdk-cicd deploy --from-image ' +
-        '--target "$TARGET_STAGE" --yes)',
+      `      (cd .cdk-cicd-target && ${deployTarget})`,
       '  else',
-      '    npx cdk-cicd deploy --from-image --target "$TARGET_STAGE" --yes',
+      `    ${deployTarget}`,
       '  fi',
       '} && aws ssm put-parameter --name "$TARGET_STATE_PARAMETER" --type String ' +
         '--value "$TARGET_FINGERPRINT" --overwrite >/dev/null',
@@ -1322,6 +1322,10 @@ function parallelTargetConfigScript(): string {
     'fs.writeFileSync(',
     '  path.join(output, "deploy.config.js"),',
     '  "module.exports = " + JSON.stringify(narrowed) + ";\\n",',
+    ');',
+    'fs.writeFileSync(',
+    '  path.join(output, "package.json"),',
+    '  JSON.stringify({ private: true, scripts: { "cdk-cicd": "../node_modules/.bin/cdk-cicd" } }) + "\\n",',
     ');',
     'const versionFile = path.resolve("config", stage + ".json");',
     'if (fs.existsSync(versionFile)) {',
