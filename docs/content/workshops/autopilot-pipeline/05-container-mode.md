@@ -70,6 +70,10 @@ registry access when the wrapper is not available from public npm.
 Repo 2 is a small, app-agnostic **config repo** (no CDK code) that says **which image** to run and
 **where** to deploy it. Describe that with `defineDeployment` in a `deploy.config.ts`:
 
+Pin the wrapper packages in Repo 2's lockfile and add `"cdk-cicd": "cdk-cicd"` to its
+`package.json` scripts. The generated pipeline uses `npm run cdk-cicd -- ...`, so it fails if the pinned
+CLI is missing instead of allowing `npx` to fetch a different version during deployment.
+
 ```ts
 // deploy.config.ts
 import { defineDeployment, Repository } from '@cdklabs/cdk-cicd-wrapper';
@@ -132,7 +136,7 @@ version file fails deployment rather than silently selecting the base image. Pro
 — the deploy-side twin of `deploy-ci` for a CI pipeline:
 
 ```bash
-npx cdk-cicd deploy-ci     # sees deploy.config.ts (not cicd.config.ts) → provisions the CD pipeline
+npm run cdk-cicd -- deploy-ci     # sees deploy.config.ts (not cicd.config.ts) → provisions the CD pipeline
 ```
 
 This renders a second CodePipeline with **one Deploy action per target**. Each action runs

@@ -74,7 +74,8 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(spec).toContain('docker login');
     expect(spec).toContain('get-login-password');
     // Each action deploys ONE target (its own image version), selected by the TARGET_STAGE env var.
-    expect(spec).toContain('cdk-cicd deploy --from-image --target');
+    expect(spec.match(/npm run cdk-cicd -- deploy --from-image --target/g)).toHaveLength(2);
+    expect(spec).not.toContain('npx cdk-cicd');
     expect(spec).toContain('TARGET_STAGE');
     expect(spec).toContain('npm ci');
     // CodeBuild serves creds via the container-credentials endpoint; they must be materialized to static
@@ -251,11 +252,15 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     try {
       const bin = path.join(cwd, 'bin');
       mkdirSync(bin);
-      const npx = path.join(bin, 'npx');
+      const fakeCdkCicd = path.join(bin, 'fake-cdk-cicd');
       const aws = path.join(bin, 'aws');
-      writeFileSync(npx, '#!/bin/sh\nprintf "deploy\\n" >> "$TRACE_FILE"\nexit "${DEPLOY_EXIT:-0}"\n');
+      writeFileSync(
+        path.join(cwd, 'package.json'),
+        JSON.stringify({ private: true, scripts: { 'cdk-cicd': './bin/fake-cdk-cicd' } }),
+      );
+      writeFileSync(fakeCdkCicd, '#!/bin/sh\nprintf "deploy\\n" >> "$TRACE_FILE"\nexit "${DEPLOY_EXIT:-0}"\n');
       writeFileSync(aws, '#!/bin/sh\nprintf "%s\\n" "$*" >> "$TRACE_FILE"\n');
-      chmodSync(npx, 0o755);
+      chmodSync(fakeCdkCicd, 0o755);
       chmodSync(aws, 0o755);
 
       const run = (deployExit: number, traceFile: string) =>
@@ -368,7 +373,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     // temporary one-region config and then uses the normal CLI path, which emits the inner --region command.
     expect(spec).toContain('.cdk-cicd-target');
     expect(spec).toContain('regions: [region]');
-    expect(spec).toContain('(cd .cdk-cicd-target && ../node_modules/.bin/cdk-cicd deploy --from-image');
+    expect(spec).toContain('(cd .cdk-cicd-target && npm run cdk-cicd -- deploy --from-image');
     expect(spec).toContain('re-run cdk-cicd deploy-ci to update the pipeline topology');
     expect(spec).not.toContain('--yes --region "$TARGET_REGION"');
   });
@@ -524,6 +529,10 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       expect(generated.qualifier).toBe('shopqual');
       expect(generated.synthesizer).toEqual({ type: SynthesizerType.DEFAULT });
       expect(generated.targets[0].env.regions).toEqual(['eu-west-1']);
+      expect(JSON.parse(readFileSync(path.join(cwd, '.cdk-cicd-target', 'package.json'), 'utf8'))).toEqual({
+        private: true,
+        scripts: { 'cdk-cicd': '../node_modules/.bin/cdk-cicd' },
+      });
       expect(readFileSync(path.join(cwd, '.cdk-cicd-target', 'config', 'dev.json'), 'utf8')).toContain('1.2.3');
 
       const staleRegion = spawnSync(process.execPath, ['-e', parallelConfigScript], {
