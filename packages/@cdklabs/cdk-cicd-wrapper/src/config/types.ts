@@ -269,7 +269,9 @@ export interface DeploymentConfig {
    * trust policy requires). Overrides the pipeline-level `ResolvedCicdConfig.deployRoleExternalId` for
    * this stage. A literal, or a `resolve:secretsmanager:<arn>` reference resolved at synth time (the
    * same `resolve:` convention `VpcConfig.vpcId` uses). Ignored when `deployRole` is unset -- an
-   * ExternalId only applies to a role assumption the wrapper actually performs.
+   * ExternalId only applies to a role assumption the wrapper actually performs. Secret references
+   * currently require the Secrets Manager AWS-managed encryption key; customer-managed KMS keys need
+   * an additional `kms:Decrypt` grant that this config shape cannot identify.
    */
   readonly externalId?: string;
 }
@@ -323,6 +325,11 @@ export interface ResolvedStage {
 export interface SynthesizerConfig {
   /** The synthesizer to install. */
   readonly type: SynthesizerType;
+  /**
+   * Application-unique id for `APP_STAGING` resources. Defaults to `application`; the alpha
+   * synthesizer normalizes it to a lowercase, dash-separated value of at most 20 characters.
+   */
+  readonly appId?: string;
 }
 
 /** The fully resolved pipeline configuration `defineCICD` produces. */
@@ -367,7 +374,8 @@ export interface ResolvedCicdConfig {
   /**
    * Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`. A stage's
    * own `DeploymentConfig.externalId` overrides this. A literal or a `resolve:secretsmanager:<arn>`
-   * reference resolved at synth time.
+   * reference resolved at synth time. Secret references currently require the Secrets Manager
+   * AWS-managed encryption key; customer-managed KMS keys are not supported without an external grant.
    */
   readonly deployRoleExternalId?: string;
   /** Resolved CI configuration. */
@@ -473,6 +481,16 @@ export interface ResolvedDeploymentTarget {
  * `cdk-cicd deploy --from-image` runs the image per target, synthesizing and deploying in-container.
  */
 export interface ResolvedDeploymentConfig {
+  /**
+   * Application name baked into the deployer image. Optional for the default synthesizer; required
+   * (or supply `synthesizer.appId`) when the image uses `APP_STAGING` so Repo 2 can grant its
+   * app-scoped asset roles.
+   */
+  readonly application?: string;
+  /** Bootstrap qualifier used by the deployer image. Derived from `application` when omitted. */
+  readonly qualifier?: string;
+  /** Synthesizer used by the deployer image; must match its `cicd.config`. */
+  readonly synthesizer: SynthesizerConfig;
   /**
    * The default deployer image to run targets against (an ECR/OCI reference, tag or digest). A target's
    * own `image` overrides this, so per-stage versions live on the targets; this is the shared fallback.

@@ -58,8 +58,52 @@ describe('m3-synth: synthTargets', () => {
       ],
     } as unknown as ResolvedCicdConfig;
     expect(synthTargets(agnostic, 'dev', 'us-west-2').map((t) => t.region)).toEqual(['us-west-2']);
-    // Without the override the same stage produces nothing.
-    expect(synthTargets(agnostic, 'dev')).toEqual([]);
+  });
+
+  test('an env-agnostic stage falls back to CDK_DEFAULT_REGION, then AWS_REGION', () => {
+    const agnostic = {
+      ...CONFIG,
+      stages: [
+        {
+          name: 'dev',
+          env: { account: undefined, regions: [], regionOrder: 'sequential' as any },
+          manualApproval: false,
+        },
+      ],
+    } as unknown as ResolvedCicdConfig;
+
+    expect(
+      synthTargets(agnostic, 'dev', undefined, {
+        CDK_DEFAULT_REGION: 'eu-central-1',
+        AWS_REGION: 'us-east-1',
+      }).map((t) => t.region),
+    ).toEqual(['eu-central-1']);
+    expect(synthTargets(agnostic, 'dev', undefined, { AWS_REGION: 'us-east-1' }).map((t) => t.region)).toEqual([
+      'us-east-1',
+    ]);
+    expect(synthTargets(agnostic, 'dev', undefined, {})).toEqual([]);
+  });
+
+  test('the Repo 2 account override wins over the account baked into cicd.config', () => {
+    const [target] = synthTargets(CONFIG, 'prod', undefined, {
+      CDK_CICD_ACCOUNT_OVERRIDE: '999999999999',
+    });
+    expect(target.account).toBe('999999999999');
+    expect(target.env.CDK_DEFAULT_ACCOUNT).toBe('999999999999');
+    expect(target.env.CDK_DEPLOY_ACCOUNT).toBe('999999999999');
+  });
+
+  test('empty Repo 2 overrides clear image targets and use ambient account/region values', () => {
+    const [target] = synthTargets(CONFIG, 'prod', undefined, {
+      CDK_CICD_ACCOUNT_OVERRIDE: '',
+      CDK_DEFAULT_ACCOUNT: '999999999999',
+      CDK_CICD_REGION_OVERRIDE: '',
+      AWS_REGION: 'eu-central-1',
+    });
+    expect(target.account).toBe('999999999999');
+    expect(target.region).toBe('eu-central-1');
+    expect(target.env.CDK_DEFAULT_ACCOUNT).toBe('999999999999');
+    expect(target.env.CDK_DEFAULT_REGION).toBe('eu-central-1');
   });
 
   test('each target carries the per-region env and a segregated output dir', () => {

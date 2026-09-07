@@ -14,6 +14,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
+import { RegionOrder } from '../../../src/config/types';
 import {
   CdkPipelinesEngine,
   CdkPipelinesStageContext,
@@ -65,6 +66,49 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
       (byName(stageName).Actions as any[]).map((a) => a.ActionTypeId.Category);
     expect(actionCategories('prod')).toContain('Approval');
     expect(actionCategories('dev')).not.toContain('Approval');
+  });
+
+  test('RegionOrder.PARALLEL puts every regional deployment in one wave', () => {
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'us-west-2' },
+    });
+    new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: [
+          {
+            name: 'prod',
+            env: {
+              account: '222222222222',
+              regions: ['eu-west-1', 'us-east-1'],
+              regionOrder: RegionOrder.PARALLEL,
+            },
+            manualApproval: true,
+          },
+        ],
+      }),
+      stages: new StubStages(),
+    });
+
+    const pipeline = Object.values(Template.fromStack(stack).findResources('AWS::CodePipeline::Pipeline'))[0] as any;
+    const deploymentStages = (pipeline.Properties.Stages as any[]).filter((stage) =>
+      ['prod', 'prod-eu-west-1', 'prod-us-east-1'].includes(stage.Name),
+    );
+
+    expect(deploymentStages).toHaveLength(1);
+    expect(deploymentStages[0].Name).toBe('prod');
+    const deployActions = deploymentStages[0].Actions.filter(
+      (action: any) => action.ActionTypeId.Category === 'Deploy',
+    );
+    expect(deployActions).toHaveLength(4);
+    expect(
+      deployActions.reduce((counts: Record<number, number>, action: any) => {
+        counts[action.RunOrder] = (counts[action.RunOrder] ?? 0) + 1;
+        return counts;
+      }, {}),
+    ).toEqual({ 2: 2, 3: 2 });
+    expect(deploymentStages[0].Actions.some((action: any) => action.ActionTypeId.Category === 'Approval')).toBe(true);
   });
 
   test('the synth step runs npm ci + the default scripts + npm run cdk synth with CDK_CICD_MODE=pipeline', () => {
@@ -131,6 +175,92 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     );
     const policies = JSON.stringify(t.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('secretsmanager:GetSecretValue');
+  });
+
+  test('a generic npm registry authenticates Synth before npm ci and merges secret buildspec bindings', () => {
+    const npmSecretArn = 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:npm-token-abc123';
+    const proxySecretArn = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123';
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'us-west-2' },
+    });
+    new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        proxy: { proxySecretArn },
+        npmRegistry: {
+          url: 'https://npm.example.com/',
+          scope: 'cdklabs',
+          basicAuthSecretArn: npmSecretArn,
+        },
+        codeArtifact: { domain: 'domain', repository: 'repository', npmScope: 'internal' },
+        ci: {
+          partialBuildSpec: codebuild.BuildSpec.fromObject({
+            env: { variables: { CALLER_BUILD_SPEC: 'preserved' } },
+          }),
+        },
+      }),
+      stages: new StubStages(),
+    });
+
+    const t = Template.fromStack(stack);
+    const projects = Object.values(t.findResources('AWS::CodeBuild::Project')) as any[];
+    const synthProject = projects.find((project) =>
+      (project.Properties.Environment.EnvironmentVariables ?? []).some(
+        (variable: { Name?: string }) => variable.Name === 'CDK_CICD_MODE',
+      ),
+    );
+    expect(synthProject).toBeDefined();
+    const spec = JSON.parse(synthProject.Properties.Source.BuildSpec);
+    const installCommands = spec.phases.install.commands as string[];
+    const proxyIndex = installCommands.findIndex((command) => command.includes('export HTTP_PROXY='));
+    const npmRegistryIndex = installCommands.findIndex((command) =>
+      command.includes('@cdklabs:registry=https://npm.example.com/'),
+    );
+    const codeArtifactIndex = installCommands.findIndex((command) => command.includes('aws codeartifact login'));
+
+    expect(proxyIndex).toBeGreaterThanOrEqual(0);
+    expect(npmRegistryIndex).toBeGreaterThan(proxyIndex);
+    expect(codeArtifactIndex).toBeGreaterThan(npmRegistryIndex);
+    expect(spec.phases.build.commands).toContain('npm ci');
+    expect(spec.env.variables).toEqual(expect.objectContaining({ CALLER_BUILD_SPEC: 'preserved' }));
+    expect(spec.env['secrets-manager']).toEqual(
+      expect.objectContaining({
+        PROXY_USERNAME: `${proxySecretArn}:username`,
+        NPM_AUTH_TOKEN: npmSecretArn,
+      }),
+    );
+    t.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'secretsmanager:GetSecretValue',
+            Resource: npmSecretArn,
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('a secret-backed deploy-role ExternalId grants the synth project access to that secret', () => {
+    const secretArn = 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:deploy-external-id-abc123';
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'us-west-2' },
+    });
+    new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        deployRoleExternalId: `resolve:secretsmanager:${secretArn}`,
+        stages: [{ name: 'prod', deployment: { deployRole: 'arn:aws:iam::222222222222:role/Deploy' } }],
+      }),
+      stages: new StubStages(),
+    });
+
+    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('secretsmanager:GetSecretValue');
+    expect(policies).toContain(secretArn);
   });
 
   test('warmAccountsFromSsm scans SSM and exports ACCOUNT_<STAGE> ahead of the synth build', () => {
@@ -224,6 +354,43 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
           EnvironmentVariables: expect.arrayContaining([expect.objectContaining({ Name: 'FOO', Value: 'bar' })]),
         }),
       );
+    }
+  });
+
+  test('ci.image overrides only the Synth CodeBuild project, not self-mutation or asset publishing', () => {
+    class DockerAssetStages implements IStageProvider {
+      public stacks(stage: Stage, context: CdkPipelinesStageContext): void {
+        const stack = new Stack(stage, 'App');
+        new ecr_assets.DockerImageAsset(stack, `Img-${context.stageName}`, {
+          directory: path.join(__dirname, 'fixtures', 'docker'),
+        });
+      }
+    }
+
+    const customImage = 'public.ecr.aws/example/ci-image:2026-09';
+    const stack = new Stack(new App(), 'PipelineStack', {
+      env: { account: '111111111111', region: 'us-west-2' },
+    });
+    new CdkPipelinesEngine(stack, 'Cd', {
+      config: defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        ci: { image: customImage },
+      }),
+      stages: new DockerAssetStages(),
+    });
+
+    const projects = Object.values(Template.fromStack(stack).findResources('AWS::CodeBuild::Project')) as any[];
+    expect(projects.length).toBeGreaterThanOrEqual(3);
+    const synthProject = projects.find((project) =>
+      (project.Properties.Environment.EnvironmentVariables ?? []).some(
+        (variable: { Name?: string }) => variable.Name === 'CDK_CICD_MODE',
+      ),
+    );
+    expect(synthProject.Properties.Environment.Image).toBe(customImage);
+    for (const project of projects.filter((candidate) => candidate !== synthProject)) {
+      expect(project.Properties.Environment.Image).not.toBe(customImage);
     }
   });
 

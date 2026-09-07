@@ -13,9 +13,10 @@ import { App, Aspects, Stack, Stage } from 'aws-cdk-lib';
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { AwsSolutionsChecks } from 'cdk-nag';
+import { parse } from 'yaml';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
-import { GitHubActionsConfig, ResolvedCicdConfig } from '../../../src/config/types';
+import { GitHubActionsConfig, RegionOrder, ResolvedCicdConfig } from '../../../src/config/types';
 import { CdkPipelinesStageContext, IStageProvider } from '../../../src/engine/cdkpipelines/CdkPipelinesEngine';
 import { GitHubActionsEngine } from '../../../src/engine/github/GitHubActionsEngine';
 
@@ -162,6 +163,19 @@ describe('GitHubActionsEngine', () => {
     expect(yaml).toContain('CDK_CICD_MODE');
   });
 
+  test('ci.image becomes the Build-Synth container and does not affect deployment jobs', () => {
+    const image = 'public.ecr.aws/example/ci-image:2026-09';
+    const { engine } = render({ ci: { image } });
+    const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
+      jobs: Record<string, { container?: { image?: string } }>;
+    };
+
+    expect(workflow.jobs['Build-Synth'].container).toEqual({ image });
+    for (const [jobName, job] of Object.entries(workflow.jobs)) {
+      if (jobName !== 'Build-Synth') expect(job.container).toBeUndefined();
+    }
+  });
+
   test('each stage gets its own GitHub Environment named after the stage', () => {
     const { engine } = render();
     const yaml = engine.pipeline.workflowFile.toYaml();
@@ -185,6 +199,38 @@ describe('GitHubActionsEngine', () => {
     const yaml = engine.pipeline.workflowFile.toYaml();
     expect(yaml).toContain('environment: prod-eu-west-1');
     expect(yaml).toContain('environment: prod-us-east-1');
+  });
+
+  test('RegionOrder.PARALLEL removes dependencies between a stage’s regional deploy jobs', () => {
+    const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
+    const engine = new GitHubActionsEngine(stack, 'Cd', {
+      config: config({
+        stages: [
+          {
+            name: 'prod',
+            env: {
+              account: '111111111111',
+              regions: ['eu-west-1', 'us-east-1'],
+              regionOrder: RegionOrder.PARALLEL,
+            },
+          },
+        ],
+      }),
+      stages: new StubStages(),
+    });
+    Template.fromStack(stack);
+    const yaml = engine.pipeline.workflowFile.toYaml();
+    const jobs = (parse(yaml) as { jobs: Record<string, { environment?: string; needs?: string | string[] }> }).jobs;
+    const [euJobName, euJob] = Object.entries(jobs).find(([, job]) => job.environment === 'prod-eu-west-1') ?? [];
+    const [usJobName, usJob] = Object.entries(jobs).find(([, job]) => job.environment === 'prod-us-east-1') ?? [];
+    const needs = (job: { needs?: string | string[] } | undefined): string[] =>
+      job?.needs === undefined ? [] : Array.isArray(job.needs) ? job.needs : [job.needs];
+
+    expect(euJobName).toBeDefined();
+    expect(usJobName).toBeDefined();
+    expect(needs(euJob)).not.toContain(usJobName);
+    expect(needs(usJob)).not.toContain(euJobName);
+    expect(needs(euJob)).toEqual(needs(usJob));
   });
 
   test('a stage with no explicit account defaults to the pipeline account, not env-agnostic', () => {
@@ -214,7 +260,68 @@ describe('GitHubActionsEngine', () => {
     expect(yaml).toContain('curl -Is --connect-timeout 5 https://aws.amazon.com');
   });
 
-  test('without codeArtifact/proxy the Synth job needs no extra credential step', () => {
+  test('a generic npm registry fetches and masks its token after OIDC auth, then grants exact secret read', () => {
+    const secretArn = 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:npm-token-abc123';
+    const { stack, engine } = render({
+      proxy: { proxySecretArn: 'arn:aws:secretsmanager:us-west-2:111111111111:secret:proxy-abc123' },
+      npmRegistry: {
+        url: 'https://npm.example.com/',
+        scope: 'cdklabs',
+        basicAuthSecretArn: secretArn,
+      },
+      codeArtifact: { domain: 'domain', repository: 'repository', npmScope: 'internal' },
+    });
+    const workflow = parse(engine.pipeline.workflowFile.toYaml()) as {
+      jobs: Record<string, { steps: Array<{ name?: string; run?: string }> }>;
+    };
+    const steps = workflow.jobs['Build-Synth'].steps;
+    const credentialsIndex = steps.findIndex((step) => step.name === 'Authenticate Via OIDC Role');
+    const loginIndex = steps.findIndex((step) => step.name === 'Login');
+    const buildIndex = steps.findIndex((step) => step.name === 'Build');
+    const login = steps[loginIndex].run ?? '';
+    const proxyIndex = login.indexOf('export HTTP_PROXY=');
+    const fetchIndex = login.indexOf('aws secretsmanager get-secret-value');
+    const maskIndex = login.indexOf('::add-mask::$NPM_AUTH_TOKEN');
+    const npmrcIndex = login.indexOf('@cdklabs:registry=https://npm.example.com/');
+    const codeArtifactIndex = login.indexOf('aws codeartifact login');
+
+    expect(credentialsIndex).toBeGreaterThanOrEqual(0);
+    expect(loginIndex).toBeGreaterThan(credentialsIndex);
+    expect(buildIndex).toBeGreaterThan(loginIndex);
+    expect(fetchIndex).toBeGreaterThan(proxyIndex);
+    expect(maskIndex).toBeGreaterThan(fetchIndex);
+    expect(npmrcIndex).toBeGreaterThan(maskIndex);
+    expect(codeArtifactIndex).toBeGreaterThan(npmrcIndex);
+    expect(login).toContain(`--secret-id '${secretArn}' --region 'eu-west-1'`);
+    expect(login).toContain('//npm.example.com/:_authToken=$NPM_AUTH_TOKEN');
+
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'secretsmanager:GetSecretValue',
+            Resource: secretArn,
+          }),
+        ]),
+      }),
+    });
+  });
+
+  test('a secret-backed deploy-role ExternalId authenticates the Synth job and grants secret read', () => {
+    const secretArn = 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:deploy-external-id-abc123';
+    const { stack, engine } = render({
+      deployRoleExternalId: `resolve:secretsmanager:${secretArn}`,
+      stages: [{ name: 'prod', deployment: { deployRole: 'arn:aws:iam::222222222222:role/Deploy' } }],
+    });
+    const yaml = engine.pipeline.workflowFile.toYaml();
+
+    expect(yaml.slice(yaml.indexOf('Build-Synth:'), yaml.indexOf('Assets-'))).toContain('Authenticate Via OIDC Role');
+    const policies = JSON.stringify(Template.fromStack(stack).findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('secretsmanager:GetSecretValue');
+    expect(policies).toContain(secretArn);
+  });
+
+  test('without AWS-backed install features the Synth job needs no extra credential step', () => {
     const { engine } = render();
     const yaml = engine.pipeline.workflowFile.toYaml();
     // Exactly one "Authenticate Via OIDC Role" step in the Synth job: the one cdk-pipelines-github's own

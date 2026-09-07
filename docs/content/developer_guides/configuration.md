@@ -10,7 +10,10 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.github('my-org/my-app'),
+  repository: Repository.codestarConnection(
+    'my-org/my-app',
+    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
+  ),
   stages: ['dev', { name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }],
 });
 ```
@@ -26,7 +29,7 @@ export default defineCICD({
 | `stages`                  | `Array<string \| StageInput>` | — (required)                           | Deployment stages, in order. See [Stages](#stages).                         |
 | `engine`                  | `EngineType`                  | `CODEPIPELINE`                         | Which engine renders the pipeline. See [Engine](#engine).                   |
 | `githubActions`           | `GitHubActionsConfig`         | —                                      | GitHub Actions engine config; read only when `engine` is `GITHUB_ACTIONS`.  |
-| `synthesizer`             | `{ type: SynthesizerType }`   | `DEFAULT`                              | Which stack synthesizer to install.                                         |
+| `synthesizer`             | `{ type: SynthesizerType, appId?: string }` | `DEFAULT`                   | Stack synthesizer. `appId` defaults to `application` for `APP_STAGING`.      |
 | `ci`                      | `CiConfigInput`               | engine defaults                        | Build steps and which stages CI synthesizes. See [CI](#ci).                 |
 | `deployModel`             | `DeployModel`                 | `ASSEMBLY_PROMOTION`                   | How the deployed assembly is produced. See [Deploy model](#deploy-model).   |
 | `codeArtifact`            | `CodeArtifactConfig`          | —                                      | Private CodeArtifact npm repo the builds authenticate against.              |
@@ -43,6 +46,10 @@ export default defineCICD({
 | `express`                 | `boolean`                     | `false`                                | Deploy with CloudFormation express mode. See [Express mode](#express-mode). |
 | `deployerImage`           | `BuildImage`                  | —                                      | Container mode: build & push a deployer image instead of deploying.         |
 | `plugins`                 | `PluginRef[]`                 | the default-on hardening set           | Security plugins (hardening Aspects) applied tree-wide. See [Security plugins](#security-plugins). |
+
+`APP_STAGING` is supported by the default flat `CODEPIPELINE` engine. The pinned alpha module does
+not support CDK Pipelines, so `CDK_PIPELINES` and `GITHUB_ACTIONS` reject that combination at synth
+time instead of silently producing an unusable self-mutating pipeline.
 
 ## `application` and `qualifier`
 
@@ -86,17 +93,20 @@ The source repository, constructed through a `Repository` factory. The tracked b
 `main`.
 
 ```typescript
-Repository.github('my-org/my-app'); // via a CodeStar (CodeConnections) connection
+Repository.codestarConnection('my-org/my-app', connArn); // GitHub or another provider via an existing connection ARN
 Repository.codecommit('my-repo'); // AWS CodeCommit
-Repository.codestarConnection('my-org/my-app', connArn); // any provider via an existing connection ARN
 Repository.s3('my-bucket/my-key'); // a versioned S3 object
-// each factory takes an optional trailing `branch` argument, e.g. Repository.github('my-org/my-app', 'develop')
+Repository.github('my-org/my-app'); // GitHub Actions engine only
+// each factory takes an optional trailing `branch` argument
+Repository.codestarConnection('my-org/my-app', connArn, 'develop');
 // CodeCommit is CREATED by default; pass { existing: true } to import an existing repo instead:
 Repository.codecommit('my-repo', 'main', { existing: true });
 ```
 
-When `engine` is `GITHUB_ACTIONS`, `repository` must be `Repository.github(...)` — the workflow runs
-where GitHub already checked the source out.
+The default `CODEPIPELINE` and `CDK_PIPELINES` engines require
+`Repository.codestarConnection(...)` for GitHub sources. When `engine` is `GITHUB_ACTIONS`,
+`repository` must instead be `Repository.github(...)` because the workflow runs where GitHub already
+checked the source out.
 
 ## Stages
 
@@ -308,7 +318,10 @@ Set a pipeline-level default with `deployRoleExternalId`, and override per stage
 ```typescript
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.github('my-org/my-app'),
+  repository: Repository.codestarConnection(
+    'my-org/my-app',
+    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
+  ),
   deployRoleExternalId: 'org-wide-external-id', // pipeline-level default
   stages: [
     {
@@ -325,7 +338,9 @@ export default defineCICD({
 
 Either value may be a literal, or a `resolve:secretsmanager:<arn>` reference resolved at exec time from
 the secret's `SecretString` (so the ExternalId can live in Secrets Manager rather than in
-`cicd.config.ts`).
+`cicd.config.ts`). The generated roles grant `secretsmanager:GetSecretValue`; use the Secrets Manager
+AWS-managed encryption key. A customer-managed KMS key additionally needs `kms:Decrypt`, which this
+configuration does not currently accept.
 
 ## Security plugins
 

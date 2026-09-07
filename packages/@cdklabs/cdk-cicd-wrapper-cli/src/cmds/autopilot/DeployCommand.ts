@@ -6,12 +6,12 @@
 // and (only if drift is clean) `cdk deploy` that assembly. The promoted unit is code + deps, so the
 // synth happens here at deploy, not from a prebuilt assembly.
 
-import { spawnSync } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
-import { runFromImage } from './DeployFromImage';
+import { RegionalInvocationResult, runFromImage, runRegionalInvocations } from './DeployFromImage';
 import { checkAssembly } from './DriftCheck';
 import { synthTargets } from './SynthCommand';
 import { logger } from '../../utils/Logging';
@@ -126,6 +126,29 @@ export function planFromAssembly(
   return collect(outDir).map((stackName) => ({ stackName, changeSetName, region }));
 }
 
+/** Result of one region's complete synth/drift/deploy workflow. */
+export interface RegionalDeploymentResult extends RegionalInvocationResult {
+  readonly plan: PlanEntry[];
+}
+
+/**
+ * Run one complete deployment workflow per region and collect plans in configured region order.
+ * Parallel completion order never changes either the selected failure code or the serialized plan.
+ */
+export async function runRegionalDeployments<T, R extends RegionalDeploymentResult>(
+  targets: readonly T[],
+  regionOrder: string,
+  deploy: (target: T, index: number) => R | Promise<R>,
+): Promise<{ readonly code: number; readonly plan: PlanEntry[]; readonly results: R[] }> {
+  const results = await runRegionalInvocations(targets, regionOrder, deploy);
+  const failure = results.find((result) => result.code !== 0);
+  return {
+    code: failure?.code ?? 0,
+    plan: results.flatMap((result) => result.plan),
+    results,
+  };
+}
+
 /** The account the deploy will actually run against (the ambient creds), for the drift check. */
 function resolveDeployAccount(): string | undefined {
   const result = spawnSync('aws', ['sts', 'get-caller-identity', '--query', 'Account', '--output', 'text'], {
@@ -133,6 +156,28 @@ function resolveDeployAccount(): string | undefined {
   });
   const account = result.status === 0 ? (result.stdout ?? '').trim() : '';
   return /^[0-9]{12}$/.test(account) ? account : undefined;
+}
+
+interface InheritedProcessResult {
+  readonly status: number | null;
+  readonly error?: Error;
+}
+
+/** Spawn a command with inherited output without blocking other regional invocations. */
+function spawnInherited(
+  command: string,
+  args: readonly string[],
+  options: { readonly cwd: string; readonly env: NodeJS.ProcessEnv },
+): Promise<InheritedProcessResult> {
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(command, args, { stdio: 'inherit', cwd: options.cwd, env: options.env });
+      child.once('error', (error) => resolve({ status: null, error }));
+      child.once('close', (status) => resolve({ status }));
+    } catch (error) {
+      resolve({ status: null, error: error instanceof Error ? error : new Error(String(error)) });
+    }
+  });
 }
 
 class Command implements yargs.CommandModule {
@@ -199,7 +244,7 @@ class Command implements yargs.CommandModule {
         logger.error('cdk-cicd deploy --from-image: no deploy.config.ts found next to cdk.json');
         process.exit(1);
       }
-      const code = runFromImage(deployment, {
+      const code = await runFromImage(deployment, {
         yes: args.yes as boolean,
         network: args.dockerNetwork as string | undefined,
         target: args.target as string | undefined,
@@ -237,10 +282,15 @@ class Command implements yargs.CommandModule {
     }
 
     const regionOverride = args.region as string | undefined;
-    const targets = synthTargets(config, stageName, regionOverride);
+    // process.env carries the Repo 2 account override and the ambient-region fallback used by bare
+    // stages. Passing it explicitly makes those deployment inputs authoritative over the image config.
+    const targets = synthTargets(config, stageName, regionOverride, process.env);
     if (targets.length === 0) {
-      logger.warn(`cdk-cicd deploy: stage '${stageName}' has no regions -- nothing to deploy`);
-      return;
+      logger.error(
+        `cdk-cicd deploy: stage '${stageName}' has no configured or ambient region; ` +
+          'configure a region or set CDK_DEFAULT_REGION/AWS_REGION',
+      );
+      process.exit(1);
     }
 
     const fromAssembly = args.fromAssembly as boolean;
@@ -254,81 +304,105 @@ class Command implements yargs.CommandModule {
     // Unique per execution: reusing a name across runs collides with the change set still sitting on the
     // stack from the previous one.
     const changeSetName = `cdk-cicd-${process.env.CODEBUILD_BUILD_NUMBER ?? Date.now()}`;
-    const plan: PlanEntry[] = [];
+    const deployRole = (args.deployRole as string | undefined) ?? stage.deployment?.deployRole;
+    type DeployLog = { readonly level: 'info' | 'warn' | 'error'; readonly message: string };
+    type CommandRegionalDeploymentResult = RegionalDeploymentResult & { readonly logs: DeployLog[] };
 
-    for (const target of targets) {
-      logger.info(`cdk-cicd deploy: ${target.stage} -> ${target.region}`);
+    const regionalDeployment = await runRegionalDeployments(
+      targets,
+      stage.env.regionOrder,
+      async (target): Promise<CommandRegionalDeploymentResult> => {
+        logger.info(`cdk-cicd deploy: ${target.stage} -> ${target.region}`);
+        const logs: DeployLog[] = [];
+        const log = (level: DeployLog['level'], message: string): void => {
+          logs.push({ level, message });
+        };
+        const fail = (code: number, message: string): CommandRegionalDeploymentResult => {
+          log('error', message);
+          return { code, plan: [], logs };
+        };
 
-      if (fromAssembly) {
-        // The promoted-assembly model: Build already synthed this stage, so deploying is all that is
-        // left. Costs one synth per pipeline run instead of one per stage.
         try {
-          assertPromotedAssembly(target.outDir);
-        } catch (error) {
-          logger.error((error as Error).message);
-          process.exit(1);
-        }
-        logger.info(`cdk-cicd deploy: using the promoted assembly at ${target.outDir} (no synth)`);
-      } else {
-        const synth = spawnSync('npx', ['cdk', 'synth', '--output', target.outDir], {
-          stdio: 'inherit',
-          cwd,
-          env: { ...process.env, ...target.env },
-        });
-        if (synth.error) {
-          logger.error(
-            `cdk-cicd deploy: could not run cdk synth for ${target.stage}/${target.region}: ${synth.error.message}`,
+          if (fromAssembly) {
+            // The promoted-assembly model: Build already synthed this stage, so deploying is all that is
+            // left. Costs one synth per pipeline run instead of one per stage.
+            assertPromotedAssembly(target.outDir);
+            log('info', `cdk-cicd deploy: using the promoted assembly at ${target.outDir} (no synth)`);
+          } else {
+            const synth = await spawnInherited('npx', ['cdk', 'synth', '--output', target.outDir], {
+              cwd,
+              env: { ...process.env, ...target.env },
+            });
+            if (synth.error !== undefined) {
+              return fail(
+                1,
+                `cdk-cicd deploy: could not run cdk synth for ${target.stage}/${target.region}: ${synth.error.message}`,
+              );
+            }
+            if (synth.status !== 0) {
+              return fail(synth.status ?? 1, `cdk-cicd deploy: synth failed for ${target.stage}/${target.region}`);
+            }
+          }
+
+          const drift = checkAssembly(target.outDir, { account: deployAccount, region: target.region });
+          drift.warnings.forEach((warning) => log('warn', warning));
+          drift.errors.forEach((error) => log('error', error));
+          if (!drift.ok) {
+            return fail(1, `cdk-cicd deploy: drift refuses ${target.stage}/${target.region} -- aborting the stage`);
+          }
+
+          const deploy = await spawnInherited(
+            'npx',
+            deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined, config.express),
+            {
+              cwd,
+              env: { ...process.env, ...target.env },
+            },
           );
-          process.exit(1);
+          if (deploy.error !== undefined) {
+            return fail(
+              1,
+              `cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`,
+            );
+          }
+          if (deploy.status !== 0) {
+            return fail(deploy.status ?? 1, `cdk-cicd deploy: deploy failed for ${target.stage}/${target.region}`);
+          }
+
+          return {
+            code: 0,
+            plan: prepareOnly ? planFromAssembly(target.outDir, target.region, changeSetName) : [],
+            logs,
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return fail(1, `cdk-cicd deploy: ${target.stage}/${target.region} failed: ${message}`);
         }
-        if (synth.status !== 0) {
-          logger.error(`cdk-cicd deploy: synth failed for ${target.stage}/${target.region}`);
-          process.exit(synth.status ?? 1);
+      },
+    );
+
+    // Promise.all preserves target order, so logs, failure selection, and prepare plans remain stable
+    // even when parallel regions complete in a different order.
+    for (const result of regionalDeployment.results) {
+      for (const entry of result.logs) {
+        if (entry.level === 'info') {
+          logger.info(entry.message);
+        } else if (entry.level === 'warn') {
+          logger.warn(entry.message);
+        } else {
+          logger.error(entry.message);
         }
-      }
-
-      const drift = checkAssembly(target.outDir, { account: deployAccount, region: target.region });
-      drift.warnings.forEach((w) => logger.warn(w));
-      if (!drift.ok) {
-        drift.errors.forEach((e) => logger.error(e));
-        logger.error(`cdk-cicd deploy: drift refuses ${target.stage}/${target.region} -- aborting the stage`);
-        process.exit(1);
-      }
-
-      // A --deploy-role flag (container mode) overrides the stage config's forced role.
-      const deployRole = (args.deployRole as string | undefined) ?? stage.deployment?.deployRole;
-      const deploy = spawnSync(
-        'npx',
-        deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined, config.express),
-        {
-          stdio: 'inherit',
-          cwd,
-          env: { ...process.env, ...target.env },
-        },
-      );
-      if (deploy.error) {
-        logger.error(
-          `cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`,
-        );
-        process.exit(1);
-      }
-      if (deploy.status !== 0) {
-        logger.error(`cdk-cicd deploy: deploy failed for ${target.stage}/${target.region}`);
-        process.exit(deploy.status ?? 1);
-      }
-
-      if (prepareOnly) {
-        // Record what the driver must execute -- recursing into nested assemblies. Written per target, so
-        // a multi-region stage accumulates every region's change sets into one plan the Lambda walks.
-        plan.push(...planFromAssembly(target.outDir, target.region, changeSetName));
       }
     }
+    if (regionalDeployment.code !== 0) {
+      process.exit(regionalDeployment.code);
+    }
+    const plan = regionalDeployment.plan;
 
     if (prepareOnly) {
       // A deploy stage always has at least one stack, so an empty plan is never legitimate here -- it
-      // means `synthTargets` produced nothing (a region-less stage; see the deploy-time-synth caveat) or
-      // the assembly parse missed every stack. Writing it would let the driver "successfully" deploy
-      // nothing and go green, so fail loudly at prepare instead.
+      // means the assembly parse missed every stack. Writing it would let the driver "successfully"
+      // deploy nothing and go green, so fail loudly at prepare instead.
       if (plan.length === 0) {
         logger.error(
           `cdk-cicd deploy: --prepare-only produced an empty plan for '${stageName}' -- no stacks to ` +
