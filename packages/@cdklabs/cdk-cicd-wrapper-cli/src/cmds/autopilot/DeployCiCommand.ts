@@ -22,13 +22,15 @@ import { logger } from '../../utils/Logging';
  * environment (set below), and the application stacks otherwise. So provisioning the pipeline uses the
  * exact same entry point as a plain synth, differing only by the inherited mode signal.
  *
- * `cdk` is invoked as `npm run cdk` (never `npx`) so the project's pinned aws-cdk is used, matching the
+ * `cdk` is invoked as `npm run cdk -- deploy` (never `npx`) so the project's pinned aws-cdk is used, matching the
  * in-pipeline synth step. `_kind`/`_engine` are retained for the handler's logging and back-compat.
  */
 export function deployCiArgs(_kind: 'ci' | 'cd' = 'ci', _engine?: EngineType): string[] {
-  // `--require-approval never` because the only stack here is the pipeline and its own support
-  // resources; the approval that matters to a user is the one inside the pipeline, not this one.
-  return ['run', 'cdk', 'deploy', '--all', '--require-approval', 'never'];
+  // npm consumes arguments following a script name unless `--` separates them. Without the separator,
+  // a standard `"cdk": "cdk"` script receives only `never` and cannot provision the pipeline.
+  // `--require-approval never` matters because the only stack here is the pipeline and its support
+  // resources; the approval that matters to a user is the one inside the pipeline.
+  return ['run', 'cdk', '--', 'deploy', '--all', '--require-approval', 'never'];
 }
 
 /** The environment `deploy-ci` exports so `cdk-cicd exec` renders the pipeline, not the app stacks. */

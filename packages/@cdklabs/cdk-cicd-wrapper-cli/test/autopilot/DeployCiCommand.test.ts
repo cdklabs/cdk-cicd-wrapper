@@ -8,10 +8,10 @@
 import { deployCiArgs, deployCiEnv } from '../../src/cmds/autopilot/DeployCiCommand';
 
 describe('m4-approval-selfupdate: deployCiArgs', () => {
-  test('deploys via `npm run cdk deploy --all` -- no `--app` override, no npx', () => {
-    // The single cdk.json entry (`cdk-cicd exec`) renders the pipeline when CDK_CICD_MODE=pipeline is
-    // set (see deployCiEnv); deploy-ci never overrides `--app`. `npm run cdk`, never npx.
-    expect(deployCiArgs()).toEqual(['run', 'cdk', 'deploy', '--all', '--require-approval', 'never']);
+  test('forwards deploy arguments through the pinned cdk script without an app override or npx', () => {
+    // npm requires `--` before script arguments. The single cdk.json entry (`cdk-cicd exec`) renders the
+    // pipeline when CDK_CICD_MODE=pipeline is inherited; deploy-ci never overrides `--app`.
+    expect(deployCiArgs()).toEqual(['run', 'cdk', '--', 'deploy', '--all', '--require-approval', 'never']);
   });
 
   test('the argv is identical for every engine -- the engine never changes the command', () => {
