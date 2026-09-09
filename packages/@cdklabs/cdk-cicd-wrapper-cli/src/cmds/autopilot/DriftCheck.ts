@@ -27,6 +27,19 @@ const CLOUDFORMATION_STACK_ARTIFACT = 'aws:cloudformation:stack';
 const NESTED_CLOUD_ASSEMBLY_ARTIFACT = 'cdk:cloud-assembly';
 
 /** The intended target for a synth. `account` omitted means "whatever the creds resolve" (no account check). */
+/**
+ * The one alpha-generated APP_STAGING support stack allowed to retain the standard bootstrap identities.
+ *
+ * Application stacks still must use the configured deployment identities. This contract is structural:
+ * the artifact id, physical stack name, and both role ARNs must all match exactly.
+ */
+export interface AppStagingSupportStack {
+  readonly id: string;
+  readonly stackName: string;
+  readonly deployRoleArn: string;
+  readonly cloudFormationExecutionRoleArn: string;
+}
+
 export interface DriftTarget {
   readonly account?: string;
   readonly region: string;
@@ -36,6 +49,11 @@ export interface DriftTarget {
   readonly deployRoleArn?: string;
   /** Exact CloudFormation execution role expected from the stage/env override, when explicitly selected. */
   readonly cloudFormationExecutionRoleArn?: string;
+  /**
+   * APP_STAGING's Bootstrapless support stack deploys with the base bootstrap identities rather than
+   * the application stack's configured identities. It is accepted only when this exact contract matches.
+   */
+  readonly appStagingSupportStack?: AppStagingSupportStack;
 }
 
 export type DriftKind =
@@ -233,6 +251,19 @@ function roleMatchesExpected(actual: string, expected: string, target: DriftTarg
   return normalizedActual === normalizedExpected;
 }
 
+function matchesAppStagingSupportStack(artifact: AssemblyStack, target: DriftTarget): boolean {
+  const support = target.appStagingSupportStack;
+  return (
+    support !== undefined &&
+    artifact.id === support.id &&
+    artifact.stackName === support.stackName &&
+    artifact.assumeRoleArn !== undefined &&
+    artifact.cloudFormationExecutionRoleArn !== undefined &&
+    roleMatchesExpected(artifact.assumeRoleArn, support.deployRoleArn, target) &&
+    roleMatchesExpected(artifact.cloudFormationExecutionRoleArn, support.cloudFormationExecutionRoleArn, target)
+  );
+}
+
 function roleDrift(
   artifact: AssemblyStack,
   target: DriftTarget,
@@ -242,6 +273,8 @@ function roleDrift(
       readonly message: string;
     }
   | undefined {
+  if (matchesAppStagingSupportStack(artifact, target)) return undefined;
+
   const validate = (
     label: string,
     actual: string | undefined,

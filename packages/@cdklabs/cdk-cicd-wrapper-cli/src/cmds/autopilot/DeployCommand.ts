@@ -9,11 +9,18 @@
 import { spawn, spawnSync } from 'child_process';
 import { existsSync } from 'fs';
 import * as path from 'path';
-import { specializeDefaultSynthesizerRoleArn } from '@cdklabs/cdk-cicd-wrapper';
+import { specializeDefaultSynthesizerRoleArn, SynthesizerType } from '@cdklabs/cdk-cicd-wrapper';
+import type { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
 import { RegionalInvocationResult, runFromImage, runRegionalInvocations } from './DeployFromImage';
-import { checkAssembly, ManifestReader, parseEnvironment, stacksFromAssembly } from './DriftCheck';
+import {
+  AppStagingSupportStack,
+  checkAssembly,
+  ManifestReader,
+  parseEnvironment,
+  stacksFromAssembly,
+} from './DriftCheck';
 import { buildContextJson, CFN_EXEC_ROLE_FLAG, DEPLOY_ROLE_FLAG } from './ExecCommand';
 import { synthTargets } from './SynthCommand';
 import { logger } from '../../utils/Logging';
@@ -93,6 +100,37 @@ export function expectedSynthesizedRole(
 
 const BOOTSTRAP_QUALIFIER_CONTEXT = '@aws-cdk/core:bootstrapQualifier';
 const DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds';
+
+/**
+ * The alpha APP_STAGING synthesizer emits one Bootstrapless support stack per target environment.
+ * It intentionally retains the base bootstrap identities while application stacks use the target's
+ * configured identities. Keep this exception exact so ordinary application role drift still fails closed.
+ */
+export function expectedAppStagingSupportStack(
+  config: Pick<ResolvedCicdConfig, 'application' | 'synthesizer'>,
+  target: { readonly account: string; readonly region: string },
+): AppStagingSupportStack | undefined {
+  if (config.synthesizer.type !== SynthesizerType.APP_STAGING) return undefined;
+
+  const rawAppId = (config.synthesizer.appId ?? config.application)?.trim();
+  if (rawAppId === undefined || rawAppId.length === 0) return undefined;
+  const appId = rawAppId
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .slice(0, 20);
+  if (appId.length === 0) return undefined;
+
+  const stackName = `StagingStack-${appId}`;
+  const roleArn = (role: 'deploy' | 'cfn-exec') =>
+    `arn:\${AWS::Partition}:iam::${target.account}:role/cdk-${DEFAULT_BOOTSTRAP_QUALIFIER}-${role}-role-` +
+    `${target.account}-${target.region}`;
+  return {
+    id: `${stackName}-${target.account}-${target.region}`,
+    stackName,
+    deployRoleArn: roleArn('deploy'),
+    cloudFormationExecutionRoleArn: roleArn('cfn-exec'),
+  };
+}
 
 /**
  * Resolve the qualifier used by the application synthesizer with CDK's precedence:
@@ -517,6 +555,10 @@ class Command implements yargs.CommandModule {
           }
 
           const drift = checkAssembly(target.outDir, {
+            appStagingSupportStack: expectedAppStagingSupportStack(config, {
+              account: driftAccount,
+              region: target.region,
+            }),
             account: driftAccount,
             region: target.region,
             qualifier: bootstrapQualifier,

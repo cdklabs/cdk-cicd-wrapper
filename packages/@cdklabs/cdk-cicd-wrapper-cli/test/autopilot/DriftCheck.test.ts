@@ -140,6 +140,116 @@ describe('m3-drift-check: analyzeManifest', () => {
     expect(r.ok).toBe(true);
   });
 
+  test('permits the exact APP_STAGING Bootstrapless support stack alongside configured application roles', () => {
+    const support = {
+      id: 'StagingStack-payments-v2-111111111111-us-west-2',
+      stackName: 'StagingStack-payments-v2',
+      deployRoleArn: 'arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-west-2',
+      cloudFormationExecutionRoleArn:
+        'arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-cfn-exec-role-111111111111-us-west-2',
+    };
+    const r = analyzeManifest(
+      {
+        artifacts: {
+          Application: {
+            type: 'aws:cloudformation:stack',
+            environment: 'aws://111111111111/us-west-2',
+            properties: { assumeRoleArn: DEPLOY_ROLE, cloudFormationExecutionRoleArn: CFN_EXEC_ROLE },
+          },
+          [support.id]: {
+            type: 'aws:cloudformation:stack',
+            environment: 'aws://111111111111/us-west-2',
+            properties: {
+              stackName: support.stackName,
+              assumeRoleArn: support.deployRoleArn,
+              cloudFormationExecutionRoleArn: support.cloudFormationExecutionRoleArn,
+            },
+          },
+        },
+      },
+      {
+        ...TARGET,
+        deployRoleArn: DEPLOY_ROLE,
+        cloudFormationExecutionRoleArn: CFN_EXEC_ROLE,
+        appStagingSupportStack: support,
+      },
+    );
+    expect(r.stacks.map((stack) => stack.kind)).toEqual(['ok', 'ok']);
+    expect(r.ok).toBe(true);
+  });
+
+  test('keeps application role drift blocked when an APP_STAGING support stack is allowed', () => {
+    const support = {
+      id: 'StagingStack-payments-v2-111111111111-us-west-2',
+      stackName: 'StagingStack-payments-v2',
+      deployRoleArn: 'arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-west-2',
+      cloudFormationExecutionRoleArn:
+        'arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-cfn-exec-role-111111111111-us-west-2',
+    };
+    const r = analyzeManifest(
+      {
+        artifacts: {
+          Application: {
+            type: 'aws:cloudformation:stack',
+            environment: 'aws://111111111111/us-west-2',
+            properties: { assumeRoleArn: support.deployRoleArn, cloudFormationExecutionRoleArn: CFN_EXEC_ROLE },
+          },
+          [support.id]: {
+            type: 'aws:cloudformation:stack',
+            environment: 'aws://111111111111/us-west-2',
+            properties: {
+              stackName: support.stackName,
+              assumeRoleArn: support.deployRoleArn,
+              cloudFormationExecutionRoleArn: support.cloudFormationExecutionRoleArn,
+            },
+          },
+        },
+      },
+      {
+        ...TARGET,
+        deployRoleArn: DEPLOY_ROLE,
+        cloudFormationExecutionRoleArn: CFN_EXEC_ROLE,
+        appStagingSupportStack: support,
+      },
+    );
+    expect(r.stacks[0].kind).toBe('deploy-role-mismatch');
+    expect(r.stacks[1].kind).toBe('ok');
+    expect(r.ok).toBe(false);
+  });
+
+  test('rejects a modified APP_STAGING support-stack base role', () => {
+    const support = {
+      id: 'StagingStack-payments-v2-111111111111-us-west-2',
+      stackName: 'StagingStack-payments-v2',
+      deployRoleArn: 'arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-west-2',
+      cloudFormationExecutionRoleArn:
+        'arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-cfn-exec-role-111111111111-us-west-2',
+    };
+    const r = analyzeManifest(
+      {
+        artifacts: {
+          [support.id]: {
+            type: 'aws:cloudformation:stack',
+            environment: 'aws://111111111111/us-west-2',
+            properties: {
+              stackName: support.stackName,
+              assumeRoleArn: 'arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-deploy-role-modified',
+              cloudFormationExecutionRoleArn: support.cloudFormationExecutionRoleArn,
+            },
+          },
+        },
+      },
+      {
+        ...TARGET,
+        deployRoleArn: DEPLOY_ROLE,
+        cloudFormationExecutionRoleArn: CFN_EXEC_ROLE,
+        appStagingSupportStack: support,
+      },
+    );
+    expect(r.stacks[0].kind).toBe('deploy-role-mismatch');
+    expect(r.ok).toBe(false);
+  });
+
   test('fails closed when the configured deployment role is missing or changed in the assembly', () => {
     const missing = analyzeManifest(manifestWith('aws://111111111111/us-west-2'), {
       ...TARGET,
