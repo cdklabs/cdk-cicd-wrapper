@@ -557,10 +557,12 @@ function buildWorkflowForPartition(pipeline: GitHubWorkflow, partition: string):
  */
 function hardenGitHubOidcAudience(gitHubActionRole: GitHubActionRole): void {
   const roleResource = gitHubActionRole.role.node.defaultChild;
-  if (!(roleResource instanceof iam.CfnRole)) {
+  // cdk-pipelines-github can resolve a second aws-cdk-lib runtime. `instanceof iam.CfnRole` then
+  // rejects its otherwise valid generated role; the CloudFormation capability we need is structural.
+  if (roleResource === undefined || typeof (roleResource as iam.CfnRole).addPropertyOverride !== 'function') {
     throw new Error('cdk-cicd: could not locate the generated GitHub Actions IAM role trust policy.');
   }
-  roleResource.addPropertyOverride(
+  (roleResource as iam.CfnRole).addPropertyOverride(
     'AssumeRolePolicyDocument.Statement.0.Condition.StringEquals.token\\.actions\\.githubusercontent\\.com:aud',
     'sts.amazonaws.com',
   );
