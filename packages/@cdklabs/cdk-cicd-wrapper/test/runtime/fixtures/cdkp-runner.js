@@ -12,7 +12,18 @@ const cdk = require('aws-cdk-lib');
 const config = defineCICD({
   application: 'shop',
   repository: Repository.codecommit('shop'),
-  stages: ['dev', { name: 'prod', env: { account: '222222222222', region: 'us-east-1' }, manualApproval: true }],
+  stages: [
+    'dev',
+    {
+      name: 'prod',
+      env: { account: '222222222222', region: 'us-east-1' },
+      manualApproval: true,
+      deployment: {
+        deployRole: 'arn:aws:iam::222222222222:role/ForcedDeploy',
+        cfnExecutionRole: 'arn:aws:iam::222222222222:role/ForcedCfn',
+      },
+    },
+  ],
 });
 
 const app = assemblePipelineApp(config, path.join(__dirname, 'plain-bin.js'));
@@ -24,6 +35,13 @@ const result = stages.map((s) => {
   const bucketIds = Object.keys(resources).filter((k) => resources[k].Type === 'AWS::S3::Bucket');
   // stack.environment is `aws://<account>/<region>` -- proves the per-stage env pin took effect.
   const account = stack && stack.environment ? stack.environment.account : undefined;
-  return { stage: s.node.id, buckets: bucketIds.length, bucketIds, account };
+  return {
+    stage: s.node.id,
+    buckets: bucketIds.length,
+    bucketIds,
+    account,
+    assumeRoleArn: stack && stack.assumeRoleArn,
+    cfnRoleArn: stack && stack.cloudFormationExecutionRoleArn,
+  };
 });
 process.stdout.write('RESULT=' + JSON.stringify(result) + '\n');

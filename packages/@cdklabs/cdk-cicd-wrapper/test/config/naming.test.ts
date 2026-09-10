@@ -10,7 +10,7 @@ describe('m5: stageStackName', () => {
     else process.env.CDK_STAGE = saved;
   });
 
-  test('new-project default: base-<stage>, lowercased, reading CDK_STAGE', () => {
+  test('new-project default: base-<stage>, preserving configured casing, reading CDK_STAGE', () => {
     process.env.CDK_STAGE = 'dev';
     expect(stageStackName('myapp')).toBe('myapp-dev');
   });
@@ -33,12 +33,17 @@ describe('m5: stageStackName', () => {
     expect(stageStackName('myapp', { stage: '' })).toBe('myapp');
   });
 
-  test('default casing lowercases the stage (pins the behavior, not just the already-lowercase input)', () => {
-    // An Autopilot config may carry an uppercase stage id; the clean default name is lowercase.
+  test('default casing remains lowercase for backward compatibility', () => {
     expect(stageStackName('myapp', { stage: 'DEV' })).toBe('myapp-dev');
+    expect(stageStackName('myapp', { stage: 'Prod', stageFirst: true })).toBe('prod-myapp');
   });
 
   test('uppercaseStage without stageFirst still applies (casing and order are independent)', () => {
     expect(stageStackName('myapp', { stage: 'dev', uppercaseStage: true })).toBe('myapp-DEV');
+  });
+
+  test('preserveStageCase is an explicit migration opt-in without changing the lowercase default', () => {
+    expect(stageStackName('myapp', { stage: 'Gamma', preserveStageCase: true })).toBe('myapp-Gamma');
+    expect(stageStackName('myapp', { stage: 'Gamma', stageFirst: true, preserveStageCase: true })).toBe('Gamma-myapp');
   });
 });

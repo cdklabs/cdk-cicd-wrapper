@@ -26,6 +26,7 @@ import {
   resolveSynthesizer,
   shouldWarnBundled,
 } from './inject';
+import { resolveDefaultSynthesizerQualifier } from '../config/default-synthesizer-role-arn';
 
 // Marks a class this hook has already wrapped, so a second load is a no-op.
 const WRAPPED = Symbol.for('@cdklabs/cdk-cicd-wrapper.WrappedApp');
@@ -62,6 +63,15 @@ function patchCopy(cdkRoot: string, cdkVersion: string): void {
         ...props,
         defaultStackSynthesizer: props?.defaultStackSynthesizer ?? resolveSynthesizer(config),
       });
+
+      // When the wrapper owns the synthesizer and no explicit qualifier was configured,
+      // DefaultStackSynthesizer will resolve the CDK bootstrap-qualifier context later when a
+      // Stack binds to it. Validate the exact context CDK installed on this App now, before user
+      // code can construct a Stack, so runtime synthesis and pipeline IAM reject the same invalid
+      // values without duplicating CDK's AppProps/environment context precedence.
+      if (props?.defaultStackSynthesizer === undefined && config.qualifier === undefined) {
+        resolveDefaultSynthesizerQualifier(this);
+      }
 
       markAppConstructed();
       applyWrapper(this, config);

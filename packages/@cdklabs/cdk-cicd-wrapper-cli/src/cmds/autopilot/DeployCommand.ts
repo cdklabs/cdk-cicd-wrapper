@@ -6,25 +6,42 @@
 // and (only if drift is clean) `cdk deploy` that assembly. The promoted unit is code + deps, so the
 // synth happens here at deploy, not from a prebuilt assembly.
 
-import { spawnSync } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { spawn, spawnSync } from 'child_process';
+import { existsSync } from 'fs';
 import * as path from 'path';
+import { specializeDefaultSynthesizerRoleArn, SynthesizerType } from '@cdklabs/cdk-cicd-wrapper';
+import type { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
-import { runFromImage } from './DeployFromImage';
-import { checkAssembly } from './DriftCheck';
+import { RegionalInvocationResult, runFromImage, runRegionalInvocations } from './DeployFromImage';
+import {
+  AppStagingSupportStack,
+  checkAssembly,
+  ManifestReader,
+  parseEnvironment,
+  stacksFromAssembly,
+} from './DriftCheck';
+import { buildContextJson, CFN_EXEC_ROLE_FLAG, DEPLOY_ROLE_FLAG } from './ExecCommand';
 import { synthTargets } from './SynthCommand';
 import { logger } from '../../utils/Logging';
 
 /**
- * The `cdk` argv to deploy one already-synthesized assembly, optionally under a forced deploy role.
+ * The `cdk` argv to deploy one already-synthesized assembly.
  *
  * With `changeSetName` it PREPARES instead of deploying: `--no-execute` publishes the assets and creates
  * the change sets, then returns immediately. That is what lets the Lambda deploy driver own the
  * CloudFormation wait -- the expensive part -- rather than a build container (D-deploy-wait).
+ *
+ * Deployment and CloudFormation execution roles are deliberately absent from this argv. They are
+ * synthesized into the cloud assembly as `assumeRoleArn` and `cloudFormationExecutionRoleArn`.
+ * CDK's `--role-arn` means the latter, so passing a deployment role there would override the assembly's
+ * execution role and collapse two distinct IAM contracts.
  */
-export function deployArgs(outDir: string, deployRole?: string, changeSetName?: string, express = false): string[] {
-  const args = ['cdk', 'deploy', '--app', outDir, '--all', '--require-approval', 'never'];
+export function deployArgs(outDir: string, changeSetName?: string, express = false): string[] {
+  // The installed CDK CLI maps `--all` to the main cloud assembly only. A glob selector is matched
+  // against every stack's hierarchical id, so `**` includes stacks synthesized below cdk.Stage too.
+  // spawn() passes this as a literal argv item; no shell expands it.
+  const args = ['cdk', 'deploy', '--app', outDir, '**', '--require-approval', 'never'];
   if (changeSetName !== undefined) {
     args.push('--no-execute', '--change-set-name', changeSetName);
   } else if (express) {
@@ -35,11 +52,175 @@ export function deployArgs(outDir: string, deployRole?: string, changeSetName?: 
     // for inspection -- which is why express is for fast iterative dev deploys, not production.
     args.push('--express');
   }
-  if (deployRole !== undefined && deployRole.length > 0) {
-    // cdk assumes this role to perform the deployment (the forced deployer role).
-    args.push('--role-arn', deployRole);
-  }
   return args;
+}
+
+/**
+ * Apply a command-line deployment-role override to the process that synthesizes the assembly.
+ *
+ * Presence is authoritative, including an empty value supplied by Repo 2 to clear a role baked into
+ * the image's cicd.config. With no CLI override the ambient environment is returned unchanged, so those
+ * presence-sensitive Repo 2 flags survive into `cdk synth`.
+ */
+export function deploymentEnvironment(ambient: NodeJS.ProcessEnv, deployRoleOverride?: string): NodeJS.ProcessEnv {
+  return deployRoleOverride === undefined ? ambient : { ...ambient, [DEPLOY_ROLE_FLAG]: deployRoleOverride };
+}
+
+/**
+ * Resolve the exact role identity the synth child should embed.
+ *
+ * An environment variable's presence is authoritative, including an empty value that clears the
+ * stage configuration. Trimming mirrors the runtime synthesizer's env parsing.
+ */
+export function expectedSynthesizedRole(
+  environment: NodeJS.ProcessEnv,
+  flag: string,
+  configuredRole?: string,
+  target?: {
+    readonly qualifier: string;
+    readonly account: string;
+    readonly region: string;
+  },
+  source: 'synthesis' | 'promoted-assembly' = 'synthesis',
+): string | undefined {
+  const selected =
+    source === 'promoted-assembly'
+      ? configuredRole
+      : Object.prototype.hasOwnProperty.call(environment, flag)
+        ? environment[flag]
+        : configuredRole;
+  const trimmed = selected?.trim();
+  if (trimmed === undefined || trimmed.length === 0) return undefined;
+  return target === undefined
+    ? trimmed
+    : specializeDefaultSynthesizerRoleArn(trimmed, {
+        ...target,
+      });
+}
+
+const BOOTSTRAP_QUALIFIER_CONTEXT = '@aws-cdk/core:bootstrapQualifier';
+const DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds';
+
+/**
+ * The alpha APP_STAGING synthesizer emits one Bootstrapless support stack per target environment.
+ * It intentionally retains the base bootstrap identities while application stacks use the target's
+ * configured identities. Keep this exception exact so ordinary application role drift still fails closed.
+ */
+export function expectedAppStagingSupportStack(
+  config: Pick<ResolvedCicdConfig, 'application' | 'synthesizer'>,
+  target: { readonly account: string; readonly region: string },
+): AppStagingSupportStack | undefined {
+  if (config.synthesizer.type !== SynthesizerType.APP_STAGING) return undefined;
+
+  const rawAppId = (config.synthesizer.appId ?? config.application)?.trim();
+  if (rawAppId === undefined || rawAppId.length === 0) return undefined;
+  const appId = rawAppId
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .slice(0, 20);
+  if (appId.length === 0) return undefined;
+
+  const stackName = `StagingStack-${appId}`;
+  const roleArn = (role: 'deploy' | 'cfn-exec') =>
+    `arn:\${AWS::Partition}:iam::${target.account}:role/cdk-${DEFAULT_BOOTSTRAP_QUALIFIER}-${role}-role-` +
+    `${target.account}-${target.region}`;
+  return {
+    id: `${stackName}-${target.account}-${target.region}`,
+    stackName,
+    deployRoleArn: roleArn('deploy'),
+    cloudFormationExecutionRoleArn: roleArn('cfn-exec'),
+  };
+}
+
+/**
+ * Resolve the qualifier used by the application synthesizer with CDK's precedence:
+ * explicit wrapper config, merged CDK context, then the standard bootstrap default.
+ *
+ * A promoted assembly is validated only against repository context. Ambient `CDK_CONTEXT_JSON` may
+ * contain caller- or CDK-CLI-injected values that did not participate in the promoted synthesis and
+ * therefore cannot authorize a different bootstrap role contract.
+ */
+export function effectiveBootstrapQualifier(
+  configuredQualifier: string | undefined,
+  cwd: string,
+  environment: NodeJS.ProcessEnv,
+  source: 'synthesis' | 'promoted-assembly' = 'synthesis',
+): string {
+  const contextEnvironment = source === 'promoted-assembly' ? {} : environment;
+  const context = JSON.parse(buildContextJson({}, {}, contextEnvironment, cwd)) as { [key: string]: unknown };
+  const selected = configuredQualifier ?? context[BOOTSTRAP_QUALIFIER_CONTEXT] ?? DEFAULT_BOOTSTRAP_QUALIFIER;
+  if (typeof selected !== 'string' || !/^[A-Za-z0-9_-]{1,10}$/.test(selected)) {
+    throw new Error(
+      `cdk-cicd deploy: bootstrap qualifier from '${BOOTSTRAP_QUALIFIER_CONTEXT}' must match ` +
+        '`[A-Za-z0-9_-]{1,10}`',
+    );
+  }
+  return selected;
+}
+
+/**
+ * Prefer the configured target account; ambient credentials are authoritative only for an agnostic
+ * target. If neither is known, fail closed: accepting a concrete assembly account in that state would
+ * let a hard-coded foreign account bypass drift validation.
+ */
+export function driftAccountForTarget(
+  configuredAccount: string | undefined,
+  ambientAccount: string | undefined,
+): string {
+  const account = configuredAccount ?? ambientAccount;
+  if (account === undefined) {
+    throw new Error('cdk-cicd deploy: cannot validate an account-agnostic target without an ambient STS account');
+  }
+  return account;
+}
+
+/**
+ * A promoted assembly already contains its deployment and CloudFormation execution roles. Replacing
+ * either role at deploy time would reinterpret the synthesized security contract.
+ */
+export function assertDeployRoleOverrideAllowed(fromAssembly: boolean, deployRole: string | undefined): void {
+  if (fromAssembly && deployRole !== undefined) {
+    throw new Error(
+      'cdk-cicd deploy: --deploy-role cannot be used with --from-assembly because deployment roles ' +
+        'are already embedded in the promoted cloud assembly',
+    );
+  }
+}
+
+/** Reject option combinations whose flags would otherwise be silently ignored by the selected mode. */
+export function assertDeploymentModeOptions(options: {
+  readonly fromImage: boolean;
+  readonly fromAssembly: boolean;
+  readonly deployRole?: string;
+  readonly stage?: string;
+  readonly region?: string;
+  readonly prepareOnly: boolean;
+  readonly planParameter?: string;
+  readonly target?: string;
+  readonly dockerNetwork?: string;
+}): void {
+  if (options.fromImage) {
+    const incompatible = [
+      options.fromAssembly ? '--from-assembly' : undefined,
+      options.deployRole !== undefined ? '--deploy-role' : undefined,
+      options.stage !== undefined ? '--stage' : undefined,
+      options.region !== undefined ? '--region' : undefined,
+      options.prepareOnly ? '--prepare-only' : undefined,
+      options.planParameter !== undefined ? '--plan-parameter' : undefined,
+    ].filter((flag): flag is string => flag !== undefined);
+    if (incompatible.length > 0) {
+      throw new Error(`cdk-cicd deploy: --from-image cannot be combined with ${incompatible.join(', ')}`);
+    }
+    return;
+  }
+
+  assertDeployRoleOverrideAllowed(options.fromAssembly, options.deployRole);
+  if (options.target !== undefined || options.dockerNetwork !== undefined) {
+    throw new Error('cdk-cicd deploy: --target and --docker-network require --from-image');
+  }
+  if (!options.prepareOnly && options.planParameter !== undefined) {
+    throw new Error('cdk-cicd deploy: --plan-parameter requires --prepare-only');
+  }
 }
 
 /**
@@ -68,71 +249,90 @@ export interface PlanEntry {
   readonly region: string;
 }
 
-/** Reads and parses the `manifest.json` of the assembly rooted at `dir`. Injectable for tests. */
-export type ManifestReader = (dir: string) => any;
-const readManifestFromDisk: ManifestReader = (dir) =>
-  JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf-8'));
-
 /**
  * The stacks of a synthesized assembly at `outDir`, in **dependency order**, as change-set entries for
  * the Lambda deploy driver to execute one at a time.
  *
- * Recurses into `aws:cloud-assembly` artifacts. That is not optional: a `cdk.Stage` (mainstream CDK)
- * synthesizes its stacks into a NESTED assembly, and `cdk deploy --all --no-execute` creates change sets
+ * Recurses into `cdk:cloud-assembly` artifacts. That is not optional: a `cdk.Stage` (mainstream CDK)
+ * synthesizes its stacks into a NESTED assembly, and `cdk deploy '**' --no-execute` creates change sets
  * for those nested stacks. A flat, top-level-only scan would miss them -- the driver would then execute
  * nothing (or only the top-level stacks) and the pipeline action would still go GREEN, deploying part or
- * none of the app. So each nested assembly is read from its `directory` and its stacks folded in.
+ * none of the app. The shared assembly walker follows the installed schema's `properties.directoryName`.
  *
  * Order matters and is not decorative: a stack that consumes another's export must be executed after it,
- * which is ordering `cdk deploy` normally does for us. `dependencies` reference artifact ids within a
- * manifest, so this topologically sorts within each manifest; a nested assembly is emitted where its
- * artifact sits in the parent order, after anything it depends on.
+ * which is ordering `cdk deploy` normally does for us.
  */
 export function planFromAssembly(
   outDir: string,
-  region: string,
+  fallbackRegion: string,
   changeSetName: string,
-  readManifest: ManifestReader = readManifestFromDisk,
+  readManifest?: ManifestReader,
 ): PlanEntry[] {
-  const collect = (dir: string): string[] => {
-    const artifacts: { [id: string]: any } = readManifest(dir)?.artifacts ?? {};
-    const ids = Object.keys(artifacts);
-    const relevant = (id: string) =>
-      artifacts[id]?.type === 'aws:cloudformation:stack' || artifacts[id]?.type === 'aws:cloud-assembly';
-
-    const ordered: string[] = [];
-    const visiting = new Set<string>();
-    const visit = (id: string): void => {
-      if (ordered.includes(id) || visiting.has(id) || !relevant(id)) return;
-      visiting.add(id);
-      for (const dep of (artifacts[id]?.dependencies ?? []) as string[]) {
-        if (relevant(dep)) visit(dep);
-      }
-      visiting.delete(id);
-      ordered.push(id);
+  return stacksFromAssembly(outDir, readManifest).map((stack) => {
+    const artifactRegion = stack.environment === undefined ? undefined : parseEnvironment(stack.environment).region;
+    return {
+      stackName: stack.stackName,
+      changeSetName,
+      region:
+        artifactRegion === undefined || artifactRegion.length === 0 || artifactRegion === 'unknown-region'
+          ? fallbackRegion
+          : artifactRegion,
     };
-    ids.filter(relevant).forEach(visit);
-
-    // Flatten in order: a stack emits its own name; a nested assembly emits its stacks, recursively.
-    return ordered.flatMap((id) => {
-      const a = artifacts[id];
-      if (a.type === 'aws:cloud-assembly') {
-        return collect(path.join(dir, a.properties.directory));
-      }
-      return [(a.properties?.stackName as string) ?? id];
-    });
-  };
-
-  return collect(outDir).map((stackName) => ({ stackName, changeSetName, region }));
+  });
 }
 
-/** The account the deploy will actually run against (the ambient creds), for the drift check. */
+/** Result of one region's complete synth/drift/deploy workflow. */
+export interface RegionalDeploymentResult extends RegionalInvocationResult {
+  readonly plan: PlanEntry[];
+}
+
+/**
+ * Run one complete deployment workflow per region and collect plans in configured region order.
+ * Parallel completion order never changes either the selected failure code or the serialized plan.
+ */
+export async function runRegionalDeployments<T, R extends RegionalDeploymentResult>(
+  targets: readonly T[],
+  regionOrder: string,
+  deploy: (target: T, index: number) => R | Promise<R>,
+): Promise<{ readonly code: number; readonly plan: PlanEntry[]; readonly results: R[] }> {
+  const results = await runRegionalInvocations(targets, regionOrder, deploy);
+  const failure = results.find((result) => result.code !== 0);
+  return {
+    code: failure?.code ?? 0,
+    plan: results.flatMap((result) => result.plan),
+    results,
+  };
+}
+
+/** Resolve the ambient account used only when the configured deployment target is account-agnostic. */
 function resolveDeployAccount(): string | undefined {
   const result = spawnSync('aws', ['sts', 'get-caller-identity', '--query', 'Account', '--output', 'text'], {
     encoding: 'utf-8',
   });
   const account = result.status === 0 ? (result.stdout ?? '').trim() : '';
   return /^[0-9]{12}$/.test(account) ? account : undefined;
+}
+
+interface InheritedProcessResult {
+  readonly status: number | null;
+  readonly error?: Error;
+}
+
+/** Spawn a command with inherited output without blocking other regional invocations. */
+function spawnInherited(
+  command: string,
+  args: readonly string[],
+  options: { readonly cwd: string; readonly env: NodeJS.ProcessEnv },
+): Promise<InheritedProcessResult> {
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(command, args, { stdio: 'inherit', cwd: options.cwd, env: options.env });
+      child.once('error', (error) => resolve({ status: null, error }));
+      child.once('close', (status) => resolve({ status }));
+    } catch (error) {
+      resolve({ status: null, error: error instanceof Error ? error : new Error(String(error)) });
+    }
+  });
 }
 
 class Command implements yargs.CommandModule {
@@ -156,8 +356,7 @@ class Command implements yargs.CommandModule {
         })
         .option('deploy-role', {
           type: 'string',
-          describe:
-            'Deploy role that overrides the stage config deployRole for every region of this run (used by container mode)',
+          describe: 'Deployment role override synthesized into the assembly for every region of this run',
         })
         .option('from-image', {
           type: 'boolean',
@@ -191,15 +390,33 @@ class Command implements yargs.CommandModule {
 
   public async handler(args: yargs.Arguments) {
     const cwd = process.cwd();
+    const fromImage = args.fromImage as boolean;
+    const fromAssembly = args.fromAssembly as boolean;
+    try {
+      assertDeploymentModeOptions({
+        fromImage,
+        fromAssembly,
+        deployRole: args.deployRole as string | undefined,
+        stage: args.stage as string | undefined,
+        region: args.region as string | undefined,
+        prepareOnly: args.prepareOnly as boolean,
+        planParameter: args.planParameter as string | undefined,
+        target: args.target as string | undefined,
+        dockerNetwork: args.dockerNetwork as string | undefined,
+      });
+    } catch (error) {
+      logger.error((error as Error).message);
+      process.exit(1);
+    }
 
-    if (args.fromImage as boolean) {
+    if (fromImage) {
       // Container mode (Repo 2): the topology comes from deploy.config's targets, not a single stage.
       const deployment = loadDeployment(cwd);
       if (deployment === undefined) {
         logger.error('cdk-cicd deploy --from-image: no deploy.config.ts found next to cdk.json');
         process.exit(1);
       }
-      const code = runFromImage(deployment, {
+      const code = await runFromImage(deployment, {
         yes: args.yes as boolean,
         network: args.dockerNetwork as string | undefined,
         target: args.target as string | undefined,
@@ -229,21 +446,31 @@ class Command implements yargs.CommandModule {
       process.exit(1);
     }
 
-    // The account we will deploy into (ambient creds), NOT the stage config account -- so a manifest
-    // synthesized for a foreign/hardcoded account is caught by drift even when the stage omitted one.
-    const deployAccount = resolveDeployAccount();
-    if (deployAccount === undefined) {
-      logger.warn('cdk-cicd deploy: could not resolve the deploy account via STS; drift will not check the account');
-    }
-
     const regionOverride = args.region as string | undefined;
-    const targets = synthTargets(config, stageName, regionOverride);
+    // process.env carries the Repo 2 account override and the ambient-region fallback used by bare
+    // stages. Passing it explicitly makes those deployment inputs authoritative over the image config.
+    const targets = synthTargets(config, stageName, regionOverride, process.env);
     if (targets.length === 0) {
-      logger.warn(`cdk-cicd deploy: stage '${stageName}' has no regions -- nothing to deploy`);
-      return;
+      logger.error(
+        `cdk-cicd deploy: stage '${stageName}' has no configured or ambient region; ` +
+          'configure a region or set CDK_DEFAULT_REGION/AWS_REGION',
+      );
+      process.exit(1);
     }
 
-    const fromAssembly = args.fromAssembly as boolean;
+    // An explicit stage/Repo 2 target is authoritative even when the caller currently holds credentials
+    // in a different pipeline account: CDK reaches the target by assuming the assembly's deployment role.
+    // Ambient STS identity is consulted only for a genuinely account-agnostic target.
+    const needsAmbientDeployAccount = targets.some((target) => target.account === undefined);
+    const ambientDeployAccount = needsAmbientDeployAccount ? resolveDeployAccount() : undefined;
+    if (needsAmbientDeployAccount && ambientDeployAccount === undefined) {
+      logger.error(
+        'cdk-cicd deploy: could not resolve the ambient deploy account via STS; refusing to deploy ' +
+          'an account-agnostic target without account drift validation',
+      );
+      process.exit(1);
+    }
+
     const prepareOnly = args.prepareOnly as boolean;
     const planParameter = args.planParameter as string | undefined;
     if (prepareOnly && (planParameter === undefined || planParameter.length === 0)) {
@@ -254,81 +481,148 @@ class Command implements yargs.CommandModule {
     // Unique per execution: reusing a name across runs collides with the change set still sitting on the
     // stack from the previous one.
     const changeSetName = `cdk-cicd-${process.env.CODEBUILD_BUILD_NUMBER ?? Date.now()}`;
-    const plan: PlanEntry[] = [];
-
-    for (const target of targets) {
-      logger.info(`cdk-cicd deploy: ${target.stage} -> ${target.region}`);
-
-      if (fromAssembly) {
-        // The promoted-assembly model: Build already synthed this stage, so deploying is all that is
-        // left. Costs one synth per pipeline run instead of one per stage.
-        try {
-          assertPromotedAssembly(target.outDir);
-        } catch (error) {
-          logger.error((error as Error).message);
-          process.exit(1);
-        }
-        logger.info(`cdk-cicd deploy: using the promoted assembly at ${target.outDir} (no synth)`);
-      } else {
-        const synth = spawnSync('npx', ['cdk', 'synth', '--output', target.outDir], {
-          stdio: 'inherit',
-          cwd,
-          env: { ...process.env, ...target.env },
-        });
-        if (synth.error) {
-          logger.error(
-            `cdk-cicd deploy: could not run cdk synth for ${target.stage}/${target.region}: ${synth.error.message}`,
-          );
-          process.exit(1);
-        }
-        if (synth.status !== 0) {
-          logger.error(`cdk-cicd deploy: synth failed for ${target.stage}/${target.region}`);
-          process.exit(synth.status ?? 1);
-        }
-      }
-
-      const drift = checkAssembly(target.outDir, { account: deployAccount, region: target.region });
-      drift.warnings.forEach((w) => logger.warn(w));
-      if (!drift.ok) {
-        drift.errors.forEach((e) => logger.error(e));
-        logger.error(`cdk-cicd deploy: drift refuses ${target.stage}/${target.region} -- aborting the stage`);
-        process.exit(1);
-      }
-
-      // A --deploy-role flag (container mode) overrides the stage config's forced role.
-      const deployRole = (args.deployRole as string | undefined) ?? stage.deployment?.deployRole;
-      const deploy = spawnSync(
-        'npx',
-        deployArgs(target.outDir, deployRole, prepareOnly ? changeSetName : undefined, config.express),
-        {
-          stdio: 'inherit',
-          cwd,
-          env: { ...process.env, ...target.env },
-        },
+    const deployProcessEnv = deploymentEnvironment(process.env, args.deployRole as string | undefined);
+    let bootstrapQualifier: string;
+    try {
+      bootstrapQualifier = effectiveBootstrapQualifier(
+        config.qualifier,
+        cwd,
+        process.env,
+        fromAssembly ? 'promoted-assembly' : 'synthesis',
       );
-      if (deploy.error) {
-        logger.error(
-          `cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`,
-        );
-        process.exit(1);
-      }
-      if (deploy.status !== 0) {
-        logger.error(`cdk-cicd deploy: deploy failed for ${target.stage}/${target.region}`);
-        process.exit(deploy.status ?? 1);
-      }
+    } catch (error) {
+      logger.error((error as Error).message);
+      process.exit(1);
+    }
+    type DeployLog = { readonly level: 'info' | 'warn' | 'error'; readonly message: string };
+    type CommandRegionalDeploymentResult = RegionalDeploymentResult & { readonly logs: DeployLog[] };
 
-      if (prepareOnly) {
-        // Record what the driver must execute -- recursing into nested assemblies. Written per target, so
-        // a multi-region stage accumulates every region's change sets into one plan the Lambda walks.
-        plan.push(...planFromAssembly(target.outDir, target.region, changeSetName));
+    const regionalDeployment = await runRegionalDeployments(
+      targets,
+      stage.env.regionOrder,
+      async (target): Promise<CommandRegionalDeploymentResult> => {
+        logger.info(`cdk-cicd deploy: ${target.stage} -> ${target.region}`);
+        const logs: DeployLog[] = [];
+        const log = (level: DeployLog['level'], message: string): void => {
+          logs.push({ level, message });
+        };
+        const fail = (code: number, message: string): CommandRegionalDeploymentResult => {
+          log('error', message);
+          return { code, plan: [], logs };
+        };
+
+        try {
+          const driftAccount = driftAccountForTarget(target.account, ambientDeployAccount);
+          const roleTarget = {
+            qualifier: bootstrapQualifier,
+            account: driftAccount,
+            region: target.region,
+          };
+          const expectedDeployRoleArn = expectedSynthesizedRole(
+            deployProcessEnv,
+            DEPLOY_ROLE_FLAG,
+            stage.deployment?.deployRole,
+            roleTarget,
+            fromAssembly ? 'promoted-assembly' : 'synthesis',
+          );
+          const expectedCloudFormationExecutionRoleArn = expectedSynthesizedRole(
+            deployProcessEnv,
+            CFN_EXEC_ROLE_FLAG,
+            stage.deployment?.cfnExecutionRole,
+            roleTarget,
+            fromAssembly ? 'promoted-assembly' : 'synthesis',
+          );
+
+          if (fromAssembly) {
+            // The promoted-assembly model: Build already synthed this stage, so deploying is all that is
+            // left. Costs one synth per pipeline run instead of one per stage.
+            assertPromotedAssembly(target.outDir);
+            log('info', `cdk-cicd deploy: using the promoted assembly at ${target.outDir} (no synth)`);
+          } else {
+            const synth = await spawnInherited('npx', ['cdk', 'synth', '--output', target.outDir], {
+              cwd,
+              env: { ...deployProcessEnv, ...target.env },
+            });
+            if (synth.error !== undefined) {
+              return fail(
+                1,
+                `cdk-cicd deploy: could not run cdk synth for ${target.stage}/${target.region}: ${synth.error.message}`,
+              );
+            }
+            if (synth.status !== 0) {
+              return fail(synth.status ?? 1, `cdk-cicd deploy: synth failed for ${target.stage}/${target.region}`);
+            }
+          }
+
+          const drift = checkAssembly(target.outDir, {
+            appStagingSupportStack: expectedAppStagingSupportStack(config, {
+              account: driftAccount,
+              region: target.region,
+            }),
+            account: driftAccount,
+            region: target.region,
+            qualifier: bootstrapQualifier,
+            deployRoleArn: expectedDeployRoleArn,
+            cloudFormationExecutionRoleArn: expectedCloudFormationExecutionRoleArn,
+          });
+          drift.warnings.forEach((warning) => log('warn', warning));
+          drift.errors.forEach((error) => log('error', error));
+          if (!drift.ok) {
+            return fail(1, `cdk-cicd deploy: drift refuses ${target.stage}/${target.region} -- aborting the stage`);
+          }
+
+          const deploy = await spawnInherited(
+            'npx',
+            deployArgs(target.outDir, prepareOnly ? changeSetName : undefined, config.express),
+            {
+              cwd,
+              env: { ...deployProcessEnv, ...target.env },
+            },
+          );
+          if (deploy.error !== undefined) {
+            return fail(
+              1,
+              `cdk-cicd deploy: could not run cdk deploy for ${target.stage}/${target.region}: ${deploy.error.message}`,
+            );
+          }
+          if (deploy.status !== 0) {
+            return fail(deploy.status ?? 1, `cdk-cicd deploy: deploy failed for ${target.stage}/${target.region}`);
+          }
+
+          return {
+            code: 0,
+            plan: prepareOnly ? planFromAssembly(target.outDir, target.region, changeSetName) : [],
+            logs,
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return fail(1, `cdk-cicd deploy: ${target.stage}/${target.region} failed: ${message}`);
+        }
+      },
+    );
+
+    // Promise.all preserves target order, so logs, failure selection, and prepare plans remain stable
+    // even when parallel regions complete in a different order.
+    for (const result of regionalDeployment.results) {
+      for (const entry of result.logs) {
+        if (entry.level === 'info') {
+          logger.info(entry.message);
+        } else if (entry.level === 'warn') {
+          logger.warn(entry.message);
+        } else {
+          logger.error(entry.message);
+        }
       }
     }
+    if (regionalDeployment.code !== 0) {
+      process.exit(regionalDeployment.code);
+    }
+    const plan = regionalDeployment.plan;
 
     if (prepareOnly) {
       // A deploy stage always has at least one stack, so an empty plan is never legitimate here -- it
-      // means `synthTargets` produced nothing (a region-less stage; see the deploy-time-synth caveat) or
-      // the assembly parse missed every stack. Writing it would let the driver "successfully" deploy
-      // nothing and go green, so fail loudly at prepare instead.
+      // means the assembly parse missed every stack. Writing it would let the driver "successfully"
+      // deploy nothing and go green, so fail loudly at prepare instead.
       if (plan.length === 0) {
         logger.error(
           `cdk-cicd deploy: --prepare-only produced an empty plan for '${stageName}' -- no stacks to ` +
@@ -336,11 +630,9 @@ class Command implements yargs.CommandModule {
         );
         process.exit(1);
       }
-      // No assumeRoleArn: a stage's `deployRole` is a CloudFormation SERVICE role (trusted by
-      // cloudformation.amazonaws.com), passed to `cdk deploy` as --role-arn and baked into the change
-      // set's RoleARN -- CloudFormation assumes it at execute time. The driver must NOT sts:AssumeRole it
-      // (that role does not trust the Lambda); it executes the change set under its own identity and
-      // CloudFormation uses the baked role. Cross-account is refused at render time (engine).
+      // The synthesized assembly keeps deployment-role assumption separate from the CloudFormation
+      // execution role. Preparing the change set bakes the latter into its RoleARN; the driver then
+      // executes the prepared change set under its own identity and must not reinterpret either role.
       const document = JSON.stringify({ stacks: plan });
       const put = spawnSync(
         'aws',

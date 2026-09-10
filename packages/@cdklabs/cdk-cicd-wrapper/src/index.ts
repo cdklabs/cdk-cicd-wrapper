@@ -38,11 +38,13 @@ export { BuildImage, BuildImageKind, DockerBuildProps, ImageTagStrategy } from '
 export {
   CiConfig,
   CodeArtifactConfig,
+  CodeBuildImageCredentials,
   CodePipelineRoleNames,
   DeployModel,
   DeploymentConfig,
   EngineType,
   GitHubActionsConfig,
+  GitHubBuildContainerCredentials,
   ManagedVpcConfig,
   NpmRegistryConfig,
   PipelineRoleNames,
@@ -59,12 +61,17 @@ export {
   VpcConfig,
 } from './config/types';
 export { defineCICD } from './config/define';
+export { secretArnFromDeployRoleExternalId } from './engine/external-id-secrets';
 // Container mode (Repo 2): `defineDeployment` authors the `deploy.config.ts` that drives
 // `cdk-cicd deploy --from-image`. TS-only like `defineCICD`; only the resolved structs are jsii-modeled.
 export { defineDeployment } from './config/define';
 // Stack-name control for `bin/` (TS-authoring, like `defineCICD`): a stage-qualified name, and the option
 // to reproduce Blueprint's `<STAGE>-<base>` so a migration updates the existing stack in place. See naming.ts.
 export { stageStackName, StageStackNameOptions } from './config/naming';
+export {
+  DefaultSynthesizerRoleArnOptions,
+  specializeDefaultSynthesizerRoleArn,
+} from './config/default-synthesizer-role-arn';
 
 // The engine abstraction (m4-iengine). `IEngine`/`EngineRenderProps` are the seam CodePipeline (M4)
 // and later container engines implement; concrete engines will be exported here as they land.

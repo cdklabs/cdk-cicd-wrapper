@@ -8,7 +8,7 @@ This iterative process helps reduce the chance that you develop new code based o
 
 ### Stage
 
-A stage is a [deployment environment](https://en.wikipedia.org/wiki/Deployment_environment) the solution is deployed to — for example `dev`, `int`, `prod`. Unlike Blueprint (0.x), Autopilot has no reserved stage names (no forced `RES`, no built-in `DEV`/`INT`/`PROD`): every stage you list in `cicd.config.ts`'s `stages` array is deployed, in the order listed, by the pipeline running in whichever account/region your ambient credentials point at when you run `cdk-cicd deploy-ci`.
+A stage is a [deployment environment](https://en.wikipedia.org/wiki/Deployment_environment) the solution is deployed to — for example `dev`, `int`, `prod`. Unlike Blueprint (0.x), Autopilot does not force lifecycle names such as `RES`/`DEV`/`INT`/`PROD`: every stage you list in `cicd.config.ts`'s `stages` array is deployed in order. The flat CodePipeline engine reserves only its infrastructure stage names, `Source`, `Build`, and `UpdatePipeline`.
 
 ### Stack
 
@@ -43,6 +43,11 @@ A stage's `deployment` field can force a specific deploy role / CloudFormation e
 ```typescript
 { name: 'prod', env: { account: '333333333333', region: 'eu-west-1' }, deployment: { deployRole: 'arn:aws:iam::333333333333:role/Deployer', cfnExecutionRole: 'arn:aws:iam::333333333333:role/CfnExec' } }
 ```
+
+For CodeBuild-backed deployments, the CodeBuild project assumes `deployRole`. The assumed deployment
+role then passes `cfnExecutionRole` to CloudFormation. Grant that deployment role
+`iam:PassRole` on the execution role; do not grant the CodeBuild project role direct
+`iam:PassRole` merely because an execution role is configured.
 
 ## Deploying different stacks per stage
 

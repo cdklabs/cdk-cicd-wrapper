@@ -12,7 +12,7 @@ import * as path from 'path';
 import type { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, stageByName } from './CicdConfig';
-import { stageEnv } from './ExecCommand';
+import { ACCOUNT_OVERRIDE_FLAG, REGION_OVERRIDE_FLAG, stageEnv } from './ExecCommand';
 import { logger } from '../../utils/Logging';
 
 /** One synth target: a single (stage, region), its output dir and the environment overrides it needs. */
@@ -24,6 +24,13 @@ export interface SynthTarget {
   readonly env: { [key: string]: string };
 }
 
+/** Ambient values that can complete or override a target resolved from cicd.config. */
+export type SynthTargetEnvironment = NodeJS.ProcessEnv;
+
+function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  return values.map((value) => value?.trim()).find((value): value is string => value !== undefined && value.length > 0);
+}
+
 /**
  * Enumerate the (stage × region) synth targets. `stageName` undefined selects every stage (the
  * CI-validation `--all` case); a name selects that one stage's region list. Order follows the config.
@@ -33,24 +40,58 @@ export interface SynthTarget {
  * target's env is authoritative for where to deploy, so a single-region run must be able to override
  * whatever region set the image's own `cicd.config` happens to carry -- including an env-agnostic stage
  * with no regions, which then still yields one target rather than nothing.
+ *
+ * A stage with no configured regions falls back to the ambient CDK/AWS region. Container mode also
+ * supplies wrapper-owned overrides; a present empty override clears image configuration and is resolved
+ * against the ambient process before entering the CDK CLI. Every resulting target then carries explicit
+ * wrapper override flags so later CDK CLI rewrites of `CDK_DEFAULT_*` cannot change its authority.
  */
-export function synthTargets(config: ResolvedCicdConfig, stageName?: string, regionOverride?: string): SynthTarget[] {
+export function synthTargets(
+  config: ResolvedCicdConfig,
+  stageName?: string,
+  regionOverride?: string,
+  ambient: SynthTargetEnvironment = process.env,
+): SynthTarget[] {
   const stages = stageName !== undefined ? config.stages.filter((s) => s.name === stageName) : config.stages;
   const targets: SynthTarget[] = [];
   for (const stage of stages) {
-    const regions = regionOverride !== undefined ? [regionOverride] : stage.env.regions;
+    const hasRegionOverride = Object.prototype.hasOwnProperty.call(ambient, REGION_OVERRIDE_FLAG);
+    const ambientRegion = firstNonEmpty(
+      ambient[REGION_OVERRIDE_FLAG],
+      ambient.CDK_DEFAULT_REGION,
+      ambient.AWS_REGION,
+      ambient.AWS_DEFAULT_REGION,
+    );
+    const regions =
+      regionOverride !== undefined
+        ? [regionOverride]
+        : hasRegionOverride
+          ? ambientRegion !== undefined
+            ? [ambientRegion]
+            : []
+          : stage.env.regions.length > 0
+            ? stage.env.regions
+            : ambientRegion !== undefined
+              ? [ambientRegion]
+              : [];
+    const hasAccountOverride = Object.prototype.hasOwnProperty.call(ambient, ACCOUNT_OVERRIDE_FLAG);
+    const account = hasAccountOverride
+      ? firstNonEmpty(ambient[ACCOUNT_OVERRIDE_FLAG], ambient.CDK_DEFAULT_ACCOUNT)
+      : stage.env.account;
     for (const region of regions) {
       targets.push({
         stage: stage.name,
         region,
-        account: stage.env.account,
+        account,
         outDir: path.join('cdk.out', stage.name, region),
         // AWS_REGION/AWS_DEFAULT_REGION as well as the CDK_* pair: the CDK CLI re-derives the app's
         // CDK_DEFAULT_REGION from AWS_REGION/profile before running the app command, so setting only
         // CDK_DEFAULT_REGION would be silently overridden -- the per-region synth has to steer the
         // CLI's own region resolution.
         env: {
-          ...stageEnv(stage.name, { account: stage.env.account, region }),
+          ...stageEnv(stage.name, { account, region }),
+          [ACCOUNT_OVERRIDE_FLAG]: account ?? '',
+          [REGION_OVERRIDE_FLAG]: region,
           AWS_REGION: region,
           AWS_DEFAULT_REGION: region,
         },
@@ -88,13 +129,13 @@ class Command implements yargs.CommandModule {
       process.exit(1);
     }
 
-    const targets = synthTargets(config, stageName);
+    const targets = synthTargets(config, stageName, undefined, process.env);
     if (targets.length === 0) {
-      // A stage with no regions (env-agnostic) selects nothing -- say so rather than exiting 0 silently.
-      logger.warn(
-        `cdk-cicd synth: nothing to synthesize (${stageName ?? 'all stages'} produced no stage x region targets)`,
+      logger.error(
+        `cdk-cicd synth: ${stageName ?? 'all stages'} produced no stage x region targets; ` +
+          'configure a region or set CDK_DEFAULT_REGION/AWS_REGION',
       );
-      return;
+      process.exit(1);
     }
     for (const target of targets) {
       logger.info(`cdk-cicd synth: ${target.stage} -> ${target.region} (${target.outDir})`);

@@ -51,15 +51,28 @@ export default defineCICD({
   githubActions: {
     // roleName defaults to '<application>-github-role'; subjectClaims defaults to every
     // ref/environment of 'owner/my-repo' when omitted.
+    // Configure required reviewers on the generated `prod` GitHub Environment first.
+    environmentProtectionConfigured: true,
   },
 });
 ```
 
 `cdk-cicd deploy-ci` only deploys the OIDC role (`GitHubActionRole`) the generated workflow assumes — the workflow itself is what runs the pipeline once you push it. See the [`Autopilot pipelines` workshop](../workshops/autopilot-pipeline/index.md) for a walkthrough.
 
+GitHub workflow YAML can name an Environment but cannot create its required-reviewer protection rule.
+When any stage resolves to `manualApproval: true`, rendering fails unless
+`githubActions.environmentProtectionConfigured` is explicitly `true`. Set that flag only after the
+matching GitHub Environments have required reviewers configured.
+
 **Current limitations:**
 
-- `codeArtifact`/`proxy` are not yet wired for the GitHub Actions engine — the generated workflow includes the same login/proxy-export commands the other engines use, but not the IAM grants or environment variables that make them work at runtime (tracked in `findings.json` as `migration-github-actions-engine-missing-codeartifact-proxy-plumbing`). Don't rely on `codeArtifact`/`proxy` with this engine yet.
+- `APP_STAGING` is not supported by the generated workflow; use `DEFAULT` or deploy the application
+  directly/local instead.
+- Caller-configured `deployRoleExternalId` / `deployment.externalId` values are rejected because the
+  installed GitHub engine cannot forward them. This is separate from the dependency's fixed ExternalId
+  described below.
+- A resolved deployment-role path or name cannot contain the literal `cfn-exec`, including through
+  the effective bootstrap qualifier, because the installed GitHub engine rewrites that segment to `deploy`.
 - **Bootstrap prerequisite:** the generated workflow's deploy step assumes the CDK deploy role with an explicit `ExternalId` (a `cdk-pipelines-github` default, not something this wrapper controls). If your environment was bootstrapped with the current CDK CLI default (`cdk bootstrap`'s `--deny-external-id`, enabled by default), that assume-role call is rejected outright and the deploy job fails. You need to either re-bootstrap without `--deny-external-id`, or allow-list exactly that `ExternalId` on the deploy role's trust policy (a minimally-customized `cdk bootstrap --template`, adding one statement, is enough — see `findings.json`'s `migration-github-actions-engine-deny-external-id-incompatibility` for the exact shape). This is a real prerequisite, not an edge case — it will block your very first real deploy on a freshly-bootstrapped account.
 
 ### Known Issues

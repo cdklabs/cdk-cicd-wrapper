@@ -6,7 +6,7 @@
 // from the application, environment taken from the ambient CDK_DEFAULT_* the CDK CLI resolves, the
 // disposable flag reaching the support resources, and the nag aspect being applied at all.
 
-import { Aspects } from 'aws-cdk-lib';
+import { Aspects, BOOTSTRAP_QUALIFIER_CONTEXT } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { PipelineApp } from '../../src/app/PipelineApp';
@@ -56,6 +56,55 @@ describe('m4-approval-selfupdate: PipelineApp', () => {
     // token, so pin the concrete environment rather than just "a pipeline rendered".
     expect(stack.environment.account).toEqual(ACCOUNT);
     expect(stack.environment.region).toEqual(REGION);
+  });
+
+  test('the pipeline stack keeps the standard hub bootstrap qualifier', () => {
+    const resolved = defineCICD({
+      application: 'shop',
+      qualifier: 'customq',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+    });
+    const app = new PipelineApp({ config: resolved });
+    const artifact = app.synth().getStackArtifact(app.pipelineStack.artifactId);
+
+    expect(artifact.assumeRoleArn).toContain('cdk-hnb659fds-deploy-role-');
+    expect(artifact.cloudFormationExecutionRoleArn).toContain('cdk-hnb659fds-cfn-exec-role-');
+  });
+
+  test('the pipeline stack and self-update IAM honor the hub bootstrap qualifier from CDK context', () => {
+    const previous = process.env.CDK_CONTEXT_JSON;
+    process.env.CDK_CONTEXT_JSON = JSON.stringify({ [BOOTSTRAP_QUALIFIER_CONTEXT]: 'hubqual' });
+    try {
+      const app = new PipelineApp({ config: config('shop') });
+      const assembly = app.synth();
+      const artifact = assembly.getStackArtifact(app.pipelineStack.artifactId);
+      const policies = JSON.stringify(Template.fromJSON(artifact.template).findResources('AWS::IAM::Policy'));
+
+      expect(artifact.assumeRoleArn).toContain('cdk-hubqual-deploy-role-');
+      expect(artifact.cloudFormationExecutionRoleArn).toContain('cdk-hubqual-cfn-exec-role-');
+      expect(policies).toContain(`cdk-hubqual-deploy-role-${ACCOUNT}-${REGION}`);
+    } finally {
+      if (previous === undefined) delete process.env.CDK_CONTEXT_JSON;
+      else process.env.CDK_CONTEXT_JSON = previous;
+    }
+  });
+
+  test('ci.image is applied only to the CI Build project', () => {
+    const resolved = defineCICD({
+      application: 'shop',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+      ci: { image: 'public.ecr.aws/example/node:22' },
+    });
+    const stack = new PipelineApp({ config: resolved }).synth().stacks[0];
+    const projects = Object.values(Template.fromJSON(stack.template).findResources('AWS::CodeBuild::Project'));
+    const customImageProjects = projects.filter(
+      (project) => project.Properties.Environment.Image === 'public.ecr.aws/example/node:22',
+    );
+
+    expect(customImageProjects).toHaveLength(1);
+    expect(JSON.stringify(customImageProjects[0].Properties.Source.BuildSpec)).toContain('cdk-cicd synth --all');
   });
 
   test('the nag aspect is applied to the app', () => {

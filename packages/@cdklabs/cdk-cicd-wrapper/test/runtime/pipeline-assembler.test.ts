@@ -10,18 +10,31 @@
 // require.cache (same reason bundled-diagnostic runs the compiled preload out of process).
 
 import { execFileSync } from 'child_process';
-import { existsSync, mkdtempSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { App, Stack, Stage } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import {
+  App,
+  Aspects,
+  BOOTSTRAP_QUALIFIER_CONTEXT,
+  CfnResource,
+  DefaultStackSynthesizer,
+  IAspect,
+  Stack,
+  Stage,
+} from 'aws-cdk-lib';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import { IConstruct } from 'constructs';
+import { AppConfig } from '../../src/appconfig/accessor';
 import { defineCICD } from '../../src/config/define';
 import { Repository } from '../../src/config/repository';
-import { EngineType } from '../../src/config/types';
+import { EngineType, ResolvedCicdConfig, SynthesizerType } from '../../src/config/types';
 import { CdkPipelinesStageContext, IStageProvider } from '../../src/engine/cdkpipelines/CdkPipelinesEngine';
 import { GitHubActionsEngine } from '../../src/engine/github/GitHubActionsEngine';
-import { buildPipelineApp } from '../../src/runtime/pipeline-assembler';
+import { buildPipelineApp, replayForcedRoleEnv } from '../../src/runtime/pipeline-assembler';
+import { registerPlugin } from '../../src/runtime/plugins';
 
 function config() {
   return defineCICD({
@@ -70,6 +83,221 @@ describe('CDK Pipelines assembler: pipeline structure (stub provider)', () => {
     const categories = (n: string) => (byName(n).Actions as any[]).map((a) => a.ActionTypeId.Category);
     expect(categories('prod')).toContain('Approval');
     expect(categories('dev')).not.toContain('Approval');
+  });
+
+  test('applies the full default wrapper aspect set to the self-mutating app', () => {
+    const app = buildPipelineApp(config(), new StubProvider());
+    const aspectNames = Aspects.of(app).all.map((aspect) => {
+      const delegated = (aspect as { delegate?: IAspect }).delegate;
+      return (delegated ?? aspect).constructor.name;
+    });
+    expect(aspectNames).toEqual(
+      expect.arrayContaining([
+        'AwsSolutionsChecks',
+        'LogRetentionAspect',
+        'EncryptBucketOnTransitAspect',
+        'EncryptSNSTopicOnTransitAspect',
+        'RotateEncryptionKeysAspect',
+        'DisablePublicIPAssignmentForEC2Aspect',
+      ]),
+    );
+  });
+
+  test('root pipeline aspects do not revisit resources in an independently wrapped application stage', () => {
+    const counter = new (class implements IAspect {
+      public bucketVisits = 0;
+
+      public visit(node: IConstruct): void {
+        if (CfnResource.isCfnResource(node) && node.cfnResourceType === 'AWS::S3::Bucket') {
+          this.bucketVisits += 1;
+        }
+      }
+    })();
+    let applicationStack: Stack | undefined;
+    const provider: IStageProvider = {
+      stacks(stage: Stage, context: CdkPipelinesStageContext): void {
+        registerPlugin(stage, {
+          ref: { name: 'CountBuckets', version: '1' },
+          aspect: counter,
+        });
+        applicationStack = new Stack(stage, 'shop-app', { env: context.env });
+        new s3.Bucket(applicationStack, 'Data');
+      },
+    };
+    buildPipelineApp(
+      defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        plugins: [{ name: 'CountBuckets', version: '1' }],
+      }),
+      provider,
+    );
+
+    Template.fromStack(applicationStack!);
+    expect(counter.bucketVisits).toBe(1);
+  });
+
+  test('honours plugins: [] for the self-mutating app', () => {
+    const app = buildPipelineApp(
+      defineCICD({
+        application: 'shop',
+        repository: Repository.codecommit('shop'),
+        stages: ['dev'],
+        plugins: [],
+      }),
+      new StubProvider(),
+    );
+    expect(Aspects.of(app).all).toEqual([]);
+  });
+
+  test('loads per-stage application config before replay and applies its tags/plugin settings to that stage', () => {
+    const originalCwd = process.cwd();
+    const cwd = mkdtempSync(path.join(os.tmpdir(), 'cdk-cicd-stage-config-'));
+    mkdirSync(path.join(cwd, 'config'));
+    writeFileSync(
+      path.join(cwd, 'config', 'dev.json'),
+      JSON.stringify({ tags: { StageConfig: 'dev' }, logRetentionInDays: 14 }),
+    );
+
+    let appConfig: Record<string, unknown> | undefined;
+    let applicationStack: Stack | undefined;
+    const provider: IStageProvider = {
+      stacks(stage: Stage, context: CdkPipelinesStageContext): void {
+        appConfig = AppConfig.of(stage) as Record<string, unknown>;
+        applicationStack = new Stack(stage, 'shop-app', { env: context.env });
+        new s3.Bucket(applicationStack, 'Data');
+        new logs.CfnLogGroup(applicationStack, 'Logs');
+      },
+    };
+
+    try {
+      process.chdir(cwd);
+      buildPipelineApp(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev'],
+        }),
+        provider,
+      );
+
+      expect(appConfig).toMatchObject({ tags: { StageConfig: 'dev' }, logRetentionInDays: 14 });
+      const template = Template.fromStack(applicationStack!);
+      template.hasResourceProperties('AWS::Logs::LogGroup', { RetentionInDays: 14 });
+      template.hasResourceProperties('AWS::S3::Bucket', {
+        Tags: Match.arrayWith([{ Key: 'StageConfig', Value: 'dev' }]),
+      });
+    } finally {
+      process.chdir(originalCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects APP_STAGING for its cross-Stage support-stack dependency, not its qualifier', () => {
+    const resolved = defineCICD({
+      application: 'shop',
+      qualifier: 'customq',
+      repository: Repository.codecommit('shop'),
+      stages: ['dev'],
+      synthesizer: { type: SynthesizerType.APP_STAGING },
+    });
+    expect(() => buildPipelineApp({ ...resolved, engine: EngineType.CDK_PIPELINES }, new StubProvider())).toThrow(
+      /DefaultStagingStack.*cannot depend across that Stage boundary.*not a bootstrap-qualifier limitation/,
+    );
+  });
+
+  test('the engine-owned pipeline stack follows CDK bootstrap-qualifier context, not the application qualifier', () => {
+    const previousContext = process.env.CDK_CONTEXT_JSON;
+    process.env.CDK_CONTEXT_JSON = JSON.stringify({ [BOOTSTRAP_QUALIFIER_CONTEXT]: 'ctxqual' });
+    try {
+      const app = buildPipelineApp(
+        defineCICD({
+          application: 'shop',
+          qualifier: 'appqual',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev'],
+        }),
+        new StubProvider(),
+      );
+      const stack = app.node.findChild('shop-pipeline') as Stack;
+      expect((stack.synthesizer as DefaultStackSynthesizer).bootstrapQualifier).toBe('ctxqual');
+    } finally {
+      if (previousContext === undefined) {
+        delete process.env.CDK_CONTEXT_JSON;
+      } else {
+        process.env.CDK_CONTEXT_JSON = previousContext;
+      }
+    }
+  });
+
+  test('treats an omitted synthesizer in a legacy resolved config as DEFAULT', () => {
+    const resolved = defineCICD({
+      application: 'shop',
+      repository: Repository.codecommit('shop'),
+      stages: ['dev'],
+    });
+    const legacy = { ...resolved } as Partial<ResolvedCicdConfig>;
+    Reflect.deleteProperty(legacy, 'synthesizer');
+
+    const app = buildPipelineApp(legacy as ResolvedCicdConfig, new StubProvider());
+    const stack = app.node.findChild('shop-pipeline') as Stack;
+    expect((stack.synthesizer as DefaultStackSynthesizer).bootstrapQualifier).toBe(
+      DefaultStackSynthesizer.DEFAULT_QUALIFIER,
+    );
+  });
+});
+
+describe('self-mutating assembler: stage forced-role contract', () => {
+  test('exports deploy and CFN execution role values for replay synthesis', () => {
+    const cicd = defineCICD({
+      application: 'shop',
+      repository: Repository.codecommit('shop'),
+      stages: [
+        {
+          name: 'prod',
+          deployment: {
+            deployRole: 'arn:aws:iam::222222222222:role/ForcedDeploy',
+            cfnExecutionRole: 'arn:aws:iam::222222222222:role/ForcedCfn',
+          },
+        },
+      ],
+    });
+    expect(replayForcedRoleEnv(cicd, 'prod')).toEqual({
+      CDK_CICD_DEPLOY_ROLE_ARN: 'arn:aws:iam::222222222222:role/ForcedDeploy',
+      CDK_CICD_CFN_EXEC_ROLE_ARN: 'arn:aws:iam::222222222222:role/ForcedCfn',
+    });
+  });
+
+  test('rejects a pipeline ExternalId fallback when a deployRole is configured', () => {
+    const cicd = defineCICD({
+      application: 'shop',
+      repository: Repository.codecommit('shop'),
+      deployRoleExternalId: 'pipeline-external',
+      stages: [
+        { name: 'dev', deployment: { deployRole: 'arn:dev' } },
+        { name: 'qa', deployment: { cfnExecutionRole: 'arn:cfn' } },
+      ],
+    });
+    expect(() => replayForcedRoleEnv(cicd, 'dev')).toThrow(/cannot honor the deploy-role ExternalId.*dev/);
+    expect(replayForcedRoleEnv(cicd, 'qa')).toEqual({ CDK_CICD_CFN_EXEC_ROLE_ARN: 'arn:cfn' });
+  });
+
+  test('rejects a stage-level ExternalId, including a Secrets Manager reference', () => {
+    const cicd = defineCICD({
+      application: 'shop',
+      repository: Repository.codecommit('shop'),
+      stages: [
+        {
+          name: 'prod',
+          deployment: {
+            deployRole: 'arn:prod',
+            externalId: 'resolve:secretsmanager:arn:aws:secretsmanager:us-west-2:111111111111:secret:prod-external',
+          },
+        },
+      ],
+    });
+    expect(() => replayForcedRoleEnv(cicd, 'prod')).toThrow(/cannot honor the deploy-role ExternalId.*prod/);
   });
 });
 
@@ -205,6 +433,8 @@ describe('CDK Pipelines assembler: real per-stage replay (subprocess)', () => {
       buckets: number;
       bucketIds: string[];
       account?: string;
+      assumeRoleArn?: string;
+      cfnRoleArn?: string;
     }>;
     const byStage = Object.fromEntries(result.map((r) => [r.stage, r]));
     // Each replayed stage got exactly the plain bin's one bucket.
@@ -214,6 +444,8 @@ describe('CDK Pipelines assembler: real per-stage replay (subprocess)', () => {
     // ambient hub account (111…) -- so the replay set CDK_DEFAULT_ACCOUNT per stage, not once.
     expect(byStage.dev.account).toBe('111111111111');
     expect(byStage.prod.account).toBe('222222222222');
+    expect(byStage.prod.assumeRoleArn).toBe('arn:aws:iam::222222222222:role/ForcedDeploy');
+    expect(byStage.prod.cfnRoleArn).toBe('arn:aws:iam::222222222222:role/ForcedCfn');
     // CDK_STAGE was pinned per stage: the bucket logical id (Data-${CDK_STAGE}) differs across stages.
     expect(byStage.dev.bucketIds[0]).not.toEqual(byStage.prod.bucketIds[0]);
   });
@@ -262,6 +494,26 @@ describe('CDK Pipelines assembler: ReplayApp inherits App statics (App.of)', () 
     expect((Fixed as unknown as typeof App).of).toBe(App.of);
     // Instance behaviour is unchanged -- constructing still yields the stage, not a real App.
     expect(new (Fixed as unknown as new () => object)()).toBe(stage);
+  });
+
+  test('Stack.isStack recognizes a stack created by a distinct aws-cdk-lib copy', () => {
+    // Jest's moduleNameMapper intentionally aliases every aws-cdk-lib import to one copy, so exercise
+    // the real Node resolution boundary in a subprocess: monorepo-root CDK versus package-local CDK.
+    const rootCdk = path.resolve(__dirname, '../../../../../node_modules/aws-cdk-lib');
+    const packageCdk = path.resolve(__dirname, '../../node_modules/aws-cdk-lib');
+    const script = [
+      `const root = require(${JSON.stringify(rootCdk)});`,
+      `const other = require(${JSON.stringify(packageCdk)});`,
+      "const stack = new other.Stack(new other.App(), 'OtherCopy');",
+      'process.stdout.write(JSON.stringify({ instanceOfRoot: stack instanceof root.Stack, isStack: root.Stack.isStack(stack) }));',
+    ].join('\n');
+    const result = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf-8' })) as {
+      instanceOfRoot: boolean;
+      isStack: boolean;
+    };
+
+    expect(result.instanceOfRoot).toBe(false);
+    expect(result.isStack).toBe(true);
   });
 
   // Pin the supported range explicitly. The App-export injection hook is documented (inject.ts) as

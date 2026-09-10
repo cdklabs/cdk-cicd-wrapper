@@ -4,6 +4,7 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
+import { secretArnFromDeployRoleExternalId } from '@cdklabs/cdk-cicd-wrapper';
 import type { EngineType, ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
@@ -15,7 +16,7 @@ import { logger } from '../../utils/Logging';
  *   1. resolve the active stage's config (the app-config layer),
  *   2. export the stage's account/region so the stock `env: { account: process.env.CDK_DEFAULT_ACCOUNT, ... }`
  *      line resolves the right target -- no `cfg.aws.*` reference in the user's code,
- *   3. merge the config into CDK_CONTEXT_JSON as `cicd:config` WITHOUT clobbering user context,
+ *   3. merge app and wrapper config into separate CDK_CONTEXT_JSON keys WITHOUT clobbering user context,
  *   4. spawn the user entry under the register preload so App is subclassed at construction.
  *
  * The account/region export, context key, and diagnostic-arming flag are a contract with the
@@ -24,6 +25,12 @@ import { logger } from '../../utils/Logging';
 
 /** The wrapper's config context key. Mirrors AppConfig.CONTEXT_KEY. */
 const CONFIG_CONTEXT_KEY = 'cicd:config';
+/** Wrapper-owned runtime context, kept separate so AppConfig.of() returns only stage application data. */
+const WRAPPER_CONFIG_CONTEXT_KEY = 'cicd:wrapper';
+/** Wrapper-owned target account; survives CDK CLI rewrites and overrides configured application values. */
+export const ACCOUNT_OVERRIDE_FLAG = 'CDK_CICD_ACCOUNT_OVERRIDE';
+/** Wrapper-owned target Region; survives CDK CLI rewrites and overrides configured application values. */
+export const REGION_OVERRIDE_FLAG = 'CDK_CICD_REGION_OVERRIDE';
 
 // Arms the bundled-app diagnostic in the register preload. This literal is the runtime contract with
 // the constructs package's inject.ts EXEC_FLAG; kept in sync by the test asserting they match, and
@@ -33,44 +40,76 @@ const EXEC_FLAG = 'CDK_CICD_EXEC';
 // The forced-role env vars the preload's resolveSynthesizer reads (same cross-package literal contract
 // as EXEC_FLAG; the constructs package exports these as DEPLOY_ROLE_FLAG / CFN_EXEC_ROLE_FLAG /
 // DEPLOY_ROLE_EXTERNAL_ID_FLAG).
-const DEPLOY_ROLE_FLAG = 'CDK_CICD_DEPLOY_ROLE_ARN';
-const CFN_EXEC_ROLE_FLAG = 'CDK_CICD_CFN_EXEC_ROLE_ARN';
-const DEPLOY_ROLE_EXTERNAL_ID_FLAG = 'CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID';
-
-/** Prefix marking a config value as a Secrets Manager reference to resolve at exec time. */
-const SECRET_REF_PREFIX = 'resolve:secretsmanager:';
+export const DEPLOY_ROLE_FLAG = 'CDK_CICD_DEPLOY_ROLE_ARN';
+export const CFN_EXEC_ROLE_FLAG = 'CDK_CICD_CFN_EXEC_ROLE_ARN';
+export const DEPLOY_ROLE_EXTERNAL_ID_FLAG = 'CDK_CICD_DEPLOY_ROLE_EXTERNAL_ID';
+export const COMPLIANCE_LOG_BUCKET_NAME_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_NAME';
+export const COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_ACCOUNT';
+export const COMPLIANCE_LOG_BUCKET_REGION_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_REGION';
 
 /**
  * Resolve a deploy-role ExternalId value: a literal is returned as-is; a `resolve:secretsmanager:<arn>`
  * reference is fetched from Secrets Manager (the `SecretString`) at exec time. Undefined/blank -> undefined.
  *
- * The `@aws-sdk/client-secrets-manager` client is loaded through an UNTYPED dynamic import on purpose: it
- * is not a declared build dependency (adding it drags a nested `@smithy/*` that conflicts with the CLI's
- * hoisted copy and breaks `tsc --build`). The AWS SDK v3 is ambient in the pipeline/CI runtime where a
- * `resolve:secretsmanager:` reference is actually used; a literal externalId needs no SDK at all. Kept
- * async and isolated so the import is only paid for when a secret reference is present.
+ * Secret references use the AWS CLI already required by the wrapper's deployment workflows. Arguments
+ * are passed without a shell, the full JSON response is parsed, and failures name the referenced secret
+ * without ever logging its value. A reader can be injected for deterministic unit tests.
  */
-export async function resolveExternalId(value?: string): Promise<string | undefined> {
+export async function resolveExternalId(
+  value?: string,
+  readSecret: (secretId: string) => string | Promise<string> = readSecretStringFromAwsCli,
+): Promise<string | undefined> {
   const trimmed = value?.trim();
   if (trimmed === undefined || trimmed.length === 0) return undefined;
-  if (!trimmed.startsWith(SECRET_REF_PREFIX)) return trimmed;
-  const secretId = trimmed.slice(SECRET_REF_PREFIX.length);
-  const moduleName = '@aws-sdk/client-secrets-manager';
-  // Untyped import (see the doc comment): tsc must not load this client's .d.ts.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sdk: any = await import(moduleName).catch(() => {
-    throw new Error(
-      `cdk-cicd exec: resolving '${trimmed}' needs @aws-sdk/client-secrets-manager, which is not available ` +
-        'in this environment. Provide the deploy-role externalId as a literal, or run where the AWS SDK v3 is present.',
-    );
-  });
-  const client = new sdk.SecretsManager({});
-  const res = await client.getSecretValue({ SecretId: secretId });
-  const secret: string | undefined = res.SecretString;
-  if (secret === undefined || secret.length === 0) {
-    throw new Error(`cdk-cicd exec: secret '${secretId}' for the deploy-role externalId has no SecretString`);
+  const secretArn = secretArnFromDeployRoleExternalId(trimmed, 'deploy-role externalId');
+  if (secretArn === undefined) return trimmed;
+  const secret = await readSecret(secretArn);
+  if (secret.length === 0) {
+    throw new Error(`cdk-cicd exec: secret '${secretArn}' for the deploy-role externalId has no SecretString`);
   }
   return secret;
+}
+
+/**
+ * Read a Secrets Manager `SecretString` through AWS CLI v2/v1. Kept synchronous because exec must
+ * finish resolving the role contract before it starts the child CDK process.
+ */
+export function readSecretStringFromAwsCli(secretId: string, runner: typeof spawnSync = spawnSync): string {
+  const arnRegion = /^arn:[^:]+:secretsmanager:([^:]+):/.exec(secretId)?.[1];
+  const args = ['secretsmanager', 'get-secret-value', '--secret-id', secretId, '--output', 'json'];
+  if (arnRegion !== undefined) {
+    args.push('--region', arnRegion);
+  }
+  const result = runner('aws', args, {
+    encoding: 'utf-8',
+    env: { ...process.env, AWS_PAGER: '' },
+    timeout: 30_000,
+    maxBuffer: 1024 * 1024,
+  });
+  if (result.error !== undefined) {
+    throw new Error(
+      `cdk-cicd exec: could not run AWS CLI to resolve Secrets Manager secret '${secretId}': ` +
+        `${result.error.message}. Install/configure the AWS CLI or provide a literal externalId.`,
+    );
+  }
+  if (result.status !== 0) {
+    const detail = String(result.stderr ?? '').trim();
+    throw new Error(
+      `cdk-cicd exec: AWS CLI could not read Secrets Manager secret '${secretId}'` +
+        (detail.length > 0 ? `: ${detail}` : ` (exit ${String(result.status)})`),
+    );
+  }
+
+  let response: { SecretString?: unknown };
+  try {
+    response = JSON.parse(String(result.stdout ?? '')) as { SecretString?: unknown };
+  } catch {
+    throw new Error(`cdk-cicd exec: AWS CLI returned invalid JSON for Secrets Manager secret '${secretId}'`);
+  }
+  if (typeof response.SecretString !== 'string' || response.SecretString.length === 0) {
+    throw new Error(`cdk-cicd exec: secret '${secretId}' for the deploy-role externalId has no SecretString`);
+  }
+  return response.SecretString;
 }
 
 /**
@@ -81,20 +120,36 @@ export async function resolveExternalId(value?: string): Promise<string | undefi
 export async function forcedRoleEnv(
   cicdStage?: { deployment?: { deployRole?: string; cfnExecutionRole?: string; externalId?: string } },
   pipelineDeployRoleExternalId?: string,
+  overrides: NodeJS.ProcessEnv = {},
 ): Promise<{ [key: string]: string }> {
   const out: { [key: string]: string } = {};
   const deployment = cicdStage?.deployment;
-  if (deployment?.deployRole) {
-    out[DEPLOY_ROLE_FLAG] = deployment.deployRole;
+  const hasOverride = (name: string): boolean => Object.prototype.hasOwnProperty.call(overrides, name);
+  const deployRole = hasOverride(DEPLOY_ROLE_FLAG)
+    ? firstNonEmpty(overrides[DEPLOY_ROLE_FLAG])
+    : firstNonEmpty(deployment?.deployRole);
+  const cfnExecutionRole = hasOverride(CFN_EXEC_ROLE_FLAG)
+    ? firstNonEmpty(overrides[CFN_EXEC_ROLE_FLAG])
+    : firstNonEmpty(deployment?.cfnExecutionRole);
+
+  if (deployRole !== undefined) {
+    out[DEPLOY_ROLE_FLAG] = deployRole;
   }
-  if (deployment?.cfnExecutionRole) {
-    out[CFN_EXEC_ROLE_FLAG] = deployment.cfnExecutionRole;
+  if (cfnExecutionRole !== undefined) {
+    out[CFN_EXEC_ROLE_FLAG] = cfnExecutionRole;
   }
-  // Per-stage externalId overrides the pipeline-level default. Only meaningful with a forced deployRole,
-  // but resolved whenever configured -- an externalId without a deployRole is a harmless no-op downstream.
-  const externalId = await resolveExternalId(deployment?.externalId ?? pipelineDeployRoleExternalId);
-  if (externalId !== undefined) {
-    out[DEPLOY_ROLE_EXTERNAL_ID_FLAG] = externalId;
+
+  // Repo 2 resolves ExternalId references before launching Docker and passes the resolved value in the
+  // environment. Presence is authoritative, including an empty value that explicitly clears image-baked
+  // configuration. Do not feed an override back through resolveExternalId: a secret's literal value may
+  // itself begin with `resolve:secretsmanager:`.
+  if (deployRole !== undefined) {
+    const externalId = hasOverride(DEPLOY_ROLE_EXTERNAL_ID_FLAG)
+      ? firstNonEmpty(overrides[DEPLOY_ROLE_EXTERNAL_ID_FLAG])
+      : await resolveExternalId(deployment?.externalId ?? pipelineDeployRoleExternalId);
+    if (externalId !== undefined) {
+      out[DEPLOY_ROLE_EXTERNAL_ID_FLAG] = externalId;
+    }
   }
   return out;
 }
@@ -121,17 +176,17 @@ export interface CicdStageEnv {
 /**
  * Resolve the inner-loop deploy target's account/region by precedence (highest first):
  *
- *   1. the chosen app-config file's `aws.accountId` / `aws.region`
- *   2. the matching `cicd.config` stage's `env.account` / `env.regions[0]`
- *   3. the per-stage `ACCOUNT_<STAGE>` / `REGION_<STAGE>` env vars (populated from SSM by the synth
+ *   1. `CDK_CICD_ACCOUNT_OVERRIDE` / `CDK_CICD_REGION_OVERRIDE` (the wrapper's explicit target contract)
+ *   2. the chosen app-config file's `aws.accountId` / `aws.region`
+ *   3. the matching `cicd.config` stage's `env.account` / `env.regions[0]`
+ *   4. the per-stage `ACCOUNT_<STAGE>` / `REGION_<STAGE>` env vars (populated from SSM by the synth
  *      step's warming commands, or set by hand)
- *   4. the ambient `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION`
+ *   5. ambient `CDK_DEFAULT_*` / `AWS_*REGION` values
  *
- * This is the INNER-LOOP resolution only (a plain `cdk deploy`/`synth` running one target). The
- * self-mutating pipeline REPLAY path does not come through here: the assembler
- * (`runtime/pipeline-assembler`) pins `CDK_DEFAULT_*` per stage in its own process and re-runs the
- * entry, so a replayed stage's target is fixed by the assembler and never resolved by this function --
- * which is why moving `CDK_DEFAULT_*` to the bottom here is safe for multi-region pipelines.
+ * The CDK CLI can rewrite `CDK_DEFAULT_*` from its active credentials/profile before invoking the app,
+ * so those variables are never trusted over repository configuration. SynthCommand converts each
+ * resolved target into the wrapper-owned override flags before entering the CDK CLI. Presence of an
+ * override is authoritative even when empty, preserving Repo 2's ability to clear image-baked targets.
  *
  * `<STAGE>` is the resolved stage name uppercased (`resolveStage`). An absent value at every rung stays
  * absent, so an env-agnostic app stays agnostic.
@@ -146,9 +201,22 @@ export function resolveEnvTarget(
   const stageKey = (stage ?? '').trim().toUpperCase();
   const accountEnv = stageKey.length > 0 ? envIn[`ACCOUNT_${stageKey}`] : undefined;
   const regionEnv = stageKey.length > 0 ? envIn[`REGION_${stageKey}`] : undefined;
+  const hasAccountOverride = Object.prototype.hasOwnProperty.call(envIn, ACCOUNT_OVERRIDE_FLAG);
+  const hasRegionOverride = Object.prototype.hasOwnProperty.call(envIn, REGION_OVERRIDE_FLAG);
   return {
-    account: firstNonEmpty(aws.accountId, cicdStage?.env?.account, accountEnv, envIn.CDK_DEFAULT_ACCOUNT),
-    region: firstNonEmpty(aws.region, cicdStage?.env?.regions?.[0], regionEnv, envIn.CDK_DEFAULT_REGION),
+    account: hasAccountOverride
+      ? firstNonEmpty(envIn[ACCOUNT_OVERRIDE_FLAG])
+      : firstNonEmpty(aws.accountId, cicdStage?.env?.account, accountEnv, envIn.CDK_DEFAULT_ACCOUNT),
+    region: hasRegionOverride
+      ? firstNonEmpty(envIn[REGION_OVERRIDE_FLAG])
+      : firstNonEmpty(
+          aws.region,
+          cicdStage?.env?.regions?.[0],
+          regionEnv,
+          envIn.CDK_DEFAULT_REGION,
+          envIn.AWS_REGION,
+          envIn.AWS_DEFAULT_REGION,
+        ),
   };
 }
 
@@ -171,13 +239,129 @@ export function stageEnv(stage: string, target: { account?: string; region?: str
 }
 
 /**
+ * Compliance/access-log destination coordinates for the application child process.
+ *
+ * Presence of any compliance flag in `overrides` is authoritative, including an empty value used by
+ * Repo 2 to clear image-baked configuration. Otherwise a configured bucket must resolve to one physical
+ * location shared by every configured stage; S3 server access logging cannot reinterpret one bucket as
+ * living in a different account or Region for each invocation.
+ */
+export function complianceLoggingEnv(
+  cicd: Pick<ResolvedCicdConfig, 'complianceLogBucketName' | 'stages'> | undefined,
+  target: { account?: string; region?: string },
+  overrides: NodeJS.ProcessEnv = {},
+): { [key: string]: string } {
+  const flags = [
+    COMPLIANCE_LOG_BUCKET_NAME_FLAG,
+    COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG,
+    COMPLIANCE_LOG_BUCKET_REGION_FLAG,
+  ];
+  if (flags.some((flag) => Object.prototype.hasOwnProperty.call(overrides, flag))) {
+    return {};
+  }
+
+  const bucketName = cicd?.complianceLogBucketName;
+  if (cicd === undefined || bucketName === undefined) {
+    return {};
+  }
+
+  let bucketAccount: string | undefined;
+  let bucketRegion: string | undefined;
+  for (const stage of cicd.stages) {
+    const account = firstNonEmpty(stage.env.account);
+    const regions = stage.env.regions.filter((region) => region.trim().length > 0);
+    if (account === undefined || regions.length !== 1) {
+      throw new Error(
+        `cdk-cicd exec: compliance bucket '${bucketName}' requires every configured stage to resolve ` +
+          'to one concrete shared account and Region',
+      );
+    }
+    if (bucketAccount === undefined) {
+      bucketAccount = account;
+      bucketRegion = regions[0];
+    } else if (bucketAccount !== account || bucketRegion !== regions[0]) {
+      throw new Error(
+        `cdk-cicd exec: compliance bucket '${bucketName}' cannot represent one physical bucket across ` +
+          'multiple configured accounts or Regions',
+      );
+    }
+  }
+  if (bucketAccount === undefined || bucketRegion === undefined) {
+    throw new Error(
+      `cdk-cicd exec: compliance bucket '${bucketName}' requires at least one configured stage with ` +
+        'a concrete account and Region',
+    );
+  }
+  if (target.account === undefined || target.region === undefined) {
+    throw new Error(`cdk-cicd exec: compliance bucket '${bucketName}' requires a resolved target account and Region`);
+  }
+  if (target.account !== bucketAccount || target.region !== bucketRegion) {
+    throw new Error(
+      `cdk-cicd exec: target ${target.account}/${target.region} does not match compliance bucket ` +
+        `'${bucketName}' location ${bucketAccount}/${bucketRegion}`,
+    );
+  }
+  return {
+    [COMPLIANCE_LOG_BUCKET_NAME_FLAG]: bucketName,
+    [COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG]: bucketAccount,
+    [COMPLIANCE_LOG_BUCKET_REGION_FLAG]: bucketRegion,
+  };
+}
+
+/**
+ * Overlay an explicit wrapper target onto the application config injected as `cicd:config`.
+ *
+ * Exporting only `CDK_DEFAULT_*` is insufficient for applications that derive stack environments from
+ * `AppConfig.of(...).aws`: without this overlay they continue to see the configured first target rather
+ * than the per-region target selected by DeployCommand. Ambient CDK/AWS values are deliberately ignored
+ * here because the CDK CLI can rewrite them from credentials or a profile. Presence of a wrapper override
+ * is authoritative even when empty; an unresolved target therefore removes that dimension from the
+ * image config instead of restoring its stale value.
+ */
+export function appConfigForTarget(
+  config: { [key: string]: any },
+  target: { account?: string; region?: string },
+  env: NodeJS.ProcessEnv,
+): { [key: string]: any } {
+  const hasAccountOverride = Object.prototype.hasOwnProperty.call(env, ACCOUNT_OVERRIDE_FLAG);
+  const hasRegionOverride = Object.prototype.hasOwnProperty.call(env, REGION_OVERRIDE_FLAG);
+  if (!hasAccountOverride && !hasRegionOverride) {
+    return config;
+  }
+
+  const configuredAws =
+    config.aws !== null && typeof config.aws === 'object' && !Array.isArray(config.aws) ? config.aws : {};
+  const aws: { [key: string]: any } = { ...configuredAws };
+  if (hasAccountOverride) {
+    if (target.account === undefined) {
+      delete aws.accountId;
+    } else {
+      aws.accountId = target.account;
+    }
+  }
+  if (hasRegionOverride) {
+    if (target.region === undefined) {
+      delete aws.region;
+    } else {
+      aws.region = target.region;
+    }
+  }
+  return { ...config, aws };
+}
+
+/**
  * Build the `CDK_CONTEXT_JSON` value the spawned app will read. Starts from whatever context already
  * exists -- the CLI sets `CDK_CONTEXT_JSON` from `cdk.json` + `cdk.context.json` + `--context` when it
  * invokes the app command; when exec is run standalone, fall back to reading those files ourselves --
- * then adds `cicd:config`. A user-set `cicd:config` is never clobbered, and no other user context key
- * is touched.
+ * then adds the app config under `cicd:config` and the wrapper-owned config under `cicd:wrapper`.
+ * User-set values at either key are never clobbered, and no other context key is touched.
  */
-export function buildContextJson(config: { [key: string]: any }, env: NodeJS.ProcessEnv, cwd: string): string {
+export function buildContextJson(
+  config: { [key: string]: any },
+  wrapperConfig: { [key: string]: any },
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+): string {
   let base: { [key: string]: any } = {};
 
   const existing = env.CDK_CONTEXT_JSON;
@@ -194,7 +378,59 @@ export function buildContextJson(config: { [key: string]: any }, env: NodeJS.Pro
   if (!(CONFIG_CONTEXT_KEY in base)) {
     base[CONFIG_CONTEXT_KEY] = config;
   }
+  if (Object.keys(wrapperConfig).length > 0 && !(WRAPPER_CONFIG_CONTEXT_KEY in base)) {
+    base[WRAPPER_CONFIG_CONTEXT_KEY] = wrapperConfig;
+  }
   return JSON.stringify(base);
+}
+
+/** Select only wrapper-owned cicd.config fields for the separate runtime context. */
+export function wrapperRuntimeConfig(cicd?: ResolvedCicdConfig): { [key: string]: any } {
+  if (cicd === undefined) return {};
+  const config: { [key: string]: any } = {
+    application: cicd.application,
+    qualifier: cicd.qualifier,
+    synthesizer: cicd.synthesizer,
+    plugins: cicd.plugins,
+  };
+  return Object.fromEntries(Object.entries(config).filter(([, value]) => value !== undefined));
+}
+
+/**
+ * Resolve stage ExternalIds before the synchronous self-mutating assembler replays the application.
+ * Each stage receives an explicit resolved value, and the top-level fallback is cleared so replay can
+ * never accidentally pass a `resolve:secretsmanager:` marker to STS as the literal ExternalId.
+ */
+export async function resolvePipelineExternalIds(
+  cicd: ResolvedCicdConfig,
+  resolver: (value?: string) => Promise<string | undefined> = resolveExternalId,
+): Promise<ResolvedCicdConfig> {
+  const cache = new Map<string, Promise<string | undefined>>();
+  const resolveOnce = (value?: string): Promise<string | undefined> => {
+    if (value === undefined) return Promise.resolve(undefined);
+    const cached = cache.get(value);
+    if (cached !== undefined) return cached;
+    const pending = resolver(value);
+    cache.set(value, pending);
+    return pending;
+  };
+
+  const stages = await Promise.all(
+    cicd.stages.map(async (stage) => {
+      if (stage.deployment?.deployRole === undefined || stage.deployment.deployRole.trim().length === 0) {
+        return stage;
+      }
+      const externalId = await resolveOnce(stage.deployment.externalId ?? cicd.deployRoleExternalId);
+      return {
+        ...stage,
+        deployment: {
+          ...stage.deployment,
+          externalId,
+        },
+      };
+    }),
+  );
+  return { ...cicd, stages, deployRoleExternalId: undefined };
 }
 
 function safeParseObject(raw: string): { [key: string]: any } {
@@ -307,9 +543,10 @@ async function renderPipeline(entry: string, cicd: ResolvedCicdConfig | undefine
 
   const engineValue = cicd.engine as string | undefined;
   if (engineValue === 'cdk-pipelines' || engineValue === 'github-actions') {
+    const resolvedCicd = await resolvePipelineExternalIds(cicd);
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { assemblePipelineApp } = require('@cdklabs/cdk-cicd-wrapper/lib/runtime/pipeline-assembler');
-    assemblePipelineApp(cicd, path.resolve(cwd, entry)).synth();
+    assemblePipelineApp(resolvedCicd, path.resolve(cwd, entry)).synth();
     return;
   }
   const { PipelineApp } = await import('@cdklabs/cdk-cicd-wrapper');
@@ -336,18 +573,10 @@ class Command implements yargs.CommandModule {
     // Two layers: app-config drives the injected cicd:config context (the app tree); the cicd.config
     // stage supplies the deploy target account/region when the caller has not already pinned one.
     const config = await loadConfig(stage);
-    // A broken cicd.config must not take down the zero-touch path: exec runs on every `cdk deploy`,
-    // and a single-region app may not depend on the pipeline config at all. Warn and fall through to
-    // app-config resolution rather than aborting the app command.
-    let cicd;
-    try {
-      cicd = loadCicdConfig(cwd);
-    } catch (error) {
-      logger.warn(
-        `cdk-cicd exec: ignoring an unloadable cicd.config (${(error as Error).message}); ` +
-          'resolving the deploy target from app-config only',
-      );
-    }
+    // `undefined` means no cicd.config exists. If a discovered config cannot be parsed, imported, or
+    // validated, propagate that error: silently dropping its stages, roles, synthesizer, and plugins
+    // would execute a materially different application or pipeline.
+    const cicd = loadCicdConfig(cwd);
     const cicdStage = cicd ? stageByName(cicd, stage) : undefined;
     const target = resolveEnvTarget(process.env, config, cicdStage, stage);
 
@@ -366,14 +595,17 @@ class Command implements yargs.CommandModule {
       return;
     }
 
+    const contextConfig = appConfigForTarget(config, target, process.env);
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
       ...stageEnv(stage, target),
       ...(await forcedRoleEnv(
         cicdStage,
         (cicd as { deployRoleExternalId?: string } | undefined)?.deployRoleExternalId,
+        process.env,
       )),
-      CDK_CONTEXT_JSON: buildContextJson(config, process.env, cwd),
+      ...complianceLoggingEnv(cicd, target, process.env),
+      CDK_CONTEXT_JSON: buildContextJson(contextConfig, wrapperRuntimeConfig(cicd), process.env, cwd),
       // The `-r ts-node/register` preload takes no options, so the module kind has to come from the
       // environment. Same requirement as the config loader: the entry is `require`d, so it must
       // transpile to CommonJS or Node throws on the first `import` (see TS_NODE_COMPILER_OPTIONS).

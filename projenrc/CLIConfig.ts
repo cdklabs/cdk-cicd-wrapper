@@ -31,6 +31,12 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         'csv',
         '@aws-sdk/client-s3',
         '@aws-sdk/credential-providers',
+        // Deployment-plan/drift traversal consumes cloud assemblies as an external protocol. Validate
+        // every on-disk manifest against the installed schema instead of partially interpreting JSON.
+        // Match the schema range consumed by the repository's CDK CLI. Older manifests remain
+        // backwards-compatible, while assemblies emitted at schema 42-48 are no longer rejected by
+        // our pre-deploy parser even though the installed `cdk deploy` supports them.
+        '@aws-cdk/cloud-assembly-schema@^48.12.0',
         'tslog',
         // Autopilot `cdk-cicd exec` resolves the register preload and reuses the config loader from the
         // constructs package. Kept a workspace dependency, NOT folded into the jsii package (D5).

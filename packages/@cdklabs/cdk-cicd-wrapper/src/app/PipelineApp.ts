@@ -13,7 +13,7 @@
 // more than it looks, because cdk-nag's rules match resources with `instanceof` and go silently
 // inert across two copies (finding `qa-duplicate-aws-cdk-lib-makes-cdk-nag-inert`).
 
-import { App, Aspects, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { App, Aspects, DefaultStackSynthesizer, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { EngineType, ResolvedCicdConfig } from '../config/types';
 import { CodePipelineEngine } from '../engine/codepipeline/CodePipelineEngine';
@@ -27,7 +27,10 @@ function engineFor(config: ResolvedCicdConfig, disposable: boolean): IEngine {
   // an unknown value is reachable and worth naming rather than rendering a pipeline-less stack.
   switch (config.engine) {
     case EngineType.CODEPIPELINE:
-      return new CodePipelineEngine({ removalPolicy: disposable ? RemovalPolicy.DESTROY : undefined });
+      return new CodePipelineEngine({
+        buildImage: config.ci.image,
+        removalPolicy: disposable ? RemovalPolicy.DESTROY : undefined,
+      });
     default:
       throw new Error(`cdk-cicd: unknown pipeline engine '${config.engine}' -- expected 'codepipeline'`);
   }
@@ -57,9 +60,14 @@ export class PipelineApp extends App {
   public readonly pipelineStack: Stack;
 
   public constructor(props: PipelineAppProps) {
-    super();
-
     const config = props.config;
+    // The engine-owned pipeline stack is infrastructure in the hub account, not an application stage.
+    // Do not apply config.qualifier here. Leaving the synthesizer qualifier unset still lets CDK honor
+    // the hub app's standard @aws-cdk/core:bootstrapQualifier context contract.
+    super({
+      defaultStackSynthesizer: new DefaultStackSynthesizer(),
+    });
+
     const name = `${config.application ?? DEFAULT_APPLICATION}-pipeline`;
 
     this.pipelineStack = new Stack(this, name, {

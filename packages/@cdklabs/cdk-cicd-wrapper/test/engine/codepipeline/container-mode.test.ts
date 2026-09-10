@@ -10,6 +10,7 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { BuildImage, ImageTagStrategy } from '../../../src/config/build-image';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
+import { SynthesizerType } from '../../../src/config/types';
 import { CodePipelineEngine } from '../../../src/engine/codepipeline/CodePipelineEngine';
 
 function render(config: ReturnType<typeof defineCICD>, removalPolicy?: RemovalPolicy): Template {
@@ -40,6 +41,20 @@ describe('m6-container: image-build pipeline', () => {
     expect(stageNames).not.toContain('dev');
     // Exactly one build project (no per-stage deploy projects).
     t.resourceCountIs('AWS::CodeBuild::Project', 1);
+  });
+
+  test('container-only image synthesis may preserve APP_STAGING for a later direct deployment', () => {
+    expect(() =>
+      render(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.s3('shop-src/app.zip'),
+          stages: [{ name: 'prod', env: { account: '222222222222', region: 'us-west-2' } }],
+          synthesizer: { type: SynthesizerType.APP_STAGING },
+          deployerImage: BuildImage.docker(),
+        }),
+      ),
+    ).not.toThrow();
   });
 
   test('provisions an ECR repo named <application>-deployer and the build logs in, builds and pushes', () => {

@@ -6,7 +6,7 @@
 // the CD pipeline needs no file in the user's config repo -- the same zero-touch shape as PipelineApp for
 // the CI side. It renders exactly one stack: the CD pipeline (see DeploymentPipeline).
 
-import { App, Aspects, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { App, Aspects, DefaultStackSynthesizer, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { ResolvedDeploymentConfig } from '../config/types';
 import { DeploymentPipeline } from '../engine/codepipeline/DeploymentPipeline';
@@ -40,7 +40,11 @@ export class DeploymentPipelineApp extends App {
   public readonly pipelineStack: Stack;
 
   public constructor(props: DeploymentPipelineAppProps) {
-    super();
+    // Repo 2's pipeline stack belongs to the hub account. Its deployer image's config.qualifier must
+    // not leak into that stack, while an explicit CDK bootstrapQualifier context for the hub still must.
+    super({
+      defaultStackSynthesizer: new DefaultStackSynthesizer(),
+    });
     const name = pipelineName(props.config);
     this.pipelineStack = new Stack(this, name, {
       stackName: name,

@@ -11,8 +11,9 @@
 - **Node.js 20+** and the **AWS CDK v2** CLI (`npx cdk --version`).
 - **Python 3** on your `PATH` — the `cdk-cicd` CLI's security checks resolve a Python interpreter when it
   starts, so any `cdk-cicd` command needs Python 3 available (`python3 --version`).
-- Your account(s)/region(s) **bootstrapped** for CDK: `npx cdk bootstrap aws://<account>/<region>`. Every
-  stage region a pipeline deploys to must be bootstrapped.
+- The hub account/region and every stage account/region **bootstrapped** for CDK:
+  `npx cdk bootstrap aws://<account>/<region>`. The engine-owned pipeline stack always uses the standard
+  bootstrap qualifier; a target application's custom qualifier applies only to its target stacks.
 - A **source** the pipeline reads from — a CodeCommit repo, a GitHub repo via a CodeStar (CodeConnections)
   connection, or a versioned S3 object.
 

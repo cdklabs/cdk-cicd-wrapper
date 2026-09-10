@@ -6,14 +6,26 @@
 // contained to this file. The pure-guard tests deliberately import from inject.ts (no
 // side effect) rather than register.ts.
 
-import { App, Aspects, DefaultStackSynthesizer, IReusableStackSynthesizer, Stack } from 'aws-cdk-lib';
+import {
+  App,
+  Aspects,
+  BOOTSTRAP_QUALIFIER_CONTEXT,
+  DefaultStackSynthesizer,
+  IReusableStackSynthesizer,
+  Stack,
+} from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { AppConfig } from '../../src/appconfig';
 import * as inject from '../../src/runtime/inject';
-import { appsConstructed, assertAppModuleLayout } from '../../src/runtime/inject';
+import {
+  appsConstructed,
+  assertAppModuleLayout,
+  readInjectedConfig,
+  WRAPPER_CONFIG_CONTEXT_KEY,
+} from '../../src/runtime/inject';
 import { DEFAULT_LOG_RETENTION_DAYS } from '../../src/support/LogRetentionAspect';
 // Side-effecting import: patches App. Must come after the other imports so the assertions
 // below observe the patched module.
@@ -69,6 +81,38 @@ describe('m2-register: the App patch', () => {
     }
   });
 
+  test('a valid CDK bootstrap-qualifier context controls the wrapper-owned synthesizer', () => {
+    const app = new App({ context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: 'context_1' } });
+    const stack = new Stack(app, 'ContextQualifierStack');
+
+    expect(app.synth().getStackArtifact(stack.artifactId).assumeRoleArn).toContain('cdk-context_1-deploy-role-');
+  });
+
+  test.each([' context1 ', '', 'invalid!', '12345678901', 123])(
+    'rejects invalid CDK bootstrap-qualifier context before user stacks are constructed: %j',
+    (qualifier) => {
+      expect(() => new App({ context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: qualifier } })).toThrow(
+        new RegExp(`context '${BOOTSTRAP_QUALIFIER_CONTEXT}'.*\\[A-Za-z0-9_-\\]\\{1,10\\}`),
+      );
+    },
+  );
+
+  test('validates bootstrap-qualifier context loaded through CDK_CONTEXT_JSON', () => {
+    const previous = process.env.CDK_CONTEXT_JSON;
+    process.env.CDK_CONTEXT_JSON = JSON.stringify({ [BOOTSTRAP_QUALIFIER_CONTEXT]: ' invalid ' });
+    try {
+      expect(() => new App()).toThrow(
+        new RegExp(`context '${BOOTSTRAP_QUALIFIER_CONTEXT}'.*\\[A-Za-z0-9_-\\]\\{1,10\\}`),
+      );
+    } finally {
+      if (previous === undefined) {
+        delete process.env.CDK_CONTEXT_JSON;
+      } else {
+        process.env.CDK_CONTEXT_JSON = previous;
+      }
+    }
+  });
+
   test('the resolver is NOT consulted when the user supplies a synthesizer', () => {
     // The `?? resolveSynthesizer` short-circuit must leave a user choice untouched -- proven here
     // by the resolver never being called, complementing the qualifier-survival test below.
@@ -107,6 +151,43 @@ describe('m2-register: the App patch', () => {
         process.env.CDK_CONTEXT_JSON = previous;
       }
     }
+  });
+
+  test('wrapper config is separate from the stage application config', () => {
+    const appConfig = { qualifier: 'business-value', feature: 'checkout' };
+    const app = new App({
+      context: {
+        [AppConfig.CONTEXT_KEY]: appConfig,
+        [WRAPPER_CONFIG_CONTEXT_KEY]: { qualifier: 'runtime01', plugins: [] },
+      },
+    });
+    const stack = new Stack(app, 'SeparatedConfigStack');
+
+    expect(AppConfig.of(stack)).toEqual(appConfig);
+    expect(hasNagAspect(app)).toBe(false);
+    const artifact = app.synth().getStackArtifact(stack.artifactId);
+    expect(artifact.assumeRoleArn).toContain('runtime01');
+    expect(artifact.assumeRoleArn).not.toContain('business-value');
+  });
+
+  test('readInjectedConfig strips wrapper-owned fields from app config when wrapper context is present', () => {
+    expect(
+      readInjectedConfig({
+        context: {
+          [AppConfig.CONTEXT_KEY]: {
+            tags: { Owner: 'platform' },
+            plugins: [{ name: 'application-data', version: '9' }],
+            qualifier: 'application-data',
+          },
+          [WRAPPER_CONFIG_CONTEXT_KEY]: { plugins: [], qualifier: 'runtime01', synthesizer: { type: 'default' } },
+        },
+      }),
+    ).toEqual({
+      tags: { Owner: 'platform' },
+      plugins: [],
+      qualifier: 'runtime01',
+      synthesizer: { type: 'default' },
+    });
   });
 
   test('a wrapped App forces the default log retention with no injected config', () => {

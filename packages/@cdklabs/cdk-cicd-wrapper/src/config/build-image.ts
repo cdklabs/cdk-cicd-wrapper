@@ -7,9 +7,71 @@
 // npm deps (installed in the image), NOT `cdk.out`, so Repo 2 can synth-and-deploy it offline against any
 // target's config. See docs/design/v3-devops-experience.md (Level 2, two-repository split).
 
+/**
+ * Validate the shared `ci.image` string contract before an engine classifies the image.
+ *
+ * Registry credentials must never be embedded in the image string: CodeBuild receives them through
+ * Secrets Manager, while GitHub Actions receives secret expressions in `container.credentials`.
+ */
+export function assertValidCiImageReference(image: string): void {
+  const invalidReference = (): never => {
+    throw new Error(
+      'cdk-cicd: ci.image must be a non-empty Docker/OCI image reference without a URL scheme or whitespace.',
+    );
+  };
+
+  if (image.trim() !== image || image.length === 0 || /\s/.test(image) || /^[a-z][a-z0-9+.-]*:\/\//i.test(image)) {
+    invalidReference();
+  }
+
+  const firstAt = image.indexOf('@');
+  if (firstAt >= 0) {
+    const digest = image.slice(firstAt + 1);
+    const isDigestReference =
+      firstAt > 0 &&
+      image.indexOf('@', firstAt + 1) < 0 &&
+      /^[A-Za-z][A-Za-z0-9]*(?:[+._-][A-Za-z0-9]+)*:[A-Za-z0-9=_-]+$/.test(digest);
+    if (!isDigestReference) {
+      throw new Error(
+        'cdk-cicd: ci.image must not embed registry credentials, and digest references must use ' +
+          "`<image>@<algorithm>:<digest>`; use the engine's explicit build-registry credentials configuration.",
+      );
+    }
+  }
+
+  const imageName = firstAt >= 0 ? image.slice(0, firstAt) : image;
+  if (imageName.startsWith('/') || imageName.endsWith('/') || imageName.includes('//')) {
+    invalidReference();
+  }
+  const finalSlash = imageName.lastIndexOf('/');
+  const tagSeparator = imageName.lastIndexOf(':');
+  if (tagSeparator > finalSlash && tagSeparator === imageName.length - 1) {
+    invalidReference();
+  }
+}
+
+/** Return the lower-cased registry hostname without changing the repository/tag/digest portion. */
+export function ciImageRegistryHost(image: string): string | undefined {
+  const firstSlash = image.indexOf('/');
+  return firstSlash > 0 ? image.slice(0, firstSlash).toLowerCase() : undefined;
+}
+
+/** Whether a normalized registry hostname belongs to, or is shaped like, a private ECR endpoint. */
+export function isPrivateEcrRegistryHost(registryHost: string | undefined): boolean {
+  return registryHost !== undefined && /\.dkr(?:\.ecr(?:-fips)?|-ecr(?:-fips)?)\./.test(registryHost);
+}
+
+/** Whether a normalized registry hostname is the Amazon ECR Public registry. */
+export function isPublicEcrRegistryHost(registryHost: string | undefined): boolean {
+  return registryHost === 'public.ecr.aws';
+}
+
 /** How the pushed image is tagged. */
 export enum ImageTagStrategy {
-  /** Tag with the resolved source commit sha (CODEBUILD_RESOLVED_SOURCE_VERSION). The default. */
+  /**
+   * Tag with the resolved Git commit SHA, or a deterministic SHA-256 of a non-Git source revision.
+   * The default.
+   */
   GIT_SHA = 'git_sha',
   /** Tag `latest` only. Simplest, but not immutable -- prefer GIT_SHA for real pipelines. */
   LATEST = 'latest',

@@ -10,7 +10,10 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.github('my-org/my-app'),
+  repository: Repository.codestarConnection(
+    'my-org/my-app',
+    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
+  ),
   stages: ['dev', { name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }],
 });
 ```
@@ -19,14 +22,14 @@ export default defineCICD({
 
 | Field                     | Type                          | Default                                | Purpose                                                                     |
 | ------------------------- | ----------------------------- | -------------------------------------- | --------------------------------------------------------------------------- |
-| `application`             | `string`                      | —                                      | Application name; drives the bootstrap qualifier and asset naming.          |
-| `qualifier`               | `string`                      | derived from `application` (≤10 chars) | CDK bootstrap qualifier.                                                    |
+| `application`             | `string`                      | —                                      | Application name; drives asset naming and the default-synthesizer qualifier. |
+| `qualifier`               | `string`                      | derived from `application` (≤10 chars) | Target-stack CDK bootstrap qualifier.                                       |
 | `pipelineStackName`       | `string`                      | `${application}-pipeline`              | CloudFormation stack name for the self-mutating pipeline stack (`CDK_PIPELINES`/`GITHUB_ACTIONS`). See [Pipeline stack name](#pipeline-stack-name). |
 | `repository`              | `Repository`                  | — (required)                           | The pipeline's source. See [Repository](#repository).                       |
 | `stages`                  | `Array<string \| StageInput>` | — (required)                           | Deployment stages, in order. See [Stages](#stages).                         |
 | `engine`                  | `EngineType`                  | `CODEPIPELINE`                         | Which engine renders the pipeline. See [Engine](#engine).                   |
 | `githubActions`           | `GitHubActionsConfig`         | —                                      | GitHub Actions engine config; read only when `engine` is `GITHUB_ACTIONS`.  |
-| `synthesizer`             | `{ type: SynthesizerType }`   | `DEFAULT`                              | Which stack synthesizer to install.                                         |
+| `synthesizer`             | `{ type: SynthesizerType, appId?: string }` | `DEFAULT`                   | Stack synthesizer. `appId` defaults to `application` for `APP_STAGING`.      |
 | `ci`                      | `CiConfigInput`               | engine defaults                        | Build steps and which stages CI synthesizes. See [CI](#ci).                 |
 | `deployModel`             | `DeployModel`                 | `ASSEMBLY_PROMOTION`                   | How the deployed assembly is produced. See [Deploy model](#deploy-model).   |
 | `codeArtifact`            | `CodeArtifactConfig`          | —                                      | Private CodeArtifact npm repo the builds authenticate against.              |
@@ -34,7 +37,8 @@ export default defineCICD({
 | `proxy`                   | `ProxyConfigInput`            | —                                      | HTTP(S) proxy every build project routes through.                           |
 | `warmAccountsFromSsm`     | `boolean`                     | `false`                                | Export `ACCOUNT_<STAGE>` env vars in a self-mutating engine's synth step by scanning SSM. See [Warming accounts from SSM](#warming-accounts-from-ssm). |
 | `vpc`                     | `VpcConfig`                   | no VPC                                 | VPC the pipeline's CodeBuild projects run in. See [VPC](#vpc).              |
-| `complianceLogBucketName` | `string`                      | —                                      | Compliance/access-log destination bucket name.                              |
+| `complianceLogBucketName` | `string`                      | —                                      | Compliance/access-log destination bucket name; all logged buckets must share its account and Region. |
+| `createComplianceLogBucket` | `boolean`                   | `true`                                 | Create/manage the compliance bucket; set `false` to reference a pre-existing owner-managed Blueprint bucket. |
 | `pipelineRoleNames`       | `PipelineRoleNames`           | CDK-generated names                    | Force IAM role names on the `CDK_PIPELINES` engine's roles. See [Pipeline role names](#pipeline-role-names). |
 | `codePipelineRoleNames`   | `CodePipelineRoleNames`       | CDK-generated names                    | Force IAM role names on the flat `CODEPIPELINE` engine's roles. See [Pipeline role names](#pipeline-role-names). |
 | `deployRoleExternalId`    | `string`                      | —                                      | Pipeline-level default ExternalId for the forced deploy-role assumption. See [Cross-account externalId](#cross-account-externalid). |
@@ -44,11 +48,26 @@ export default defineCICD({
 | `deployerImage`           | `BuildImage`                  | —                                      | Container mode: build & push a deployer image instead of deploying.         |
 | `plugins`                 | `PluginRef[]`                 | the default-on hardening set           | Security plugins (hardening Aspects) applied tree-wide. See [Security plugins](#security-plugins). |
 
+`APP_STAGING` is valid for direct/local application deployment (`cdk deploy`, including local
+`cdk-cicd deploy --from-image`) and Repo 1 container-image builds, which deploy no application stacks.
+Every wrapper-generated deployment pipeline rejects it: flat `CODEPIPELINE`, Repo 2, `CDK_PIPELINES`,
+and `GITHUB_ACTIONS`. The pinned alpha honors `bootstrapQualifier`, so a custom qualifier works on the
+direct/local path. It also maps `deployment.deployRole` and `deployment.cfnExecutionRole` to
+`DeploymentIdentities.specifyRoles`, so those custom identities govern application-stack deployments.
+The separate staging support stack uses `BootstraplessSynthesizer` and deploys with caller/base
+credentials; the application-stack identities do not govern those support resources.
+
 ## `application` and `qualifier`
 
-`application` names the app and drives asset naming. `qualifier` is the CDK bootstrap qualifier; when
-omitted it is derived from `application` — lowercased, non-alphanumerics stripped, truncated to 10
-characters (falling back to `cdkcicd` if that leaves nothing).
+`application` names the app and drives asset naming. `qualifier` is derived from `application` when
+omitted — lowercased, non-alphanumerics stripped, truncated to 10 characters (falling back to `cdkcicd`
+if that leaves nothing). An explicit qualifier is trimmed and must match `[A-Za-z0-9_-]{1,10}`;
+blank, invalid, or overlong values are rejected. `APP_STAGING` additionally uses its separate `appId` for application-specific
+staging resources and threads the configured qualifier into its bootstrap-role contract on direct/local
+deployments and into the configuration baked by a Repo 1 image build.
+
+The engine-owned pipeline stack itself always uses the standard hub-account bootstrap qualifier. A
+target application's custom qualifier does not require a second custom bootstrap for the pipeline stack.
 
 ## Pipeline stack name
 
@@ -86,17 +105,20 @@ The source repository, constructed through a `Repository` factory. The tracked b
 `main`.
 
 ```typescript
-Repository.github('my-org/my-app'); // via a CodeStar (CodeConnections) connection
+Repository.codestarConnection('my-org/my-app', connArn); // GitHub or another provider via an existing connection ARN
 Repository.codecommit('my-repo'); // AWS CodeCommit
-Repository.codestarConnection('my-org/my-app', connArn); // any provider via an existing connection ARN
 Repository.s3('my-bucket/my-key'); // a versioned S3 object
-// each factory takes an optional trailing `branch` argument, e.g. Repository.github('my-org/my-app', 'develop')
+Repository.github('my-org/my-app'); // GitHub Actions engine only
+// each factory takes an optional trailing `branch` argument
+Repository.codestarConnection('my-org/my-app', connArn, 'develop');
 // CodeCommit is CREATED by default; pass { existing: true } to import an existing repo instead:
 Repository.codecommit('my-repo', 'main', { existing: true });
 ```
 
-When `engine` is `GITHUB_ACTIONS`, `repository` must be `Repository.github(...)` — the workflow runs
-where GitHub already checked the source out.
+The default `CODEPIPELINE` and `CDK_PIPELINES` engines require
+`Repository.codestarConnection(...)` for GitHub sources. When `engine` is `GITHUB_ACTIONS`,
+`repository` must instead be `Repository.github(...)` because the workflow runs where GitHub already
+checked the source out.
 
 ## Stages
 
@@ -120,9 +142,14 @@ stages: [
   every other stage. Set it explicitly to override.
 - **`regionOrder`** — `RegionOrder.SEQUENTIAL` (default) rolls regions out one after another;
   `RegionOrder.PARALLEL` deploys them at once.
-- **`deployment`** — force a `deployRole` (`cdk deploy --role-arn`) and/or `cfnExecutionRole` for the
-  stage, and optionally an `externalId` presented when assuming `deployRole`. See
+- **`deployment`** — force the deployment role CDK assumes and/or the distinct `cfnExecutionRole`
+  CloudFormation assumes for the stage, and optionally an `externalId` presented when assuming
+  `deployRole`. See
   [Cross-account externalId](#cross-account-externalid).
+
+For CodeBuild-backed deployment actions, the project role assumes `deployRole`. That assumed deployment
+role passes `cfnExecutionRole` to CloudFormation, so the deployment role needs `iam:PassRole` for the
+execution role. The CodeBuild project role does not need direct `iam:PassRole` on it.
 
 See [Continuous Deployment](./cd.md) for the deeper stage model.
 
@@ -153,7 +180,14 @@ githubActions: {
   workflowPath: '.github/workflows/deploy.yml',
   workflowName: 'deploy',
   workflowTriggers: { push: { branches: ['main'] } }, // cdk-pipelines-github WorkflowTriggers
-  publishAssetsAuthRegion: 'us-west-2', // region the OIDC role is assumed in when publishing assets
+  publishAssetsAuthRegion: 'eu-west-1', // defaults to the pipeline stack Region
+  buildContainerCredentials: {
+    usernameSecretName: 'REGISTRY_USERNAME',
+    passwordSecretName: 'REGISTRY_TOKEN',
+  },
+  // Required when any stage has manualApproval: true, after required reviewers are configured
+  // on the generated GitHub Environments.
+  environmentProtectionConfigured: true,
 },
 ```
 
@@ -168,7 +202,15 @@ githubActions: {
 - **`workflowTriggers`** — the workflow's triggers (default: push to the tracked branch plus manual
   dispatch).
 - **`publishAssetsAuthRegion`** — the region the OIDC role is assumed in when publishing assets (not the
-  region assets publish to). Default `us-west-2`.
+  region assets publish to). Defaults to the pipeline stack Region.
+- **`buildContainerCredentials`** — GitHub Actions secret names used to authenticate an external
+  `ci.image` job container. The workflow renders `${{ secrets.NAME }}` expressions; literal credentials
+  are never accepted. This does not support private ECR, whose authorization-token exchange cannot run
+  before GitHub pulls the job container.
+- **`environmentProtectionConfigured`** — explicit acknowledgement that required-reviewer rules have
+  been configured on every generated GitHub Environment used by a stage with `manualApproval: true`.
+  Workflow YAML can reference an environment but cannot create its protection rule, so the engine fails
+  closed when an approval-gated stage exists and this flag is not `true`.
 
 ## CI
 
@@ -178,7 +220,11 @@ githubActions: {
 ci: {
   steps: { lint: 'npx cdk-cicd validate', test: 'npx jest' }, // empty => the engine's default check set
   synthStages: 'all', // 'all' (every stage), an explicit list, or omit for the engine default
-  // image: 'aws/codebuild/standard:7.0',
+  image: 'registry.example.com/platform/ci:stable',
+  codeBuildImageCredentials: {
+    secretArn: 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:registry-AbCdEf',
+    // encryptionKeyArn: 'arn:aws:kms:eu-west-1:111111111111:key/...',
+  },
   // partialBuildSpec: codebuild.BuildSpec.fromObject({ ... }), // merged into the CI build project only
 },
 ```
@@ -188,7 +234,20 @@ ci: {
   want those checks.
 - **`synthStages`** — `'all'` synthesizes every stage; an explicit list names stages; omitting it uses
   the engine default (every stage under `ASSEMBLY_PROMOTION`, one env under `DEPLOY_TIME_SYNTH`).
-- **`image`** — an optional CodeBuild image override for the CI build project.
+- **`image`** — an optional image override for the CI build. On CodeBuild-backed engines,
+  `aws/codebuild/...` IDs use CodeBuild-managed pull credentials. A private ECR build image must be in
+  the pipeline account and the same Region as the CodeBuild project; the generated role receives the
+  repository pull grant. Repo 2's separately documented, explicitly acknowledged cross-account image
+  path does not relax the same-Region requirement for a CodeBuild environment image. On
+  `GITHUB_ACTIONS`, this must instead be a pullable OCI job-container reference; managed CodeBuild IDs
+  and private ECR images are rejected.
+- **`codeBuildImageCredentials`** — CodeBuild engines only: the complete ARN of a Secrets Manager secret
+  containing `username` and `password` fields for an authenticated external registry, plus
+  `encryptionKeyArn` when that secret uses a customer-managed KMS key. CDK renders the CodeBuild
+  registry credential and grants the project role secret/decrypt access. It is rejected for
+  `aws/codebuild/...` and private ECR images, which use their own credential models. Public external
+  images remain anonymous when this field is omitted. GitHub Actions uses
+  `githubActions.buildContainerCredentials` instead.
 - **`partialBuildSpec`** — a CodeBuild spec fragment deep-merged into the CI build project's generated
   buildspec (the CI project only — not self-update or per-stage deploy projects).
 
@@ -210,13 +269,14 @@ Three independent, optional blocks let the pipeline's builds install private pac
   before `npm ci`. Fields: `domain` and `repository` (required); `account` and `region` default to the
   pipeline's own; `npmScope` binds an npm scope (e.g. `cdklabs` for `@cdklabs/*`).
 - **`npmRegistry`** — any npm-compatible registry authenticated with a bearer token; the build writes a
-  `.npmrc` with a token read from Secrets Manager. Fields: `url` (the registry URL) and
+  temporary npm config outside the promoted artifact tree with a token read from Secrets Manager.
+  Fields: `url` (the registry URL) and
   `basicAuthSecretArn` (the Secrets Manager secret) are required; `scope` binds an npm scope, omit to
-  override the default registry.
+  override the default registry. Set `encryptionKeyArn` when the secret uses a customer-managed KMS key.
 - **`proxy`** — route every build through an HTTP(S) proxy. `proxySecretArn` (required) is the Secrets
   Manager secret holding the proxy credentials; the build exports `HTTP(S)_PROXY` and curls
   `proxyTestUrl` to prove the tunnel before installs. `noProxy` defaults to `[]`; `proxyTestUrl` defaults
-  to `https://aws.amazon.com`.
+  to `https://aws.amazon.com`. Set `encryptionKeyArn` when the secret uses a customer-managed KMS key.
 
 ## Warming accounts from SSM
 
@@ -238,6 +298,81 @@ All three engines honor the flag on the CodeBuild/workflow step that runs `cdk s
 and `GITHUB_ACTIONS` warm their self-mutating synth step, and the flat `CODEPIPELINE` engine warms its
 `Build` synth project. The scan runs ahead of `cdk synth` in the same shell, so the exported
 `ACCOUNT_<STAGE>` vars are visible to the app.
+
+## Compliance access logging
+
+`complianceLogBucketName` provisions an SSE-S3 destination bucket and configures S3 server access
+logging on pipeline and application buckets for all three engines. The destination never logs to
+itself. Its log-delivery policy is limited to `logging.s3.amazonaws.com`, the pipeline account, and S3
+source ARNs; TLS remains mandatory. The managed bucket and generated bucket policy share the same
+lifecycle: both are retained by default, and both are deleted for a disposable pipeline.
+
+To keep a compliance bucket created by Blueprint, set `createComplianceLogBucket: false` alongside
+its existing name:
+
+```typescript
+complianceLogBucketName: 'my-existing-blueprint-compliance-bucket',
+createComplianceLogBucket: false,
+```
+
+This is an external reference, not CloudFormation adoption: Autopilot creates, updates, and deletes
+neither the bucket nor its policy, and a name-only CDK import cannot verify the live bucket. Before
+deployment, the bucket owner must confirm that it exists in the same account and Region as every
+logged source bucket, uses SSE-S3 (not SSE-KMS), has neither Object Lock/default retention nor
+Requester Pays enabled, does not log to itself, blocks public access, denies non-TLS access, and
+allows `logging.s3.amazonaws.com` to `s3:PutObject` with `aws:SourceAccount` restricted to the
+pipeline account and `aws:SourceArn` restricted to that account's S3 bucket ARNs.
+`RemovalPolicy.DESTROY` is rejected for this mode because the external owner controls the lifecycle.
+
+Merge these statements into the existing policy—do not replace unrelated owner-managed statements.
+Replace the bucket name, account id, and partition placeholders:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3ServerAccessLogsPolicy",
+      "Effect": "Allow",
+      "Principal": { "Service": "logging.s3.amazonaws.com" },
+      "Action": "s3:PutObject",
+      "Resource": "arn:<partition>:s3:::<compliance-bucket-name>/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceAccount": "<pipeline-account-id>"
+        },
+        "ArnLike": {
+          "aws:SourceArn": "arn:<partition>:s3:::*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyInsecureTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:<partition>:s3:::<compliance-bucket-name>",
+        "arn:<partition>:s3:::<compliance-bucket-name>/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    }
+  ]
+}
+```
+
+Configure the destination bucket's default encryption as SSE-S3 (`AES256`). Do not require log
+delivery requests to include an encryption header; S3 applies the bucket default after accepting the
+object.
+
+S3 server access logging cannot cross accounts or Regions. The wrapper therefore requires a concrete
+pipeline environment and rejects any configured application stage outside that same account and Region
+instead of inventing a bucket name that may not exist. Omit `complianceLogBucketName` for cross-account
+or multi-Region pipelines, or provide logging independently in each target environment.
 
 ## VPC
 
@@ -299,8 +434,15 @@ codePipelineRoleNames: {
 
 When a stage forces a `deployRole` (see [Stages](#stages)), you can present an `ExternalId` on the role
 assumption — the `sts:ExternalId` condition a hardened cross-account trust policy requires. It threads
-into the synthesizer as `DefaultStackSynthesizer.deployRoleExternalId`, so it applies to the
-`cdk deploy --role-arn` assumption the wrapper performs; it is a no-op without a `deployRole`.
+into the synthesized cloud assembly as `DefaultStackSynthesizer.deployRoleExternalId`; the CDK CLI then
+uses it while assuming the assembly's deployment role. It is not CloudFormation's execution-role
+`RoleARN`, and it is a no-op without a `deployRole`.
+
+The installed `CDK_PIPELINES` engine does not carry an ExternalId from the assembly, and the installed
+GitHub engine hardcodes a different value. Those engines therefore reject configured deploy-role
+ExternalIds instead of silently ignoring them. `APP_STAGING` accepts custom deployment and
+CloudFormation execution roles, but the alpha deployment-identity API does not expose an ExternalId.
+It therefore rejects a nonblank ExternalId paired with a deploy role.
 
 Set a pipeline-level default with `deployRoleExternalId`, and override per stage with
 `deployment.externalId` (the per-stage value wins):
@@ -308,7 +450,10 @@ Set a pipeline-level default with `deployRoleExternalId`, and override per stage
 ```typescript
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.github('my-org/my-app'),
+  repository: Repository.codestarConnection(
+    'my-org/my-app',
+    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
+  ),
   deployRoleExternalId: 'org-wide-external-id', // pipeline-level default
   stages: [
     {
@@ -325,7 +470,9 @@ export default defineCICD({
 
 Either value may be a literal, or a `resolve:secretsmanager:<arn>` reference resolved at exec time from
 the secret's `SecretString` (so the ExternalId can live in Secrets Manager rather than in
-`cicd.config.ts`).
+`cicd.config.ts`). The generated roles grant `secretsmanager:GetSecretValue`; use the Secrets Manager
+AWS-managed encryption key. A customer-managed KMS key additionally needs `kms:Decrypt`, which this
+configuration does not currently accept.
 
 ## Security plugins
 

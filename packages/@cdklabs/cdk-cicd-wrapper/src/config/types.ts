@@ -36,7 +36,11 @@ export enum RegionOrder {
 export enum SynthesizerType {
   /** `DefaultStackSynthesizer` -- the Autopilot default. */
   DEFAULT = 'default',
-  /** `AppStagingSynthesizer` -- opt-in, still alpha. */
+  /**
+   * `AppStagingSynthesizer` -- opt-in, still alpha. Supported for direct/local application
+   * deployments and Repo 1 image synthesis; wrapper-generated deployment pipelines reject it.
+   * Its staging support stack cannot honor a configured deploy or CloudFormation execution role.
+   */
   APP_STAGING = 'app_staging',
 }
 
@@ -60,6 +64,14 @@ export enum EngineType {
    * configured stage.
    */
   GITHUB_ACTIONS = 'github-actions',
+}
+
+/** GitHub secret names used to authenticate the Build-Synth job container to an external registry. */
+export interface GitHubBuildContainerCredentials {
+  /** GitHub Actions secret containing the registry username. */
+  readonly usernameSecretName: string;
+  /** GitHub Actions secret containing the registry password or access token. */
+  readonly passwordSecretName: string;
 }
 
 /**
@@ -92,9 +104,27 @@ export interface GitHubActionsConfig {
   readonly workflowTriggers?: WorkflowTriggers;
   /**
    * Region the workflow assumes the OIDC role in when publishing assets (NOT the region assets publish
-   * to). @default "us-west-2"
+   * to). @default - the concrete pipeline stack region
    */
   readonly publishAssetsAuthRegion?: string;
+  /**
+   * GitHub Actions secret names used as the Build-Synth container's registry credentials.
+   *
+   * Only external-registry `ci.image` values support this setting. Values are rendered as
+   * `${{ secrets.NAME }}` expressions; literal credentials are never accepted.
+   */
+  readonly buildContainerCredentials?: GitHubBuildContainerCredentials;
+  /**
+   * Confirms that every generated GitHub Environment used by a stage with `manualApproval: true`
+   * has a required-reviewer protection rule configured in GitHub.
+   *
+   * The workflow file can name an environment, but GitHub does not let CDK configure that
+   * environment's protection rules. The engine therefore fails closed for approval-gated stages
+   * unless this acknowledgement is explicitly set.
+   *
+   * @default false
+   */
+  readonly environmentProtectionConfigured?: boolean;
 }
 
 /**
@@ -117,6 +147,14 @@ export enum DeployModel {
   DEPLOY_TIME_SYNTH = 'deploy-time-synth',
 }
 
+/** Secrets Manager credentials used by CodeBuild to pull an authenticated external-registry image. */
+export interface CodeBuildImageCredentials {
+  /** Complete ARN of the Secrets Manager secret containing the registry username and password. */
+  readonly secretArn: string;
+  /** Customer-managed KMS key encrypting `secretArn`, when one is used. */
+  readonly encryptionKeyArn?: string;
+}
+
 /** Resolved CI configuration: the checks/build steps and which stages CI synthesizes for validation. */
 export interface CiConfig {
   /**
@@ -132,6 +170,13 @@ export interface CiConfig {
   readonly synthStages: string[];
   /** Optional CodeBuild image override. */
   readonly image?: string;
+  /**
+   * Secrets Manager credentials for an authenticated external-registry `image`.
+   *
+   * Supported by the CodeBuild engines only. Managed CodeBuild images and private ECR images use
+   * their own credential models and reject this setting.
+   */
+  readonly codeBuildImageCredentials?: CodeBuildImageCredentials;
   /**
    * Escape hatch (Blueprint `CDKPipelineProps.ciBuildSpec`, migrated): deep-merged into the CI build project's
    * generated buildspec via `codebuild.mergeBuildSpecs`, augmenting rather than replacing the engine's
@@ -172,6 +217,8 @@ export interface ProxyConfig {
    * `password`, `http_proxy_port`, `https_proxy_port` and `proxy_domain`.
    */
   readonly proxySecretArn: string;
+  /** Customer-managed KMS key encrypting `proxySecretArn`, when one is used. */
+  readonly encryptionKeyArn?: string;
   /**
    * Hosts that bypass the proxy. Empty means the engine adds its own region's `amazonaws.com`
    * endpoint, so calls to AWS APIs (e.g. a private-registry `codeartifact login`) skip the proxy.
@@ -184,14 +231,17 @@ export interface ProxyConfig {
 /**
  * A generic private npm registry the pipeline's builds authenticate against with a bearer token
  * (Blueprint `NPMRegistryConfig`, migrated). Unlike `CodeArtifactConfig` (an `aws codeartifact login`), this covers
- * any npm-compatible registry: when set, every build project writes a `.npmrc` -- scoped to `scope` when
- * given, otherwise overriding the default registry -- with an auth token read from Secrets Manager.
+ * any npm-compatible registry: jobs that install packages use a temporary npm config outside the source
+ * checkout -- scoped to `scope` when given, otherwise overriding the default registry -- with an auth
+ * token read from Secrets Manager.
  */
 export interface NpmRegistryConfig {
   /** The registry URL, e.g. `https://npm.example.com/`. */
   readonly url: string;
   /** ARN of the Secrets Manager secret holding the bearer token (the secret's plain `SecretString`). */
   readonly basicAuthSecretArn: string;
+  /** Customer-managed KMS key encrypting `basicAuthSecretArn`, when one is used. */
+  readonly encryptionKeyArn?: string;
   /** npm scope to bind to the registry, e.g. `cdklabs` for `@cdklabs/*`. Omit to override the default registry. */
   readonly scope?: string;
 }
@@ -260,7 +310,10 @@ export interface StageEnvironment {
 
 /** Forced deployer / CloudFormation-execution roles for a stage. */
 export interface DeploymentConfig {
-  /** ARN the CLI assumes to deploy (passed as `cdk deploy --role-arn`). */
+  /**
+   * ARN CDK assumes for deployment operations. It is written to the cloud assembly as the stack's
+   * deployment-role assumption; it is not CloudFormation's execution `RoleARN`.
+   */
   readonly deployRole?: string;
   /** ARN CloudFormation assumes to execute the change set. */
   readonly cfnExecutionRole?: string;
@@ -269,7 +322,9 @@ export interface DeploymentConfig {
    * trust policy requires). Overrides the pipeline-level `ResolvedCicdConfig.deployRoleExternalId` for
    * this stage. A literal, or a `resolve:secretsmanager:<arn>` reference resolved at synth time (the
    * same `resolve:` convention `VpcConfig.vpcId` uses). Ignored when `deployRole` is unset -- an
-   * ExternalId only applies to a role assumption the wrapper actually performs.
+   * ExternalId only applies to a role assumption the wrapper actually performs. A literal, or a
+   * `resolve:secretsmanager:<complete literal secret ARN>` reference resolved at synth time (the same
+   * `resolve:` convention `VpcConfig.vpcId` uses). Wildcards and non-ARN secret identifiers are rejected.
    */
   readonly externalId?: string;
 }
@@ -300,9 +355,11 @@ export interface CodePipelineRoleNames {
   /** `RoleName` forced on the CodePipeline pipeline role. */
   readonly pipeline?: string;
   /**
-   * Prefix for the per-stage CodeBuild project roles: each stage's build role is named
-   * `<buildRolePrefix>-<stage>` (plus the CI/self-update projects, `<buildRolePrefix>-build` /
-   * `<buildRolePrefix>-selfupdate`). Omit to keep CDK-generated names.
+   * Prefix for every flat-engine CodeBuild project role. The suffix is the lower-cased construct id
+   * with a trailing `Project` removed: `BuildProject` -> `build`, `UpdatePipeline` ->
+   * `updatepipeline`, and `Deploy-dev` -> `deploy-dev`.
+   *
+   * Omit to keep CDK-generated names.
    */
   readonly buildRolePrefix?: string;
 }
@@ -323,11 +380,16 @@ export interface ResolvedStage {
 export interface SynthesizerConfig {
   /** The synthesizer to install. */
   readonly type: SynthesizerType;
+  /**
+   * Application-unique id for `APP_STAGING` resources. Defaults to `application`; the alpha
+   * synthesizer normalizes it to a lowercase, dash-separated value of at most 20 characters.
+   */
+  readonly appId?: string;
 }
 
 /** The fully resolved pipeline configuration `defineCICD` produces. */
 export interface ResolvedCicdConfig {
-  /** Application name; drives the bootstrap qualifier and asset naming. */
+  /** Application name; drives the derived bootstrap qualifier and asset naming. */
   readonly application?: string;
   /** Bootstrap qualifier (≤10 chars), derived from `application` when not given. */
   readonly qualifier?: string;
@@ -367,7 +429,8 @@ export interface ResolvedCicdConfig {
   /**
    * Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`. A stage's
    * own `DeploymentConfig.externalId` overrides this. A literal or a `resolve:secretsmanager:<arn>`
-   * reference resolved at synth time.
+   * reference resolved at synth time. Secret references currently require the Secrets Manager
+   * AWS-managed encryption key; customer-managed KMS keys are not supported without an external grant.
    */
   readonly deployRoleExternalId?: string;
   /** Resolved CI configuration. */
@@ -398,6 +461,16 @@ export interface ResolvedCicdConfig {
    * `SupportResources.complianceLogBucket`; see there for the bucket's shape.
    */
   readonly complianceLogBucketName?: string;
+  /**
+   * Whether the pipeline stack creates and manages `complianceLogBucketName`.
+   *
+   * Set to `false` during a Blueprint migration to reference an existing, owner-managed bucket.
+   * The pipeline then creates neither the bucket nor its bucket policy; the bucket owner must keep
+   * the encryption, TLS-enforcement, and S3 server-access-log delivery policy in place.
+   *
+   * @default true
+   */
+  readonly createComplianceLogBucket?: boolean;
   /**
    * CodeBuild environment overrides -- privileged mode, compute type, environment variables -- applied
    * to every CodeBuild project the pipeline creates (Blueprint `codeBuildEnvSettings`, migrated from
@@ -465,6 +538,16 @@ export interface ResolvedDeploymentTarget {
    * or set `int`/`prod` to the same tag to promote. When unset, the target uses the config-level `image`.
    */
   readonly image?: string;
+  /**
+   * Compliance/access-log destination bucket for this target, after applying the deployment-wide
+   * default. When set, `complianceLogBucketAccount` and `complianceLogBucketRegion` are also set and
+   * exactly match this target's concrete, single-Region environment.
+   */
+  readonly complianceLogBucketName?: string;
+  /** Account containing `complianceLogBucketName`. */
+  readonly complianceLogBucketAccount?: string;
+  /** Region containing `complianceLogBucketName`. */
+  readonly complianceLogBucketRegion?: string;
 }
 
 /**
@@ -474,11 +557,35 @@ export interface ResolvedDeploymentTarget {
  */
 export interface ResolvedDeploymentConfig {
   /**
+   * Application name baked into the deployer image. Optional for the default synthesizer; required
+   * (or supply `synthesizer.appId`) when the image uses `APP_STAGING` for direct `deploy --from-image`.
+   * The generated Repo 2 CodePipeline itself supports only `DEFAULT`. Direct APP_STAGING targets can
+   * configure deployment roles, but cannot attach an ExternalId to the deployment role.
+   */
+  readonly application?: string;
+  /** Bootstrap qualifier used by the deployer image; derived from `application` when omitted. */
+  readonly qualifier?: string;
+  /**
+   * Synthesizer used by the deployer image; must match its `cicd.config`.
+   *
+   * Optional for compatibility with pre-synthesizer Repo 2 configs; consumers must treat omission
+   * as `SynthesizerType.DEFAULT`.
+   */
+  readonly synthesizer?: SynthesizerConfig;
+  /**
    * The default deployer image to run targets against (an ECR/OCI reference, tag or digest). A target's
    * own `image` overrides this, so per-stage versions live on the targets; this is the shared fallback.
    * Optional only because every target may pin its own `image` -- each target must resolve to one or the other.
    */
   readonly image?: string;
+  /**
+   * Default compliance/access-log destination bucket name for targets that do not provide their own.
+   *
+   * Repo 2 references an existing bucket; it does not create one. A target using this default must
+   * have a concrete account and exactly one concrete Region so S3's same-account/same-Region delivery
+   * requirement can be verified. Targets in other environments may override the name individually.
+   */
+  readonly complianceLogBucketName?: string;
   /** The deployment targets, in order. */
   readonly targets: ResolvedDeploymentTarget[];
   /**
@@ -498,4 +605,11 @@ export interface ResolvedDeploymentConfig {
    * pipeline-config `npmRegistry`.
    */
   readonly npmRegistry?: NpmRegistryConfig;
+  /**
+   * Confirms that owner-side repository policies permit the generated pipeline role to pull every
+   * cross-account ECR image referenced by this deployment config.
+   *
+   * @default false
+   */
+  readonly crossAccountEcrRepositoryPolicyConfigured?: boolean;
 }
