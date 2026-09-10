@@ -842,6 +842,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#compliance-logging-from-the-deployer-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compliance logging from the deployer container
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#provision-the-cd-pipeline-or-run-locally" class="md-nav__link">
     <span class="md-ellipsis">
       Provision the CD pipeline, or run locally
@@ -2667,6 +2676,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#compliance-logging-from-the-deployer-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compliance logging from the deployer container
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#provision-the-cd-pipeline-or-run-locally" class="md-nav__link">
     <span class="md-ellipsis">
       Provision the CD pipeline, or run locally
@@ -2738,9 +2756,10 @@ they do not build or consume a deployer image.</p>
 <h2 id="when-to-use-it">When to use it</h2>
 <p>Reach for container mode when you want to build the deployable artifact <strong>once</strong> and promote that exact
 artifact through stages — including across repositories or teams — rather than re-synthesizing per stage
-from source. Because the image bakes the CDK app and its npm dependencies, the CD side needs no source,
-no <code>npm install</code>, and no registry access at deploy time: it can synth-and-deploy <strong>offline</strong> against each
-target's configuration.</p>
+from application source. Because the image bakes the CDK app and its npm dependencies, the deployer
+container itself needs no npm install or package-registry access. The small Repo 2 CodeBuild wrapper still
+runs <code>npm ci</code> in the config repository before launching that container, so its wrapper dependency must be
+available through public npm, <code>codeArtifact</code>, or <code>npmRegistry</code>.</p>
 <h2 id="repo-1-build-the-deployer-image">Repo 1 — build the deployer image</h2>
 <p>The CI repository is your normal CDK app. Add a <code>deployerImage</code> to <code>cicd.config.ts</code> and the pipeline
 renders as <code>Source → BuildImage</code> with <strong>no deploy stages</strong> — it builds and pushes an image instead of
@@ -2749,20 +2768,27 @@ deploying:</p>
 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.github</span><span class="p">(</span><span class="s1">'my-org/my-app'</span><span class="p">),</span>
+<span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codestarConnection</span><span class="p">(</span>
+<span class="w">    </span><span class="s1">'my-org/my-app'</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef'</span><span class="p">,</span>
+<span class="w">  </span><span class="p">),</span>
+<span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'dev'</span><span class="p">],</span><span class="w"> </span><span class="c1">// required by defineCICD; deployerImage mode creates no deploy actions</span>
 <span class="w">  </span><span class="nx">deployerImage</span><span class="o">:</span><span class="w"> </span><span class="kt">BuildImage.docker</span><span class="p">({</span>
 <span class="w">    </span><span class="nx">dockerfile</span><span class="o">:</span><span class="w"> </span><span class="s1">'Dockerfile'</span><span class="p">,</span><span class="w"> </span><span class="c1">// default; the image payload is your app + deps, NOT cdk.out</span>
 <span class="w">    </span><span class="c1">// repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one</span>
-<span class="w">    </span><span class="c1">// tagStrategy: ImageTagStrategy.GIT_SHA, // default: tag by resolved commit; or ImageTagStrategy.LATEST</span>
+<span class="w">    </span><span class="c1">// tagStrategy: ImageTagStrategy.GIT_SHA, // default: immutable revision tag; or ImageTagStrategy.LATEST</span>
 <span class="w">  </span><span class="p">}),</span>
 <span class="p">});</span>
 </code></pre></div>
+<p><code>stages</code> remains required by the <code>defineCICD</code> API, but <code>deployerImage</code> mode does not render deployment
+actions for those stages.</p>
 <p><code>cdk-cicd deploy-ci</code> provisions the CI pipeline. Its single build project:</p>
 <ol>
 <li>runs <code>npm ci</code> and <code>cdk-cicd check</code> (CI as a validation gate),</li>
 <li>logs in to ECR,</li>
 <li><code>docker build</code>s your Dockerfile and pushes the image, tagged by strategy (<code>GIT_SHA</code> by default —
-   immutable; <code>LATEST</code> is simplest but not immutable).</li>
+   the lowercase commit SHA for Git sources or a deterministic SHA-256 of another source revision;
+   <code>LATEST</code> is simplest but not immutable).</li>
 </ol>
 <p>If you do not name an existing repository, the pipeline <strong>provisions</strong> one named <code>&lt;application&gt;-deployer</code>;
 a disposable pipeline (<code>deploy-ci --disposable</code>) empties and deletes it on teardown.</p>
@@ -2773,10 +2799,23 @@ config rows a single image is run against, not pipeline resources.</p>
 <h2 id="repo-2-deploy-the-image">Repo 2 — deploy the image</h2>
 <p>The CD repository is a small, app-agnostic <strong>config repository</strong> (no CDK code). It declares <strong>which
 image</strong> to run and <strong>where</strong> to deploy it, via <code>defineDeployment</code> in a <code>deploy.config.ts</code>:</p>
+<p>Pin the wrapper packages in Repo 2's lockfile and expose the installed CLI through a project script:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"scripts"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"cdk-cicd"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cdk-cicd"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The generated pipeline runs <code>npm ci</code> followed by <code>npm run cdk-cicd -- deploy ...</code>. A missing dependency
+or script therefore fails deterministically; deployment never asks <code>npx</code> to fetch a registry version.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// deploy.config.ts</span>
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">defineDeployment</span><span class="p">,</span><span class="w"> </span><span class="nx">Repository</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineDeployment</span><span class="p">({</span>
+<span class="w">  </span><span class="c1">// Repeat the deployer image's application/qualifier so Repo 2 can scope bootstrap-role IAM.</span>
+<span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">qualifier</span><span class="o">:</span><span class="w"> </span><span class="s1">'myapp'</span><span class="p">,</span>
+
 <span class="w">  </span><span class="c1">// The BASE deployer image repository (no tag). The per-stage version is appended at deploy time.</span>
 <span class="w">  </span><span class="nx">image</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer'</span><span class="p">,</span>
 
@@ -2786,8 +2825,17 @@ image</strong> to run and <strong>where</strong> to deploy it, via <code>defineD
 
 <span class="w">  </span><span class="c1">// Targets say WHERE (account/region/role) + gating. The VERSION each runs comes from config/&lt;stage&gt;.json.</span>
 <span class="w">  </span><span class="nx">targets</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'dev'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'int'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'dev'</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nx">complianceLogBucketName</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app-compliance-111111111111-eu-west-1'</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'int'</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">complianceLogBucketName</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app-compliance-111111111111-eu-west-1'</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">      </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span>
 <span class="w">      </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'222222222222'</span><span class="p">,</span><span class="w"> </span><span class="nx">regions</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'eu-west-1'</span><span class="p">,</span><span class="w"> </span><span class="s1">'us-east-1'</span><span class="p">]</span><span class="w"> </span><span class="p">},</span>
@@ -2797,22 +2845,51 @@ image</strong> to run and <strong>where</strong> to deploy it, via <code>defineD
 <span class="w">  </span><span class="p">],</span>
 <span class="p">});</span>
 </code></pre></div>
+<p><code>application</code>, <code>qualifier</code>, and <code>synthesizer</code> must match the image's <code>cicd.config</code>. Repo 1 may preserve
+<code>APP_STAGING</code> in the image because it only builds and pushes that image. The generated Repo 2 deployment
+pipeline rejects <code>APP_STAGING</code>; omit <code>repository</code> and run <code>cdk-cicd deploy --from-image</code> directly if the
+image requires it. That direct/local path supports a custom qualifier and custom
+<code>deployment.deployRole</code> / <code>deployment.cfnExecutionRole</code> identities for application stacks. The staging
+support resources deploy separately with caller/base credentials. A deploy-role ExternalId remains
+unsupported by the alpha deployment-identity API.</p>
+<h3 id="compliance-logging-from-the-deployer-container">Compliance logging from the deployer container</h3>
+<p>Repo 2 can preserve application-bucket access logging by naming an existing destination with
+<code>complianceLogBucketName</code>. Set it on a target, as above, or once at the top level as the default for
+co-located targets. <code>defineDeployment</code> resolves each logged target to a complete bucket/account/Region
+triple and fails closed unless the target has a concrete 12-digit account and exactly one matching
+Region. Reusing one bucket name across different account/Region coordinates is also rejected.</p>
+<p>Repo 2 does not create or manage these buckets. The owner must keep the required S3 log-delivery policy,
+SSE-S3 encryption, and other destination controls in place. At runtime the outer executor forwards
+<code>CDK_CICD_COMPLIANCE_LOG_BUCKET_NAME</code>, <code>CDK_CICD_COMPLIANCE_LOG_BUCKET_ACCOUNT</code>, and
+<code>CDK_CICD_COMPLIANCE_LOG_BUCKET_REGION</code> into Docker together; omitting logging explicitly clears all
+three so image-baked values cannot take control. A multi-Region target cannot use one destination
+bucket because S3 server access logging cannot cross Regions.</p>
 <p>Each stage's <strong>version lives in its own config file</strong> in the CD repository (a hash or semver) — <em>not</em>
 baked in the image:</p>
 <div class="highlight"><pre><span></span><code>// config/dev.json          config/int.json           config/prod.json
 { "version": "1.5.0" }      { "version": "1.4.2" }     { "version": "1.4.2" }
 </code></pre></div>
 <p>The deploy resolves <code>image = &lt;base-repo&gt;:&lt;version from config/&lt;stage&gt;.json&gt;</code>, so <code>dev</code> can run a newer
-version than <code>prod</code>, and the version is plain config, reviewable in a pull request.</p>
+version than <code>prod</code>, and the version is plain config, reviewable in a pull request. If the file exists
+but is unreadable, malformed, or lacks a non-empty string <code>version</code>, deployment fails instead of
+silently falling back to the base image.</p>
 <h3 id="provision-the-cd-pipeline-or-run-locally">Provision the CD pipeline, or run locally</h3>
 <p>With a <code>repository</code> set, <code>cdk-cicd deploy-ci</code> provisions the CD pipeline (the deploy-side twin of the CI
-<code>deploy-ci</code>): a <code>Source</code> stage, then a <code>Deploy</code> stage with every <strong>ungated</strong> target running in parallel,
-then a <code>DeployGated</code> stage where each <strong>gated</strong> target sits behind its own manual-approval action. Each
-deploy action runs <code>cdk-cicd deploy --from-image --target &lt;stage&gt;</code>, which reads that stage's <code>version</code> at
-run time, pulls <code>&lt;base-repo&gt;:&lt;version&gt;</code>, and synth-and-deploys the stage.</p>
+<code>deploy-ci</code>): a <code>Source</code> stage followed by ordered deployment waves. Adjacent <strong>ungated</strong> targets share
+a parallel wave; each <strong>gated</strong> target gets its own approval/deploy stage. Declaration order is
+preserved, so a gate blocks that target and every target declared after it. Each deploy action runs
+<code>cdk-cicd deploy --from-image --target &lt;stage&gt;</code>, which reads that stage's <code>version</code> at run time, pulls
+<code>&lt;base-repo&gt;:&lt;version&gt;</code>, and synth-and-deploys the stage.</p>
+<p>For an image in an ECR account different from the Repo 2 pipeline, the repository owner must grant the
+generated CodeBuild role <code>ecr:BatchGetImage</code>, <code>ecr:GetDownloadUrlForLayer</code>, and
+<code>ecr:BatchCheckLayerAvailability</code>, plus <code>ecr:DescribeImages</code> so mutable tags can be resolved to an
+immutable digest before the skip comparison. Set <code>crossAccountEcrRepositoryPolicyConfigured: true</code> only
+after that owner-side policy exists; otherwise pipeline rendering fails closed. This acknowledgement
+covers the deployer image pulled after the build starts. A private ECR image used as CodeBuild's own
+environment image must still be in the pipeline Region.</p>
 <p>The same executor runs locally without any pipeline:</p>
-<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w">           </span><span class="c1"># every target (gated targets require --yes)</span>
-npx<span class="w"> </span>cdk-cicd<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w"> </span>--target<span class="w"> </span>dev
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk-cicd<span class="w"> </span>--<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w">           </span><span class="c1"># every target (gated targets require --yes)</span>
+npm<span class="w"> </span>run<span class="w"> </span>cdk-cicd<span class="w"> </span>--<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w"> </span>--target<span class="w"> </span>dev
 </code></pre></div>
 <p>On a runner whose default Docker network cannot reach AWS, add <code>--docker-network host</code>. The local
 executor is fail-closed: it refuses a target with <code>manualApproval: true</code> unless you pass <code>--yes</code>.</p>
@@ -2854,7 +2931,7 @@ to <code>1.4.1</code>) and re-run. Because the image pins code + deps and config
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-09-03
+    2026-09-10
   </span>
 
     

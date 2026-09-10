@@ -2699,13 +2699,25 @@
 <span class="w">  </span><span class="nx">githubActions</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// roleName defaults to '&lt;application&gt;-github-role'; subjectClaims defaults to every</span>
 <span class="w">    </span><span class="c1">// ref/environment of 'owner/my-repo' when omitted.</span>
+<span class="w">    </span><span class="c1">// Configure required reviewers on the generated `prod` GitHub Environment first.</span>
+<span class="w">    </span><span class="nx">environmentProtectionConfigured</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="p">});</span>
 </code></pre></div>
 <p><code>cdk-cicd deploy-ci</code> only deploys the OIDC role (<code>GitHubActionRole</code>) the generated workflow assumes — the workflow itself is what runs the pipeline once you push it. See the <a href="../workshops/autopilot-pipeline/index.html"><code>Autopilot pipelines</code> workshop</a> for a walkthrough.</p>
+<p>GitHub workflow YAML can name an Environment but cannot create its required-reviewer protection rule.
+When any stage resolves to <code>manualApproval: true</code>, rendering fails unless
+<code>githubActions.environmentProtectionConfigured</code> is explicitly <code>true</code>. Set that flag only after the
+matching GitHub Environments have required reviewers configured.</p>
 <p><strong>Current limitations:</strong></p>
 <ul>
-<li><code>codeArtifact</code>/<code>proxy</code> are not yet wired for the GitHub Actions engine — the generated workflow includes the same login/proxy-export commands the other engines use, but not the IAM grants or environment variables that make them work at runtime (tracked in <code>findings.json</code> as <code>migration-github-actions-engine-missing-codeartifact-proxy-plumbing</code>). Don't rely on <code>codeArtifact</code>/<code>proxy</code> with this engine yet.</li>
+<li><code>APP_STAGING</code> is not supported by the generated workflow; use <code>DEFAULT</code> or deploy the application
+  directly/local instead.</li>
+<li>Caller-configured <code>deployRoleExternalId</code> / <code>deployment.externalId</code> values are rejected because the
+  installed GitHub engine cannot forward them. This is separate from the dependency's fixed ExternalId
+  described below.</li>
+<li>A resolved deployment-role path or name cannot contain the literal <code>cfn-exec</code>, including through
+  the effective bootstrap qualifier, because the installed GitHub engine rewrites that segment to <code>deploy</code>.</li>
 <li><strong>Bootstrap prerequisite:</strong> the generated workflow's deploy step assumes the CDK deploy role with an explicit <code>ExternalId</code> (a <code>cdk-pipelines-github</code> default, not something this wrapper controls). If your environment was bootstrapped with the current CDK CLI default (<code>cdk bootstrap</code>'s <code>--deny-external-id</code>, enabled by default), that assume-role call is rejected outright and the deploy job fails. You need to either re-bootstrap without <code>--deny-external-id</code>, or allow-list exactly that <code>ExternalId</code> on the deploy role's trust policy (a minimally-customized <code>cdk bootstrap --template</code>, adding one statement, is enough — see <code>findings.json</code>'s <code>migration-github-actions-engine-deny-external-id-incompatibility</code> for the exact shape). This is a real prerequisite, not an edge case — it will block your very first real deploy on a freshly-bootstrapped account.</li>
 </ul>
 <h3 id="known-issues">Known Issues</h3>
@@ -2738,7 +2750,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-09-03
+    2026-09-10
   </span>
 
     
