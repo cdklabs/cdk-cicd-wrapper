@@ -290,7 +290,10 @@ describe('self-mutating assembler: stage forced-role contract', () => {
       stages: [
         {
           name: 'prod',
-          deployment: { deployRole: 'arn:prod', externalId: 'resolve:secretsmanager:prod-external' },
+          deployment: {
+            deployRole: 'arn:prod',
+            externalId: 'resolve:secretsmanager:arn:aws:secretsmanager:us-west-2:111111111111:secret:prod-external',
+          },
         },
       ],
     });

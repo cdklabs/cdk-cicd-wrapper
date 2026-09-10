@@ -2410,9 +2410,9 @@ ExternalId presented when assuming `deployRole` (the `sts:ExternalId` a hardened
 Overrides the pipeline-level `ResolvedCicdConfig.deployRoleExternalId` for
 this stage. A literal, or a `resolve:secretsmanager:<arn>` reference resolved at synth time (the
 same `resolve:` convention `VpcConfig.vpcId` uses). Ignored when `deployRole` is unset -- an
-ExternalId only applies to a role assumption the wrapper actually performs. Secret references
-currently require the Secrets Manager AWS-managed encryption key; customer-managed KMS keys need
-an additional `kms:Decrypt` grant that this config shape cannot identify.
+ExternalId only applies to a role assumption the wrapper actually performs. A literal, or a
+`resolve:secretsmanager:<complete literal secret ARN>` reference resolved at synth time (the same
+`resolve:` convention `VpcConfig.vpcId` uses). Wildcards and non-ARN secret identifiers are rejected.
 
 ---
 

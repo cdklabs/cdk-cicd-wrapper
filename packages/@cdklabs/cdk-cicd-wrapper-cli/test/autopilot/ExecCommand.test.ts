@@ -578,26 +578,29 @@ describe('exec: resolveExternalId', () => {
 
 describe('exec: self-mutating pipeline externalIds', () => {
   test('resolves per-stage/default references only for stages with a deployRole', async () => {
+    const defaultSecret = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:default-external';
+    const prodSecret = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:prod-external';
+    const ignoredSecret = 'arn:aws:secretsmanager:us-west-2:111111111111:secret:ignored-external';
     const cicd = defineCICD({
       application: 'shop',
       repository: Repository.codecommit('shop'),
-      deployRoleExternalId: 'resolve:secretsmanager:default',
+      deployRoleExternalId: `resolve:secretsmanager:${defaultSecret}`,
       stages: [
         { name: 'dev', deployment: { deployRole: 'arn:dev' } },
         {
           name: 'prod',
-          deployment: { deployRole: 'arn:prod', externalId: 'resolve:secretsmanager:prod' },
+          deployment: { deployRole: 'arn:prod', externalId: `resolve:secretsmanager:${prodSecret}` },
         },
-        { name: 'qa', deployment: { externalId: 'resolve:secretsmanager:ignored' } },
+        { name: 'qa', deployment: { externalId: `resolve:secretsmanager:${ignoredSecret}` } },
       ],
     });
     const resolver = jest.fn(async (value?: string) => (value === undefined ? undefined : `resolved:${value}`));
 
     const resolved = await resolvePipelineExternalIds(cicd, resolver);
 
-    expect(resolved.stages[0].deployment?.externalId).toBe('resolved:resolve:secretsmanager:default');
-    expect(resolved.stages[1].deployment?.externalId).toBe('resolved:resolve:secretsmanager:prod');
-    expect(resolved.stages[2].deployment?.externalId).toBe('resolve:secretsmanager:ignored');
+    expect(resolved.stages[0].deployment?.externalId).toBe(`resolved:resolve:secretsmanager:${defaultSecret}`);
+    expect(resolved.stages[1].deployment?.externalId).toBe(`resolved:resolve:secretsmanager:${prodSecret}`);
+    expect(resolved.stages[2].deployment?.externalId).toBe(`resolve:secretsmanager:${ignoredSecret}`);
     expect(resolved.deployRoleExternalId).toBeUndefined();
     expect(resolver).toHaveBeenCalledTimes(2);
   });

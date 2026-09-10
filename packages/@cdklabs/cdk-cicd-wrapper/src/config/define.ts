@@ -38,6 +38,7 @@ import {
   SynthesizerType,
   VpcConfig,
 } from './types';
+import { secretArnFromDeployRoleExternalId } from '../engine/external-id-secrets';
 
 /** Stage names that default to no manual approval (inner-loop / research stages). */
 const AUTO_APPROVE_STAGES = new Set(['dev', 'res']);
@@ -213,6 +214,16 @@ function normalizeStage(stage: string | StageInput): ResolvedStage {
   };
 }
 
+function validateDeployRoleExternalIdReferences(
+  stages: readonly ResolvedStage[],
+  pipelineExternalId: string | undefined,
+): void {
+  secretArnFromDeployRoleExternalId(pipelineExternalId, 'deployRoleExternalId');
+  for (const stage of stages) {
+    secretArnFromDeployRoleExternalId(stage.deployment?.externalId, `stage '${stage.name}' deployment.externalId`);
+  }
+}
+
 /**
  * Normalize an already-parsed config object (e.g. from a `cicd.config.yaml`) into the resolved shape.
  * Shared with `defineCICD` so YAML and TS authoring get identical defaults.
@@ -220,6 +231,7 @@ function normalizeStage(stage: string | StageInput): ResolvedStage {
 export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
   const application = props.application;
   const stages = props.stages.map(normalizeStage);
+  validateDeployRoleExternalIdReferences(stages, props.deployRoleExternalId);
   const synthesizerType = props.synthesizer?.type ?? SynthesizerType.DEFAULT;
   const engine = props.engine ?? EngineType.CODEPIPELINE;
   const qualifier =
@@ -463,6 +475,9 @@ export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConf
           `(target '${targetWithExternalId.stage}'). The installed alpha deployment identities do not expose it.`,
       );
     }
+  }
+  for (const target of props.targets) {
+    secretArnFromDeployRoleExternalId(target.deployment?.externalId, `target '${target.stage}' deployment.externalId`);
   }
   const targets = props.targets.map((target) => normalizeTarget(target, complianceLogBucketName));
   const bucketCoordinates = new Map<string, string>();
