@@ -4,6 +4,7 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
+import { secretArnFromDeployRoleExternalId } from '@cdklabs/cdk-cicd-wrapper';
 import type { EngineType, ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
@@ -46,9 +47,6 @@ export const COMPLIANCE_LOG_BUCKET_NAME_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_N
 export const COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_ACCOUNT';
 export const COMPLIANCE_LOG_BUCKET_REGION_FLAG = 'CDK_CICD_COMPLIANCE_LOG_BUCKET_REGION';
 
-/** Prefix marking a config value as a Secrets Manager reference to resolve at exec time. */
-const SECRET_REF_PREFIX = 'resolve:secretsmanager:';
-
 /**
  * Resolve a deploy-role ExternalId value: a literal is returned as-is; a `resolve:secretsmanager:<arn>`
  * reference is fetched from Secrets Manager (the `SecretString`) at exec time. Undefined/blank -> undefined.
@@ -63,14 +61,11 @@ export async function resolveExternalId(
 ): Promise<string | undefined> {
   const trimmed = value?.trim();
   if (trimmed === undefined || trimmed.length === 0) return undefined;
-  if (!trimmed.startsWith(SECRET_REF_PREFIX)) return trimmed;
-  const secretId = trimmed.slice(SECRET_REF_PREFIX.length);
-  if (secretId.length === 0) {
-    throw new Error('cdk-cicd exec: resolve:secretsmanager: externalId reference is missing a secret id');
-  }
-  const secret = await readSecret(secretId);
+  const secretArn = secretArnFromDeployRoleExternalId(trimmed, 'deploy-role externalId');
+  if (secretArn === undefined) return trimmed;
+  const secret = await readSecret(secretArn);
   if (secret.length === 0) {
-    throw new Error(`cdk-cicd exec: secret '${secretId}' for the deploy-role externalId has no SecretString`);
+    throw new Error(`cdk-cicd exec: secret '${secretArn}' for the deploy-role externalId has no SecretString`);
   }
   return secret;
 }

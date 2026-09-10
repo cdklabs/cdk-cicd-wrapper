@@ -527,6 +527,14 @@ describe('exec: resolveExternalId', () => {
     expect(reader).toHaveBeenCalledWith('arn:aws:secretsmanager:us-west-2:111111111111:secret:x');
   });
 
+  test('rejects an unsafe secret reference before invoking the reader', async () => {
+    const reader = jest.fn(async () => 'must-not-be-read');
+    await expect(resolveExternalId('resolve:secretsmanager:*', reader)).rejects.toThrow(
+      /complete literal Secrets Manager secret ARN/,
+    );
+    expect(reader).not.toHaveBeenCalled();
+  });
+
   test('the AWS CLI resolver parses SecretString without invoking a shell', () => {
     const runnerMock = jest.fn().mockReturnValue({
       status: 0,
