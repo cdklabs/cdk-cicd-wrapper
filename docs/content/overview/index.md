@@ -30,15 +30,12 @@ Most of these features can be used independently of the CDK constructs, directly
 
 ## CI/CD Process Overview
 
-![Process Flow](../assets/diagrams/deployment-flow.png)
+![Engine shapes and deploy models](../assets/diagrams/autopilot-engine-shapes.png)
 
-!!! note
-
-    This diagram predates Autopilot (1.x) and still shows Blueprint (0.x) specifics — a CodeCommit-only
-    source, Amazon CodeGuru code review, and fixed `RES`/`DEV`/`INT`/`PROD` accounts. The pipeline shape
-    (source → build/synth → self-update → one deploy action per stage, gated by manual approval) still
-    holds; the account names, the CodeCommit-only source, and CodeGuru do not — see the stage list below.
-    Redrawing this diagram for Autopilot is tracked separately.
+The same `cicd.config.ts` is rendered by the engine you select (`engine`): a flat CodePipeline (the
+default), a self-mutating CDK Pipelines pipeline, or a GitHub Actions workflow. `deployModel` is
+orthogonal to that choice — synthesize every stage once and promote `cdk.out` (the default), or
+synthesize each stage at deploy time with that stage's own credentials.
 
 The CI/CD process in the {{ project_name }} establishes the following:
 
@@ -54,16 +51,26 @@ The CI/CD process in the {{ project_name }} establishes the following:
 
 The {{ project_name }} architecture is based on using DevOps services provided by AWS to deliver the CI/CD solution.
 
-![Deployment Architecture](../assets/diagrams/architecture.png)
+![Architecture overview — one config, many pipeline shapes](../assets/diagrams/autopilot-architecture.png)
 
-!!! note
+Your CDK app stays unmodified; `cicd.config.ts` (plus optional `config/<STAGE>.json` files) is read by the
+`cdk-cicd` CLI, which renders the pipeline through the selected engine from the selected source
+(CodeCommit, a CodeStar connection such as GitHub or Bitbucket, a versioned S3 object, or GitHub for the
+GitHub Actions engine). The pipeline account hosts the build/synth and self-update projects plus the
+opt-in build environment — VPC and proxy, CodeArtifact or a private npm registry, Secrets Manager–backed
+credentials, and the compliance access-log bucket. Deployments then flow through your ordered stages,
+each in its own account and region(s), gated by manual approval unless the stage is an inner-loop stage,
+optionally assuming a forced deploy role with an ExternalId. The security plugins (cdk-nag and the
+hardening Aspects) are applied tree-wide at synth on every path.
 
-    Like the process-flow diagram above, this one predates Autopilot (1.x): it shows a CodeCommit-only
-    source with Amazon CodeGuru code review and a per-account compliance bucket/KMS key created
-    unconditionally. In Autopilot the source is a choice (CodeCommit, GitHub, S3, or any CodeStar
-    connection), there is no CodeGuru integration, and the compliance bucket/KMS encryption are opt-in
-    (`complianceLogBucketName` in `cicd.config.ts`). Redrawing this diagram for Autopilot is tracked
-    separately.
+### Container mode
+
+![Container mode — build once, deploy many](../assets/diagrams/autopilot-container-mode.png)
+
+With the default CodePipeline engine you can split build from deploy: a CI repository builds a
+config-agnostic deployer image into ECR, and a config-only CD repository (or the local
+`cdk-cicd deploy --from-image` executor) runs that image against as many targets as you like. See the
+[Container mode guide](../developer_guides/container_mode.md).
 
 You can read more about these elements in the [Developer Guide](../developer_guides/index.md).
 
