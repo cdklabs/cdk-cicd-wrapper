@@ -204,7 +204,7 @@ githubActions: {
 - **`publishAssetsAuthRegion`** — the region the OIDC role is assumed in when publishing assets (not the
   region assets publish to). Defaults to the pipeline stack Region.
 - **`buildContainerCredentials`** — GitHub Actions secret names used to authenticate an external
-  `ci.image` job container. The workflow renders `${{ secrets.NAME }}` expressions; literal credentials
+  `ci.image` job container. The workflow renders `{% raw %}${{ secrets.NAME }}{% endraw %}` expressions; literal credentials
   are never accepted. This does not support private ECR, whose authorization-token exchange cannot run
   before GitHub pulls the job container.
 - **`environmentProtectionConfigured`** — explicit acknowledgement that required-reviewer rules have

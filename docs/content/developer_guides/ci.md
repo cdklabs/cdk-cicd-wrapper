@@ -147,8 +147,8 @@ ci: {
     },
     ```
 
-    The workflow contains `${{ secrets.REGISTRY_USERNAME }}` and
-    `${{ secrets.REGISTRY_PASSWORD }}` expressions, never literal credentials. Secret names may use
+    The workflow contains `{% raw %}${{ secrets.REGISTRY_USERNAME }}{% endraw %}` and
+    `{% raw %}${{ secrets.REGISTRY_PASSWORD }}{% endraw %}` expressions, never literal credentials. Secret names may use
     letters, numbers, and underscores, must not start with a number, and must not start with
     `GITHUB_`.
 
