@@ -4,6 +4,8 @@ Container mode splits build from deploy into **two repositories**: a CI reposito
 config-agnostic **deployer image**, and a config-only CD repository runs that image against as many
 targets as you like. One image drives _N_ deployments, and rollback is a retag.
 
+![Container mode — build once, deploy many](../assets/diagrams/autopilot-container-mode.png)
+
 !!! info "Engine support"
 Container mode is a feature of the default **CodePipeline engine** (`EngineType.CODEPIPELINE`). The
 `CDK_PIPELINES` and `GitHubActions` engines deploy stages directly by replaying the app per stage;
