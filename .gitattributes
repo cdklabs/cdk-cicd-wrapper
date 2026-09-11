@@ -12,6 +12,7 @@
 /.github/workflows/docs.yml linguist-generated
 /.github/workflows/pull-request-lint.yml linguist-generated
 /.github/workflows/release.yml linguist-generated
+/.github/workflows/sample-harness.yml linguist-generated
 /.github/workflows/upgrade.yml linguist-generated
 /.gitignore linguist-generated
 /.mergify.yml linguist-generated
