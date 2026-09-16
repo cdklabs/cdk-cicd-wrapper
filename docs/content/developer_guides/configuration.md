@@ -228,14 +228,18 @@ vars, with no hardcoded stage list. A `cdk.config.ts` that reads `process.env.AC
 resolves its target accounts at synth time from those values.
 
 The qualifier comes from the config's `qualifier` when set, otherwise the build's own `$CDK_QUALIFIER`.
-The synth step is granted `ssm:GetParametersByPath` scoped to `/<qualifier>/*` in the pipeline's account
-and region. If the scan finds **no** `Account*` parameter it fails the build (`exit 1`) rather than
-proceeding with an empty warm — a misconfigured qualifier or an un-bootstrapped account is surfaced loudly.
+The synth step is granted `ssm:GetParametersByPath` in the pipeline's account and region, scoped to both
+the path node `parameter/<qualifier>` (the resource `GetParametersByPath` is authorized against) and
+`parameter/<qualifier>/*` (its children). If the scan finds **no** `Account*` parameter it fails the
+build (`exit 1`) rather than proceeding with an empty warm — a misconfigured qualifier or an
+un-bootstrapped account is surfaced loudly.
 
 All three engines honor the flag on the CodeBuild/workflow step that runs `cdk synth`: `CDK_PIPELINES`
 and `GITHUB_ACTIONS` warm their self-mutating synth step, and the flat `CODEPIPELINE` engine warms its
-`Build` synth project. The scan runs ahead of `cdk synth` in the same shell, so the exported
-`ACCOUNT_<STAGE>` vars are visible to the app.
+`Build` synth project. On the CodeBuild engines the scan runs ahead of `cdk synth` in the **same shell**
+(buildspec 0.2), so the exported `ACCOUNT_<STAGE>` vars carry over to the synth command. On
+`GITHUB_ACTIONS` the warming runs in a separate `Login` step from the `Synth` step, so the vars are also
+written to `$GITHUB_ENV` — GitHub's cross-step environment file — to reach `cdk synth`.
 
 ## VPC
 

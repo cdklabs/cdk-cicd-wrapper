@@ -383,35 +383,62 @@ function proxyInstallCommands(proxy: ProxyConfig): string[] {
  * `cdk synth` (a `... | while` pipe would export into a subshell and lose them). Fails loud --
  * `exit 1` -- if it finds zero `Account*` params, so a wrong qualifier is a hard error at synth
  * time rather than a silently-empty warm.
+ *
+ * CRITICAL: the `while ... done` loop MUST be a SINGLE array element. Each element returned here
+ * becomes its own entry in the CodeBuild buildspec `commands`/`installCommands` list, and CodeBuild
+ * feeds each entry to the shell as a separate command line -- so a compound command (a `while` whose
+ * `do`, body and `done` are separate elements) is parsed as an incomplete command and aborts with
+ * `Syntax error: end of file unexpected (expecting "done")` before the loop body ever runs. The
+ * simple statements below are each self-contained; the loop is joined into one `; `-separated line,
+ * the same single-line convention `runScriptOrWarn` in `ci-commands.ts` follows. Buildspec 0.2 (what
+ * CDK Pipelines emits) runs every entry in the SAME shell, so the `export`s from the loop entry still
+ * reach the later `npm run cdk synth` entry -- that part relies only on same-shell semantics, not on
+ * the loop and synth sharing one entry.
+ *
+ * `persistToGithubEnv`: on GitHub Actions the warming runs in a `Login` step and `cdk synth` runs in
+ * a SEPARATE job step, and a plain `export` does NOT cross GitHub step boundaries -- only writes to
+ * the `$GITHUB_ENV` file do. When true, each warmed var is also appended to `$GITHUB_ENV` so it
+ * reaches the later Synth step. The CodeBuild engines leave this false (same-shell 0.2 semantics
+ * already carry the exports across entries, and `$GITHUB_ENV` is unset there).
  */
-export function ssmWarmingCommands(qualifier?: string): string[] {
+export function ssmWarmingCommands(qualifier?: string, options?: { persistToGithubEnv?: boolean }): string[] {
   const qualifierExpr = qualifier !== undefined ? qualifier : '$CDK_QUALIFIER';
+  // On GitHub Actions the exported var must ALSO be written to $GITHUB_ENV to survive to the next
+  // step (the Synth step). `[ -n "$GITHUB_ENV" ]` guards it so the same emitted line is a harmless
+  // no-op on any runner that does not set $GITHUB_ENV.
+  const persistStep = options?.persistToGithubEnv
+    ? '[ -n "$GITHUB_ENV" ] && printf \'ACCOUNT_%s=%s\\n\' "$_warm_stage" "$_warm_value" >> "$GITHUB_ENV"; '
+    : '';
+  // The entire scan-and-export loop as ONE `/bin/sh` command line. Statements are separated by `; `,
+  // `do`/`then` bodies flow inline, and each `case`/`if` closes with its terminator (`;;`, `esac`,
+  // `fi`) so the single line parses as one complete compound command.
+  // `|| [ -n "$_warm_name" ]` processes a final row with no trailing newline (POSIX `read` returns
+  // non-zero on EOF-without-newline but still populates the vars), so the last Account* param is
+  // never silently dropped. A param whose suffix is not a valid shell identifier (empty, or leading
+  // digit) is skipped with a warning instead of letting `export` fail silently.
+  const warmLoop =
+    'while IFS="$(printf \'\\t\')" read -r _warm_name _warm_value || [ -n "$_warm_name" ]; do ' +
+    '[ -z "$_warm_name" ] && continue; ' +
+    'case "$_warm_name" in ' +
+    '*Account*) ' +
+    "_warm_stage=\"$(printf '%s' \"${_warm_name##*Account}\" | tr '[:lower:]' '[:upper:]' | tr -cd '[:alnum:]_')\"; " +
+    'case "$_warm_stage" in ' +
+    "''|[0-9]*) " +
+    'echo "cdk-cicd: warmAccountsFromSsm skipping \\"${_warm_name}\\" -- yields no valid ACCOUNT_<STAGE> identifier" >&2; ' +
+    'continue ;; ' +
+    'esac; ' +
+    'export "ACCOUNT_${_warm_stage}=${_warm_value}"; ' +
+    persistStep +
+    'echo "ACCOUNT_${_warm_stage} set"; ' +
+    '_warm_found=1 ;; ' +
+    'esac; ' +
+    'done < "$_warm_tmp"';
   return [
     `echo "Warming ACCOUNT_<STAGE> env vars from SSM parameters under /${qualifierExpr}/"`,
     '_warm_tmp="$(mktemp)"',
     `aws ssm get-parameters-by-path --path "/${qualifierExpr}/" --query "Parameters[].[Name, Value]" --output text > "$_warm_tmp"`,
     '_warm_found=0',
-    // `|| [ -n "$_warm_name" ]` processes a final row that has no trailing newline (POSIX `read`
-    // returns non-zero on EOF-without-newline but still populates the vars), so the last Account*
-    // param is never silently dropped.
-    'while IFS="$(printf \'\\t\')" read -r _warm_name _warm_value || [ -n "$_warm_name" ]; do',
-    '  [ -z "$_warm_name" ] && continue',
-    '  case "$_warm_name" in',
-    '    *Account*)',
-    "      _warm_stage=\"$(printf '%s' \"${_warm_name##*Account}\" | tr '[:lower:]' '[:upper:]' | tr -cd '[:alnum:]_')\"",
-    // Skip a param whose suffix is not a valid shell identifier (empty, or leading digit) instead of
-    // letting `export` fail silently -- warn so a misnamed parameter is visible, not lost.
-    '      case "$_warm_stage" in',
-    "        ''|[0-9]*)",
-    '          echo "cdk-cicd: warmAccountsFromSsm skipping \\"${_warm_name}\\" -- yields no valid ACCOUNT_<STAGE> identifier" >&2',
-    '          continue ;;',
-    '      esac',
-    '      export "ACCOUNT_${_warm_stage}=${_warm_value}"',
-    '      echo "ACCOUNT_${_warm_stage} set"',
-    '      _warm_found=1',
-    '      ;;',
-    '  esac',
-    'done < "$_warm_tmp"',
+    warmLoop,
     'rm -f "$_warm_tmp"',
     `if [ "$_warm_found" -eq 0 ]; then echo "cdk-cicd: warmAccountsFromSsm found no *Account* parameters under /${qualifierExpr}/ -- is the qualifier correct and the account bootstrapped?" >&2; exit 1; fi`,
   ];
@@ -419,16 +446,27 @@ export function ssmWarmingCommands(qualifier?: string): string[] {
 
 /** The read grant the SSM warming scan needs: `ssm:GetParametersByPath` on the qualifier's parameter path. */
 export function ssmWarmingReadStatements(stack: Stack, qualifier?: string): iam.PolicyStatement[] {
-  // The grant must be scoped to a literal `parameter/<qualifier>/*`. A resolvable qualifier is required
-  // when warming is enabled (enforced in resolveCicdConfig) -- guard here too so this helper can never
-  // emit an over-broad `parameter/*/*` grant.
+  // The grant must be scoped to the qualifier's path. A resolvable qualifier is required when warming
+  // is enabled (enforced in resolveCicdConfig) -- guard here too so this helper can never emit an
+  // over-broad `parameter/*` grant.
   if (qualifier === undefined) {
     throw new Error('cdk-cicd: ssmWarmingReadStatements needs a qualifier to scope the ssm:GetParametersByPath grant.');
   }
+  // `ssm:GetParametersByPath` is authorized against the PATH being queried, whose ARN is the path node
+  // itself (`parameter/<qualifier>`), NOT the child parameters under it. A `parameter/<qualifier>/*`
+  // grant matches the children but not the path node, so a scan of `/<qualifier>/` is denied with
+  // `not authorized to perform: ssm:GetParametersByPath on resource: .../parameter/<qualifier>`.
+  // Grant BOTH: the path node (what this call needs) and the children glob (defense in depth for any
+  // `GetParameter` on an individual `/<qualifier>/...` param).
+  const region = stack.region;
+  const account = stack.account;
   return [
     new iam.PolicyStatement({
       actions: ['ssm:GetParametersByPath'],
-      resources: [`arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter/${qualifier}/*`],
+      resources: [
+        `arn:${stack.partition}:ssm:${region}:${account}:parameter/${qualifier}`,
+        `arn:${stack.partition}:ssm:${region}:${account}:parameter/${qualifier}/*`,
+      ],
     }),
   ];
 }

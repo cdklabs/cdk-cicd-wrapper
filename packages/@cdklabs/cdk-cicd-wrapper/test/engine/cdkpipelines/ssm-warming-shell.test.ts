@@ -16,6 +16,13 @@ import { ssmWarmingCommands } from '../../../src/engine/cdkpipelines/CdkPipeline
  * Run the generated warming commands under /bin/sh with a fake `aws` that prints `scanOutput` (the
  * tab-separated Name\tValue rows `get-parameters-by-path --output text` would emit). Returns the
  * combined stdout+stderr and exit code, plus the ACCOUNT_* vars the script exported (dumped via `env`).
+ *
+ * IMPORTANT: this models how CodeBuild buildspec 0.2 actually runs the commands -- each array element
+ * is a SEPARATE command line, but all of them share ONE persistent shell/environment. We emulate that
+ * by concatenating the elements into one script (they run in one shell, exports persist across them,
+ * matching 0.2 same-shell semantics). The complementary `sh -n` per-element check below is what proves
+ * each element is independently well-formed -- i.e. that a compound command like the `while ... done`
+ * loop is NOT split across elements (which is the shape CodeBuild fails on with "expecting done").
  */
 function runWarming(scanOutput: string): { output: string; code: number; accounts: Record<string, string> } {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ssm-warm-'));
@@ -128,5 +135,66 @@ describe('ssmWarmingCommands — executed under /bin/sh', () => {
     expect(code).toBe(0);
     expect(accounts).toEqual({ ACCOUNT_DEV: '111111111111' });
     expect(output).toContain('skipping');
+  });
+});
+
+describe('ssmWarmingCommands — each emitted element is a self-contained command', () => {
+  // CodeBuild feeds each buildspec `commands` entry to the shell as its OWN command line. A compound
+  // command (a `while`/`case`/`if`) split across entries is parsed incomplete and aborts with
+  // `Syntax error: end of file unexpected (expecting "done")`. This is the exact bug: `sh -n` on the
+  // lone `while ... do` element used to fail. Assert every element parses standalone.
+  test('every element passes `sh -n` (parse-only) on its own', () => {
+    const elements = ssmWarmingCommands('shop');
+    const failures: { element: string; error: string }[] = [];
+    for (const element of elements) {
+      try {
+        // -n = read commands but do not execute; a syntax error (e.g. unterminated `while`) exits non-zero.
+        execFileSync('/bin/sh', ['-n', '-c', element], { stdio: ['ignore', 'pipe', 'pipe'] });
+      } catch (e) {
+        const err = e as { stderr?: Buffer };
+        failures.push({ element, error: err.stderr?.toString() ?? 'sh -n failed' });
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  test('no element contains a `while`/`do` without its matching `done`', () => {
+    // A structural guard independent of a shell being available: whichever element opens the loop must
+    // also close it, so the loop can never be spread across separate CodeBuild command entries.
+    const elements = ssmWarmingCommands('shop');
+    const loopOpeners = elements.filter((c) => /\bwhile\b/.test(c) || /\bdo\b/.test(c));
+    expect(loopOpeners).toHaveLength(1);
+    expect(loopOpeners[0]).toMatch(/\bdone\b/);
+  });
+
+  test('persistToGithubEnv appends warmed vars to $GITHUB_ENV so they survive to the next GitHub step', () => {
+    // On GitHub Actions the warming Login step and the Synth step are separate steps; a plain `export`
+    // does not cross that boundary, only a write to $GITHUB_ENV does. Default (CodeBuild) must NOT emit it.
+    const codebuild = ssmWarmingCommands('shop').join('\n');
+    expect(codebuild).not.toContain('GITHUB_ENV');
+
+    const github = ssmWarmingCommands('shop', { persistToGithubEnv: true }).join('\n');
+    expect(github).toContain('GITHUB_ENV');
+
+    // Functional proof: exercise the loop element with $GITHUB_ENV pointed at a temp file and confirm
+    // the warmed var lands in it (what the subsequent Synth step would read).
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ssm-warm-gh-'));
+    try {
+      const ghEnv = path.join(dir, 'github_env');
+      fs.writeFileSync(ghEnv, '');
+      const binDir = path.join(dir, 'bin');
+      fs.mkdirSync(binDir);
+      fs.writeFileSync(path.join(binDir, 'aws'), `#!/bin/sh\ncat "${path.join(dir, 'scan.txt')}"\n`, { mode: 0o755 });
+      fs.writeFileSync(path.join(dir, 'scan.txt'), `/shop/AccountDev${TAB}111111111111\n`);
+      const scriptPath = path.join(dir, 'warm.sh');
+      fs.writeFileSync(scriptPath, ssmWarmingCommands('shop', { persistToGithubEnv: true }).join('\n'));
+      execFileSync('/bin/sh', [scriptPath], {
+        env: { ...process.env, PATH: `${binDir}:${process.env.PATH ?? ''}`, GITHUB_ENV: ghEnv },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      expect(fs.readFileSync(ghEnv, 'utf-8')).toContain('ACCOUNT_DEV=111111111111');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

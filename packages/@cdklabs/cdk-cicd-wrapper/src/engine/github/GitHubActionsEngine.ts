@@ -124,7 +124,7 @@ export class GitHubActionsEngine extends Construct {
     // "commit the updated workflow file" check compares. Without the mode it synthesizes only app stacks.
     const installCommands = [
       ...(config.proxy ? proxyInstallCommands(config.proxy) : []),
-      ...(config.warmAccountsFromSsm ? ssmWarmingCommands(config.qualifier) : []),
+      ...(config.warmAccountsFromSsm ? ssmWarmingCommands(config.qualifier, { persistToGithubEnv: true }) : []),
       ...(config.codeArtifact
         ? [
             `aws codeartifact login --tool npm --domain ${config.codeArtifact.domain} ` +

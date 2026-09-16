@@ -227,31 +227,38 @@ describe('GitHubActionsEngine', () => {
   test('warmAccountsFromSsm scans SSM in the Login step and exports the ACCOUNT_<STAGE> loop', () => {
     const { engine } = render({ warmAccountsFromSsm: true, qualifier: 'shopq' });
     const yaml = engine.pipeline.workflowFile.toYaml();
+    // The `run:` block is one long line, which the YAML emitter folds across multiple output lines with
+    // continuation indentation. Un-fold (collapse newline + leading spaces to a single space) before
+    // asserting on substrings that may straddle a fold boundary.
+    const unfolded = yaml.replace(/\n\s+/g, ' ');
     // The Login step carries the ssmWarmingCommands: the get-parameters-by-path scan (scoped to the
     // qualifier path) plus the *Account* -> ACCOUNT_<STAGE> export loop.
-    expect(yaml).toContain('aws ssm get-parameters-by-path --path "/shopq/"');
-    expect(yaml).toContain('export "ACCOUNT_${_warm_stage}=${_warm_value}"');
+    expect(unfolded).toContain('aws ssm get-parameters-by-path --path "/shopq/"');
+    expect(unfolded).toContain('export "ACCOUNT_${_warm_stage}=${_warm_value}"');
+    // On GitHub the Synth step is SEPARATE from the Login step, so a plain `export` would not reach it;
+    // the warmed vars must also be written to $GITHUB_ENV to survive across steps.
+    expect(unfolded).toContain('GITHUB_ENV');
     // The warming block sits inside the Synth job's Login step, ahead of the build commands.
-    const synthJob = yaml.slice(yaml.indexOf('Build-Synth:'), yaml.indexOf('Assets-'));
+    const synthJob = unfolded.slice(unfolded.indexOf('Build-Synth:'), unfolded.indexOf('Assets-'));
     expect(synthJob).toContain('aws ssm get-parameters-by-path --path "/shopq/"');
   });
 
-  test('warmAccountsFromSsm grants the OIDC gitHubActionRole ssm:GetParametersByPath on /<qualifier>/*', () => {
+  test('warmAccountsFromSsm grants the OIDC gitHubActionRole ssm:GetParametersByPath on the path node AND children', () => {
     const { stack } = render({ warmAccountsFromSsm: true, qualifier: 'shopq' });
     const t = Template.fromStack(stack);
+    // GetParametersByPath authorizes on the PATH node (`parameter/shopq`), not the children, so the
+    // grant MUST include the path-node ARN or the scan of `/shopq/` is denied. Children glob is also
+    // present (defense in depth). Both come from the shared ssmWarmingReadStatements helper; each ARN
+    // renders as an Fn::Join because stack.partition is a token.
     t.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
           Match.objectLike({
             Action: 'ssm:GetParametersByPath',
-            // The grant now comes from the shared ssmWarmingReadStatements helper, which uses
-            // stack.partition (a token) -> the resource renders as an Fn::Join ending in the
-            // qualifier-scoped parameter path.
-            Resource: {
-              'Fn::Join': Match.arrayWith([
-                Match.arrayWith([Match.stringLikeRegexp(':parameter/shopq/\\*$')]),
-              ]),
-            },
+            Resource: Match.arrayWith([
+              { 'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp(':parameter/shopq$')])]) },
+              { 'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp(':parameter/shopq/\\*$')])]) },
+            ]),
           }),
         ]),
       }),

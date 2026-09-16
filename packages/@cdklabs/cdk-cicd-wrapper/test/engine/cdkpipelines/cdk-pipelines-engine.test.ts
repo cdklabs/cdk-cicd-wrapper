@@ -159,7 +159,7 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(synthSpec).toContain('exit 1');
   });
 
-  test('warmAccountsFromSsm grants the synth build ssm:GetParametersByPath scoped to the qualifier path', () => {
+  test('warmAccountsFromSsm grants ssm:GetParametersByPath on the qualifier path node AND its children', () => {
     const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
     const engine = new CdkPipelinesEngine(stack, 'Cd', {
       config: defineCICD({
@@ -172,18 +172,24 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     });
     void engine;
     const t = Template.fromStack(stack);
-    t.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: Match.objectLike({
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Action: 'ssm:GetParametersByPath',
-            Resource: {
-              'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp(':parameter/shop/\\*$')])]),
-            },
-          }),
-        ]),
-      }),
+    // `ssm:GetParametersByPath` is authorized against the PATH node (`parameter/shop`), NOT the child
+    // parameters, so the grant MUST include the path-node ARN or the scan of `/shop/` is denied.
+    // Regression guard for the AccessDenied on `.../parameter/<qualifier>` bug. The children glob
+    // (`parameter/shop/*`) is also present (defense in depth for `GetParameter` on individual params).
+    const policies = t.findResources('AWS::IAM::Policy');
+    const warmStatements = Object.values(policies)
+      .flatMap((p: any) => p.Properties.PolicyDocument.Statement)
+      .filter((s: any) => s.Action === 'ssm:GetParametersByPath');
+    expect(warmStatements).toHaveLength(1);
+    // Resource is an array of two Fn::Join ARNs; the trailing literal segment distinguishes them.
+    const resourceTails = (warmStatements[0].Resource as any[]).map((r) => {
+      const parts = r['Fn::Join'][1] as any[];
+      return parts[parts.length - 1] as string;
     });
+    // Path node: ends in `:parameter/shop` (no `/*`). Children glob: ends in `:parameter/shop/*`.
+    // (With a concrete account/region the join collapses to one literal tail per ARN.)
+    expect(resourceTails.some((tail) => tail.endsWith(':parameter/shop'))).toBe(true);
+    expect(resourceTails.some((tail) => tail.endsWith(':parameter/shop/*'))).toBe(true);
   });
 
   test('without warmAccountsFromSsm neither the SSM scan nor the GetParametersByPath grant is present', () => {

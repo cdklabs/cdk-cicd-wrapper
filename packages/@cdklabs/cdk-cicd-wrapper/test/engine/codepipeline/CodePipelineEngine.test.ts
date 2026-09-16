@@ -1169,7 +1169,7 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
       expect(synthIdx).toBeGreaterThan(scanIdx);
     });
 
-    test('flag true: the synth build role is granted ssm:GetParametersByPath scoped to the qualifier path', () => {
+    test('flag true: the synth build role is granted ssm:GetParametersByPath on the qualifier path node AND children', () => {
       const config = defineCICD({
         application: 'shop',
         repository: Repository.s3('shop-src/app.zip'),
@@ -1183,7 +1183,13 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
           Statement: Match.arrayWith([
             Match.objectLike({
               Action: 'ssm:GetParametersByPath',
-              Resource: arnEndingIn(':ssm:us-west-2:111111111111:parameter/shop/*'),
+              // GetParametersByPath authorizes on the PATH node (`parameter/shop`), not the children,
+              // so the grant MUST include the path-node ARN or the scan of `/shop/` is denied. The
+              // children glob is also present (defense in depth). Order-independent.
+              Resource: Match.arrayWith([
+                arnEndingIn(':ssm:us-west-2:111111111111:parameter/shop'),
+                arnEndingIn(':ssm:us-west-2:111111111111:parameter/shop/*'),
+              ]),
             }),
           ]),
         }),
