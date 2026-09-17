@@ -59,7 +59,7 @@ class Command implements yargs.CommandModule {
     // entry point + mode signal as deploy-ci; `npm run cdk`, never npx.
     const outdir = mkdtempSync(path.join(tmpdir(), 'cdk-cicd-list-ci-'));
     try {
-      const result = spawnSync('npm', ['run', 'cdk', 'synth', '--all', '--output', outdir], {
+      const result = spawnSync('npm', ['run', 'cdk', '--', 'synth', '--all', '--output', outdir], {
         stdio: ['inherit', 'ignore', 'inherit'],
         cwd,
         env: { ...process.env, CDK_CICD_MODE: 'pipeline' },

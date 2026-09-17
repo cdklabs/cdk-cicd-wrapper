@@ -14,6 +14,23 @@ import { spawnSync } from 'child_process';
 import * as yargs from 'yargs';
 import { logger } from '../../utils/Logging';
 
+/**
+ * The `cdk` argv that synthesizes the pipeline stack (no deploy). Same entry point and mode signal as
+ * `deployCiArgs`, but `synth` instead of `deploy`. `npm run cdk`, never npx, so the project's pinned
+ * aws-cdk is used.
+ *
+ * The `--` separator is required: without it, npm consumes `--all` (and `--output <dir>` if present)
+ * as its OWN flags rather than forwarding them to the `cdk` script -- e.g. `--output /tmp/foo` would
+ * be swallowed and `/tmp/foo` passed through as a stray positional argument instead of an option value.
+ */
+export function synthCiArgs(output?: string): string[] {
+  const cdkArgs = ['run', 'cdk', '--', 'synth', '--all'];
+  if (output !== undefined && output.length > 0) {
+    cdkArgs.push('--output', output);
+  }
+  return cdkArgs;
+}
+
 class Command implements yargs.CommandModule {
   public command = 'synth-ci';
   public describe = 'Synthesize the pipeline (dry-run of deploy-ci, no deploy)';
@@ -34,12 +51,7 @@ class Command implements yargs.CommandModule {
   public async handler(args: yargs.Arguments) {
     const cwd = process.cwd();
     const output = args.output as string | undefined;
-    // Same entry point and mode signal as deploy-ci, but `cdk synth` (no deploy). `npm run cdk`, never
-    // npx, so the project's pinned aws-cdk is used.
-    const cdkArgs = ['run', 'cdk', 'synth', '--all'];
-    if (output !== undefined && output.length > 0) {
-      cdkArgs.push('--output', output);
-    }
+    const cdkArgs = synthCiArgs(output);
     const env: { [key: string]: string } = { ...process.env, CDK_CICD_MODE: 'pipeline' } as { [key: string]: string };
     if (args.disposable as boolean) {
       env.CDK_CICD_DISPOSABLE = '1';

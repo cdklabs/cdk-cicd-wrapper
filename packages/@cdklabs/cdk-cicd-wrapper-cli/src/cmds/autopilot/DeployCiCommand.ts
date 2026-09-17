@@ -28,7 +28,12 @@ import { logger } from '../../utils/Logging';
 export function deployCiArgs(_kind: 'ci' | 'cd' = 'ci', _engine?: EngineType): string[] {
   // `--require-approval never` because the only stack here is the pipeline and its own support
   // resources; the approval that matters to a user is the one inside the pipeline, not this one.
-  return ['run', 'cdk', 'deploy', '--all', '--require-approval', 'never'];
+  //
+  // The `--` separator is required: without it, `npm run cdk deploy --all --require-approval never`
+  // lets npm itself consume `--all`/`--require-approval` as its OWN flags, forwarding only the bare
+  // positional `never` to the underlying `cdk` script -- which then fails with
+  // "No stacks match the name(s) never". `--` tells npm everything after it belongs to the script.
+  return ['run', 'cdk', '--', 'deploy', '--all', '--require-approval', 'never'];
 }
 
 /** The environment `deploy-ci` exports so `cdk-cicd exec` renders the pipeline, not the app stacks. */

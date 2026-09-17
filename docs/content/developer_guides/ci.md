@@ -21,7 +21,7 @@ The final synth step is always appended at the end and is **never** replaced by 
     `cdk.json` has a **single** `app` command — the preferred form is `npm run cdk-cicd exec bin/<your-entry>.ts` (or `npx cdk-cicd exec …`). That one entry renders **either** the application stacks **or** the pipeline, decided by the `CDK_CICD_MODE` environment variable that the invoking command sets — there is no `--app` override and no separate renderer command:
 
     - **`CDK_CICD_MODE` unset** (a plain `npm run cdk synth` / `cdk deploy`) → the **application** stacks for the active `CDK_STAGE`, for all three engines.
-    - **`CDK_CICD_MODE=pipeline`** → the **pipeline** itself. `cdk-cicd deploy-ci` sets this before it runs `npm run cdk deploy --all`, and each self-mutating engine's in-pipeline synth step sets it too, so the pipeline re-renders itself on self-mutation.
+    - **`CDK_CICD_MODE=pipeline`** → the **pipeline** itself. `cdk-cicd deploy-ci` sets this before it runs `npm run cdk -- deploy --all`, and each self-mutating engine's in-pipeline synth step sets it too, so the pipeline re-renders itself on self-mutation.
 
     So you provision the pipeline with `cdk-cicd deploy-ci` (preview it first with `cdk-cicd synth-ci` / `cdk-cicd list-ci`, which run the same entry with the mode set), and a local plain synth/deploy always gives you the app stacks.
 
