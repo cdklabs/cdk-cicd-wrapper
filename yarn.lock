@@ -41,13 +41,13 @@
     jsonschema "~1.4.1"
     semver "^7.7.1"
 
-"@aws-cdk/cloud-assembly-schema@^48.12.0":
-  version "48.20.0"
-  resolved "https://registry.yarnpkg.com/@aws-cdk/cloud-assembly-schema/-/cloud-assembly-schema-48.20.0.tgz#a2b60373cfbe228f901f62f0d7e2c5e2fe40702d"
-  integrity sha512-+eeiav9LY4wbF/EFuCt/vfvi/Zoxo8bf94PW5clbMraChEliq83w4TbRVy0jB9jE0v1ooFTtIjSQkowSPkfISg==
+"@aws-cdk/cloud-assembly-schema@^54.24.0":
+  version "54.24.0"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/cloud-assembly-schema/-/cloud-assembly-schema-54.24.0.tgz#ad24c3de22e695a1579ecc4c2f9d46e8c8ed86ec"
+  integrity sha512-9sH1pBpWuqZR/9rYAveNi62B/jDrc9BNOL83alD/wtIUSbRkg1aj6JX2r1cSugQwLBjCizQscQZgAb5wWnTTMg==
   dependencies:
-    jsonschema "~1.4.1"
-    semver "^7.7.2"
+    jsonschema "^1.5.0"
+    semver "^7.8.5"
 
 "@aws-cdk/integ-runner@^2.186.0-alpha.0":
   version "2.190.8"
