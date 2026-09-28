@@ -76,7 +76,7 @@
     "@aws-cdk/app-staging-synthesizer-alpha": "2.195.0-alpha.0",
     "@cloudcomponents/cdk-pull-request-approval-rule": "^2.4.0",
     "@cloudcomponents/cdk-pull-request-check": "^2.4.0",
-    "yaml": "^2.8.1"
+    "yaml": "^2.9.1"
   },
   "bundledDependencies": [
     "@cloudcomponents/cdk-pull-request-approval-rule",
