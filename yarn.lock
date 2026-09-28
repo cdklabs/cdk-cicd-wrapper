@@ -1436,14 +1436,6 @@
     chalk "^4.1.2"
     semver "^7.7.2"
 
-"@jsii/check-node@1.131.0":
-  version "1.131.0"
-  resolved "https://registry.npmjs.org/@jsii/check-node/-/check-node-1.131.0.tgz"
-  integrity sha512-dpW4sSyXd6OFE2ieUifM7ZXb+BlHjjjQo32GDs1N9cNAFS5jTbTv5N2W/jncQYjCLSGpg+2i86NXEo+xkyMttw==
-  dependencies:
-    chalk "^4.1.2"
-    semver "^7.7.4"
-
 "@jsii/check-node@1.140.0":
   version "1.140.0"
   resolved "https://registry.yarnpkg.com/@jsii/check-node/-/check-node-1.140.0.tgz#cc52431daf11ae18437397348f7aabedef5bb99d"
@@ -1458,11 +1450,6 @@
   integrity sha512-SdjVQaNqLkTUK+2R0/t/MnM/NBvv1vzqxO5sn1nnoFD5Wlih8TFOIjl+Q8npzYmOtN+et3D+BMVYrxmVfq4X0w==
   dependencies:
     ajv "^8.17.1"
-
-"@jsii/spec@1.131.0":
-  version "1.131.0"
-  resolved "https://registry.npmjs.org/@jsii/spec/-/spec-1.131.0.tgz"
-  integrity sha512-qRqibPI7ndM8zX4w83dsIf3F2Edca2OImzQsJWKnKwgsfmC1z99d4lYEPKpfGB2ZadEg9RJUwc6duE2PXA3CAQ==
 
 "@jsii/spec@1.140.0", "@jsii/spec@^1.114.1", "@jsii/spec@^1.139.0":
   version "1.140.0"
@@ -5877,17 +5864,17 @@ jsesc@^3.0.2:
   resolved "https://registry.npmjs.org/jsesc/-/jsesc-3.1.0.tgz"
   integrity sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA==
 
-jsii-diff@^1.131.0:
-  version "1.131.0"
-  resolved "https://registry.npmjs.org/jsii-diff/-/jsii-diff-1.131.0.tgz"
-  integrity sha512-IQLQTblZ5TCwtCvVS8X5G9xAhvoF/LlznrQf0AexUlqy+kz8k2IWtxo+Rkn0/YyjS0sqi1E1Mt11gLz3x/kOdQ==
+jsii-diff@^1.140.0:
+  version "1.140.0"
+  resolved "https://registry.yarnpkg.com/jsii-diff/-/jsii-diff-1.140.0.tgz#fb64a471643673bc611dbcf4882e37445c2dd34b"
+  integrity sha512-nK6y3X08YDt7hrkgl45gn9uzQFioqeBLXwj/OZ1AyeejvvPQJvaNuIogRdrfjBuNuksjnQlW/RJk8ocgzaXCvA==
   dependencies:
-    "@jsii/check-node" "1.131.0"
-    "@jsii/spec" "1.131.0"
+    "@jsii/check-node" "1.140.0"
+    "@jsii/spec" "1.140.0"
     fs-extra "^10.1.0"
-    jsii-reflect "^1.131.0"
+    jsii-reflect "^1.140.0"
     log4js "^6.9.1"
-    yargs "^17.7.2"
+    yargs "^17.7.3"
 
 jsii-docgen@^10.5.0:
   version "10.12.5"
@@ -5921,7 +5908,7 @@ jsii-pacmak@^1.140.0:
     xmlbuilder "^15.1.1"
     yargs "^17.7.3"
 
-jsii-reflect@^1.131.0, jsii-reflect@^1.139.0, jsii-reflect@^1.140.0:
+jsii-reflect@^1.139.0, jsii-reflect@^1.140.0:
   version "1.140.0"
   resolved "https://registry.yarnpkg.com/jsii-reflect/-/jsii-reflect-1.140.0.tgz#8929a3fbccee9c02bc6a1a2a9f49df2b0026086d"
   integrity sha512-8bRD6WSQfWrB6/31sz92bi21HWaMVzvxZUgaJt/IiT3RqGKc57dO+idekn8WNpTBneE9vVhj24UDExHH8YfJAQ==
@@ -7366,7 +7353,7 @@ semver@^6.3.0, semver@^6.3.1:
   resolved "https://registry.npmjs.org/semver/-/semver-6.3.1.tgz"
   integrity sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==
 
-semver@^7.0.0, semver@^7.3.4, semver@^7.5.2, semver@^7.5.3, semver@^7.5.4, semver@^7.6.0, semver@^7.7.1, semver@^7.7.2, semver@^7.7.4, semver@^7.8.4, semver@^7.8.5:
+semver@^7.0.0, semver@^7.3.4, semver@^7.5.2, semver@^7.5.3, semver@^7.5.4, semver@^7.6.0, semver@^7.7.1, semver@^7.7.2, semver@^7.8.4, semver@^7.8.5:
   version "7.8.5"
   resolved "https://registry.npmjs.org/semver/-/semver-7.8.5.tgz"
   integrity sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==
