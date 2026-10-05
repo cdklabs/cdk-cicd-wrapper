@@ -56,7 +56,7 @@
     "projen": "^0.99.68",
     "shx": "^0.4.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "resolutions": {
     "constructs": "10.5.0",
