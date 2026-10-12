@@ -45,7 +45,7 @@ import {
 import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspect';
 import { SupportResources } from '../../support/SupportResources';
 import { resolveVpcNetworking } from '../../support/Vpc';
-import { defaultCiCommands } from '../ci-commands';
+import { defaultCiCommands, NODE_RUNTIME_VERSION } from '../ci-commands';
 import { resolveCodeCommitRepository } from '../codepipeline/source';
 
 const PRIVATE_NPM_CONFIG_PATH = '/tmp/cdk-cicd-npmrc';
@@ -293,6 +293,24 @@ export class CdkPipelinesEngine extends Construct {
     // self-mutation, asset publishing) -- the uniform application Blueprint had.
     const vpcNetworking = resolveVpcNetworking(this, config.vpc, config.proxy !== undefined);
 
+    // Whether a user-supplied build image is in effect for this engine's projects. The Synth project can
+    // take `ci.image`, and CDK Pipelines' pipeline-wide default image comes from
+    // `codeBuildEnvSettings.buildImage`; either means the user owns the Node version, so -- exactly like
+    // the flat engine's guard -- we must NOT emit a `runtime-versions` pin (it is only valid on the
+    // managed standard images and turns a custom image's build into a hard YAML_FILE_ERROR).
+    const customBuildImage = config.ci.image !== undefined || config.codeBuildEnvSettings?.buildImage !== undefined;
+    // The Node runtime pin, applied to EVERY CodeBuild project this engine creates -- Synth, SelfMutate,
+    // and every asset-publishing project -- via `codeBuildDefaults.partialBuildSpec` (the lever that
+    // reaches all of them; a per-step spec would miss the self-mutation and asset projects CDK Pipelines
+    // builds itself). Without it those projects inherit the image default (Node 18 on
+    // aws/codebuild/standard:7.0) while `aws-cdk-lib` requires Node >= 20 -- so SelfMutate/assets would
+    // run EBADENGINE on an unsupported Node, the same defect the flat engine already pins against.
+    const nodeRuntimeDefaultSpec = customBuildImage
+      ? undefined
+      : codebuild.BuildSpec.fromObject({
+          phases: { install: { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } },
+        });
+
     this.pipeline = new pipelines.CodePipeline(this, 'Pipeline', {
       pipelineName: name,
       crossAccountKeys: true,
@@ -300,14 +318,16 @@ export class CdkPipelinesEngine extends Construct {
       // Blueprint `codeBuildEnvSettings` (privileged mode, compute type, environment variables --
       // `CodeBuildFactoryProvider` parity) + `vpc` above, both applied by CDK Pipelines itself to EVERY
       // CodeBuild project it creates (synth, self-mutation, asset publishing) -- the uniform application
-      // Blueprint had.
+      // Blueprint had. The Node runtime pin rides the same `partialBuildSpec` default so every project
+      // gets a supported Node (see `nodeRuntimeDefaultSpec` above).
       codeBuildDefaults:
-        config.codeBuildEnvSettings !== undefined || vpcNetworking !== undefined
+        config.codeBuildEnvSettings !== undefined || vpcNetworking !== undefined || nodeRuntimeDefaultSpec !== undefined
           ? {
               buildEnvironment: config.codeBuildEnvSettings,
               vpc: vpcNetworking?.vpc,
               securityGroups: vpcNetworking?.securityGroups,
               subnetSelection: vpcNetworking?.subnetSelection,
+              partialBuildSpec: nodeRuntimeDefaultSpec,
             }
           : undefined,
       synth: new pipelines.CodeBuildStep('Synth', {

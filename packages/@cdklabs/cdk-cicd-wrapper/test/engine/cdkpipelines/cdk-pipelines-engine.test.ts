@@ -1284,4 +1284,92 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
       t.resourceCountIs('AWS::CodeCommit::Repository', 0);
     });
   });
+
+  // The Node runtime pin. CDK Pipelines leaves CodeBuild projects on the image default (Node 18 on
+  // aws/codebuild/standard:7.0) unless told otherwise, while aws-cdk-lib requires Node >= 20 -- so
+  // Synth, SelfMutate, and every asset-publishing project must carry a runtime-versions pin, in parity
+  // with the flat engine. (ci.partialBuildSpec merging is covered elsewhere in this suite.)
+  describe('Node runtime pin (parity with the flat engine)', () => {
+    const renderWith = (config: ReturnType<typeof defineCICD>): Record<string, any>[] => {
+      const stack = new Stack(new App(), 'PipelineStack', {
+        env: { account: '111111111111', region: 'us-west-2' },
+      });
+      const engine = new CdkPipelinesEngine(stack, 'Cd', { config, stages: new StubStages() });
+      void engine;
+      return Object.values(Template.fromStack(stack).findResources('AWS::CodeBuild::Project')) as any[];
+    };
+
+    test('runtime-versions nodejs is pinned on EVERY project (Synth, SelfMutate, assets)', () => {
+      // A cross-region prod stage forces a cross-region support stack and asset-publishing projects, so
+      // the asset projects are present to assert on, not just Synth + SelfMutate.
+      const projects = renderWith(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev', { name: 'prod', env: { account: '111111111111', regions: ['us-east-1'] } }],
+        }),
+      );
+
+      // At least Synth + SelfMutate; assets appear once the stub app publishes an asset. One unpinned
+      // project is one project on Node 18 under aws-cdk-lib >= 20 -- assert the pin on all of them, and
+      // on >= 20 rather than a literal so a bump stays honest.
+      expect(projects.length).toBeGreaterThanOrEqual(2);
+      for (const p of projects) {
+        const spec = JSON.parse(p.Properties.Source.BuildSpec);
+        expect(spec.phases.install['runtime-versions'].nodejs).toBeGreaterThanOrEqual(20);
+      }
+    });
+
+    test('the pinned runtime is NODE_RUNTIME_VERSION (22) on the Synth project', () => {
+      const projects = renderWith(
+        defineCICD({ application: 'shop', repository: Repository.codecommit('shop'), stages: ['dev'] }),
+      );
+      const synth = projects.find((p) =>
+        (p.Properties.Environment.EnvironmentVariables ?? []).some(
+          (v: { Name?: string }) => v.Name === 'CDK_CICD_MODE',
+        ),
+      );
+      expect(synth).toBeDefined();
+      const spec = JSON.parse(synth!.Properties.Source.BuildSpec);
+      expect(spec.phases.install['runtime-versions'].nodejs).toBe(22);
+    });
+
+    test('a custom ci.image suppresses the runtime-versions pin on every project', () => {
+      // runtime-versions is only valid on the managed standard images; a user who brings their own image
+      // owns its Node version, so the pin must NOT be emitted (a hard YAML_FILE_ERROR otherwise).
+      const projects = renderWith(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev'],
+          ci: { image: 'public.ecr.aws/example/node:18' },
+        }),
+      );
+
+      expect(projects.length).toBeGreaterThanOrEqual(2);
+      for (const p of projects) {
+        const spec = JSON.parse(p.Properties.Source.BuildSpec);
+        expect(spec.phases?.install?.['runtime-versions']).toBeUndefined();
+      }
+    });
+
+    test('a custom codeBuildEnvSettings.buildImage suppresses the runtime-versions pin on every project', () => {
+      const projects = renderWith(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.codecommit('shop'),
+          stages: ['dev'],
+          codeBuildEnvSettings: {
+            buildImage: codebuild.LinuxBuildImage.fromDockerRegistry('public.ecr.aws/example/node:18'),
+          },
+        }),
+      );
+
+      expect(projects.length).toBeGreaterThanOrEqual(2);
+      for (const p of projects) {
+        const spec = JSON.parse(p.Properties.Source.BuildSpec);
+        expect(spec.phases?.install?.['runtime-versions']).toBeUndefined();
+      }
+    });
+  });
 });

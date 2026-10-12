@@ -36,10 +36,9 @@ import {
   SynthesizerType,
 } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
+import { NODE_RUNTIME_VERSION } from '../ci-commands';
 import { deployRoleExternalIdSecretArnsForStages } from '../external-id-secrets';
 
-/** Node runtime for the CD build image's install phase (kept in step with the CI engine). */
-const NODE_RUNTIME_VERSION = 22;
 /** Kept outside CODEBUILD_SRC_DIR so registry credentials cannot enter or modify the config checkout. */
 const PRIVATE_NPM_CONFIG_PATH = '/tmp/cdk-cicd-npmrc';
 /** The CDK bootstrap roles `cdk deploy` assumes (same set the CI engine grants). */

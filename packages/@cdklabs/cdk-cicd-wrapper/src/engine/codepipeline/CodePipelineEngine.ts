@@ -63,7 +63,7 @@ import { AccessLogsForBucketAspect } from '../../support/AccessLogsForBucketAspe
 import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
 import { ssmWarmingCommands, ssmWarmingReadStatements } from '../cdkpipelines/CdkPipelinesEngine';
-import { defaultCiCommands } from '../ci-commands';
+import { defaultCiCommands, NODE_RUNTIME_VERSION } from '../ci-commands';
 import { deployRoleExternalIdSecretArnsForStages } from '../external-id-secrets';
 // Reuse the SSM account-warming helpers the CdkPipelines engine exports (same wiring GitHubActionsEngine
 // does) rather than redefining the scan/grant here -- one source of truth for both the shell and the IAM.
@@ -74,12 +74,6 @@ import { EngineRenderProps, IEngine } from '../types';
  * publishing roles push assets, and the lookup role serves context queries during synth.
  */
 const BOOTSTRAP_ROLE_KINDS = ['deploy', 'file-publishing', 'image-publishing', 'lookup'];
-
-/**
- * Node runtime for every build project. Pinned rather than left to the image default because
- * `aws-cdk-lib` requires Node >= 20 and the standard CodeBuild image still defaults to Node 18.
- */
-const NODE_RUNTIME_VERSION = 22;
 
 /** Kept outside CODEBUILD_SRC_DIR so npm credentials can never enter a promoted source artifact. */
 const PRIVATE_NPM_CONFIG_PATH = '/tmp/cdk-cicd-npmrc';

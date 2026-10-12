@@ -15,6 +15,17 @@
 /** The npm scripts CI runs by default, in order. */
 const DEFAULT_SCRIPTS = ['audit', 'build', 'test'] as const;
 
+/**
+ * Node runtime for every CodeBuild project the engines create. Pinned rather than left to the image
+ * default because `aws-cdk-lib` requires Node >= 20 and the standard CodeBuild image still defaults to
+ * Node 18 (so `npm ci` warns EBADENGINE and the app then runs on an unsupported Node). Shared here --
+ * rather than redeclared per engine -- so the flat `CodePipelineEngine`, the Blueprint-compatible
+ * `CdkPipelinesEngine`, and the container-split `DeploymentPipeline` all pin the SAME version, and a
+ * bump moves them together. Emitted only on the managed standard images (`runtime-versions` is invalid
+ * elsewhere); a user-supplied build image owns its own Node version.
+ */
+export const NODE_RUNTIME_VERSION = 22;
+
 /** Where the recommended-checks guidance lives, cited by the missing-script warning. */
 const CHECKS_DOCS_URL = 'https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/audit/';
 
