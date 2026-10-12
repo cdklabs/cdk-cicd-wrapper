@@ -130,4 +130,38 @@ describe('m4-approval-selfupdate: PipelineApp', () => {
     const unknown = { ...config('shop'), engine: 'github' as EngineType };
     expect(() => new PipelineApp({ config: unknown })).toThrow(/unknown pipeline engine 'github'/);
   });
+
+  test('pipelineStackName pins the flat pipeline stack name for in-place Blueprint migration', () => {
+    // The deployed Blueprint flat pipeline has a fixed stack name whose SelfMutate/update targets it by
+    // name; adopting it in place means the flat engine's deploy-ci stack must take that same name.
+    const resolved = defineCICD({
+      application: 'shop',
+      pipelineStackName: 'tefAssets',
+      repository: Repository.s3('shop-src/app.zip'),
+      stages: ['dev'],
+    });
+    const assembly = new PipelineApp({ config: resolved }).synth();
+
+    // The CloudFormation stackName is pinned (verified against the synthesized stack, not the id)...
+    expect(assembly.stacks.map((s) => s.stackName)).toEqual(['tefAssets']);
+    Template.fromJSON(assembly.stacks[0].template).resourceCountIs('AWS::CodePipeline::Pipeline', 1);
+  });
+
+  test('pipelineStackName changes only the stackName, not the construct id (no child logical-ID churn)', () => {
+    // The construct id must stay `${application}-pipeline` so child logical IDs (derived from the node
+    // path) are byte-identical to the default -- that is the whole point of an in-place adoption.
+    const pinned = new PipelineApp({
+      config: defineCICD({
+        application: 'shop',
+        pipelineStackName: 'tefAssets',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+      }),
+    });
+    const defaulted = new PipelineApp({ config: config('shop') });
+
+    expect(pinned.pipelineStack.node.id).toEqual('shop-pipeline');
+    expect(pinned.pipelineStack.node.id).toEqual(defaulted.pipelineStack.node.id);
+    expect(pinned.pipelineStack.stackName).toEqual('tefAssets');
+  });
 });

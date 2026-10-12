@@ -394,13 +394,13 @@ export interface ResolvedCicdConfig {
   /** Bootstrap qualifier (≤10 chars), derived from `application` when not given. */
   readonly qualifier?: string;
   /**
-   * CloudFormation stack name for the engine-owned self-mutating pipeline stack (the one the
-   * `CDK_PIPELINES` and `GITHUB_ACTIONS` engines assemble). Only read by those self-mutating engines;
-   * the flat `CODEPIPELINE` engine names its stack from the user's own `bin`.
+   * CloudFormation stack name for the engine-owned pipeline stack. Honored by every engine: the
+   * self-mutating `CDK_PIPELINES`/`GITHUB_ACTIONS` engines apply it in the assembler, and the flat
+   * `CODEPIPELINE` engine applies it to the `deploy-ci` pipeline stack (`PipelineApp`).
    * @default `${application}-pipeline`
    *
-   * Set this to preserve a pre-1.x (Blueprint) pipeline stack name so an already-deployed,
-   * self-mutating pipeline can update IN PLACE instead of requiring a rename cutover -- the pipeline's
+   * Set this to preserve a pre-1.x (Blueprint) pipeline stack name so an already-deployed pipeline
+   * can update IN PLACE instead of requiring a rename cutover -- a self-mutating pipeline's
    * `SelfMutate` step runs `cdk deploy <thisName>`, and a self-mutating pipeline cannot rename its own
    * root stack. Changes ONLY the CloudFormation `stackName`, never the construct id, so the pipeline's
    * child logical IDs are unchanged from the default. Same Blueprint-parity family as `pipelineRoleNames`.
@@ -417,8 +417,11 @@ export interface ResolvedCicdConfig {
   /** GitHub Actions engine configuration. Only read when `engine` is `EngineType.GITHUB_ACTIONS`. */
   readonly githubActions?: GitHubActionsConfig;
   /**
-   * Forced IAM role names for the CDK Pipelines (`CDK_PIPELINES`) engine's own roles. Only read when
-   * `engine` is `EngineType.CDK_PIPELINES`; omitted fields keep CDK-generated names.
+   * Forced IAM role names for the CDK Pipelines (`CDK_PIPELINES`) engine's own roles. The `pipeline`
+   * field is ALSO honored by the flat `CODEPIPELINE` engine when `codePipelineRoleNames.pipeline` is
+   * unset, so one `pipelineRoleNames.pipeline` pins the pipeline role on both engines (Blueprint
+   * in-place migration). The asset-publishing fields (`assetsFile`/`assetsDocker`) are read only by
+   * the `CDK_PIPELINES` engine. Omitted fields keep CDK-generated names.
    */
   readonly pipelineRoleNames?: PipelineRoleNames;
   /**
