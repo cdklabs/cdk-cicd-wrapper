@@ -46,7 +46,7 @@
     "aislop": "^0.16.1",
     "all-contributors-cli": "^6.26.1",
     "cdklabs-projen-project-types": "^0.5.2",
-    "constructs": "10.5.0",
+    "constructs": "10.8.1",
     "eslint": "^8",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
@@ -59,7 +59,7 @@
     "typescript": "^5.9.3"
   },
   "resolutions": {
-    "constructs": "10.5.0",
+    "constructs": "10.8.1",
     "micromatch/picomatch": "^2.3.2"
   },
   "keywords": [
