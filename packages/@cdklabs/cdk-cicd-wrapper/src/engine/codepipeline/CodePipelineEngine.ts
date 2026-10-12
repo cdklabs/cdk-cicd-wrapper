@@ -594,8 +594,16 @@ export class CodePipelineEngine implements IEngine {
     // Force deterministic RoleNames on the flat engine's own roles (Blueprint parity), last, once every
     // role exists. The pipeline role is on the Pipeline construct; each CodeBuild project's role is named
     // `<buildRolePrefix>-<projectId>` from its construct id (Build / UpdatePipeline / Deploy-<stage>).
-    if (config.codePipelineRoleNames !== undefined) {
-      this.enforceRoleNames(scope, pipeline, config.codePipelineRoleNames);
+    //
+    // The pipeline role name falls back to `pipelineRoleNames.pipeline` when `codePipelineRoleNames`
+    // does not pin it, so a single `pipelineRoleNames.pipeline` pins the pipeline role on BOTH engines
+    // (the Blueprint in-place-migration case: INT/PROD trust policies reference one fixed pipeline role
+    // name regardless of engine). `pipelineRoleNames.assetsFile`/`assetsDocker` have no flat-engine
+    // equivalent (this engine publishes no assets) and are correctly ignored here.
+    const flatRoleNames = config.codePipelineRoleNames;
+    const effectivePipelineRole = flatRoleNames?.pipeline ?? config.pipelineRoleNames?.pipeline;
+    if (flatRoleNames !== undefined || effectivePipelineRole !== undefined) {
+      this.enforceRoleNames(scope, pipeline, { ...flatRoleNames, pipeline: effectivePipelineRole });
     }
   }
 

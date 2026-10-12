@@ -2136,6 +2136,45 @@ describe('m4-codepipeline: CodePipelineEngine', () => {
         .filter((n): n is string => typeof n === 'string');
       expect(named).toEqual(['shop-codepipeline-role']);
     });
+
+    test('falls back to pipelineRoleNames.pipeline when codePipelineRoleNames is unset', () => {
+      // Blueprint in-place migration: INT/PROD trust policies reference ONE fixed pipeline role name,
+      // and a single `pipelineRoleNames.pipeline` should pin it on both engines. Here only the
+      // CDK_PIPELINES-flavoured field is set, yet the flat engine must still honor it.
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        pipelineRoleNames: {
+          pipeline: 'tefAssets-codepipeline-role',
+          assetsFile: 'tefAssets-codepipeline-assets-file-role',
+        },
+      });
+      const t = render(config);
+      const named = Object.values(t.findResources('AWS::IAM::Role'))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => r.Properties.RoleName)
+        .filter((n): n is string => typeof n === 'string');
+      // The flat engine has no asset-publishing role, so `assetsFile` has no equivalent and is ignored:
+      // exactly the pipeline role is named, nothing more.
+      expect(named).toEqual(['tefAssets-codepipeline-role']);
+    });
+
+    test('codePipelineRoleNames.pipeline wins over pipelineRoleNames.pipeline when both are set', () => {
+      const config = defineCICD({
+        application: 'shop',
+        repository: Repository.s3('shop-src/app.zip'),
+        stages: ['dev'],
+        pipelineRoleNames: { pipeline: 'from-pipelineRoleNames' },
+        codePipelineRoleNames: { pipeline: 'from-codePipelineRoleNames' },
+      });
+      const t = render(config);
+      const named = Object.values(t.findResources('AWS::IAM::Role'))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => r.Properties.RoleName)
+        .filter((n): n is string => typeof n === 'string');
+      expect(named).toEqual(['from-codePipelineRoleNames']);
+    });
   });
 
   describe('warmAccountsFromSsm (SSM account warming ahead of the synth build)', () => {

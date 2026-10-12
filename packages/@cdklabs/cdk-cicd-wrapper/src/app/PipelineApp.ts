@@ -68,14 +68,20 @@ export class PipelineApp extends App {
       defaultStackSynthesizer: new DefaultStackSynthesizer(),
     });
 
-    const name = `${config.application ?? DEFAULT_APPLICATION}-pipeline`;
+    // The construct id stays `${application}-pipeline` so child logical IDs (which derive from the
+    // construct node path) never churn. `pipelineStackName` overrides ONLY the CloudFormation
+    // stackName -- the same contract the self-mutating assembler honors in `pipeline-assembler.ts` --
+    // so an already-deployed Blueprint-era flat pipeline (e.g. `tefAssets`) can be adopted in place
+    // instead of forcing a rename cutover.
+    const constructId = `${config.application ?? DEFAULT_APPLICATION}-pipeline`;
+    const stackName = config.pipelineStackName ?? constructId;
 
-    this.pipelineStack = new Stack(this, name, {
-      stackName: name,
+    this.pipelineStack = new Stack(this, constructId, {
+      stackName,
       env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
     });
 
-    engineFor(config, props.disposable ?? false).render(this.pipelineStack, { config, pipelineName: name });
+    engineFor(config, props.disposable ?? false).render(this.pipelineStack, { config, pipelineName: stackName });
 
     // Same check and verbosity Blueprint applies to its pipeline stack. NOTE: in this repository the rules
     // are inert for the reason given in the file header, so nag findings here can only be measured
