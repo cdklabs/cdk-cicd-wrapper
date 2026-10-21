@@ -34,7 +34,7 @@
     "@typescript-eslint/parser": "^7",
     "@typescript-eslint/typescript-estree": "^7",
     "commit-and-tag-version": "^12",
-    "constructs": "^10.0.0",
+    "constructs": "^10.8.1",
     "eslint": "^8",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",

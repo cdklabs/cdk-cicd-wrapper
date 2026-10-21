@@ -49,7 +49,7 @@
     "cdk-nag": "2.37.55",
     "cdk-pipelines-github": "0.4.140",
     "commit-and-tag-version": "^12",
-    "constructs": "10.5.0",
+    "constructs": "10.8.1",
     "eslint": "^8",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
