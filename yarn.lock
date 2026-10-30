@@ -25,13 +25,13 @@
   resolved "https://registry.npmjs.org/@aws-cdk/asset-node-proxy-agent-v6/-/asset-node-proxy-agent-v6-2.1.0.tgz"
   integrity sha512-7bY3J8GCVxLupn/kNmpPc5VJz8grx+4RKfnnJiO1LG+uxkZfANZG3RMHhE+qQxxwkyQ9/MfPtTpf748UhR425A==
 
-"@aws-cdk/aws-service-spec@0.1.98":
-  version "0.1.98"
-  resolved "https://registry.npmjs.org/@aws-cdk/aws-service-spec/-/aws-service-spec-0.1.98.tgz"
-  integrity sha512-oif2Gxp6Tb9FoT4iw1M/DPULshqK/DL7Bbo/3ss7uTHm5DDsI48tXU4ooEiiFNwLkMAp1Bp+76iG0wkgNqWwmw==
+"@aws-cdk/aws-service-spec@0.1.221":
+  version "0.1.221"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/aws-service-spec/-/aws-service-spec-0.1.221.tgz#319e6f0f682428fe7e16afb841ae418e3961a4bf"
+  integrity sha512-Cf5/I0Vjgx+DdNYVocqG5YQs5mrJ32o8OyjW0Uif/7k5KmHI71CQ4tn49EjqQuXVNBdLY6TNDYDPJ/5naCuP3w==
   dependencies:
-    "@aws-cdk/service-spec-types" "^0.0.164"
-    "@cdklabs/tskb" "^0.0.3"
+    "@aws-cdk/service-spec-types" "^0.0.287"
+    "@cdklabs/tskb" "^0.0.4"
 
 "@aws-cdk/cloud-assembly-schema@^41.2.0":
   version "41.2.0"
@@ -49,27 +49,24 @@
     jsonschema "~1.4.1"
     semver "^7.7.2"
 
-"@aws-cdk/integ-runner@^2.186.0-alpha.0":
-  version "2.190.8"
-  resolved "https://registry.npmjs.org/@aws-cdk/integ-runner/-/integ-runner-2.190.8.tgz"
-  integrity sha512-WmzKuCcFM/HrmQVCAjHeXjgoA24I6sEXlKvAYIG14RfQbbEUiEZlnG8YdJkzb8t864k1d9rw+/PvasIC4HMfjw==
+"@aws-cdk/integ-runner@^2.205.8":
+  version "2.205.8"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/integ-runner/-/integ-runner-2.205.8.tgz#3bb86871fe4baa5561756c64479c20287d69864e"
+  integrity sha512-U2w1hX4damo+/gFMb5bEvQcTDjXmkFGKXH35GJTssPDgzjiolWnnDniLhyTm3r3hRhgbIRTzcpCQ5Ts2/1YCYw==
   dependencies:
-    "@aws-cdk/aws-service-spec" "0.1.98"
-    aws-cdk "2.1029.4"
-  optionalDependencies:
-    fsevents "2.3.2"
+    "@aws-cdk/aws-service-spec" "0.1.221"
 
 "@aws-cdk/integ-tests-alpha@^2.186.0-alpha.0":
   version "2.186.0-alpha.0"
   resolved "https://registry.npmjs.org/@aws-cdk/integ-tests-alpha/-/integ-tests-alpha-2.186.0-alpha.0.tgz"
   integrity sha512-K1OIiz9vMI53hxVaaw+bmjRWRqaOtxoF8WBrNdrbewA1kPYuC7w2QFYvQG4efusZvHO4YeQmlOhnAj2erxrkaA==
 
-"@aws-cdk/service-spec-types@^0.0.164":
-  version "0.0.164"
-  resolved "https://registry.npmjs.org/@aws-cdk/service-spec-types/-/service-spec-types-0.0.164.tgz"
-  integrity sha512-Uy28KdwlotnGAH89PsIMH5bUEF8jb2W4FTaHrO8yRu70PgrnqH6j/xVWlyrp1JRd05CorZUhV9SWTdbCdzMU6Q==
+"@aws-cdk/service-spec-types@^0.0.287":
+  version "0.0.287"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/service-spec-types/-/service-spec-types-0.0.287.tgz#97111225fb1fa59e3854a437d838baddada10030"
+  integrity sha512-noS0KVz+JTB0zOMsGpz/qm5a//2lMO4m43IzGr05yCIj6foG53+iQj6DLvI/SjMFKtNMFIjF2dlw+zmNuJ0itw==
   dependencies:
-    "@cdklabs/tskb" "^0.0.3"
+    "@cdklabs/tskb" "^0.0.4"
 
 "@aws-sdk/checksums@^3.1000.29":
   version "3.1000.29"
@@ -725,10 +722,10 @@
   resolved "https://registry.yarnpkg.com/@biomejs/cli-win32-x64/-/cli-win32-x64-2.5.13.tgz#37336709d07473c1bad65d47d944896e716d0453"
   integrity sha512-VOofU/nW761XWzUeUNE8zzYNyPrxuMuNFMizL0qz7J75yeV8N7WFheUlk1/K6dOkaFpH9wJ+lDKlwjAbw0346w==
 
-"@cdklabs/tskb@^0.0.3":
-  version "0.0.3"
-  resolved "https://registry.npmjs.org/@cdklabs/tskb/-/tskb-0.0.3.tgz"
-  integrity sha512-JR+MuD4awAXvutu7HArephXfZm09GPTaSAQUqNcJB5+ZENRm4kV+L6vJL6Tn1xHjCcHksO+HAqj3gYtm5K94vA==
+"@cdklabs/tskb@^0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@cdklabs/tskb/-/tskb-0.0.4.tgz#6d7af32427ef947dddcb6f1f1d76d75924e33323"
+  integrity sha512-NFx1X0l7p5DyHtLLEyNeh1hPN4UN9hTkZkzFs/Mp+kFk7dpdINGmGVpCfRDjJ2DrcNSNENUmT+w8g73TvmBbTw==
 
 "@clack/core@1.4.3":
   version "1.4.3"
@@ -2777,13 +2774,6 @@ aws-cdk-lib@2.195.0:
     table "^6.9.0"
     yaml "1.10.2"
 
-aws-cdk@2.1029.4:
-  version "2.1029.4"
-  resolved "https://registry.npmjs.org/aws-cdk/-/aws-cdk-2.1029.4.tgz"
-  integrity sha512-rJa8QLd8WHaoTEjPLqVwmNpDMmyJycVaxdr/Evr/1MDLq+WCovP46IqPaXfH0q/jY0gCsga9or907tEayK5xcg==
-  optionalDependencies:
-    fsevents "2.3.2"
-
 babel-jest@30.5.1:
   version "30.5.1"
   resolved "https://registry.yarnpkg.com/babel-jest/-/babel-jest-30.5.1.tgz#b20da241e3d525e17a1cda61eadbc2e13230baeb"
@@ -4519,11 +4509,6 @@ fs.realpath@^1.0.0:
   version "1.0.0"
   resolved "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz"
   integrity sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==
-
-fsevents@2.3.2:
-  version "2.3.2"
-  resolved "https://registry.npmjs.org/fsevents/-/fsevents-2.3.2.tgz"
-  integrity sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==
 
 function-bind@^1.1.2:
   version "1.1.2"
