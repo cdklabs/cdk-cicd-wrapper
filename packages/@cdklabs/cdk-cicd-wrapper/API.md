@@ -4880,6 +4880,7 @@ templates — the config is wrong, so no template built from it should exist.
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.AppConfig.property.CONTEXT_KEY">CONTEXT_KEY</a></code> | <code>string</code> | Construct-context key the wrapper writes the resolved stage config under. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.AppConfig.property.SOURCE_CONTEXT_KEY">SOURCE_CONTEXT_KEY</a></code> | <code>string</code> | Construct-context key naming where the injected `cicd:config` came from (for example the deploy repository's `config/<stage>.json` for one container-mode target). Only used to make validation errors actionable; it never changes which configuration is returned. |
 
 ---
 
@@ -4892,6 +4893,18 @@ public readonly CONTEXT_KEY: string;
 - *Type:* string
 
 Construct-context key the wrapper writes the resolved stage config under.
+
+---
+
+##### `SOURCE_CONTEXT_KEY`<sup>Required</sup> <a name="SOURCE_CONTEXT_KEY" id="@cdklabs/cdk-cicd-wrapper.AppConfig.property.SOURCE_CONTEXT_KEY"></a>
+
+```typescript
+public readonly SOURCE_CONTEXT_KEY: string;
+```
+
+- *Type:* string
+
+Construct-context key naming where the injected `cicd:config` came from (for example the deploy repository's `config/<stage>.json` for one container-mode target). Only used to make validation errors actionable; it never changes which configuration is returned.
 
 ---
 

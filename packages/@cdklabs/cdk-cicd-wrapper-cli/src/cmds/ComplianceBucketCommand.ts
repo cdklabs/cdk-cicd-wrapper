@@ -7,7 +7,7 @@ import * as path from 'path';
 import { S3, BucketLocationConstraint } from '@aws-sdk/client-s3';
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 import * as yargs from 'yargs';
-import { logger } from '../utils/Logging';
+import { describeError, logger } from '../utils/Logging';
 
 /**
  * The default path to the policy JSON file.
@@ -126,7 +126,7 @@ class Command implements yargs.CommandModule {
           },
         });
       } catch (err) {
-        logger.error(err);
+        logger.error(describeError(err));
       }
     })();
   }

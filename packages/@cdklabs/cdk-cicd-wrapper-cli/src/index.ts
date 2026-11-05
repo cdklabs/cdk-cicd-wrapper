@@ -3,7 +3,7 @@
 
 /* eslint-disable no-console */
 
-import * as yargs from 'yargs';
+import type { Argv } from 'yargs';
 import check from './cmds/autopilot/CheckCommand';
 import deployCi from './cmds/autopilot/DeployCiCommand';
 import deploy from './cmds/autopilot/DeployCommand';
@@ -25,7 +25,19 @@ import { logger } from './utils/Logging';
  * It defines various commands, options, and configurations for the CLI.
  */
 async function main() {
-  const ya = yargs;
+  // yargs 18 is ESM-only and has no singleton. It exports its factory as `module.exports`, so Node's
+  // require(esm) returns the factory itself; fall back to `default` for a namespace-shaped result.
+  // Build one instance over the process arguments.
+  type YargsFactory = (args: string[]) => Argv;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const yargsModule = require('yargs') as YargsFactory | { default?: YargsFactory };
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { hideBin } = require('yargs/helpers') as { hideBin: (argv: string[]) => string[] };
+  const createYargs = typeof yargsModule === 'function' ? yargsModule : yargsModule.default;
+  if (typeof createYargs !== 'function') {
+    throw new Error('cdk-cicd: the installed yargs does not export a factory');
+  }
+  const ya = createYargs(hideBin(process.argv));
 
   // Register the command handlers
   ya.command(configure);
@@ -49,8 +61,7 @@ async function main() {
 
   // Configure CLI options
   ya.showHelpOnFail(true); // Show help on command failure
-  // aislop-ignore-next-line import/namespace -- yargs v17 namespace idiom (pinned to ^17)
-  ya.wrap(yargs.terminalWidth()); // Wrap command output to terminal width
+  ya.wrap(ya.terminalWidth()); // Wrap command output to terminal width
   ya.options('debug', { type: 'boolean', default: false, desc: 'Debug logs' }); // Add a --debug option
   ya.completion(); // Enable command completion
   ya.help(); // Add a --help option
@@ -61,7 +72,7 @@ async function main() {
   // Custom version option handling
   ya.version(); // Enabling the default --version option
 
-  const args = await ya.argv; // Parse the command-line arguments
+  const args = await ya.parseAsync(); // Parse the command-line arguments
 
   // Enable debug mode if the --debug option is provided
   if (args.debug) {

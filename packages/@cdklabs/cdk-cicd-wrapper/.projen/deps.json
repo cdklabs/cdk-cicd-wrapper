@@ -2,7 +2,7 @@
   "dependencies": [
     {
       "name": "@aws-cdk/integ-runner",
-      "version": "^2.186.0-alpha.0",
+      "version": "^2.205.8",
       "type": "build"
     },
     {
@@ -16,21 +16,22 @@
     },
     {
       "name": "@types/node",
+      "version": "ts6.0",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/eslint-plugin",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/parser",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/typescript-estree",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
@@ -39,7 +40,7 @@
     },
     {
       "name": "commit-and-tag-version",
-      "version": "^12",
+      "version": "^13",
       "type": "build"
     },
     {
@@ -83,7 +84,7 @@
     },
     {
       "name": "jsii-docgen",
-      "version": "^10.5.0",
+      "version": "^10.12.7",
       "type": "build"
     },
     {
@@ -92,12 +93,12 @@
     },
     {
       "name": "jsii-rosetta",
-      "version": "~5.9.0",
+      "version": "~6.0.0",
       "type": "build"
     },
     {
       "name": "jsii",
-      "version": "~5.9.0",
+      "version": "~6.0.0",
       "type": "build"
     },
     {
@@ -110,6 +111,7 @@
     },
     {
       "name": "typescript",
+      "version": "~6.0.3",
       "type": "build"
     },
     {
@@ -140,7 +142,7 @@
     },
     {
       "name": "constructs",
-      "version": "^10.5.0",
+      "version": "^10.8.1",
       "type": "peer"
     },
     {
