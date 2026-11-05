@@ -90,8 +90,15 @@ export interface CicdConfigProps {
    */
   readonly pipelineStackName?: string;
   readonly repository: Repository;
-  /** Each stage is either a bare name (`'dev'`) or a full object. */
-  readonly stages: Array<string | StageInput>;
+  /**
+   * Each stage is either a bare name (`'dev'`) or a full object.
+   *
+   * Optional for a container-mode deployer image (`deployerImage`): its stages and their configuration
+   * can live entirely in the Repo 2 `deploy.config.ts` targets plus `config/<stage>.json`.
+   *
+   * @default []
+   */
+  readonly stages?: Array<string | StageInput>;
   /**
    * Application synthesizer. `APP_STAGING` remains available for direct/local deployment and Repo 1
    * image synthesis, but wrapper-generated deployment pipelines require `DEFAULT`. Direct use supports
@@ -230,7 +237,7 @@ function validateDeployRoleExternalIdReferences(
  */
 export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
   const application = props.application;
-  const stages = props.stages.map(normalizeStage);
+  const stages = (props.stages ?? []).map(normalizeStage);
   validateDeployRoleExternalIdReferences(stages, props.deployRoleExternalId);
   const synthesizerType = props.synthesizer?.type ?? SynthesizerType.DEFAULT;
   const engine = props.engine ?? EngineType.CODEPIPELINE;

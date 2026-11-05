@@ -33,7 +33,7 @@ export default defineCICD({
     'my-org/my-app',
     'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
   ),
-  stages: ['dev'], // required by defineCICD; deployerImage mode creates no deploy actions
+  // No `stages`: the deploy repository (Repo 2) defines every target and its configuration.
   deployerImage: BuildImage.docker({
     dockerfile: 'Dockerfile', // default; the image payload is your app + deps, NOT cdk.out
     // repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one
@@ -42,8 +42,9 @@ export default defineCICD({
 });
 ```
 
-`stages` remains required by the `defineCICD` API, but `deployerImage` mode does not render deployment
-actions for those stages.
+`stages` is optional. `deployerImage` mode renders no deployment actions, and the deployer container
+accepts any stage that a Repo 2 target defines, so the image needs no stage declarations. Stages you do
+declare keep working as before.
 
 `cdk-cicd deploy-ci` provisions the CI pipeline. Its single build project:
 
@@ -182,13 +183,48 @@ npm run cdk-cicd -- deploy --from-image --target dev
 On a runner whose default Docker network cannot reach AWS, add `--docker-network host`. The local
 executor is fail-closed: it refuses a target with `manualApproval: true` unless you pass `--yes`.
 
+### Stage configuration from Repo 2
+
+`config/<stage>.json` in Repo 2 can carry the target's full stage configuration next to its `version`:
+
+```json
+{
+  "version": "1.4.2",
+  "featureFlags": { "newCheckout": true },
+  "tags": { "environment": "int" },
+  "ordersTableName": "orders-int"
+}
+```
+
+When the file has any key besides `version`, it is the target's stage configuration:
+
+- `version` is reserved for the image tag and is removed before the configuration reaches the app.
+- The rest is mounted read-only into the container and selected with `CONFIG_FILE`. It **replaces** any
+  `config/<stage>.json` baked into the image. The two are never merged.
+- Your app validates it with its own schema (`AppConfig.of(this, { schema })`) during synth, before
+  any CloudFormation change. An invalid value fails with an error that names the key and the target.
+- Values such as `resolve:secretsmanager:<arn>` stay references and are resolved inside the container,
+  exactly as for a baked configuration.
+
+A file that holds only `version` keeps the previous behaviour: the image's baked configuration is used.
+
+To change a target's configuration, commit a new `config/<stage>.json`. The same image tag redeploys
+with the new values and no image rebuild. To check every target against the image's schema without
+deploying, run the preflight. It needs no `--yes`, because it changes nothing:
+
+```bash
+npm run cdk-cicd -- deploy --from-image --validate-only
+npm run cdk-cicd -- deploy --from-image --validate-only --target int
+```
+
 ## Division of authority: WHAT vs WHERE
 
-The **image** is authoritative for _what_ to deploy — the app code and its stage definitions are baked in
-at build time. The **`deploy.config.ts` target** is authoritative for _where_ — the account, region(s),
-and forced role for each stage. That is why each run pins a single `--region`: the target's environment
-overrides whatever region set the image's own `cicd.config.ts` carries, so the CD repository — not the
-image — decides the deployment topology.
+The **image** is authoritative for _what_ to deploy: the app code, its stacks, and the schema of its
+configuration. The **deploy repository** is authoritative for _where_ and _with which configuration_.
+The `deploy.config.ts` target sets the account, region(s), forced roles and approval, and
+`config/<stage>.json` sets the version and stage configuration. Each run pins a single `--region`, so
+the CD repository, not the image, decides the deployment topology. An image may still declare stages
+and bake configuration; Repo 2 values win whenever it supplies them.
 
 ## Rollback is a retag
 

@@ -50,6 +50,13 @@ export class AppConfig {
   public static readonly CONTEXT_KEY = 'cicd:config';
 
   /**
+   * Construct-context key naming where the injected `cicd:config` came from (for example the deploy
+   * repository's `config/<stage>.json` for one container-mode target). Only used to make validation
+   * errors actionable; it never changes which configuration is returned.
+   */
+  public static readonly SOURCE_CONTEXT_KEY = 'cicd:configSource';
+
+  /**
    * Resolve the configuration for the active stage: injected context first, config file second.
    *
    * Throws a `ConfigError` when neither is available, or when what is found does not satisfy
@@ -72,7 +79,12 @@ export class AppConfig {
 
     // Validated even though the wrapper produced it: the context can also be set by hand in
     // cdk.json or on the command line, and a bad hand-written value should fail the same way.
-    return validateConfig(injected, `context '${AppConfig.CONTEXT_KEY}'`, options.schema);
+    const source = Node.of(scope).tryGetContext(AppConfig.SOURCE_CONTEXT_KEY);
+    const label =
+      typeof source === 'string' && source.trim().length > 0
+        ? `context '${AppConfig.CONTEXT_KEY}' (${source.trim()})`
+        : `context '${AppConfig.CONTEXT_KEY}'`;
+    return validateConfig(injected, label, options.schema);
   }
 
   /**

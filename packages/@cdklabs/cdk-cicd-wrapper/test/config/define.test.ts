@@ -8,6 +8,12 @@ import { EngineType, RegionOrder, SynthesizerType } from '../../src/config/types
 const REPO = Repository.github('org/repo');
 
 describe('m3-config: defineCICD stage normalization', () => {
+  test('stages may be omitted (a container-mode deployer image whose stages live in Repo 2)', () => {
+    const cfg = defineCICD({ application: 'shop', qualifier: 'shop', repository: REPO, ci: { synthStages: 'all' } });
+    expect(cfg.stages).toEqual([]);
+    expect(cfg.ci.synthStages).toEqual([]);
+  });
+
   test('a bare-name stage becomes an object with an empty (env-agnostic) region list', () => {
     const cfg = defineCICD({ repository: REPO, stages: ['dev'] });
     expect(cfg.stages[0]).toEqual({

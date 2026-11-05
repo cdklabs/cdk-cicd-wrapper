@@ -27,6 +27,14 @@ import { logger } from '../../utils/Logging';
 const CONFIG_CONTEXT_KEY = 'cicd:config';
 /** Wrapper-owned runtime context, kept separate so AppConfig.of() returns only stage application data. */
 const WRAPPER_CONFIG_CONTEXT_KEY = 'cicd:wrapper';
+/** Where the injected `cicd:config` came from. Mirrors AppConfig.SOURCE_CONTEXT_KEY. */
+const CONFIG_SOURCE_CONTEXT_KEY = 'cicd:configSource';
+/**
+ * Set by `deploy --from-image` when Repo 2 supplies the stage configuration (mounted and selected via
+ * `CONFIG_FILE`). Its value is a human-readable label naming the deploy target and file; its presence
+ * also makes a missing `CONFIG_FILE` a hard error instead of the tolerated "un-configured app" case.
+ */
+export const STAGE_CONFIG_SOURCE_FLAG = 'CDK_CICD_STAGE_CONFIG_SOURCE';
 /** Wrapper-owned target account; survives CDK CLI rewrites and overrides configured application values. */
 export const ACCOUNT_OVERRIDE_FLAG = 'CDK_CICD_ACCOUNT_OVERRIDE';
 /** Wrapper-owned target Region; survives CDK CLI rewrites and overrides configured application values. */
@@ -361,6 +369,7 @@ export function buildContextJson(
   wrapperConfig: { [key: string]: any },
   env: NodeJS.ProcessEnv,
   cwd: string,
+  configSource?: string,
 ): string {
   let base: { [key: string]: any } = {};
 
@@ -380,6 +389,10 @@ export function buildContextJson(
   }
   if (Object.keys(wrapperConfig).length > 0 && !(WRAPPER_CONFIG_CONTEXT_KEY in base)) {
     base[WRAPPER_CONFIG_CONTEXT_KEY] = wrapperConfig;
+  }
+  const source = configSource?.trim();
+  if (source !== undefined && source.length > 0 && !(CONFIG_SOURCE_CONTEXT_KEY in base)) {
+    base[CONFIG_SOURCE_CONTEXT_KEY] = source;
   }
   return JSON.stringify(base);
 }
@@ -459,18 +472,26 @@ function readJsonObject(file: string): { [key: string]: any } {
  * config is injected (so `AppConfig.of` returns `{}` rather than re-reading and throwing MISSING_FILE),
  * i.e. the app runs un-configured, not un-wrapped.
  */
-async function loadConfig(stage: string): Promise<{ [key: string]: any }> {
+async function loadConfig(stage: string, injectedSource?: string): Promise<{ [key: string]: any }> {
   // Lazily import the wrapper only when a command that needs it actually runs, so booting the CLI
   // for a wrapper-free command (license, security-scan, check-dependencies, validate) never loads it.
   const { AppConfig, ConfigErrorKind } = await import('@cdklabs/cdk-cicd-wrapper');
   try {
     return AppConfig.load({ stage });
   } catch (error) {
-    if ((error as { kind?: string }).kind === ConfigErrorKind.MISSING_FILE) {
+    // A Repo 2-injected stage config is authoritative: if it cannot be read, deploying the image's
+    // un-configured app instead would silently ignore the deploy repository.
+    if (injectedSource === undefined && (error as { kind?: string }).kind === ConfigErrorKind.MISSING_FILE) {
       return {};
     }
     throw error;
   }
+}
+
+/** The Repo 2 stage-config label, when `deploy --from-image` injected one. */
+export function injectedStageConfigSource(env: NodeJS.ProcessEnv): string | undefined {
+  const source = (env[STAGE_CONFIG_SOURCE_FLAG] ?? '').trim();
+  return source.length > 0 ? source : undefined;
 }
 
 /** The require-preloads for the entry: the register hook always, ts-node first for a `.ts` entry. */
@@ -572,7 +593,18 @@ class Command implements yargs.CommandModule {
 
     // Two layers: app-config drives the injected cicd:config context (the app tree); the cicd.config
     // stage supplies the deploy target account/region when the caller has not already pinned one.
-    const config = await loadConfig(stage);
+    const configSource = injectedStageConfigSource(process.env);
+    let config: { [key: string]: any };
+    try {
+      config = await loadConfig(stage, configSource);
+    } catch (error) {
+      logger.error(
+        `cdk-cicd exec: could not load the stage configuration` +
+          (configSource !== undefined ? ` from ${configSource}` : ` for stage '${stage}'`) +
+          `: ${(error as Error).message}`,
+      );
+      process.exit(1);
+    }
     // `undefined` means no cicd.config exists. If a discovered config cannot be parsed, imported, or
     // validated, propagate that error: silently dropping its stages, roles, synthesizer, and plugins
     // would execute a materially different application or pipeline.
@@ -605,7 +637,7 @@ class Command implements yargs.CommandModule {
         process.env,
       )),
       ...complianceLoggingEnv(cicd, target, process.env),
-      CDK_CONTEXT_JSON: buildContextJson(contextConfig, wrapperRuntimeConfig(cicd), process.env, cwd),
+      CDK_CONTEXT_JSON: buildContextJson(contextConfig, wrapperRuntimeConfig(cicd), process.env, cwd, configSource),
       // The `-r ts-node/register` preload takes no options, so the module kind has to come from the
       // environment. Same requirement as the config loader: the entry is `require`d, so it must
       // transpile to CommonJS or Node throws on the first `import` (see TS_NODE_COMPILER_OPTIONS).

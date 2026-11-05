@@ -7,13 +7,15 @@
 // one region. The image holds the CDK app + its vendored deps, so the synth+deploy happens inside the
 // container against the target's injected env -- no CDK code, npm install or registry access here.
 //
-// The image is authoritative for WHAT to deploy (the app and its stages); the deploy.config target is
-// authoritative for WHERE (account + region + forced role). That is why each run pins a single region
-// via `deploy --region`: the target's env overrides whatever region set the image's own cicd.config
-// carries, so this repo -- not the image -- decides the deployment topology.
+// The image is authoritative for WHAT to deploy (the app, its stacks and the schema of its
+// configuration). This repo is authoritative for WHERE and WITH WHICH CONFIGURATION: the deploy.config
+// target fixes account + region + forced roles, and `config/<stage>.json` -- when it carries more than
+// the image `version` -- is the target's full stage configuration, mounted into the container and
+// selected via `CONFIG_FILE` so it replaces any config baked into the image. Each run pins a single
+// region via `deploy --region`, and the image need not declare the stage at all.
 
 import { spawn as spawnProcess } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 import type { ResolvedDeploymentConfig, ResolvedDeploymentTarget } from '@cdklabs/cdk-cicd-wrapper';
 import {
@@ -24,8 +26,72 @@ import {
   DEPLOY_ROLE_EXTERNAL_ID_FLAG,
   DEPLOY_ROLE_FLAG,
   resolveExternalId,
+  STAGE_CONFIG_SOURCE_FLAG,
 } from './ExecCommand';
 import { logger } from '../../utils/Logging';
+
+/** Where a Repo 2 stage configuration is mounted (read-only) inside the deployer container. */
+export const CONTAINER_STAGE_CONFIG_DIR = '/cdk-cicd/stage-config';
+/** Repo 2-local directory holding the per-target copies that are mounted (version key removed). */
+export const HOST_STAGE_CONFIG_DIR = path.join('cdk.out', '.cdk-cicd-stage-config');
+/** Wrapper-reserved key in Repo 2's `config/<stage>.json`: the image version, never app configuration. */
+export const VERSION_KEY = 'version';
+const SAFE_STAGE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/** A Repo 2 stage configuration prepared for one target. */
+export interface StageConfigMount {
+  /** Absolute host path of the file to mount. */
+  readonly hostPath: string;
+  /** Path the container reads via `CONFIG_FILE`. */
+  readonly containerPath: string;
+  /** Human-readable origin used in validation errors: names the deploy target and its file. */
+  readonly source: string;
+}
+
+/**
+ * Prepare Repo 2's `config/<stage>.json` as the target's stage configuration.
+ *
+ * Returns undefined -- the image's baked configuration stays in effect, exactly as before -- when the
+ * file is absent or carries nothing but the reserved `version` key. Otherwise the file is the FULL
+ * stage configuration: a copy without `version` is written under `cdk.out/` and mounted into the
+ * container, where it replaces (never merges with) any `config/<stage>.json` baked into the image.
+ * Values such as `resolve:secretsmanager:<arn>` stay references; they are resolved inside the container.
+ */
+export function prepareStageConfig(cwd: string, stage: string): StageConfigMount | undefined {
+  const file = path.join(cwd, 'config', `${stage}.json`);
+  if (!existsSync(file)) return undefined;
+
+  let document: unknown;
+  try {
+    document = JSON.parse(readFileSync(file, 'utf-8'));
+  } catch (error) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: ${file} exists but could not be read as JSON ` +
+        `(${error instanceof Error ? error.message : String(error)})`,
+    );
+  }
+  if (document === null || typeof document !== 'object' || Array.isArray(document)) {
+    throw new Error(`cdk-cicd deploy --from-image: ${file} must contain a JSON object`);
+  }
+  const { [VERSION_KEY]: _version, ...stageConfig } = document as { [key: string]: unknown };
+  if (Object.keys(stageConfig).length === 0) return undefined;
+
+  if (!SAFE_STAGE_NAME.test(stage)) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: target '${stage}' cannot carry a stage configuration -- its name must ` +
+        'match [A-Za-z0-9][A-Za-z0-9._-]* to be used as a file name',
+    );
+  }
+  const hostDir = path.resolve(cwd, HOST_STAGE_CONFIG_DIR);
+  mkdirSync(hostDir, { recursive: true });
+  const hostPath = path.join(hostDir, `${stage}.json`);
+  writeFileSync(hostPath, `${JSON.stringify(stageConfig, null, 2)}\n`, { mode: 0o644 });
+  return {
+    hostPath,
+    containerPath: `${CONTAINER_STAGE_CONFIG_DIR}/${stage}.json`,
+    source: `deploy repository config/${stage}.json for target '${stage}'`,
+  };
+}
 
 const AWS_ACCOUNT_ID = /^\d{12}$/;
 const AWS_REGION = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+-\d+$/;
@@ -113,6 +179,8 @@ export interface DockerTarget {
   readonly complianceLogBucketName?: string;
   readonly complianceLogBucketAccount?: string;
   readonly complianceLogBucketRegion?: string;
+  /** Repo 2 stage configuration to mount and select via `CONFIG_FILE`; undefined keeps the baked config. */
+  readonly stageConfig?: StageConfigMount;
 }
 
 interface ComplianceLoggingCoordinates {
@@ -161,8 +229,13 @@ function complianceLoggingForTarget(
  * by contrast, are literal `-e NAME=value` -- they are not secret and must be fixed for the run. Inside
  * the container the entrypoint is `cdk-cicd deploy` for the single stage, pinned to the one region.
  */
-export function dockerRunArgs(image: string, target: DockerTarget, options: { network?: string } = {}): string[] {
+export function dockerRunArgs(
+  image: string,
+  target: DockerTarget,
+  options: { network?: string; validateOnly?: boolean } = {},
+): string[] {
   const env: string[] = [];
+  const volumes: string[] = [];
   const setEnv = (name: string, value: string) => env.push('-e', `${name}=${value}`);
   const passEnv = (name: string) => env.push('-e', name); // inherit the host value by name
 
@@ -243,10 +316,23 @@ export function dockerRunArgs(image: string, target: DockerTarget, options: { ne
     setEnv(COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG, '');
     setEnv(COMPLIANCE_LOG_BUCKET_REGION_FLAG, '');
   }
+  // Repo 2's stage configuration, when it supplies one, is mounted read-only and selected by CONFIG_FILE,
+  // which the app-config loader resolves BEFORE config/<CDK_STAGE>.json -- so it fully replaces any
+  // baked file instead of merging with it. Without one, nothing is mounted and the image's own config
+  // resolution is unchanged (backward compatible).
+  if (target.stageConfig !== undefined) {
+    volumes.push('-v', `${target.stageConfig.hostPath}:${target.stageConfig.containerPath}:ro`);
+    setEnv('CONFIG_FILE', target.stageConfig.containerPath);
+    setEnv(STAGE_CONFIG_SOURCE_FLAG, target.stageConfig.source);
+  }
   // Creds inherited from the caller (who assumed the target account, for cross-account deploys).
   ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'].forEach(passEnv);
 
-  const inner = ['cdk-cicd', 'deploy', '--stage', target.stage, '--yes'];
+  // Validate-only synthesizes the target -- which runs the app's own AppConfig schema validation against
+  // the injected config -- and stops before any CloudFormation change set exists.
+  const inner = options.validateOnly
+    ? ['cdk-cicd', 'synth', '--stage', target.stage]
+    : ['cdk-cicd', 'deploy', '--stage', target.stage, '--yes'];
   if (target.region !== undefined) {
     inner.push('--region', target.region);
   }
@@ -255,7 +341,7 @@ export function dockerRunArgs(image: string, target: DockerTarget, options: { ne
   // most runners; `host` (or a named network) is what a constrained/air-gapped runner needs so the deploy
   // can reach the AWS endpoints from inside the container.
   const net = options.network !== undefined ? ['--network', options.network] : [];
-  return ['run', '--rm', ...net, ...env, image, ...inner];
+  return ['run', '--rm', ...net, ...volumes, ...env, image, ...inner];
 }
 
 /** The (target x region) runs for one target: one per region, or a single region-agnostic run. */
@@ -263,6 +349,7 @@ export function targetRuns(
   target: ResolvedDeploymentTarget,
   resolvedExternalId?: string,
   complianceLogging?: ComplianceLoggingCoordinates,
+  stageConfig?: StageConfigMount,
 ): DockerTarget[] {
   if (
     complianceLogging !== undefined &&
@@ -284,6 +371,7 @@ export function targetRuns(
     complianceLogBucketName: complianceLogging?.bucketName,
     complianceLogBucketAccount: complianceLogging?.account,
     complianceLogBucketRegion: complianceLogging?.region,
+    stageConfig,
   };
   if (target.env.regions.length === 0) {
     return [base];
@@ -359,8 +447,11 @@ export async function runFromImage(
     yes: boolean;
     network?: string;
     target?: string;
+    /** Synthesize each target (schema validation) without deploying; no approval needed. */
+    validateOnly?: boolean;
     cwd?: string;
     readVersion?: VersionReader;
+    prepareConfig?: (cwd: string, stage: string) => StageConfigMount | undefined;
     spawn?: DockerSpawn;
     resolveExternalId?: (value?: string) => Promise<string | undefined>;
   },
@@ -379,8 +470,11 @@ export async function runFromImage(
   }
 
   const bucketCoordinates = new Map<string, string>();
+  const prepareConfig = options.prepareConfig ?? prepareStageConfig;
+  const validateOnly = options.validateOnly ?? false;
   for (const target of targets) {
-    if (target.manualApproval && !options.yes) {
+    // Validation changes nothing, so it needs no approval -- that is what makes it a usable preflight.
+    if (target.manualApproval && !options.yes && !validateOnly) {
       logger.error(
         `cdk-cicd deploy --from-image: target '${target.stage}' requires manual approval -- re-run with --yes`,
       );
@@ -435,11 +529,27 @@ export async function runFromImage(
       }
     }
 
-    const runs = targetRuns(target, externalId, complianceLogging);
+    let stageConfig: StageConfigMount | undefined;
+    try {
+      stageConfig = prepareConfig(cwd, target.stage);
+    } catch (error) {
+      logger.error(error instanceof Error ? error.message : String(error));
+      return 1;
+    }
+    if (stageConfig !== undefined) {
+      logger.info(
+        `cdk-cicd deploy --from-image: ${target.stage} uses the stage configuration from ${stageConfig.source}`,
+      );
+    }
+
+    const action = validateOnly ? 'validate' : 'deploy';
+    const runs = targetRuns(target, externalId, complianceLogging, stageConfig);
     const results = await runRegionalInvocations(runs, target.env.regionOrder, async (run) => {
-      logger.info(`cdk-cicd deploy --from-image: ${run.stage} -> ${run.region ?? 'ambient region'} (${image})`);
+      logger.info(
+        `cdk-cicd deploy --from-image: ${action} ${run.stage} -> ${run.region ?? 'ambient region'} (${image})`,
+      );
       try {
-        const result = await spawn(dockerRunArgs(image, run, { network: options.network }), {
+        const result = await spawn(dockerRunArgs(image, run, { network: options.network, validateOnly }), {
           env:
             run.externalId === undefined
               ? process.env
@@ -467,7 +577,9 @@ export async function runFromImage(
       if (result.error !== undefined) {
         logger.error(`cdk-cicd deploy --from-image: could not run docker for ${run.stage}: ${result.error.message}`);
       } else {
-        logger.error(`cdk-cicd deploy --from-image: ${run.stage} -> ${run.region ?? 'ambient region'} failed`);
+        logger.error(
+          `cdk-cicd deploy --from-image: ${action} of target '${run.stage}' -> ${run.region ?? 'ambient region'} failed`,
+        );
       }
       if (firstFailure === undefined) {
         firstFailure = result.code;
