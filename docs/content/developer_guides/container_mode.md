@@ -226,6 +226,32 @@ npm run cdk-cicd -- deploy --from-image --validate-only
 npm run cdk-cicd -- deploy --from-image --validate-only --target int
 ```
 
+### Deploy a target automatically on every new image
+
+For a dev environment whose configuration does not change between image versions, set `autoDeploy` on
+its target. Every successful push to the target's ECR repository then deploys it, with no commit to
+the deploy repository:
+
+```typescript
+targets: [
+  { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' }, autoDeploy: true },
+  { stage: 'int', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
+],
+```
+
+- `cdk-cicd deploy-ci` adds a small pipeline for that target. An EventBridge rule on ECR pushes starts
+  it, and it deploys only that target. The main pipeline keeps running on deploy repository commits,
+  so other targets and their approval gates are never touched by an image push.
+- An `autoDeploy` target always runs the **newest tagged image** in its repository, from either
+  pipeline. Its `version` in `config/<stage>.json` is not used. The rest of that file is still its
+  stage configuration, and a commit that changes it redeploys the target as usual.
+- The target must have no manual approval, and its ECR repository must be in the CD pipeline's own
+  account and Region (ECR push events are delivered only to the local event bus).
+- If a new image needs a configuration change, its deployment fails at the validation synth, before
+  any CloudFormation change, until `config/<stage>.json` is updated.
+- The running version of an `autoDeploy` target is not recorded in Git. To pin it again, remove
+  `autoDeploy`, set `version`, and re-run `deploy-ci`.
+
 ## Division of authority: WHAT vs WHERE
 
 The **image** is authoritative for _what_ to deploy: the app code, its stacks, and the schema of its

@@ -1295,3 +1295,76 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(() => render(dup)).toThrow(/duplicate deploy.config target stage 'dev'/);
   });
 });
+
+describe('Repo 2 autoDeploy targets', () => {
+  const autoCfg = (overrides: { image?: string; account?: string } = {}) =>
+    defineDeployment({
+      image: overrides.image ?? '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer',
+      repository: Repository.codecommit('my-deploy-config'),
+      // Get past the cross-account pull acknowledgement so the autoDeploy check itself is exercised.
+      crossAccountEcrRepositoryPolicyConfigured: true,
+      targets: [
+        { stage: 'dev', env: { account: overrides.account ?? '111111111111', region: 'eu-west-1' }, autoDeploy: true },
+        { stage: 'prod', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
+      ],
+    });
+
+  test('renders a second, push-triggered pipeline that deploys only the autoDeploy target', () => {
+    const t = render(autoCfg());
+    const pipelines = Object.values(t.findResources('AWS::CodePipeline::Pipeline')) as any[];
+    expect(pipelines).toHaveLength(2);
+    const auto = pipelines.find(
+      (p) => p.Properties.PipelineType === 'V2' && p.Properties.ExecutionMode === 'SUPERSEDED',
+    );
+    expect(auto).toBeDefined();
+    expect((auto.Properties.Stages as any[]).map((s) => s.Name)).toEqual(['Source', 'Deploy-dev']);
+    const autoActions = (auto.Properties.Stages as any[]).flatMap((s) => s.Actions);
+    expect(autoActions.map((a: any) => a.Name)).not.toContain('Approve-prod');
+    expect(autoActions.map((a: any) => a.Name)).not.toContain('Deploy-prod');
+    // The config-repo checkout must not start this pipeline on commits (the main pipeline does that).
+    expect(autoActions[0].Configuration.PollForSourceChanges).toBe(false);
+    // Still exactly one deploy project and one created CodeCommit repository.
+    t.resourceCountIs('AWS::CodeBuild::Project', 1);
+    t.resourceCountIs('AWS::CodeCommit::Repository', 1);
+    t.hasResourceProperties('AWS::Events::Rule', {
+      EventPattern: {
+        source: ['aws.ecr'],
+        'detail-type': ['ECR Image Action'],
+        detail: { 'action-type': ['PUSH'], result: ['SUCCESS'], 'repository-name': ['my-app-deployer'] },
+      },
+    });
+  });
+
+  test('no autoDeploy target renders no extra pipeline or rule', () => {
+    const t = render(cfg());
+    t.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
+    // The CodeCommit source has its own rule; there must be no ECR push rule.
+    expect(
+      Object.keys(t.findResources('AWS::Events::Rule', { Properties: { EventPattern: { source: ['aws.ecr'] } } })),
+    ).toHaveLength(0);
+  });
+
+  test('an ECR repository in another account or Region is refused', () => {
+    expect(() => render(autoCfg({ image: '222222222222.dkr.ecr.eu-west-1.amazonaws.com/x' }))).toThrow(
+      /own concrete account and Region/,
+    );
+    expect(() => render(autoCfg({ image: '111111111111.dkr.ecr.us-east-1.amazonaws.com/x' }))).toThrow(
+      /own concrete account and Region/,
+    );
+  });
+
+  test('a non-ECR image is refused', () => {
+    expect(() => render(autoCfg({ image: 'docker.io/library/app:1' }))).toThrow(/needs an ECR deployer image/);
+  });
+
+  test('autoDeploy deploys the newest tagged image from both pipelines (fingerprint script)', () => {
+    const stack = deploymentStack(autoCfg());
+    const t = Template.fromStack(stack);
+    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const spec = JSON.parse(project.Properties.Source.BuildSpec);
+    const fingerprint = (spec.phases.build.commands as string[]).find((c) => c.startsWith('TARGET_FINGERPRINT='))!;
+    const script = extractEmbeddedNodeScript(fingerprint);
+    expect(script).toContain('sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest');
+    expect(script).toContain('target.autoDeploy === true');
+  });
+});
