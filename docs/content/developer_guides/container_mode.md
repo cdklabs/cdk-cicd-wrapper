@@ -33,7 +33,9 @@ export default defineCICD({
     'my-org/my-app',
     'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
   ),
-  // No `stages`: the deploy repository (Repo 2) defines every target and its configuration.
+  // Validation stage: the image build synthesizes it (cdk-nag + config schema) with config/ci.json
+  // before pushing. Deployment targets and their configuration live in Repo 2.
+  stages: ['ci'],
   deployerImage: BuildImage.docker({
     dockerfile: 'Dockerfile', // default; the image payload is your app + deps, NOT cdk.out
     // repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one
@@ -42,15 +44,22 @@ export default defineCICD({
 });
 ```
 
-`stages` is optional. `deployerImage` mode renders no deployment actions, and the deployer container
-accepts any stage that a Repo 2 target defines, so the image needs no stage declarations. Stages you do
-declare keep working as before.
+In `deployerImage` mode the stages are **validation stages**, and at least one is required. Before it
+builds the image, the pipeline synthesizes them with the image's own `config/<stage>.json`, so cdk-nag
+and your config schema run in CI. A failure stops the image from being pushed. Use
+`ci.synthStages` to validate only some of them. No deployment actions are rendered for these stages.
+
+The deployment targets do not need to be declared here: the deployer container accepts any stage a
+Repo 2 target defines and uses that target's configuration (see below). Keep a representative
+`config/ci.json` in Repo 1 so the validation exercises the same code paths as a real environment.
 
 `cdk-cicd deploy-ci` provisions the CI pipeline. Its single build project:
 
-1. runs `npm ci` and `cdk-cicd check` (CI as a validation gate),
-2. logs in to ECR,
-3. `docker build`s your Dockerfile and pushes the image, tagged by strategy (`GIT_SHA` by default —
+1. runs `npm ci` and your `audit`/`build`/`test` scripts (CI as a validation gate),
+2. synthesizes the validation stages (`cdk-cicd synth`, so cdk-nag and the config schema run) and
+   discards the assembly,
+3. logs in to ECR,
+4. `docker build`s your Dockerfile and pushes the image, tagged by strategy (`GIT_SHA` by default —
    the lowercase commit SHA for Git sources or a deterministic SHA-256 of another source revision;
    `LATEST` is simplest but not immutable).
 

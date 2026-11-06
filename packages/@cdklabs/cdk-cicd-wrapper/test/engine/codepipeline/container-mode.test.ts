@@ -57,6 +57,31 @@ describe('m6-container: image-build pipeline', () => {
     ).not.toThrow();
   });
 
+  test('synthesizes the validation stages (cdk-nag + config schema) before building the image', () => {
+    const cmds = buildCommands(render(cfg(BuildImage.docker())));
+    const synth = cmds.indexOf('npx cdk-cicd synth --all');
+    expect(synth).toBeGreaterThan(-1);
+    expect(synth).toBeLessThan(cmds.indexOf('docker build -f Dockerfile'));
+    expect(cmds.indexOf('rm -rf cdk.out')).toBeLessThan(cmds.indexOf('docker build -f Dockerfile'));
+  });
+
+  test('ci.synthStages narrows the image validation to the named stages', () => {
+    const cmds = buildCommands(
+      render(
+        defineCICD({
+          application: 'shop',
+          repository: Repository.s3('shop-src/app.zip'),
+          stages: ['ci', 'smoke'],
+          ci: { synthStages: ['ci'] },
+          deployerImage: BuildImage.docker(),
+        }),
+      ),
+    );
+    expect(cmds).toContain('npx cdk-cicd synth --stage ci');
+    expect(cmds).not.toContain('synth --stage smoke');
+    expect(cmds).not.toContain('synth --all');
+  });
+
   test('provisions an ECR repo named <application>-deployer and the build logs in, builds and pushes', () => {
     const t = render(cfg(BuildImage.docker()));
     t.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: 'shop-deployer' });

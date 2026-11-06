@@ -3,9 +3,9 @@
 # container-pipeline-verify -- proves the two-repo container split end to end on real AWS, with the
 # stage configuration owned by Repo 2:
 #
-#   1. Repo 1 (CodeCommit): the repo2-config-app fixture with a cicd.config.ts that declares NO stages,
-#      only application/qualifier/codeArtifact/deployerImage. `deploy-ci` provisions the image-build
-#      pipeline, which builds the deployer image (app + vendored deps) and pushes `:latest` to ECR.
+#   1. Repo 1 (CodeCommit): the repo2-config-app fixture with a cicd.config.ts that declares only one
+#      validation stage `ci`. `deploy-ci` provisions the image-build pipeline, which synthesizes `ci`
+#      with config/ci.json (cdk-nag + schema) and only then builds and pushes the image as `:latest`.
 #   2. Repo 2 (CodeCommit): deploy.config.ts with targets SBCD, SBCD2 and BAD that exist ONLY here, plus
 #      config/<stage>.json carrying `version` and the stage configuration. `deploy-ci` provisions the CD
 #      pipeline, which deploys every target from the same image tag.
@@ -242,10 +242,12 @@ main() {
   printf '{ "runId": "%s" }\n' "$CDK_CICD_TEST_RUN_ID" > "$r1/run.json"
   cat > "$r1/cicd.config.ts" <<EOF
 import { defineCICD, Repository, BuildImage, ImageTagStrategy } from '@cdklabs/cdk-cicd-wrapper';
-// No stages: every target and its configuration live in the deploy repository (Repo 2).
+// One VALIDATION stage, synthesized by the image build with config/ci.json. The deployment targets
+// (SBCD, SBCD2, BAD) and their configuration live only in the deploy repository (Repo 2).
 export default defineCICD({
   application: '$(r1_app)',
   qualifier: '${QUALIFIER}',
+  stages: [{ name: 'ci', env: { region: '${REGION}' } }],
   repository: Repository.codecommit('$(r1_src)', 'main', { existing: true }),
   codeArtifact: { domain: '${CA_DOMAIN}', repository: '${CA_REPO}', npmScope: 'cdklabs' },
   deployerImage: BuildImage.docker({ repositoryName: '$(ecr_repo)', tagStrategy: ImageTagStrategy.LATEST }),
