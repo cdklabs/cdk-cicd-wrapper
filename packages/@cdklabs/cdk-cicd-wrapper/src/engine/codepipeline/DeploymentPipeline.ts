@@ -1229,6 +1229,7 @@ function deploymentFingerprintScript(
     '}',
     'const versionFile = path.resolve("config", stage + ".json");',
     'let version = null;',
+    'let stageConfig = null;',
     'if (fs.existsSync(versionFile)) {',
     '  let document;',
     '  try {',
@@ -1250,6 +1251,13 @@ function deploymentFingerprintScript(
     '    );',
     '  }',
     '  version = candidate;',
+    // Keys besides `version` make the file the target's injected stage configuration, so a change to
+    // any of them must redeploy the target with the same image. A version-only file contributes
+    // nothing extra, which keeps the fingerprint of existing version-only targets unchanged.
+    '  const { version: _version, ...rest } = document;',
+    '  if (Object.keys(rest).length > 0) {',
+    '    stageConfig = crypto.createHash("sha256").update(JSON.stringify(rest)).digest("hex");',
+    '  }',
     '}',
     'const effectiveImage = resolveEffectiveImage(target, version);',
     'const immutableEcrImage = immutableEcrImageIdentity(effectiveImage);',
@@ -1273,6 +1281,7 @@ function deploymentFingerprintScript(
     '  target,',
     '  image: target.image ?? config.image ?? null,',
     '  version,',
+    '  ...(stageConfig === null ? {} : { stageConfig }),',
     '  ...(immutableEcrImage === null ? {} : { immutableEcrImage }),',
     '  region: process.env.TARGET_REGION ?? null,',
     '  tooling,',

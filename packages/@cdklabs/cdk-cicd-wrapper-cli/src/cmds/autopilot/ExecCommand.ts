@@ -659,6 +659,11 @@ class Command implements yargs.CommandModule {
     if (result.error) {
       throw result.error;
     }
+    // A child killed by a signal (e.g. SIGKILL from an out-of-memory build container) has no exit code
+    // and prints nothing itself; name the signal so the failure is diagnosable from the build log.
+    if (result.status === null) {
+      logger.error(`cdk-cicd exec: ${entry} was terminated by signal ${result.signal ?? 'unknown'}`);
+    }
     // Propagate the child's exit code verbatim -- the bundled-app diagnostic fails the child with a
     // non-zero code, and that must reach the CDK CLI.
     process.exit(result.status ?? 1);
