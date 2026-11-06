@@ -82,17 +82,17 @@ names in an internal **plugin registry** (name -> Aspect constructor/factory). T
    - Unit: `resolvePlugins` (undefined/empty/override/custom-missing/version-mismatch),
      `attach`/`addPlugin`, registry completeness (every default is registered).
    - Deploy: a purpose-built sample app of meaningful complexity (API Gateway + Lambda +
-     DynamoDB + SNS topic) deployed with `gyalai-Admin` to a sandbox, proving the SNS HTTPS-only
+     DynamoDB + SNS topic) deployed to a sandbox account, proving the SNS HTTPS-only
      policy and bucket/key aspects fire on a normal deploy. **Account IDs/ARNs treated as secret.**
-5. **Proof** — a **visual before/after HTML report** (KiroCrew artifact): side-by-side
+5. **Proof** — a **visual before/after HTML report** (kept outside the repository): side-by-side
    "resources each Aspect adds" cards, the SNS `NoHTTPSubscriptions`/`aws:SecureTransport` policy
    statement highlighted, resource-count deltas as a small chart, and a short readable code
    snippet of the `cicd.config.ts` plugin block + the `bin/` `addPlugin` call. Annotated deploy
    console screenshots go to artifacts only (not the PR). No plain text template diff.
 6. **PR** — to public upstream. Embed the visual report / sanitized snippets in the PR body;
-   verify no secrets (account IDs, ARNs, secret ARNs). If unsure a proof leaks, it goes to
-   KiroCrew artifacts only, not the PR.
-7. **Review** — request Milan's review; do not merge.
+   verify no secrets (account IDs, ARNs, secret ARNs). If unsure a proof leaks, it stays
+   outside the repository, not in the PR.
+7. **Review** — request a maintainer review; do not merge.
 
 ## Open questions (for review)
 
