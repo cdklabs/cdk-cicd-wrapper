@@ -209,18 +209,51 @@ export class DeploymentPipeline extends Construct {
       '  exit 1',
       'fi',
     ].join('\n');
+    // A target can be deployed by two pipelines (the main one and its autoDeploy pipeline). When both
+    // reach CloudFormation at once, one fails because the other's update is in progress; that run waits
+    // and retries, re-resolving its image, instead of leaving the target on a stale version. Any other
+    // failure exits immediately. One buildspec element, because CodeBuild parses each separately.
     const deployAndRecord = [
-      '{',
-      '  if [ -n "${TARGET_REGION:-}" ]; then',
-      `    ${prepareParallelTarget} &&`,
-      `      (cd .cdk-cicd-target && ${deployTarget})`,
-      '  else',
-      `    ${deployTarget}`,
+      'attempt=1',
+      'while :; do',
+      '  {',
+      '    if [ -n "${TARGET_REGION:-}" ]; then',
+      `      ${prepareParallelTarget} &&`,
+      `        (cd .cdk-cicd-target && ${deployTarget})`,
+      '    else',
+      `      ${deployTarget}`,
+      '    fi',
+      '    echo $? > /tmp/cdk-cicd-deploy-rc',
+      '  } 2>&1 | tee /tmp/cdk-cicd-deploy.log',
+      '  rc=$(cat /tmp/cdk-cicd-deploy-rc)',
+      '  [ "$rc" -eq 0 ] && break',
+      '  if [ "$attempt" -lt 3 ] && grep -qE "_IN_PROGRESS|in status CREATE_IN_PROGRESS" /tmp/cdk-cicd-deploy.log; then',
+      '    echo "cdk-cicd: another deployment of $TARGET_STAGE is in progress; retrying in 60s (attempt $attempt)"',
+      '    attempt=$((attempt + 1))',
+      '    sleep 60',
+      '    continue',
       '  fi',
-      '} && aws ssm put-parameter --name "$TARGET_STATE_PARAMETER" --type String ' +
+      '  exit "$rc"',
+      'done',
+      'aws ssm put-parameter --name "$TARGET_STATE_PARAMETER" --type String ' +
         '--value "$TARGET_FINGERPRINT" --overwrite >/dev/null',
     ].join('\n');
+    // An autoDeploy pipeline's creation run (CodePipeline starts every new pipeline once) would race the
+    // main pipeline's first deployment of the same target, so it exits cleanly. The starting pipeline is
+    // in CODEBUILD_INITIATOR (`codepipeline/<name>`); only autoDeploy actions set AUTO_DEPLOY.
+    const skipCreationRun = [
+      'if [ "${AUTO_DEPLOY:-}" = "1" ]; then',
+      '  TRIGGER=$(aws codepipeline get-pipeline-execution --pipeline-name "${CODEBUILD_INITIATOR#codepipeline/}" ' +
+        '--pipeline-execution-id "$PIPELINE_EXECUTION_ID" --query "pipelineExecution.trigger.triggerType" --output text)',
+      '  if [ "$TRIGGER" = "CreatePipeline" ]; then',
+      '    echo "cdk-cicd: skipping the creation run of the autoDeploy pipeline for $TARGET_STAGE"',
+      '    exit 0',
+      '  fi',
+      'fi',
+    ].join('\n');
+    const hasAutoDeploy = config.targets.some((target) => target.autoDeploy === true);
     const commands = [
+      ...(hasAutoDeploy ? [skipCreationRun] : []),
       ...(privateNpm ? npmConfigSetupCommands() : []),
       ...codeArtifactLogin,
       ...npmRegistryLogin,
@@ -405,7 +438,12 @@ export class DeploymentPipeline extends Construct {
     // for a RegionOrder.PARALLEL fan-out action; the build then narrows an ephemeral deploy.config to that
     // region before invoking the existing CLI, whose from-image executor remains the source of truth for
     // image resolution, account/role environment, and the inner `deploy --region` command.
-    const deployAction = (unit: DeploymentUnit, runOrder?: number, input: codepipeline.Artifact = sourceOutput) =>
+    const deployAction = (
+      unit: DeploymentUnit,
+      runOrder?: number,
+      input: codepipeline.Artifact = sourceOutput,
+      autoDeploy = false,
+    ) =>
       new actions.CodeBuildAction({
         actionName: unit.actionName,
         project,
@@ -416,6 +454,12 @@ export class DeploymentPipeline extends Construct {
           TARGET_STATE_PARAMETER: { value: unit.stateParameterName },
           EXPECTED_DEPLOYMENT_TOPOLOGY: { value: expectedDeploymentTopology },
           ...(unit.region !== undefined ? { TARGET_REGION: { value: unit.region } } : {}),
+          ...(autoDeploy
+            ? {
+                AUTO_DEPLOY: { value: '1' },
+                PIPELINE_EXECUTION_ID: { value: '#{codepipeline.PipelineExecutionId}' },
+              }
+            : {}),
         },
       });
     const actionsForTarget = (target: ResolvedDeploymentTarget, runOrder?: number) =>
@@ -467,7 +511,17 @@ export class DeploymentPipeline extends Construct {
       }
       const autoScope = new Construct(this, `AutoDeploy-${target.stage}`);
       const autoSource = new codepipeline.Artifact();
+      // A deterministic name, so the deploy project can be granted read access to this pipeline's
+      // executions without a CloudFormation dependency cycle (pipeline -> project -> policy -> pipeline).
+      const autoPipelineName = autoDeployPipelineName(stack.stackName, target.stage);
+      project.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['codepipeline:GetPipelineExecution'],
+          resources: [`arn:${stack.partition}:codepipeline:${stack.region}:${stack.account}:${autoPipelineName}`],
+        }),
+      );
       const autoPipeline = new codepipeline.Pipeline(autoScope, 'Pipeline', {
+        pipelineName: autoPipelineName,
         artifactBucket: support.artifactBucket,
         pipelineType: codepipeline.PipelineType.V2,
         // A newer push supersedes an in-flight run: only the newest image matters for this target.
@@ -481,7 +535,7 @@ export class DeploymentPipeline extends Construct {
         stageName: `Deploy-${target.stage}`,
         actions: deploymentUnits
           .filter((unit) => unit.target === target)
-          .map((unit) => deployAction(unit, undefined, autoSource)),
+          .map((unit) => deployAction(unit, undefined, autoSource, true)),
       });
       new events.Rule(autoScope, 'OnImagePush', {
         description: `Deploy ${target.stage} when a new image is pushed to ${repository.repositoryName}`,
@@ -539,6 +593,17 @@ export class DeploymentPipeline extends Construct {
 
     this.pipeline = pipeline;
   }
+}
+
+/**
+ * The autoDeploy pipeline's name: `<stack>-auto-<stage>`, restricted to CodePipeline's name alphabet
+ * and 100 characters. A name that would be truncated keeps a hash suffix so it stays unique.
+ */
+export function autoDeployPipelineName(stackName: string, stage: string): string {
+  const full = `${stackName}-auto-${stage}`.replace(/[^A-Za-z0-9.@\-_]/g, '-');
+  if (full.length <= 100) return full;
+  const hash = createHash('sha256').update(full).digest('hex').slice(0, 8);
+  return `${full.slice(0, 91)}-${hash}`;
 }
 
 /**

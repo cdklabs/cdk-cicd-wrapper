@@ -110,7 +110,8 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const record = spec.indexOf('ssm put-parameter');
     expect(deploy).toBeGreaterThan(-1);
     expect(record).toBeGreaterThan(deploy);
-    expect(spec).toContain('} && aws ssm put-parameter');
+    // State is recorded only after the deploy loop exits successfully.
+    expect(spec).toMatch(/done\\+naws ssm put-parameter/);
 
     const policies = JSON.stringify(t.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('ssm:GetParameter');
@@ -245,7 +246,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const t = render(cfg());
     const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
     const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
-    const deployAndRecord = commands.find((command) => command.includes('} && aws ssm put-parameter'))!;
+    const deployAndRecord = commands.find((command) => command.includes('done\naws ssm put-parameter'))!;
     expect(deployAndRecord).toBeDefined();
 
     const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-state-write-'));
@@ -287,6 +288,21 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       const successful = run(0, successfulTrace);
       expect(successful.status).toBe(0);
       expect(readFileSync(successfulTrace, 'utf8')).toContain('ssm put-parameter');
+
+      // A concurrent update of the same stack (the autoDeploy pipeline racing the main one) is retried;
+      // the first attempt fails with an *_IN_PROGRESS error and the second succeeds.
+      writeFileSync(path.join(bin, 'sleep'), '#!/bin/sh\nprintf "sleep %s\\n" "$1" >> "$TRACE_FILE"\n');
+      chmodSync(path.join(bin, 'sleep'), 0o755);
+      writeFileSync(
+        fakeCdkCicd,
+        '#!/bin/sh\nprintf "deploy\\n" >> "$TRACE_FILE"\n' +
+          'if [ ! -f "$TRACE_FILE.once" ]; then touch "$TRACE_FILE.once"; ' +
+          'echo "Stack app is in UPDATE_IN_PROGRESS state and can not be updated"; exit 1; fi\nexit 0\n',
+      );
+      const retriedTrace = path.join(cwd, 'retried.trace');
+      const retried = run(0, retriedTrace);
+      expect(retried.status).toBe(0);
+      expect(readFileSync(retriedTrace, 'utf8')).toMatch(/^deploy\nsleep 60\ndeploy\n.*ssm put-parameter/s);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

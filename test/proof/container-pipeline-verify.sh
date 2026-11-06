@@ -43,9 +43,16 @@ r1_src()       { printf 'cdkcicdtest-%s-r1src\n' "$CDK_CICD_TEST_RUN_ID"; }
 r2_src()       { printf 'cdkcicdtest-%s-r2src\n' "$CDK_CICD_TEST_RUN_ID"; }
 r2_stack()     { printf 'cdkcicdtest-%s-r2src-cd-pipeline\n' "$CDK_CICD_TEST_RUN_ID"; }   # <repository>-cd-pipeline
 # The CD pipeline's own name is CloudFormation-generated, so read it from the stack.
+# The stack also holds one AutoDeploy pipeline per autoDeploy target, so select by logical id: the main
+# pipeline is `Cd/Pipeline` (CdPipeline...), an auto-deploy one `Cd/AutoDeploy-<stage>/Pipeline`.
 r2_pipeline() {
   aws cloudformation describe-stack-resources --stack-name "$(r2_stack)" --region "$REGION" \
-    --query "StackResources[?ResourceType=='AWS::CodePipeline::Pipeline'].PhysicalResourceId | [0]" \
+    --query "StackResources[?ResourceType=='AWS::CodePipeline::Pipeline' && starts_with(LogicalResourceId, 'CdPipeline')].PhysicalResourceId | [0]" \
+    --output text 2>/dev/null || true
+}
+r2_auto_pipeline() {
+  aws cloudformation describe-stack-resources --stack-name "$(r2_stack)" --region "$REGION" \
+    --query "StackResources[?ResourceType=='AWS::CodePipeline::Pipeline' && starts_with(LogicalResourceId, 'CdAutoDeploy$1')].PhysicalResourceId | [0]" \
     --output text 2>/dev/null || true
 }
 APPROVALS=0
