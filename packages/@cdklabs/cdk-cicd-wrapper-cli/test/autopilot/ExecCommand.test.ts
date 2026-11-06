@@ -12,6 +12,8 @@ import { defineCICD, EngineType, RegionOrder, Repository } from '@cdklabs/cdk-ci
 import {
   appConfigForTarget,
   buildContextJson,
+  injectedStageConfigSource,
+  STAGE_CONFIG_SOURCE_FLAG,
   CFN_EXEC_ROLE_FLAG,
   COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG,
   COMPLIANCE_LOG_BUCKET_NAME_FLAG,
@@ -327,6 +329,19 @@ describe('exec: buildContextJson', () => {
     expect(out['cicd:config']).toEqual(config);
     expect(out['cicd:wrapper']).toEqual(wrapperConfig);
     expect(out['cicd:config']).not.toHaveProperty('plugins');
+  });
+
+  test('records an injected stage-config source only when one is given', () => {
+    const withSource = JSON.parse(buildContextJson(config, {}, { CDK_CONTEXT_JSON: '{}' }, '/nonexistent', ' repo2 '));
+    expect(withSource['cicd:configSource']).toBe('repo2');
+    const without = JSON.parse(buildContextJson(config, {}, { CDK_CONTEXT_JSON: '{}' }, '/nonexistent'));
+    expect(without).not.toHaveProperty('cicd:configSource');
+  });
+
+  test('injectedStageConfigSource reads the Repo 2 flag, treating blank as absent', () => {
+    expect(injectedStageConfigSource({ [STAGE_CONFIG_SOURCE_FLAG]: ' x ' })).toBe('x');
+    expect(injectedStageConfigSource({ [STAGE_CONFIG_SOURCE_FLAG]: ' ' })).toBeUndefined();
+    expect(injectedStageConfigSource({})).toBeUndefined();
   });
 
   test('does not clobber user-set app or wrapper config', () => {

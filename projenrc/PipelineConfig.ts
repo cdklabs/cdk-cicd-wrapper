@@ -19,16 +19,20 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       // consumers get the maturity signal and jsii-diff/compat does not treat an evolving API as
       // breaking a 'stable' contract.
       stability: 'experimental',
+      // TypeScript 6: the newest line with the classic compiler API (see CLIConfig).
+      typescriptVersion: '~6.0.3',
       releaseEnvironment: 'release',
       releasableCommits: pj.ReleasableCommits.ofType(['feat', 'fix', 'chore'], '.'),
       devDeps: [
         'eslint@^8',
         `cdk-pipelines-github`,
-        `@aws-cdk/integ-runner@^${root.integVersion}-alpha.0`,
+        // integ-runner left the alpha prerelease line; the integ-tests-alpha module did not.
+        '@aws-cdk/integ-runner@^2.205.8',
+        'jsii-docgen@^10.12.7',
         `@aws-cdk/integ-tests-alpha@^${root.integVersion}-alpha.0`,
-        '@typescript-eslint/eslint-plugin@^7',
-        '@typescript-eslint/parser@^7',
-        '@typescript-eslint/typescript-estree@^7',
+        '@typescript-eslint/eslint-plugin@^8',
+        '@typescript-eslint/parser@^8',
+        '@typescript-eslint/typescript-estree@^8',
       ],
       peerDeps: [
         `cdk-nag@^${root.cdkNagVersion}`,
@@ -69,6 +73,13 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
       npmTrustedPublishing: true,
     });
 
+    // projen >=0.104 configures typescript-eslint's project service, which reads the nearest
+    // tsconfig.json. jsii owns this package's tsconfig.json and it covers src/ only, so lint against
+    // tsconfig.dev.json (src + test) explicitly instead.
+    const eslintrc = this.tryFindObjectFile('.eslintrc.json')!;
+    eslintrc.addDeletionOverride('parserOptions.projectService');
+    eslintrc.addOverride('parserOptions.project', './tsconfig.dev.json');
+
     Eslint.of(this)!.addRules({
       'import/no-extraneous-dependencies': [
         'error',
@@ -88,6 +99,8 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
         // project must be `composite`, so `tsc --build` in the CLI can build it as a project
         // reference; this sets jsii's `projectReferences`, which emits `composite: true`.
         composite: true,
+        // jsii 6 (TypeScript 6 based) also selects jsii-rosetta ~6.0 for the Rosetta task.
+        jsiiVersion: '~6.0.0',
         // jsii-docgen regenerates API.md on every build from the jsii assembly, so the reference never
         // drifts from the public surface. It resolves `cdk-nag`/`cdk-pipelines-github` from the copies the
         // package's own `post-compile` places in its local `node_modules` (see below).
@@ -135,18 +148,13 @@ export class PipelineConfig extends yarn.TypeScriptWorkspace {
     });
 
     const postCompile = this.tasks.tryFind('post-compile')!;
-    // postCompile.exec("export DEP='@cloudcomponents';cp -rf ./node_modules/$DEP ./node_modules/ 2>/dev/null;");
-    postCompile.exec("export DEP='yaml';cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null;");
     // jsii-docgen (the docgen step `WorkspaceJsiiBuild` injects first in post-compile) reads the `.jsii`
-    // assembly of every dependency from this package's own node_modules; yarn hoists `cdk-nag` and
-    // `cdk-pipelines-github` to the monorepo root, so copy them local FIRST -- prepended so it runs
-    // before the docgen step, otherwise docgen fails with `Unable to locate assembly for dependency`.
-    postCompile.prependExec(
-      'for DEP in cdk-nag cdk-pipelines-github; do cp -rf ../../../node_modules/$DEP ./node_modules/ 2>/dev/null; done; ' +
-        'if [ -d ../../../node_modules/@aws-cdk/app-staging-synthesizer-alpha ]; then ' +
-        'mkdir -p ./node_modules/@aws-cdk; ' +
-        'cp -rf ../../../node_modules/@aws-cdk/app-staging-synthesizer-alpha ./node_modules/@aws-cdk/; fi;',
-    );
+    // assembly of every dependency from this package's own node_modules; yarn hoists `cdk-nag`,
+    // `cdk-pipelines-github` and the app-staging alpha to the monorepo root, so copy them local FIRST --
+    // prepended so it runs before the docgen step, otherwise docgen fails with `Unable to locate assembly
+    // for dependency`. The same script copies the bundled `yaml`. It is a Node script because projen's
+    // portable task shell has no `for`/`if` compound commands.
+    postCompile.prependExec('node build-tools/copy-local-deps.js');
   }
 }
 

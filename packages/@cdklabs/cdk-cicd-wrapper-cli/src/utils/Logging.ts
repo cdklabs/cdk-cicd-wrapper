@@ -3,8 +3,15 @@
 
 import { Logger } from 'tslog';
 
+/** Render an unknown thrown value for the logger: the stack for an Error, else its string form. */
+export function describeError(error: unknown): string {
+  return error instanceof Error ? (error.stack ?? error.message) : String(error);
+}
+
 export const logger = new Logger({
   name: 'CDK CI/CD CLI',
   minLevel: 3,
-  prettyLogTemplate: '{{yyyy}}.{{mm}}.{{dd}} {{hh}}:{{MM}}:{{ss}}:{{ms}}\t{{logLevelName}}\t[{{name}}]\t',
+  pretty: {
+    template: '{{yyyy}}.{{mm}}.{{dd}} {{hh}}:{{MM}}:{{ss}}:{{ms}}\t{{logLevelName}}\t[{{name}}]\t',
+  },
 });

@@ -90,7 +90,15 @@ export interface CicdConfigProps {
    */
   readonly pipelineStackName?: string;
   readonly repository: Repository;
-  /** Each stage is either a bare name (`'dev'`) or a full object. */
+  /**
+   * Each stage is either a bare name (`'dev'`) or a full object.
+   *
+   * In container mode (`deployerImage`) these are VALIDATION stages: the image-build CI synthesizes
+   * them (with cdk-nag and the app's own config validation) before it pushes the image, using the
+   * image's own `config/<stage>.json`. At least one is required, so an image is never shipped without
+   * being synthesized. They do not need to match the deployment targets: Repo 2 can deploy stages the
+   * image does not declare, with its own `config/<stage>.json`.
+   */
   readonly stages: Array<string | StageInput>;
   /**
    * Application synthesizer. `APP_STAGING` remains available for direct/local deployment and Repo 1
@@ -231,6 +239,13 @@ function validateDeployRoleExternalIdReferences(
 export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
   const application = props.application;
   const stages = props.stages.map(normalizeStage);
+  if (props.deployerImage !== undefined && stages.length === 0) {
+    throw new Error(
+      'cdk-cicd: a container-mode cicd.config (deployerImage) needs at least one stage. The image build ' +
+        'synthesizes those stages (cdk-nag and config validation) before it pushes the image; without ' +
+        'one, the image would first be synthesized at its first deployment.',
+    );
+  }
   validateDeployRoleExternalIdReferences(stages, props.deployRoleExternalId);
   const synthesizerType = props.synthesizer?.type ?? SynthesizerType.DEFAULT;
   const engine = props.engine ?? EngineType.CODEPIPELINE;

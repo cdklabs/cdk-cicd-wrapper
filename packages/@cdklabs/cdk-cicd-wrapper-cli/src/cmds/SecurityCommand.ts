@@ -9,7 +9,8 @@ import * as path from 'path';
 import * as yargs from 'yargs';
 import { BanditScanner, ScanningContext, SemgrepScanner, Shellcheck } from './scanners';
 import { CliHelpers } from '../utils/CliHelpers';
-import { logger } from '../utils/Logging';
+import { exitWithError } from '../utils/Exit';
+import { describeError, logger } from '../utils/Logging';
 
 /**
  * Command module for security scanning.
@@ -61,7 +62,7 @@ class Command implements yargs.CommandModule {
         scanReportFolder: scanReportFolder,
       });
     } catch (error) {
-      logger.error(error);
+      logger.error(describeError(error));
       logger.error('Security scan failed');
       exitCode = 1;
     } finally {
@@ -123,8 +124,7 @@ class Command implements yargs.CommandModule {
     });
 
     if (exitCode !== 0) {
-      // aislop-ignore-next-line import/namespace -- yargs v17 namespace idiom (pinned to ^17)
-      yargs.exit(exitCode, new Error('Security scanning has findings.'));
+      exitWithError(exitCode, new Error('Security scanning has findings.'));
     }
   }
 }

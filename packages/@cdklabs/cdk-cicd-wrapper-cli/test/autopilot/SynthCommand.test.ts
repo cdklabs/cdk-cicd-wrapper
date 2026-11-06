@@ -4,7 +4,7 @@
 import * as path from 'path';
 import { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import { ACCOUNT_OVERRIDE_FLAG, REGION_OVERRIDE_FLAG, resolveEnvTarget } from '../../src/cmds/autopilot/ExecCommand';
-import { synthTargets } from '../../src/cmds/autopilot/SynthCommand';
+import { configForStage, synthTargets } from '../../src/cmds/autopilot/SynthCommand';
 
 // A minimal resolved config: one single-region stage, one multi-region stage.
 const CONFIG = {
@@ -173,5 +173,36 @@ describe('m3-synth: synthTargets', () => {
       AWS_REGION: 'us-west-1',
       AWS_DEFAULT_REGION: 'us-west-1',
     });
+  });
+});
+
+describe('container mode: configForStage', () => {
+  const containerEnv = { [ACCOUNT_OVERRIDE_FLAG]: '333333333333', [REGION_OVERRIDE_FLAG]: 'eu-west-3' };
+
+  test('a declared stage is returned unchanged', () => {
+    const selected = configForStage(CONFIG, 'dev', containerEnv)!;
+    expect(selected.adHoc).toBe(false);
+    expect(selected.config).toBe(CONFIG);
+    expect(selected.stage.name).toBe('dev');
+  });
+
+  test('outside the container contract an undeclared stage is still refused', () => {
+    expect(configForStage(CONFIG, 'SBCD', {})).toBeUndefined();
+    expect(configForStage(CONFIG, 'SBCD', { [ACCOUNT_OVERRIDE_FLAG]: '333333333333' })).toBeUndefined();
+  });
+
+  test('under the container contract an undeclared stage resolves from the overrides, with no image stages', () => {
+    const empty = { ...CONFIG, stages: [] } as unknown as ResolvedCicdConfig;
+    const selected = configForStage(empty, 'SBCD', containerEnv)!;
+    expect(selected.adHoc).toBe(true);
+    expect(selected.stage).toMatchObject({ name: 'SBCD', manualApproval: false });
+    const targets = synthTargets(selected.config, 'SBCD', 'eu-west-3', containerEnv);
+    expect(targets).toEqual([expect.objectContaining({ stage: 'SBCD', region: 'eu-west-3', account: '333333333333' })]);
+  });
+
+  test('an environment-agnostic container target still yields one ambient-region target', () => {
+    const env = { [ACCOUNT_OVERRIDE_FLAG]: '', [REGION_OVERRIDE_FLAG]: '', AWS_REGION: 'eu-central-1' };
+    const selected = configForStage(CONFIG, 'SBCD', env)!;
+    expect(synthTargets(selected.config, 'SBCD', undefined, env).map((t) => t.region)).toEqual(['eu-central-1']);
   });
 });

@@ -228,6 +228,63 @@ destroy_stack() {
 }
 
 # =============================================================================
+# CodeCommit sources
+#
+# The pipeline proofs use a CodeCommit repository as their source: the bundle is committed and pushed
+# to `main`, and every later push is a new commit the pipeline picks up. Repositories are created by
+# the proof (so the pipeline imports them with `{ existing: true }`), tagged with the run id, and only
+# ever deleted by destroy_cc_repo after the same prefix + tag checks the stack guard applies.
+# =============================================================================
+cc_repo_url() { printf 'https://git-codecommit.%s.amazonaws.com/v1/repos/%s\n' "$2" "$1"; }
+
+ensure_cc_repo() {
+  local repo="${1:-}" region="${2:-}"
+  case "$repo" in "$STACK_PREFIX"-*) ;; *) die "guard: refusing CodeCommit repo '$repo' -- outside the '$STACK_PREFIX-' prefix" ;; esac
+  [ -n "$region" ] || die 'ensure_cc_repo: empty region'
+  aws codecommit get-repository --repository-name "$repo" --region "$region" >/dev/null 2>&1 && return 0
+  aws codecommit create-repository --repository-name "$repo" --region "$region" \
+      --tags "$TAG_KEY=$CDK_CICD_TEST_RUN_ID" >/dev/null 2>&1 \
+    || die "could not create CodeCommit repo $repo in $region"
+  info "created CodeCommit repo $repo ($region)"
+}
+
+# Commit everything in $dir except node_modules/ and cdk.out/ and push it to `main` of $repo. Callable
+# repeatedly: each call is a new commit. Refuses to run unless $dir is its OWN git repository, so a
+# bundle that accidentally sits inside another checkout can never push that checkout.
+cc_push() {
+  local dir="${1:-}" repo="${2:-}" region="${3:-}" message="${4:-cdk-cicd-wrapper proof source}"
+  [ -d "$dir" ] || die "cc_push: no such directory '$dir'"
+  case "$repo" in "$STACK_PREFIX"-*) ;; *) die "guard: refusing to push to '$repo'" ;; esac
+  [ -d "$dir/.git" ] || git -C "$dir" init -q -b main || die "git init failed in $dir"
+  local top real
+  top="$(git -C "$dir" rev-parse --show-toplevel)"; real="$(cd "$dir" && pwd -P)"
+  [ "$top" = "$real" ] || die "guard: $dir is not its own git repository (toplevel $top)"
+  printf 'node_modules/\ncdk.out/\n' > "$dir/.gitignore"
+  git -C "$dir" add -A || die 'git add failed'
+  git -C "$dir" -c user.name='cdk-cicd-wrapper proof' -c user.email='proof@example.invalid' \
+      commit -q --allow-empty -m "$message" || die 'git commit failed'
+  # The credential helper is injected for this one command only; no git config is written.
+  git -C "$dir" -c credential.helper= -c 'credential.helper=!aws codecommit credential-helper $@' \
+      -c credential.UseHttpPath=true push -q "$(cc_repo_url "$repo" "$region")" HEAD:refs/heads/main 2>&1 | redact
+  [ "${PIPESTATUS[0]}" = 0 ] || die "git push to CodeCommit repo $repo failed"
+  info "pushed $(git -C "$dir" rev-parse --short HEAD) to $repo/main"
+}
+
+# Delete a proof CodeCommit repo. Returns non-zero when a repo we created is left behind.
+destroy_cc_repo() {
+  local repo="${1:-}" region="${2:-}" arn tag
+  case "$repo" in "$STACK_PREFIX"-*) ;; *) die "guard: refusing to delete CodeCommit repo '$repo'" ;; esac
+  arn="$(aws codecommit get-repository --repository-name "$repo" --region "$region" \
+           --query 'repositoryMetadata.Arn' --output text 2>/dev/null)" || return 0
+  tag="$(aws codecommit list-tags-for-resource --resource-arn "$arn" --region "$region" \
+           --query "tags.\"$TAG_KEY\"" --output text 2>/dev/null)" || true
+  [ "$tag" = "$CDK_CICD_TEST_RUN_ID" ] || { log "CodeCommit repo $repo is not tagged for this run -- leaving it"; return 1; }
+  aws codecommit delete-repository --repository-name "$repo" --region "$region" >/dev/null 2>&1 \
+    && info "deleted CodeCommit repo $repo" \
+    || { log "could not delete CodeCommit repo $repo"; return 1; }
+}
+
+# =============================================================================
 # subcommands
 # =============================================================================
 cmd_creds() {

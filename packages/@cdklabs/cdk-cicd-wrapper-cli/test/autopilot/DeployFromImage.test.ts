@@ -7,8 +7,11 @@ import * as os from 'os';
 import * as path from 'path';
 import { ResolvedDeploymentConfig } from '@cdklabs/cdk-cicd-wrapper';
 import {
+  CONTAINER_STAGE_CONFIG_DIR,
   DockerSpawnOptions,
   dockerRunArgs,
+  HOST_STAGE_CONFIG_DIR,
+  prepareStageConfig,
   readVersionFromConfig,
   resolveTargetImage,
   runFromImage,
@@ -21,6 +24,7 @@ import {
   COMPLIANCE_LOG_BUCKET_REGION_FLAG,
   DEPLOY_ROLE_EXTERNAL_ID_FLAG,
   DEPLOY_ROLE_FLAG,
+  STAGE_CONFIG_SOURCE_FLAG,
 } from '../../src/cmds/autopilot/ExecCommand';
 
 const IMAGE = 'acct.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2';
@@ -794,5 +798,127 @@ describe('m6-container: runFromImage', () => {
       },
     );
     expect(code).toBe(1);
+  });
+});
+
+describe('Repo 2 stage configuration', () => {
+  let cwd: string;
+  beforeEach(() => {
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'cdk-cicd-stage-config-'));
+    fs.mkdirSync(path.join(cwd, 'config'));
+  });
+  afterEach(() => fs.rmSync(cwd, { recursive: true, force: true }));
+
+  const writeConfig = (stage: string, document: unknown) =>
+    fs.writeFileSync(path.join(cwd, 'config', `${stage}.json`), JSON.stringify(document));
+
+  test('no config/<stage>.json keeps the baked image configuration', () => {
+    expect(prepareStageConfig(cwd, 'SBCD')).toBeUndefined();
+  });
+
+  test('a version-only file is not a stage configuration (backward compatible)', () => {
+    writeConfig('SBCD', { version: '1.2.3' });
+    expect(prepareStageConfig(cwd, 'SBCD')).toBeUndefined();
+    expect(fs.existsSync(path.join(cwd, HOST_STAGE_CONFIG_DIR))).toBe(false);
+  });
+
+  test('extra keys make the file the full stage configuration, with the reserved version key removed', () => {
+    writeConfig('SBCD', { version: '1.2.3', featureX: true, tags: { env: 'cd' } });
+    const mount = prepareStageConfig(cwd, 'SBCD')!;
+    expect(mount.containerPath).toBe(`${CONTAINER_STAGE_CONFIG_DIR}/SBCD.json`);
+    expect(mount.source).toContain("target 'SBCD'");
+    expect(JSON.parse(fs.readFileSync(mount.hostPath, 'utf-8'))).toEqual({ featureX: true, tags: { env: 'cd' } });
+    expect(path.isAbsolute(mount.hostPath)).toBe(true);
+  });
+
+  test('a non-object or unparseable file fails closed', () => {
+    writeConfig('A', ['x']);
+    expect(() => prepareStageConfig(cwd, 'A')).toThrow(/must contain a JSON object/);
+    fs.writeFileSync(path.join(cwd, 'config', 'B.json'), '{not json');
+    expect(() => prepareStageConfig(cwd, 'B')).toThrow(/could not be read as JSON/);
+  });
+
+  test('dockerRunArgs mounts the config read-only and selects it via CONFIG_FILE before the image', () => {
+    const stageConfig = {
+      hostPath: '/repo2/cdk.out/x/SBCD.json',
+      containerPath: '/cdk-cicd/stage-config/SBCD.json',
+      source: 'src',
+    };
+    const args = dockerRunArgs(IMAGE, { stage: 'SBCD', account: '111111111111', region: 'eu-west-1', stageConfig });
+    const image = args.indexOf(IMAGE);
+    expect(args.indexOf('-v')).toBeGreaterThan(-1);
+    expect(args.indexOf('-v')).toBeLessThan(image);
+    expect(args[args.indexOf('-v') + 1]).toBe('/repo2/cdk.out/x/SBCD.json:/cdk-cicd/stage-config/SBCD.json:ro');
+    expect(args).toContain('CONFIG_FILE=/cdk-cicd/stage-config/SBCD.json');
+    expect(args).toContain(`${STAGE_CONFIG_SOURCE_FLAG}=src`);
+  });
+
+  test('without a stage configuration nothing is mounted and CONFIG_FILE is untouched', () => {
+    const args = dockerRunArgs(IMAGE, { stage: 'dev', region: 'eu-west-1' });
+    expect(args).not.toContain('-v');
+    expect(args.some((a) => a.startsWith('CONFIG_FILE'))).toBe(false);
+    expect(args.some((a) => a.startsWith(STAGE_CONFIG_SOURCE_FLAG))).toBe(false);
+  });
+
+  test('validateOnly runs the inner synth for the single region instead of deploy', () => {
+    const args = dockerRunArgs(IMAGE, { stage: 'SBCD', region: 'eu-west-1' }, { validateOnly: true });
+    expect(args.slice(args.indexOf(IMAGE) + 1)).toEqual([
+      'cdk-cicd',
+      'synth',
+      '--stage',
+      'SBCD',
+      '--region',
+      'eu-west-1',
+    ]);
+  });
+
+  test('runFromImage gives two targets on one image tag their own configuration', async () => {
+    writeConfig('A', { version: '7', bucket: 'a' });
+    writeConfig('B', { version: '7', bucket: 'b' });
+    const calls: string[][] = [];
+    const code = await runFromImage(
+      {
+        image: 'acct.dkr.ecr.eu-west-1.amazonaws.com/app',
+        targets: ['A', 'B'].map((stage) => ({
+          stage,
+          env: { account: '111111111111', regions: ['eu-west-1'], regionOrder: 'sequential' },
+          manualApproval: false,
+        })),
+      } as unknown as ResolvedDeploymentConfig,
+      { yes: true, cwd, spawn: (args) => (calls.push(args), ok()) },
+    );
+    expect(code).toBe(0);
+    expect(calls.every((c) => c.includes('acct.dkr.ecr.eu-west-1.amazonaws.com/app:7'))).toBe(true);
+    const mounted = calls.map((c) => JSON.parse(fs.readFileSync(c[c.indexOf('-v') + 1].split(':')[0], 'utf-8')));
+    expect(mounted).toEqual([{ bucket: 'a' }, { bucket: 'b' }]);
+  });
+
+  test('validateOnly needs no approval and never runs the inner deploy', async () => {
+    const calls: string[][] = [];
+    const code = await runFromImage(
+      {
+        image: IMAGE,
+        targets: [{ stage: 'prod', env: { regions: ['eu-west-1'], regionOrder: 'sequential' }, manualApproval: true }],
+      } as unknown as ResolvedDeploymentConfig,
+      { yes: false, validateOnly: true, cwd, spawn: (args) => (calls.push(args), ok()) },
+    );
+    expect(code).toBe(0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain('synth');
+    expect(calls[0]).not.toContain('deploy');
+  });
+
+  test('a malformed stage configuration stops before Docker', async () => {
+    fs.writeFileSync(path.join(cwd, 'config', 'dev.json'), '[]');
+    const calls: string[][] = [];
+    const code = await runFromImage(
+      {
+        image: IMAGE,
+        targets: [{ stage: 'dev', env: { regions: ['eu-west-1'], regionOrder: 'sequential' }, manualApproval: false }],
+      } as unknown as ResolvedDeploymentConfig,
+      { yes: true, cwd, readVersion: () => undefined, spawn: (args) => (calls.push(args), ok()) },
+    );
+    expect(code).toBe(1);
+    expect(calls).toHaveLength(0);
   });
 });

@@ -6,26 +6,27 @@
     },
     {
       "name": "@types/node",
+      "version": "^20",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/eslint-plugin",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/parser",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/typescript-estree",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
       "name": "commit-and-tag-version",
-      "version": "^12",
+      "version": "^13",
       "type": "build"
     },
     {
@@ -73,11 +74,12 @@
     },
     {
       "name": "typescript",
+      "version": "~6.0.3",
       "type": "build"
     },
     {
       "name": "@aws-cdk/cloud-assembly-schema",
-      "version": "^48.12.0",
+      "version": "^55.2.0",
       "type": "runtime"
     },
     {
@@ -98,7 +100,7 @@
     },
     {
       "name": "@types/yargs",
-      "version": "^17.0.33",
+      "version": "^17.0.35",
       "type": "runtime"
     },
     {
@@ -121,16 +123,17 @@
     },
     {
       "name": "tslog",
+      "version": "^5.4.0",
       "type": "runtime"
     },
     {
       "name": "typescript",
-      "version": "^5.9.3",
+      "version": "~6.0.3",
       "type": "runtime"
     },
     {
       "name": "yargs",
-      "version": "^17.7.3",
+      "version": "^18.2.0",
       "type": "runtime"
     }
   ],

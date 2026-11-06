@@ -12,7 +12,7 @@ import * as path from 'path';
 import { specializeDefaultSynthesizerRoleArn, SynthesizerType } from '@cdklabs/cdk-cicd-wrapper';
 import type { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
-import { load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
+import { load as loadCicdConfig, loadDeployment } from './CicdConfig';
 import { RegionalInvocationResult, runFromImage, runRegionalInvocations } from './DeployFromImage';
 import {
   AppStagingSupportStack,
@@ -22,7 +22,7 @@ import {
   stacksFromAssembly,
 } from './DriftCheck';
 import { buildContextJson, CFN_EXEC_ROLE_FLAG, DEPLOY_ROLE_FLAG } from './ExecCommand';
-import { synthTargets } from './SynthCommand';
+import { configForStage, synthTargets } from './SynthCommand';
 import { logger } from '../../utils/Logging';
 
 /**
@@ -198,6 +198,7 @@ export function assertDeploymentModeOptions(options: {
   readonly planParameter?: string;
   readonly target?: string;
   readonly dockerNetwork?: string;
+  readonly validateOnly?: boolean;
 }): void {
   if (options.fromImage) {
     const incompatible = [
@@ -215,8 +216,8 @@ export function assertDeploymentModeOptions(options: {
   }
 
   assertDeployRoleOverrideAllowed(options.fromAssembly, options.deployRole);
-  if (options.target !== undefined || options.dockerNetwork !== undefined) {
-    throw new Error('cdk-cicd deploy: --target and --docker-network require --from-image');
+  if (options.target !== undefined || options.dockerNetwork !== undefined || options.validateOnly === true) {
+    throw new Error('cdk-cicd deploy: --target, --docker-network and --validate-only require --from-image');
   }
   if (!options.prepareOnly && options.planParameter !== undefined) {
     throw new Error('cdk-cicd deploy: --plan-parameter requires --prepare-only');
@@ -371,6 +372,13 @@ class Command implements yargs.CommandModule {
           type: 'string',
           describe: 'With --from-image: deploy only this one deploy.config target (its own image version)',
         })
+        .option('validate-only', {
+          type: 'boolean',
+          default: false,
+          describe:
+            "With --from-image: synthesize each target against the image's config schema and stop " +
+            'before any CloudFormation change (preflight)',
+        })
         .option('from-assembly', {
           type: 'boolean',
           default: false,
@@ -403,6 +411,7 @@ class Command implements yargs.CommandModule {
         planParameter: args.planParameter as string | undefined,
         target: args.target as string | undefined,
         dockerNetwork: args.dockerNetwork as string | undefined,
+        validateOnly: args.validateOnly as boolean,
       });
     } catch (error) {
       logger.error((error as Error).message);
@@ -420,12 +429,13 @@ class Command implements yargs.CommandModule {
         yes: args.yes as boolean,
         network: args.dockerNetwork as string | undefined,
         target: args.target as string | undefined,
+        validateOnly: args.validateOnly as boolean,
       });
       process.exit(code);
     }
 
-    const config = loadCicdConfig(cwd);
-    if (config === undefined) {
+    const loaded = loadCicdConfig(cwd);
+    if (loaded === undefined) {
       logger.error('cdk-cicd deploy: no cicd.config.ts found next to cdk.json');
       process.exit(1);
     }
@@ -435,10 +445,15 @@ class Command implements yargs.CommandModule {
       logger.error('cdk-cicd deploy: pass --stage <name> (or --from-image for container mode)');
       process.exit(1);
     }
-    const stage = stageByName(config, stageName);
-    if (stage === undefined) {
+    // Container mode: a stage the image does not declare is defined by the Repo 2 target instead.
+    const selected = configForStage(loaded, stageName, process.env);
+    if (selected === undefined) {
       logger.error(`cdk-cicd deploy: no stage '${stageName}' in cicd.config`);
       process.exit(1);
+    }
+    const { config, stage } = selected;
+    if (selected.adHoc) {
+      logger.info(`cdk-cicd deploy: stage '${stageName}' is defined by the deploy repository target`);
     }
     if (stage.manualApproval && !args.yes) {
       // Real approval gates are the M4 pipeline; the direct CLI honours the flag by requiring --yes.

@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "description": "m4-verify source bundle: the app + pipeline the gate deploys via cdk-cicd deploy-ci",
+  "scripts": {
+    "cdk": "cdk",
+    "cdk-cicd": "cdk-cicd"
+  },
   "dependencies": {
     "@cdklabs/cdk-cicd-wrapper": "0.0.0",
     "@cdklabs/cdk-cicd-wrapper-cli": "0.0.0",

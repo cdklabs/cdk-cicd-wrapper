@@ -9,7 +9,7 @@
 
 import { spawnSync } from 'child_process';
 import * as path from 'path';
-import type { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
+import type { RegionOrder, ResolvedCicdConfig, ResolvedStage } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, stageByName } from './CicdConfig';
 import { ACCOUNT_OVERRIDE_FLAG, REGION_OVERRIDE_FLAG, stageEnv } from './ExecCommand';
@@ -101,6 +101,50 @@ export function synthTargets(
   return targets;
 }
 
+/**
+ * True when the process runs under the container-mode (Repo 2) target contract: `deploy --from-image`
+ * always sets BOTH wrapper override flags (possibly empty, for an environment-agnostic target).
+ */
+export function isContainerTargetRun(env: NodeJS.ProcessEnv): boolean {
+  return (
+    Object.prototype.hasOwnProperty.call(env, ACCOUNT_OVERRIDE_FLAG) &&
+    Object.prototype.hasOwnProperty.call(env, REGION_OVERRIDE_FLAG)
+  );
+}
+
+/**
+ * Resolve the config to run `stageName` against.
+ *
+ * A stage declared in the image's cicd.config is used as-is. Under the container-mode target contract
+ * an UNDECLARED stage is accepted too: Repo 2's `deploy.config.ts` target is the stage definition, so
+ * the deployer image need not pre-declare every environment. The ad-hoc stage carries only a name;
+ * account/region come from the override flags (synthTargets), roles from the role flags (exec), and the
+ * manual-approval gate is owned by the Repo 2 pipeline / `deploy --from-image --yes` contract.
+ *
+ * Returns undefined when the stage is neither declared nor a container-mode target.
+ */
+export function configForStage(
+  config: ResolvedCicdConfig,
+  stageName: string,
+  env: NodeJS.ProcessEnv = process.env,
+): { readonly config: ResolvedCicdConfig; readonly stage: ResolvedStage; readonly adHoc: boolean } | undefined {
+  const declared = stageByName(config, stageName);
+  if (declared !== undefined) {
+    return { config, stage: declared, adHoc: false };
+  }
+  if (!isContainerTargetRun(env)) {
+    return undefined;
+  }
+  const stage: ResolvedStage = {
+    name: stageName,
+    // Literal rather than RegionOrder.SEQUENTIAL: this module only type-imports the wrapper so booting
+    // the CLI never loads it. Each container run pins exactly one region anyway.
+    env: { regions: [], regionOrder: 'sequential' as RegionOrder },
+    manualApproval: false,
+  };
+  return { config: { ...config, stages: [...config.stages, stage] }, stage, adHoc: true };
+}
+
 class Command implements yargs.CommandModule {
   public command = 'synth';
   public describe = 'Synthesize each stage x region into cdk.out/<stage>/<region> (deploy-time synth)';
@@ -108,28 +152,45 @@ class Command implements yargs.CommandModule {
   public builder(args: yargs.Argv) {
     return args
       .option('stage', { type: 'string', describe: 'Synthesize only this stage (else all stages)' })
-      .option('all', { type: 'boolean', default: false, describe: 'Synthesize every stage x region (CI validation)' });
+      .option('all', { type: 'boolean', default: false, describe: 'Synthesize every stage x region (CI validation)' })
+      .option('region', {
+        type: 'string',
+        describe: 'With --stage: synthesize only this one region (used by container-mode validation)',
+      });
   }
 
   public async handler(args: yargs.Arguments) {
     const cwd = process.cwd();
-    const config = loadCicdConfig(cwd);
-    if (config === undefined) {
+    const loaded = loadCicdConfig(cwd);
+    if (loaded === undefined) {
       logger.error('cdk-cicd synth: no cicd.config.ts found next to cdk.json -- nothing to synthesize');
       process.exit(1);
     }
+    let config: ResolvedCicdConfig = loaded;
 
     const stageName = args.stage as string | undefined;
     if (stageName === undefined && !args.all) {
       logger.error('cdk-cicd synth: pass --stage <name> or --all');
       process.exit(1);
     }
-    if (stageName !== undefined && stageByName(config, stageName) === undefined) {
-      logger.error(`cdk-cicd synth: no stage '${stageName}' in cicd.config`);
+    const regionOverride = args.region as string | undefined;
+    if (regionOverride !== undefined && stageName === undefined) {
+      logger.error('cdk-cicd synth: --region requires --stage');
       process.exit(1);
     }
+    if (stageName !== undefined) {
+      const selected = configForStage(config, stageName, process.env);
+      if (selected === undefined) {
+        logger.error(`cdk-cicd synth: no stage '${stageName}' in cicd.config`);
+        process.exit(1);
+      }
+      if (selected.adHoc) {
+        logger.info(`cdk-cicd synth: stage '${stageName}' is defined by the deploy repository target`);
+      }
+      config = selected.config;
+    }
 
-    const targets = synthTargets(config, stageName, undefined, process.env);
+    const targets = synthTargets(config, stageName, regionOverride, process.env);
     if (targets.length === 0) {
       logger.error(
         `cdk-cicd synth: ${stageName ?? 'all stages'} produced no stage x region targets; ` +

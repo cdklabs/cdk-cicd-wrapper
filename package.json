@@ -39,27 +39,27 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.3",
-    "@types/node": "^26",
-    "@typescript-eslint/eslint-plugin": "^7",
-    "@typescript-eslint/parser": "^7",
-    "@typescript-eslint/typescript-estree": "^7",
+    "@types/node": "ts6.0",
+    "@typescript-eslint/eslint-plugin": "^8",
+    "@typescript-eslint/parser": "^8",
+    "@typescript-eslint/typescript-estree": "^8",
     "aislop": "^0.16.1",
     "all-contributors-cli": "^6.26.1",
-    "cdklabs-projen-project-types": "^0.5.2",
-    "constructs": "10.5.0",
+    "cdklabs-projen-project-types": "^0.6.22",
+    "constructs": "10.8.1",
     "eslint": "^8",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "husky": "^9.1.7",
     "node-fetch": "^2",
     "prettier": "^3.9.10",
-    "projen": "^0.99.68",
+    "projen": "^0.104.12",
     "shx": "^0.4.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "~6.0.3"
   },
   "resolutions": {
-    "constructs": "10.5.0",
+    "constructs": "10.8.1",
     "micromatch/picomatch": "^2.3.2"
   },
   "keywords": [
