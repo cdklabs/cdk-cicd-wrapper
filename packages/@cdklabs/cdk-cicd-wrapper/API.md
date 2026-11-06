@@ -283,6 +283,7 @@ Any object.
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.property.node">node</a></code> | <code>constructs.Node</code> | The tree node. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.property.autoDeployPipelines">autoDeployPipelines</a></code> | <code>aws-cdk-lib.aws_codepipeline.Pipeline[]</code> | One pipeline per `autoDeploy` target, started by pushes to that target's ECR repository. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.property.pipeline">pipeline</a></code> | <code>aws-cdk-lib.aws_codepipeline.Pipeline</code> | *No description.* |
 
 ---
@@ -296,6 +297,18 @@ public readonly node: Node;
 - *Type:* constructs.Node
 
 The tree node.
+
+---
+
+##### `autoDeployPipelines`<sup>Required</sup> <a name="autoDeployPipelines" id="@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.property.autoDeployPipelines"></a>
+
+```typescript
+public readonly autoDeployPipelines: Pipeline[];
+```
+
+- *Type:* aws-cdk-lib.aws_codepipeline.Pipeline[]
+
+One pipeline per `autoDeploy` target, started by pushes to that target's ECR repository.
 
 ---
 
@@ -4153,6 +4166,7 @@ const resolvedDeploymentTarget: ResolvedDeploymentTarget = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.env">env</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.StageEnvironment">StageEnvironment</a></code> | Where this target deploys. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.manualApproval">manualApproval</a></code> | <code>boolean</code> | Whether a manual approval gates this target. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.stage">stage</a></code> | <code>string</code> | The stage in the image's app to deploy (passed to the in-container `cdk-cicd deploy --stage`). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.autoDeploy">autoDeploy</a></code> | <code>boolean</code> | Deploy this target automatically whenever a new deployer image is pushed to its ECR repository. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketAccount">complianceLogBucketAccount</a></code> | <code>string</code> | Account containing `complianceLogBucketName`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | Compliance/access-log destination bucket for this target, after applying the deployment-wide default. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketRegion">complianceLogBucketRegion</a></code> | <code>string</code> | Region containing `complianceLogBucketName`. |
@@ -4194,6 +4208,22 @@ public readonly stage: string;
 - *Type:* string
 
 The stage in the image's app to deploy (passed to the in-container `cdk-cicd deploy --stage`).
+
+---
+
+##### `autoDeploy`<sup>Optional</sup> <a name="autoDeploy" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.autoDeploy"></a>
+
+```typescript
+public readonly autoDeploy: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Deploy this target automatically whenever a new deployer image is pushed to its ECR repository.
+
+The target then always runs the NEWEST tagged image in that repository (its `config/<stage>.json`
+`version` is not used), with its stage configuration still taken from the deploy repository.
 
 ---
 

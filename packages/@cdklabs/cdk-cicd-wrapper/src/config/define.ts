@@ -346,6 +346,15 @@ export interface DeploymentTargetInput {
    * default. The target must declare a concrete account and exactly one concrete Region.
    */
   readonly complianceLogBucketName?: string;
+  /**
+   * Deploy this target automatically when a new image is pushed to its ECR repository, always running
+   * the newest tagged image (the `config/<stage>.json` `version` is ignored). Intended for a dev
+   * target whose configuration does not change between image versions. Requires an ECR image in the
+   * pipeline's account and Region, and no manual approval.
+   *
+   * @default false
+   */
+  readonly autoDeploy?: boolean;
 }
 
 /** What a user passes to `defineDeployment` (Repo 2). Deliberately permissive; normalized to resolved structs. */
@@ -435,6 +444,22 @@ function normalizeTarget(
     complianceLogBucketRegion = regions[0];
   }
 
+  // Same gate default as stages: inner-loop targets deploy without approval, the rest require it.
+  const manualApproval = target.manualApproval ?? !AUTO_APPROVE_STAGES.has(target.stage);
+  const autoDeploy = target.autoDeploy ?? false;
+  if (autoDeploy && manualApproval) {
+    throw new Error(
+      `cdk-cicd: target '${target.stage}' sets autoDeploy, which deploys every pushed image without a gate; ` +
+        'set manualApproval: false on it, or remove autoDeploy.',
+    );
+  }
+  if (autoDeploy && target.image?.includes('@') === true) {
+    throw new Error(
+      `cdk-cicd: target '${target.stage}' pins its image by digest, which contradicts autoDeploy ` +
+        '(always deploy the newest pushed image); remove one of them.',
+    );
+  }
+
   return {
     stage: target.stage,
     env: {
@@ -442,13 +467,13 @@ function normalizeTarget(
       regions,
       regionOrder: env.regionOrder ?? RegionOrder.SEQUENTIAL,
     },
-    // Same gate default as stages: inner-loop targets deploy without approval, the rest require it.
-    manualApproval: target.manualApproval ?? !AUTO_APPROVE_STAGES.has(target.stage),
+    manualApproval,
     deployment: target.deployment,
     image: target.image,
     complianceLogBucketName,
     complianceLogBucketAccount,
     complianceLogBucketRegion,
+    ...(autoDeploy ? { autoDeploy } : {}),
   };
 }
 

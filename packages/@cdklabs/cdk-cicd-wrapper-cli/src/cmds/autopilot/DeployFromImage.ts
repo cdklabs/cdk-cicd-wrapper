@@ -14,7 +14,7 @@
 // selected via `CONFIG_FILE` so it replaces any config baked into the image. Each run pins a single
 // region via `deploy --region`, and the image need not declare the stage at all.
 
-import { spawn as spawnProcess } from 'child_process';
+import { spawn as spawnProcess, spawnSync } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 import type { ResolvedDeploymentConfig, ResolvedDeploymentTarget } from '@cdklabs/cdk-cicd-wrapper';
@@ -162,6 +162,59 @@ export function resolveTargetImage(
   const repository = lastColon > lastSlash ? base.slice(0, lastColon) : base;
   return `${repository}:${version}`;
 }
+
+/** Resolves the newest tagged image of an ECR repository, as `<repository>@<digest>`. Injectable for tests. */
+export type LatestImageResolver = (baseImage: string) => string;
+
+const ECR_REPOSITORY_URI = /^(([0-9]{12})\.dkr\.ecr(?:-fips)?\.([a-z0-9-]+)\.[^/]+)\/(.+)$/;
+
+/** The repository part of an image reference: everything before a trailing `:tag` or `@digest`. */
+export function imageRepository(image: string): string {
+  const at = image.indexOf('@');
+  if (at >= 0) return image.slice(0, at);
+  const lastSlash = image.lastIndexOf('/');
+  const lastColon = image.lastIndexOf(':');
+  return lastColon > lastSlash ? image.slice(0, lastColon) : image;
+}
+
+/**
+ * The newest TAGGED image in the ECR repository of `baseImage`, pinned by digest. Untagged manifests
+ * (superseded `latest` pushes, attestations) are skipped. Used by `autoDeploy` targets, which always
+ * deploy what was pushed last instead of the `version` recorded in `config/<stage>.json`.
+ */
+export const resolveLatestEcrImage: LatestImageResolver = (baseImage) => {
+  const repository = imageRepository(baseImage);
+  const match = ECR_REPOSITORY_URI.exec(repository);
+  if (match === null) {
+    throw new Error(`cdk-cicd deploy --from-image: autoDeploy needs an ECR image, got '${baseImage}'`);
+  }
+  const [, , account, region, repositoryName] = match;
+  const result = spawnSync(
+    'aws',
+    [
+      'ecr',
+      'describe-images',
+      '--registry-id',
+      account,
+      '--repository-name',
+      repositoryName,
+      '--region',
+      region,
+      '--query',
+      'sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest',
+      '--output',
+      'text',
+      '--no-cli-pager',
+    ],
+    { encoding: 'utf-8', timeout: 60_000 },
+  );
+  const digest = String(result.stdout ?? '').trim();
+  if (result.error !== undefined || result.status !== 0 || !/^sha256:[0-9a-f]{64}$/.test(digest)) {
+    const detail = result.error?.message ?? (String(result.stderr ?? '').trim() || `got '${digest}'`);
+    throw new Error(`cdk-cicd deploy --from-image: could not resolve the newest image in ${repository}: ${detail}`);
+  }
+  return `${repository}@${digest}`;
+};
 
 /** One concrete (target x region) run: the stage/account/region/role the container deploys. */
 export interface DockerTarget {
@@ -451,6 +504,7 @@ export async function runFromImage(
     validateOnly?: boolean;
     cwd?: string;
     readVersion?: VersionReader;
+    resolveLatestImage?: LatestImageResolver;
     prepareConfig?: (cwd: string, stage: string) => StageConfigMount | undefined;
     spawn?: DockerSpawn;
     resolveExternalId?: (value?: string) => Promise<string | undefined>;
@@ -502,9 +556,14 @@ export async function runFromImage(
 
     // Each target runs its OWN version: base repo (target/config image) + the `version` from
     // config/<stage>.json in this (CD) repo. Bump that file, commit, and only this stage redeploys.
+    // An autoDeploy target runs the newest pushed image instead (still validating its config file).
     let image: string | undefined;
     try {
       image = resolveTargetImage(target, config, cwd, options.readVersion);
+      if (target.autoDeploy === true && image !== undefined) {
+        image = (options.resolveLatestImage ?? resolveLatestEcrImage)(image);
+        logger.info(`cdk-cicd deploy --from-image: ${target.stage} is autoDeploy; using the newest image ${image}`);
+      }
     } catch (error) {
       logger.error(error instanceof Error ? error.message : String(error));
       return 1;
