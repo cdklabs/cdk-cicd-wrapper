@@ -1295,7 +1295,7 @@ not this branch reaching `main`.
     exactly this.
   - **notes:** ✅ The real blocker was a genuine wrapper bug, now root-cause fixed (not worked
     around) -- see `m9-fix-app-export-patching` below. Verified end to end against a real external
-    repo (`gyalai-aws/github-plugin-test`, disposable test repo, owner confirmed destroy-and-reuse):
+    repo (a disposable test repo, owner confirmed destroy-and-reuse):
     packed the wrapper+CLI into real tarballs, vendored them into a genuinely standalone project
     (plain `npm install`, no yarn workspace), rendered a real `.github/workflows/deploy.yml`,
     deployed the `GitHubActionRole` (OIDC) for real to the sandbox test account, pushed, and a real
@@ -1335,7 +1335,7 @@ not this branch reaching `main`.
     `--deny-external-id`-hardened bootstrap will need the same account-side accommodation; tracked
     as a documentation follow-up, not a code fix (there is nothing in wrapper code to change).
   - **spec:** discovered verifying `m9-migrate-github-actions-engine` end to end
-  - **acceptance:** real GitHub Actions run (`gyalai-aws/github-plugin-test`, run 32779383501)
+  - **acceptance:** real GitHub Actions run (disposable external test repo)
     completes Synthesize + Publish Assets + Deploy, stack `dev-DemoStack` reaches
     `CREATE_COMPLETE`. ✅
 
