@@ -19,6 +19,8 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { RegionInfo } from 'aws-cdk-lib/region-info';
 import { NagSuppressions } from 'cdk-nag';
@@ -71,6 +73,8 @@ export interface DeploymentPipelineProps {
  */
 export class DeploymentPipeline extends Construct {
   public readonly pipeline: codepipeline.Pipeline;
+  /** One pipeline per `autoDeploy` target, started by pushes to that target's ECR repository. */
+  public readonly autoDeployPipelines: codepipeline.Pipeline[];
 
   constructor(scope: Construct, id: string, props: DeploymentPipelineProps) {
     super(scope, id);
@@ -205,18 +209,51 @@ export class DeploymentPipeline extends Construct {
       '  exit 1',
       'fi',
     ].join('\n');
+    // A target can be deployed by two pipelines (the main one and its autoDeploy pipeline). When both
+    // reach CloudFormation at once, one fails because the other's update is in progress; that run waits
+    // and retries, re-resolving its image, instead of leaving the target on a stale version. Any other
+    // failure exits immediately. One buildspec element, because CodeBuild parses each separately.
     const deployAndRecord = [
-      '{',
-      '  if [ -n "${TARGET_REGION:-}" ]; then',
-      `    ${prepareParallelTarget} &&`,
-      `      (cd .cdk-cicd-target && ${deployTarget})`,
-      '  else',
-      `    ${deployTarget}`,
+      'attempt=1',
+      'while :; do',
+      '  {',
+      '    if [ -n "${TARGET_REGION:-}" ]; then',
+      `      ${prepareParallelTarget} &&`,
+      `        (cd .cdk-cicd-target && ${deployTarget})`,
+      '    else',
+      `      ${deployTarget}`,
+      '    fi',
+      '    echo $? > /tmp/cdk-cicd-deploy-rc',
+      '  } 2>&1 | tee /tmp/cdk-cicd-deploy.log',
+      '  rc=$(cat /tmp/cdk-cicd-deploy-rc)',
+      '  [ "$rc" -eq 0 ] && break',
+      '  if [ "$attempt" -lt 3 ] && grep -qE "_IN_PROGRESS|in status CREATE_IN_PROGRESS" /tmp/cdk-cicd-deploy.log; then',
+      '    echo "cdk-cicd: another deployment of $TARGET_STAGE is in progress; retrying in 60s (attempt $attempt)"',
+      '    attempt=$((attempt + 1))',
+      '    sleep 60',
+      '    continue',
       '  fi',
-      '} && aws ssm put-parameter --name "$TARGET_STATE_PARAMETER" --type String ' +
+      '  exit "$rc"',
+      'done',
+      'aws ssm put-parameter --name "$TARGET_STATE_PARAMETER" --type String ' +
         '--value "$TARGET_FINGERPRINT" --overwrite >/dev/null',
     ].join('\n');
+    // An autoDeploy pipeline's creation run (CodePipeline starts every new pipeline once) would race the
+    // main pipeline's first deployment of the same target, so it exits cleanly. The starting pipeline is
+    // in CODEBUILD_INITIATOR (`codepipeline/<name>`); only autoDeploy actions set AUTO_DEPLOY.
+    const skipCreationRun = [
+      'if [ "${AUTO_DEPLOY:-}" = "1" ]; then',
+      '  TRIGGER=$(aws codepipeline get-pipeline-execution --pipeline-name "${CODEBUILD_INITIATOR#codepipeline/}" ' +
+        '--pipeline-execution-id "$PIPELINE_EXECUTION_ID" --query "pipelineExecution.trigger.triggerType" --output text)',
+      '  if [ "$TRIGGER" = "CreatePipeline" ]; then',
+      '    echo "cdk-cicd: skipping the creation run of the autoDeploy pipeline for $TARGET_STAGE"',
+      '    exit 0',
+      '  fi',
+      'fi',
+    ].join('\n');
+    const hasAutoDeploy = config.targets.some((target) => target.autoDeploy === true);
     const commands = [
+      ...(hasAutoDeploy ? [skipCreationRun] : []),
       ...(privateNpm ? npmConfigSetupCommands() : []),
       ...codeArtifactLogin,
       ...npmRegistryLogin,
@@ -401,17 +438,28 @@ export class DeploymentPipeline extends Construct {
     // for a RegionOrder.PARALLEL fan-out action; the build then narrows an ephemeral deploy.config to that
     // region before invoking the existing CLI, whose from-image executor remains the source of truth for
     // image resolution, account/role environment, and the inner `deploy --region` command.
-    const deployAction = (unit: DeploymentUnit, runOrder?: number) =>
+    const deployAction = (
+      unit: DeploymentUnit,
+      runOrder?: number,
+      input: codepipeline.Artifact = sourceOutput,
+      autoDeploy = false,
+    ) =>
       new actions.CodeBuildAction({
         actionName: unit.actionName,
         project,
-        input: sourceOutput,
+        input,
         runOrder,
         environmentVariables: {
           TARGET_STAGE: { value: unit.target.stage },
           TARGET_STATE_PARAMETER: { value: unit.stateParameterName },
           EXPECTED_DEPLOYMENT_TOPOLOGY: { value: expectedDeploymentTopology },
           ...(unit.region !== undefined ? { TARGET_REGION: { value: unit.region } } : {}),
+          ...(autoDeploy
+            ? {
+                AUTO_DEPLOY: { value: '1' },
+                PIPELINE_EXECUTION_ID: { value: '#{codepipeline.PipelineExecutionId}' },
+              }
+            : {}),
         },
       });
     const actionsForTarget = (target: ResolvedDeploymentTarget, runOrder?: number) =>
@@ -435,6 +483,81 @@ export class DeploymentPipeline extends Construct {
               ],
       });
     }
+
+    // autoDeploy targets: one small pipeline per target (config-repo checkout without a commit trigger,
+    // then that target's deploy actions), started by an EventBridge rule on every successful push to the
+    // target's ECR repository. A separate pipeline -- not a trigger on the main one -- so an image push
+    // never parks the main pipeline at its later targets' approval gates. Both pipelines share the
+    // deploy project and the target's state parameter, and both resolve the newest image, so whichever
+    // runs, an unchanged image + configuration is skipped and a Git-triggered run cannot roll back.
+    const autoDeployPipelines: codepipeline.Pipeline[] = [];
+    for (const effectiveTarget of effectiveTargets.filter(({ target }) => target.autoDeploy === true)) {
+      const target = effectiveTarget.target;
+      const image = target.image ?? config.image;
+      const repository = image === undefined ? undefined : parseEcrRepository(image);
+      if (repository === undefined) {
+        throw new Error(`cdk-cicd: autoDeploy target '${target.stage}' needs an ECR deployer image`);
+      }
+      if (
+        Token.isUnresolved(stack.account) ||
+        Token.isUnresolved(stack.region) ||
+        repository.account !== stack.account ||
+        repository.region !== stack.region
+      ) {
+        throw new Error(
+          `cdk-cicd: autoDeploy target '${target.stage}' needs its ECR repository in the CD pipeline's own ` +
+            'concrete account and Region: ECR push events are only delivered to the local EventBridge bus.',
+        );
+      }
+      const autoScope = new Construct(this, `AutoDeploy-${target.stage}`);
+      const autoSource = new codepipeline.Artifact();
+      // A deterministic name, so the deploy project can be granted read access to this pipeline's
+      // executions without a CloudFormation dependency cycle (pipeline -> project -> policy -> pipeline).
+      const autoPipelineName = autoDeployPipelineName(stack.stackName, target.stage);
+      project.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['codepipeline:GetPipelineExecution'],
+          resources: [`arn:${stack.partition}:codepipeline:${stack.region}:${stack.account}:${autoPipelineName}`],
+        }),
+      );
+      const autoPipeline = new codepipeline.Pipeline(autoScope, 'Pipeline', {
+        pipelineName: autoPipelineName,
+        artifactBucket: support.artifactBucket,
+        pipelineType: codepipeline.PipelineType.V2,
+        // A newer push supersedes an in-flight run: only the newest image matters for this target.
+        executionMode: codepipeline.ExecutionMode.SUPERSEDED,
+      });
+      autoPipeline.addStage({
+        stageName: 'Source',
+        actions: [buildSourceAction(autoScope, config.repository, autoSource, { triggerOnChange: false })],
+      });
+      autoPipeline.addStage({
+        stageName: `Deploy-${target.stage}`,
+        actions: deploymentUnits
+          .filter((unit) => unit.target === target)
+          .map((unit) => deployAction(unit, undefined, autoSource, true)),
+      });
+      new events.Rule(autoScope, 'OnImagePush', {
+        description: `Deploy ${target.stage} when a new image is pushed to ${repository.repositoryName}`,
+        eventPattern: {
+          source: ['aws.ecr'],
+          detailType: ['ECR Image Action'],
+          detail: {
+            'action-type': ['PUSH'],
+            result: ['SUCCESS'],
+            'repository-name': [repository.repositoryName],
+          },
+        },
+        targets: [new eventTargets.CodePipeline(autoPipeline)],
+      });
+      NagSuppressions.addResourceSuppressions(
+        autoPipeline,
+        [{ id: 'AwsSolutions-IAM5', reason: 'CodePipeline and its source/action roles use CDK-generated wildcards.' }],
+        true,
+      );
+      autoDeployPipelines.push(autoPipeline);
+    }
+    this.autoDeployPipelines = autoDeployPipelines;
 
     // cdk-nag suppressions, mirroring the CI engine so a real `deploy-ci` synth (which runs
     // AwsSolutionsChecks via DeploymentPipelineApp) does not abort on expected pipeline findings.
@@ -470,6 +593,17 @@ export class DeploymentPipeline extends Construct {
 
     this.pipeline = pipeline;
   }
+}
+
+/**
+ * The autoDeploy pipeline's name: `<stack>-auto-<stage>`, restricted to CodePipeline's name alphabet
+ * and 100 characters. A name that would be truncated keeps a hash suffix so it stays unique.
+ */
+export function autoDeployPipelineName(stackName: string, stage: string): string {
+  const full = `${stackName}-auto-${stage}`.replace(/[^A-Za-z0-9.@\-_]/g, '-');
+  if (full.length <= 100) return full;
+  const hash = createHash('sha256').update(full).digest('hex').slice(0, 8);
+  return `${full.slice(0, 91)}-${hash}`;
 }
 
 /**
@@ -838,6 +972,8 @@ function deploymentPipelineShapeFingerprint(
         cfnExecutionRole: roleIdentity(target.deployment?.cfnExecutionRole, effectiveTarget),
         externalId: target.deployment?.externalId ?? null,
         ecrRepository: ecrRepositoryIdentity(target.image ?? config.image),
+        // Only present when on, so existing pipelines keep their recorded shape fingerprint.
+        ...(target.autoDeploy === true ? { autoDeploy: true } : {}),
       };
     }),
   };
@@ -1202,6 +1338,7 @@ function deploymentFingerprintScript(
     '    cfnExecutionRole: roleIdentity(candidate.deployment?.cfnExecutionRole, candidate),',
     '    externalId: candidate.deployment?.externalId ?? null,',
     '    ecrRepository: ecrRepositoryIdentity(candidate.image ?? config.image),',
+    '    ...(candidate.autoDeploy === true ? { autoDeploy: true } : {}),',
     '  })),',
     '};',
     'const currentTopology = crypto',
@@ -1259,7 +1396,32 @@ function deploymentFingerprintScript(
     '    stageConfig = crypto.createHash("sha256").update(JSON.stringify(rest)).digest("hex");',
     '  }',
     '}',
-    'const effectiveImage = resolveEffectiveImage(target, version);',
+    // An autoDeploy target always runs the newest tagged image in its repository -- the same rule the
+    // CLI applies -- so a new push changes this fingerprint and a config-repo run never rolls it back.
+    'const latestEcrImage = (image) => {',
+    '  const parsed = parseEcrImage(image);',
+    '  if (parsed === null) throw new Error("cdk-cicd: autoDeploy needs an ECR image, got " + image);',
+    '  let digest;',
+    '  try {',
+    '    digest = execFileSync(',
+    '      "aws",',
+    '      [',
+    '        "ecr", "describe-images", "--registry-id", parsed.account,',
+    '        "--repository-name", parsed.repositoryName, "--region", parsed.region,',
+    '        "--query", "sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest",',
+    '        "--output", "text", "--no-cli-pager",',
+    '      ],',
+    '      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },',
+    '    ).trim();',
+    '  } catch (error) {',
+    '    const detail = error.stderr?.toString().trim() || error.message;',
+    '    throw new Error("cdk-cicd: could not resolve the newest image for " + image + ": " + detail);',
+    '  }',
+    '  return parsed.registryHost + "/" + parsed.repositoryName + "@" + digest;',
+    '};',
+    'const resolvedImage = resolveEffectiveImage(target, version);',
+    'const effectiveImage =',
+    '  target.autoDeploy === true && resolvedImage !== undefined ? latestEcrImage(resolvedImage) : resolvedImage;',
     'const immutableEcrImage = immutableEcrImageIdentity(effectiveImage);',
     'const toolingFiles = [',
     '  "package.json",',

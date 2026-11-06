@@ -11,7 +11,9 @@ import {
   DockerSpawnOptions,
   dockerRunArgs,
   HOST_STAGE_CONFIG_DIR,
+  imageRepository,
   prepareStageConfig,
+  resolveLatestEcrImage,
   readVersionFromConfig,
   resolveTargetImage,
   runFromImage,
@@ -920,5 +922,78 @@ describe('Repo 2 stage configuration', () => {
     );
     expect(code).toBe(1);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('autoDeploy targets', () => {
+  const base = 'acct.dkr.ecr.eu-west-1.amazonaws.com/app';
+
+  test('imageRepository strips a tag or digest but keeps a registry port', () => {
+    expect(imageRepository(`${base}:1.2.3`)).toBe(base);
+    expect(imageRepository(`${base}@sha256:${'a'.repeat(64)}`)).toBe(base);
+    expect(imageRepository('localhost:5000/app')).toBe('localhost:5000/app');
+  });
+
+  test('runFromImage runs the newest image for an autoDeploy target and the pinned one otherwise', async () => {
+    const calls: string[][] = [];
+    const latest = `${base}@sha256:${'b'.repeat(64)}`;
+    const seen: string[] = [];
+    const code = await runFromImage(
+      {
+        image: base,
+        targets: [
+          {
+            stage: 'dev',
+            env: { regions: ['eu-west-1'], regionOrder: 'sequential' },
+            manualApproval: false,
+            autoDeploy: true,
+          },
+          { stage: 'int', env: { regions: ['eu-west-1'], regionOrder: 'sequential' }, manualApproval: false },
+        ],
+      } as unknown as ResolvedDeploymentConfig,
+      {
+        yes: true,
+        readVersion: () => '1.0.0',
+        resolveLatestImage: (image) => (seen.push(image), latest),
+        prepareConfig: () => undefined,
+        spawn: (args) => (calls.push(args), ok()),
+      },
+    );
+    expect(code).toBe(0);
+    expect(seen).toEqual([`${base}:1.0.0`]);
+    expect(calls[0]).toContain(latest);
+    expect(calls[1]).toContain(`${base}:1.0.0`);
+  });
+
+  test('a failure to resolve the newest image stops before Docker', async () => {
+    const calls: string[][] = [];
+    const code = await runFromImage(
+      {
+        image: base,
+        targets: [
+          {
+            stage: 'dev',
+            env: { regions: ['eu-west-1'], regionOrder: 'sequential' },
+            manualApproval: false,
+            autoDeploy: true,
+          },
+        ],
+      } as unknown as ResolvedDeploymentConfig,
+      {
+        yes: true,
+        readVersion: () => undefined,
+        resolveLatestImage: () => {
+          throw new Error('no images');
+        },
+        prepareConfig: () => undefined,
+        spawn: (args) => (calls.push(args), ok()),
+      },
+    );
+    expect(code).toBe(1);
+    expect(calls).toHaveLength(0);
+  });
+
+  test('resolveLatestEcrImage refuses a non-ECR image', () => {
+    expect(() => resolveLatestEcrImage('docker.io/library/app:1')).toThrow(/needs an ECR image/);
   });
 });

@@ -562,3 +562,38 @@ describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
     ).toThrow(/assigned to both 111111111111\/eu-west-1 and 222222222222\/us-east-1/);
   });
 });
+
+describe('defineDeployment autoDeploy', () => {
+  const env = { account: '111111111111', region: 'eu-west-1' };
+  const image = '111111111111.dkr.ecr.eu-west-1.amazonaws.com/app';
+
+  test('is off by default and carried through when set on an ungated target', () => {
+    const cfg = defineDeployment({
+      image,
+      targets: [
+        { stage: 'dev', env, autoDeploy: true },
+        { stage: 'int', env },
+      ],
+    });
+    expect(cfg.targets[0].autoDeploy).toBe(true);
+    expect(cfg.targets[1].autoDeploy).toBeUndefined();
+  });
+
+  test('refuses a gated target, since every push would deploy without approval', () => {
+    expect(() => defineDeployment({ image, targets: [{ stage: 'int', env, autoDeploy: true }] })).toThrow(
+      /set manualApproval: false/,
+    );
+    expect(
+      defineDeployment({ image, targets: [{ stage: 'int', env, autoDeploy: true, manualApproval: false }] }).targets[0]
+        .autoDeploy,
+    ).toBe(true);
+  });
+
+  test('refuses a digest-pinned target image', () => {
+    expect(() =>
+      defineDeployment({
+        targets: [{ stage: 'dev', env, autoDeploy: true, image: `${image}@sha256:${'a'.repeat(64)}` }],
+      }),
+    ).toThrow(/pins its image by digest/);
+  });
+});
