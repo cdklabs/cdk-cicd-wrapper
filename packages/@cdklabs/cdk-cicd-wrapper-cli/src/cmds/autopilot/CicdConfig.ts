@@ -64,8 +64,13 @@ export const TS_NODE_COMPILER_OPTIONS = { module: 'commonjs' };
 function requireConfigFile<T>(file: string): T {
   if (file.endsWith('.ts') && !tsNodeRegistered) {
     try {
+      // Transpile only. Type-checking a config file builds a full TypeScript program over aws-cdk-lib's
+      // declarations, which costs ~1 GB per process; `synth` and `exec` each load the config and stay
+      // resident while their children run, so on a 3 GB CodeBuild instance the app process was being
+      // OOM-killed. defineCICD/defineDeployment validate the values at runtime, and the app entry itself
+      // is still type-checked by its own `-r ts-node/register` preload.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('ts-node').register({ compilerOptions: TS_NODE_COMPILER_OPTIONS });
+      require('ts-node').register({ compilerOptions: TS_NODE_COMPILER_OPTIONS, transpileOnly: true });
     } catch (error) {
       // ts-node is resolved from the CLI's location; a global CLI install without ts-node in the
       // user's project would otherwise surface a bare "Cannot find module" here.

@@ -4,8 +4,8 @@
 # real AWS, from nothing but a cicd.config.ts:
 #
 #   1. Assemble the pipeline-app fixture into a deployable bundle (generate its
-#      cicd.config.ts + a CodeArtifact-resolved lockfile) and upload it as the
-#      pipeline's S3 source object.
+#      cicd.config.ts + a CodeArtifact-resolved lockfile) and push it to the
+#      pipeline's CodeCommit source repository.
 #   2. `cdk-cicd deploy-ci --disposable` provisions ONE pipeline stack.
 #   3. The pipeline runs: Source -> Build (CI) -> UpdatePipeline (self-mutate) ->
 #      dev deploy -> prod approval -> prod deploy. The gate drives the approval via
@@ -13,7 +13,7 @@
 #   4. Assert the dev (us-west-2) and prod (us-west-1) app stacks really deployed,
 #      and record the CodeBuild project count -- the flat-footprint claim vs Blueprint's 100+.
 #   5. Tear everything down: the app stacks, the pipeline stack (its --disposable
-#      bucket/key go with it), and the S3 source bucket. Nothing left behind.
+#      bucket/key go with it), and the CodeCommit source repo. Nothing left behind.
 #
 #   bash test/proof/m4-verify.sh
 #
@@ -58,7 +58,7 @@ readonly POLL_MAX=90   # 90 * 20s = 30 min ceiling
 pipeline_stack() { printf 'cdkcicdtest-%s-pipeline\n' "$CDK_CICD_TEST_RUN_ID"; }
 pipeline_name()  { printf 'cdkcicdtest-%s-pipeline\n' "$CDK_CICD_TEST_RUN_ID"; }  # PipelineApp names it <application>-pipeline
 app_stack()      { printf 'cdkcicdtest-%s-app\n' "$CDK_CICD_TEST_RUN_ID"; }
-src_bucket()     { printf 'cdkcicdtest-%s-m4src\n' "$CDK_CICD_TEST_RUN_ID"; }
+src_repo()       { printf 'cdkcicdtest-%s-m4src\n' "$CDK_CICD_TEST_RUN_ID"; }  # CodeCommit source repo
 
 # --- m9 npmRegistry secret: a throwaway Secrets Manager secret holding a dummy bearer token ---------
 # Same region as the pipeline stack (DEV_REGION) -- CodeBuild's `secrets-manager` env mapping resolves
@@ -78,7 +78,7 @@ ensure_npm_registry_secret() {
   printf '%s\n' "$arn"
 }
 
-# Guarded the same way destroy_src_bucket is: name prefix + our tag, so this can only ever delete a
+# Guarded the same way destroy_cc_repo is: name prefix + our tag, so this can only ever delete a
 # secret this run created. Best-effort beyond that -- a missing secret is not a teardown failure.
 destroy_npm_registry_secret() {
   local name tag
@@ -106,9 +106,9 @@ ca_login() {
 # --- build the deployable bundle in a temp dir (no account id reaches the repo tree) ---------------
 # Echoes the bundle dir on stdout; all logging goes to stderr.
 build_bundle() {
-  local bundle npmrc app="cdkcicdtest-$CDK_CICD_TEST_RUN_ID" bucket
+  local bundle npmrc app="cdkcicdtest-$CDK_CICD_TEST_RUN_ID" repo
   bundle="$(mktemp -d)"
-  bucket="$(src_bucket)"
+  repo="$(src_repo)"
   cp -r "$(fixture_dir "$FIXTURE")/." "$bundle/"
 
   # The run-specific config: baked (not env-driven) because the pipeline re-reads it inside CodeBuild
@@ -140,7 +140,7 @@ import { defineCICD, DeployModel, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: '${app}',
-  repository: Repository.s3('${bucket}/app.zip'),
+  repository: Repository.codecommit('${repo}', 'main', { existing: true }),
   codeArtifact: { domain: '${CA_DOMAIN}', repository: '${CA_REPO}', npmScope: 'cdklabs' },
 ${modelLine}
 ${asyncLine}
@@ -179,53 +179,6 @@ EOF
     die "the installed @cdklabs/cdk-cicd-wrapper differs from the local build -- stale npm cache or a missed publish; run 'npm cache clean --force' and republish"
   fi
   printf '%s\n' "$bundle"
-}
-
-# --- S3 source bucket: versioned, so a re-upload is a "commit" the pipeline picks up ---------------
-ensure_src_bucket() {
-  local bucket="$1"
-  if ! aws s3api head-bucket --bucket "$bucket" --region "$DEV_REGION" >/dev/null 2>&1; then
-    aws s3api create-bucket --bucket "$bucket" --region "$DEV_REGION" \
-      --create-bucket-configuration "LocationConstraint=$DEV_REGION" >/dev/null 2>&1 \
-      || die "could not create source bucket"
-  fi
-  aws s3api put-bucket-versioning --bucket "$bucket" --region "$DEV_REGION" \
-    --versioning-configuration Status=Enabled >/dev/null 2>&1 || die 'could not enable bucket versioning'
-  # NOT `|| true`: the tag is the only thing that lets destroy_src_bucket touch this bucket later, so an
-  # untagged source bucket is one teardown can never reclaim. Failing before the pipeline exists is much
-  # cheaper than leaving a versioned bucket behind and still reporting PASSED.
-  aws s3api put-bucket-tagging --bucket "$bucket" --region "$DEV_REGION" \
-    --tagging "TagSet=[{Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID}]" >/dev/null 2>&1 \
-    || die "could not tag source bucket $bucket -- refusing to continue with a bucket teardown cannot reclaim"
-}
-
-# Empty (all versions) and delete the source bucket. Guarded on the name prefix + our tag.
-destroy_src_bucket() {
-  local bucket="$1" tag
-  case "$bucket" in "$STACK_PREFIX"-*) ;; *) die "guard: refusing to empty '$bucket' -- not a cdkcicdtest bucket" ;; esac
-  tag="$(aws s3api get-bucket-tagging --bucket "$bucket" --region "$DEV_REGION" \
-           --query "TagSet[?Key=='${TAG_KEY}']|[0].Value" --output text 2>/dev/null || true)"
-  # Returns non-zero on anything that leaves the bucket behind, so main_m4 can set rc: a surviving
-  # versioned bucket holding the source zip must never coexist with a PASSED verdict.
-  [ -n "$tag" ] && [ "$tag" != 'None' ] || { log "source bucket '$bucket' lacks our tag -- leaving it"; return 1; }
-  info "emptying + deleting source bucket $bucket"
-  # Delete every version AND delete-marker one at a time. The bucket has to stay versioned (a
-  # CodePipeline S3 source action requires it), so `s3 rb --force` cannot empty it, and the batch
-  # `delete-objects` form is worse: when the JMESPath produces an empty Objects list the call fails
-  # validation, which a `|| true` hides -- that is how a run reported "emptying" and still left the
-  # bucket behind. One object per call is slower and much harder to get silently wrong.
-  local key vid
-  while read -r key vid; do
-    [ -n "$key" ] && [ "$key" != 'None' ] || continue
-    aws s3api delete-object --bucket "$bucket" --region "$DEV_REGION" --key "$key" --version-id "$vid" >/dev/null 2>&1 || true
-  done < <(aws s3api list-object-versions --bucket "$bucket" --region "$DEV_REGION" \
-             --query '[Versions[].[Key,VersionId], DeleteMarkers[].[Key,VersionId]][]' --output text 2>/dev/null)
-  if aws s3 rb "s3://$bucket" --region "$DEV_REGION" >/dev/null 2>&1; then
-    info "deleted source bucket $bucket"
-  else
-    log "could not delete $bucket -- check the console"
-    return 1
-  fi
 }
 
 # Delete the deploy-plan SSM parameters. They are written by `cdk-cicd deploy --prepare-only` with
@@ -417,8 +370,8 @@ main_m4() {
   actual="$(caller_account)" || die 'could not resolve caller identity'
   [ "$actual" = "$CDK_CICD_TEST_ACCOUNT" ] || die 'caller identity is not CDK_CICD_TEST_ACCOUNT -- refusing to deploy'
 
-  local pstack pname bucket bundle rc=0 npm_secret_arn=''
-  pstack="$(pipeline_stack)"; pname="$(pipeline_name)"; bucket="$(src_bucket)"
+  local pstack pname repo bundle rc=0 npm_secret_arn=''
+  pstack="$(pipeline_stack)"; pname="$(pipeline_name)"; repo="$(src_repo)"
 
   # m9: the secret has to exist before build_bundle renders cicd.config.ts, since the ARN goes straight
   # into the generated npmRegistry block.
@@ -427,20 +380,12 @@ main_m4() {
   fi
 
   # --- provision source ---------------------------------------------------------------------------
-  log 'leg 1: build the bundle + upload it as the S3 source'
+  log 'leg 1: build the bundle + push it to the CodeCommit source repo'
   bundle="$(build_bundle)"
-  ensure_src_bucket "$bucket"
-  # `zip` MERGES into an existing archive, and an early exit on a previous run skips the cleanup at the
-  # end -- so without this rm a later run can ship files the fixture no longer contains. Exclusions are
-  # written without a leading `*/`: entries are stored relative with no `./` prefix, so `*/cdk.out/*`
-  # silently matches nothing at the top level. node_modules must go too -- `build_bundle` installs it to
-  # generate the lockfile, and shipping it made the source zip ~83 MiB and undercut the point that
-  # CodeBuild resolves the packages from CodeArtifact via `npm ci`.
-  rm -f /tmp/m4-app.zip
-  ( cd "$bundle" && zip -qr /tmp/m4-app.zip . -x 'cdk.out/*' 'node_modules/*' ) || { destroy_src_bucket "$bucket"; die 'zip failed'; }
-  aws s3 cp /tmp/m4-app.zip "s3://$bucket/app.zip" --region "$DEV_REGION" 2>&1 | redact \
-    || { destroy_src_bucket "$bucket"; die 'source upload failed'; }
-  info "uploaded source to s3://$bucket/app.zip"
+  ensure_cc_repo "$repo" "$DEV_REGION"
+  # node_modules and cdk.out stay out of the commit (cc_push writes the .gitignore): CodeBuild resolves
+  # the packages from CodeArtifact via `npm ci` against the committed lockfile.
+  ( cc_push "$bundle" "$repo" "$DEV_REGION" "m4-verify $CDK_CICD_TEST_RUN_ID" ) || { destroy_cc_repo "$repo" "$DEV_REGION"; die 'source push failed'; }
 
   # --- deploy the pipeline ------------------------------------------------------------------------
   log 'leg 2: cdk-cicd deploy-ci --disposable (provision the pipeline)'
@@ -479,7 +424,7 @@ main_m4() {
       log 'leg 4: assert both stage stacks really deployed, for the right stage'
       # Subshell-wrapped because assert_app_stack signals failure with `die`, i.e. `exit 1`. Called bare,
       # a failed assertion would exit main_m4 outright and skip the teardown below -- leaking the pipeline
-      # stack, both app stacks and the versioned source bucket, with the pipeline still running. Every
+      # stack, both app stacks and the source repo, with the pipeline still running. Every
       # other fallible leg here is wrapped for the same reason.
       ( assert_app_stack "$DEV_REGION" dev ) || rc=1
       ( assert_app_stack "$PROD_REGION" prod ) || rc=1
@@ -498,17 +443,17 @@ main_m4() {
   # live `Deploy-<stage>` action would happily recreate an app stack we had already deleted -- leaving an
   # orphan while the gate reported success. Nothing depends on the reverse order: the app stacks are
   # created by `cdk deploy` under the bootstrap roles, not owned by the pipeline stack.
-  log 'teardown: pipeline stack first (so no running action can recreate an app stack), then app stacks, then source bucket'
+  log 'teardown: pipeline stack first (so no running action can recreate an app stack), then app stacks, then source repo'
   tag_pipeline_stack "$pstack"
   ( destroy_stack "$pstack" "$DEV_REGION" ) || { log "pipeline stack teardown incomplete -- run \`harness.sh sweep\`"; rc=1; }
   local region
   for region in "$DEV_REGION" "$PROD_REGION"; do
     ( destroy_stack "$(app_stack)" "$region" ) || { log "app stack teardown in $region incomplete"; rc=1; }
   done
-  destroy_src_bucket "$bucket" || rc=1
+  destroy_cc_repo "$repo" "$DEV_REGION" || rc=1
   destroy_plan_parameters
   [ "${M4_NPM_REGISTRY:-false}" = 'true' ] && { destroy_npm_registry_secret || rc=1; }
-  rm -rf "$bundle" /tmp/m4-app.zip
+  rm -rf "$bundle"
 
   if [ "$rc" = 0 ]; then
     log 'm4-verify PASSED: one pipeline from cicd.config.ts flowed dev->prod through approval, then torn down'
