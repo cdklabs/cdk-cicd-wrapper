@@ -109,17 +109,17 @@ dump_failed_logs() {
 
 # The WHOLE CodeBuild log of an action's latest execution. The validation error sits well above the
 # trailing CodeBuild phase lines, so a tail is not enough to assert on it.
-full_action_log() {
-  local name="$1" action="$2" build grp stream
-  build="$(aws_masked codepipeline get-pipeline-state --name "$name" --region "$REGION" \
-    --query "stageStates[].actionStates[?actionName=='$action'][].latestExecution.externalExecutionId | [0]" \
+#
+# Every Repo 2 target runs in the ONE CD deploy project, so search that project's log group for the
+# app-config error instead of reconstructing a single build id from pipeline state.
+config_error_log() {
+  local project
+  project="$(aws cloudformation describe-stack-resources --stack-name "$(r2_stack)" --region "$REGION" \
+    --query "StackResources[?ResourceType=='AWS::CodeBuild::Project'].PhysicalResourceId | [0]" \
     --output text 2>/dev/null)" || return 0
-  [ -n "$build" ] && [ "$build" != 'None' ] || return 0
-  read -r grp stream < <(aws_masked codebuild batch-get-builds --ids "$build" --region "$REGION" \
-    --query 'builds[0].logs.[groupName,streamName]' --output text 2>/dev/null) || return 0
-  [ -n "$grp" ] && [ "$grp" != 'None' ] || return 0
-  aws_masked logs get-log-events --log-group-name "$grp" --log-stream-name "$stream" --region "$REGION" \
-    --start-from-head --limit 10000 --query 'events[].message' --output text 2>/dev/null | tr '\t' '\n' | redact || true
+  [ -n "$project" ] && [ "$project" != 'None' ] || return 0
+  aws_masked logs filter-log-events --log-group-name "/aws/codebuild/$project" --region "$REGION" \
+    --filter-pattern '"ConfigError"' --query 'events[].message' --output text 2>/dev/null | tr '\t' '\n' | redact || true
 }
 
 # Wait for the Repo 1 BuildImage stage to succeed.
@@ -226,14 +226,15 @@ main() {
   [ "$actual" = "$CDK_CICD_TEST_ACCOUNT" ] || die 'caller is not the test account'
   command -v git >/dev/null 2>&1 || die 'git is not on PATH'
 
-  local rc=0 r1 r2 ecr_uri digest_before digest_after
+  local rc=0 ecr_uri digest_before digest_after
+  # Globals, not locals: the EXIT trap runs after main returns, when its locals no longer exist.
   r1="$(mktemp -d)"; r2="$(mktemp -d)"
   ecr_uri="${CDK_CICD_TEST_ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/$(ecr_repo)"
 
   # The ECR repo is the first standalone resource; arm teardown immediately after it exists.
   aws ecr create-repository --repository-name "$(ecr_repo)" --region "$REGION" \
     --tags "Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID" >/dev/null 2>&1 || die "could not create ECR repo $(ecr_repo)"
-  trap 'destroy_all; rm -rf "$r1" "$r2"' EXIT
+  trap 'destroy_all; rm -rf "${r1:-}" "${r2:-}"' EXIT
 
   # --- Repo 1: deployer image, no stages ------------------------------------------------------------
   log 'leg 1: Repo 1 -- image-build pipeline from a cicd.config.ts that declares no stages'
@@ -324,7 +325,7 @@ EOF
   if [ "$st" != 'Failed' ]; then
     log "BAD target should have failed validation but its action is '$st'"; rc=1
   else
-    local bad_log; bad_log="$(full_action_log "$pipeline" Deploy-BAD)"
+    local bad_log; bad_log="$(config_error_log | grep "target 'BAD'")"
     if printf '%s' "$bad_log" | grep -q "'greeting'" && printf '%s' "$bad_log" | grep -q "target 'BAD'"; then
       info "BAD failed validation naming the key and the target:"
       printf '%s\n' "$bad_log" | grep "'greeting'" | head -1
