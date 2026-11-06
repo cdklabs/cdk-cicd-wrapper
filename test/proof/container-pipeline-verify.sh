@@ -107,6 +107,21 @@ dump_failed_logs() {
   done
 }
 
+# The WHOLE CodeBuild log of an action's latest execution. The validation error sits well above the
+# trailing CodeBuild phase lines, so a tail is not enough to assert on it.
+full_action_log() {
+  local name="$1" action="$2" build grp stream
+  build="$(aws_masked codepipeline get-pipeline-state --name "$name" --region "$REGION" \
+    --query "stageStates[].actionStates[?actionName=='$action'][].latestExecution.externalExecutionId | [0]" \
+    --output text 2>/dev/null)" || return 0
+  [ -n "$build" ] && [ "$build" != 'None' ] || return 0
+  read -r grp stream < <(aws_masked codebuild batch-get-builds --ids "$build" --region "$REGION" \
+    --query 'builds[0].logs.[groupName,streamName]' --output text 2>/dev/null) || return 0
+  [ -n "$grp" ] && [ "$grp" != 'None' ] || return 0
+  aws_masked logs get-log-events --log-group-name "$grp" --log-stream-name "$stream" --region "$REGION" \
+    --start-from-head --limit 10000 --query 'events[].message' --output text 2>/dev/null | tr '\t' '\n' | redact || true
+}
+
 # Wait for the Repo 1 BuildImage stage to succeed.
 wait_for_image() {
   local name="$1" i st failed
@@ -309,7 +324,7 @@ EOF
   if [ "$st" != 'Failed' ]; then
     log "BAD target should have failed validation but its action is '$st'"; rc=1
   else
-    local bad_log; bad_log="$(dump_failed_logs "$pipeline" Deploy-BAD)"
+    local bad_log; bad_log="$(full_action_log "$pipeline" Deploy-BAD)"
     if printf '%s' "$bad_log" | grep -q "'greeting'" && printf '%s' "$bad_log" | grep -q "target 'BAD'"; then
       info "BAD failed validation naming the key and the target:"
       printf '%s\n' "$bad_log" | grep "'greeting'" | head -1
