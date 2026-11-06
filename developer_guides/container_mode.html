@@ -859,6 +859,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#stage-configuration-from-repo-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Stage configuration from Repo 2
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2693,6 +2702,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#stage-configuration-from-repo-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Stage configuration from Repo 2
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2772,7 +2790,9 @@ deploying:</p>
 <span class="w">    </span><span class="s1">'my-org/my-app'</span><span class="p">,</span>
 <span class="w">    </span><span class="s1">'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef'</span><span class="p">,</span>
 <span class="w">  </span><span class="p">),</span>
-<span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'dev'</span><span class="p">],</span><span class="w"> </span><span class="c1">// required by defineCICD; deployerImage mode creates no deploy actions</span>
+<span class="w">  </span><span class="c1">// Validation stage: the image build synthesizes it (cdk-nag + config schema) with config/ci.json</span>
+<span class="w">  </span><span class="c1">// before pushing. Deployment targets and their configuration live in Repo 2.</span>
+<span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'ci'</span><span class="p">],</span>
 <span class="w">  </span><span class="nx">deployerImage</span><span class="o">:</span><span class="w"> </span><span class="kt">BuildImage.docker</span><span class="p">({</span>
 <span class="w">    </span><span class="nx">dockerfile</span><span class="o">:</span><span class="w"> </span><span class="s1">'Dockerfile'</span><span class="p">,</span><span class="w"> </span><span class="c1">// default; the image payload is your app + deps, NOT cdk.out</span>
 <span class="w">    </span><span class="c1">// repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one</span>
@@ -2780,11 +2800,18 @@ deploying:</p>
 <span class="w">  </span><span class="p">}),</span>
 <span class="p">});</span>
 </code></pre></div>
-<p><code>stages</code> remains required by the <code>defineCICD</code> API, but <code>deployerImage</code> mode does not render deployment
-actions for those stages.</p>
+<p>In <code>deployerImage</code> mode the stages are <strong>validation stages</strong>, and at least one is required. Before it
+builds the image, the pipeline synthesizes them with the image's own <code>config/&lt;stage&gt;.json</code>, so cdk-nag
+and your config schema run in CI. A failure stops the image from being pushed. Use
+<code>ci.synthStages</code> to validate only some of them. No deployment actions are rendered for these stages.</p>
+<p>The deployment targets do not need to be declared here: the deployer container accepts any stage a
+Repo 2 target defines and uses that target's configuration (see below). Keep a representative
+<code>config/ci.json</code> in Repo 1 so the validation exercises the same code paths as a real environment.</p>
 <p><code>cdk-cicd deploy-ci</code> provisions the CI pipeline. Its single build project:</p>
 <ol>
-<li>runs <code>npm ci</code> and <code>cdk-cicd check</code> (CI as a validation gate),</li>
+<li>runs <code>npm ci</code> and your <code>audit</code>/<code>build</code>/<code>test</code> scripts (CI as a validation gate),</li>
+<li>synthesizes the validation stages (<code>cdk-cicd synth</code>, so cdk-nag and the config schema run) and
+   discards the assembly,</li>
 <li>logs in to ECR,</li>
 <li><code>docker build</code>s your Dockerfile and pushes the image, tagged by strategy (<code>GIT_SHA</code> by default —
    the lowercase commit SHA for Git sources or a deterministic SHA-256 of another source revision;
@@ -2893,12 +2920,39 @@ npm<span class="w"> </span>run<span class="w"> </span>cdk-cicd<span class="w"> <
 </code></pre></div>
 <p>On a runner whose default Docker network cannot reach AWS, add <code>--docker-network host</code>. The local
 executor is fail-closed: it refuses a target with <code>manualApproval: true</code> unless you pass <code>--yes</code>.</p>
+<h3 id="stage-configuration-from-repo-2">Stage configuration from Repo 2</h3>
+<p><code>config/&lt;stage&gt;.json</code> in Repo 2 can carry the target's full stage configuration next to its <code>version</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1.4.2"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"featureFlags"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"newCheckout"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"tags"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"environment"</span><span class="p">:</span><span class="w"> </span><span class="s2">"int"</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"ordersTableName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"orders-int"</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>When the file has any key besides <code>version</code>, it is the target's stage configuration:</p>
+<ul>
+<li><code>version</code> is reserved for the image tag and is removed before the configuration reaches the app.</li>
+<li>The rest is mounted read-only into the container and selected with <code>CONFIG_FILE</code>. It <strong>replaces</strong> any
+  <code>config/&lt;stage&gt;.json</code> baked into the image. The two are never merged.</li>
+<li>Your app validates it with its own schema (<code>AppConfig.of(this, { schema })</code>) during synth, before
+  any CloudFormation change. An invalid value fails with an error that names the key and the target.</li>
+<li>Values such as <code>resolve:secretsmanager:&lt;arn&gt;</code> stay references and are resolved inside the container,
+  exactly as for a baked configuration.</li>
+</ul>
+<p>A file that holds only <code>version</code> keeps the previous behaviour: the image's baked configuration is used.</p>
+<p>To change a target's configuration, commit a new <code>config/&lt;stage&gt;.json</code>. The same image tag redeploys
+with the new values and no image rebuild. To check every target against the image's schema without
+deploying, run the preflight. It needs no <code>--yes</code>, because it changes nothing:</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk-cicd<span class="w"> </span>--<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w"> </span>--validate-only
+npm<span class="w"> </span>run<span class="w"> </span>cdk-cicd<span class="w"> </span>--<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w"> </span>--validate-only<span class="w"> </span>--target<span class="w"> </span>int
+</code></pre></div>
 <h2 id="division-of-authority-what-vs-where">Division of authority: WHAT vs WHERE</h2>
-<p>The <strong>image</strong> is authoritative for <em>what</em> to deploy — the app code and its stage definitions are baked in
-at build time. The <strong><code>deploy.config.ts</code> target</strong> is authoritative for <em>where</em> — the account, region(s),
-and forced role for each stage. That is why each run pins a single <code>--region</code>: the target's environment
-overrides whatever region set the image's own <code>cicd.config.ts</code> carries, so the CD repository — not the
-image — decides the deployment topology.</p>
+<p>The <strong>image</strong> is authoritative for <em>what</em> to deploy: the app code, its stacks, and the schema of its
+configuration. The <strong>deploy repository</strong> is authoritative for <em>where</em> and <em>with which configuration</em>.
+The <code>deploy.config.ts</code> target sets the account, region(s), forced roles and approval, and
+<code>config/&lt;stage&gt;.json</code> sets the version and stage configuration. Each run pins a single <code>--region</code>, so
+the CD repository, not the image, decides the deployment topology. An image may still declare stages
+and bake configuration; Repo 2 values win whenever it supplies them.</p>
 <h2 id="rollback-is-a-retag">Rollback is a retag</h2>
 <p>To roll back, point a stage's version file at the previous tag (e.g. <code>config/prod.json</code>'s <code>version</code> back
 to <code>1.4.1</code>) and re-run. Because the image pins code + deps and config supplies the lookups, the same image</p>
@@ -2931,7 +2985,7 @@ to <code>1.4.1</code>) and re-run. Because the image pins code + deps and config
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-09-11
+    2026-11-06
   </span>
 
     
