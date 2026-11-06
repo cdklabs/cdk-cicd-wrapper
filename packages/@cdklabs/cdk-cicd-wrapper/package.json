@@ -9,6 +9,7 @@
   "scripts": {
     "build": "projen build",
     "bump": "projen bump",
+    "bump:releasable-commits": "projen bump:releasable-commits",
     "check-for-updates": "projen check-for-updates",
     "compat": "projen compat",
     "compile": "projen compile",
@@ -38,18 +39,18 @@
     "organization": false
   },
   "devDependencies": {
-    "@aws-cdk/integ-runner": "^2.186.0-alpha.0",
+    "@aws-cdk/integ-runner": "^2.205.8",
     "@aws-cdk/integ-tests-alpha": "^2.186.0-alpha.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26",
-    "@typescript-eslint/eslint-plugin": "^7",
-    "@typescript-eslint/parser": "^7",
-    "@typescript-eslint/typescript-estree": "^7",
+    "@types/node": "ts6.0",
+    "@typescript-eslint/eslint-plugin": "^8",
+    "@typescript-eslint/parser": "^8",
+    "@typescript-eslint/typescript-estree": "^8",
     "aws-cdk-lib": "2.195.0",
     "cdk-nag": "2.37.55",
     "cdk-pipelines-github": "0.4.140",
-    "commit-and-tag-version": "^12",
-    "constructs": "10.5.0",
+    "commit-and-tag-version": "^13",
+    "constructs": "10.8.1",
     "eslint": "^8",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
@@ -57,20 +58,20 @@
     "eslint-plugin-prettier": "^5.5.5",
     "jest": "^30.5.1",
     "jest-junit": "^17",
-    "jsii": "~5.9.0",
+    "jsii": "~6.0.0",
     "jsii-diff": "^1.140.0",
-    "jsii-docgen": "^10.5.0",
+    "jsii-docgen": "^10.12.7",
     "jsii-pacmak": "^1.140.0",
-    "jsii-rosetta": "~5.9.0",
+    "jsii-rosetta": "~6.0.0",
     "prettier": "^3.9.10",
     "ts-jest": "^29.4.14",
-    "typescript": "^5.9.3"
+    "typescript": "~6.0.3"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.195.0",
     "cdk-nag": "^2.37.55",
     "cdk-pipelines-github": "^0.4.132",
-    "constructs": "^10.5.0"
+    "constructs": "^10.8.1"
   },
   "dependencies": {
     "@aws-cdk/app-staging-synthesizer-alpha": "2.195.0-alpha.0",

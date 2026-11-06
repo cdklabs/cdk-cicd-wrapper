@@ -8,11 +8,12 @@ import * as globby from 'globby';
 import * as os from 'os';
 import * as path from 'path';
 import * as yargs from 'yargs';
+import { exitWithError } from '../utils/Exit';
 import { LicenseCollectorConstructor, LicenseConfig, ScanningContext } from './license/Types';
 import { Projects } from './license/Projects';
 import { NodeLicenseCollector } from './license/NodeLicenseCollector';
 import { PythonLicenseCollector } from './license/PythonLicenseCollector';
-import { logger } from '../utils/Logging';
+import { describeError, logger } from '../utils/Logging';
 
 // 5 min timeout
 const GLOBAL_TIMEOUT = { timeout: 5 * 60 * 1000 };
@@ -157,7 +158,7 @@ class LicenseChecker {
       }
       return 0;
     } catch (error) {
-      logger.error(error);
+      logger.error(describeError(error));
       logger.error('License scan failed');
       result = 1;
     } finally {
@@ -307,7 +308,7 @@ class Command implements yargs.CommandModule {
     ).scan();
 
     if (result) {
-      yargs.exit(1, new Error('License validation failed.'));
+      exitWithError(1, new Error('License validation failed.'));
     }
   }
 }

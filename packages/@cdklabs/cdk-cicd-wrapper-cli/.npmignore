@@ -6,7 +6,7 @@ junit.xml
 /.prettierignore
 /.prettierrc.json
 /test/
-/tsconfig.dev.json
+/test/tsconfig.json
 /src/
 !/lib/
 !/lib/**/*.js

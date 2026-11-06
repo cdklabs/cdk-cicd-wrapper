@@ -10,15 +10,15 @@ import { yarn } from 'cdklabs-projen-project-types';
  *
  * Module scope because instance fields are not readable inside `super()`.
  */
-const CONSTRUCTS_VERSION = '10.5.0';
+const CONSTRUCTS_VERSION = '10.8.1';
 
 export class RootConfig extends yarn.Monorepo {
   public readonly repositoryUrl = 'https://github.com/cdklabs/cdk-cicd-wrapper.git';
   public readonly eslintDeps = [
     'eslint@^8',
-    '@typescript-eslint/eslint-plugin@^7',
-    '@typescript-eslint/parser@^7',
-    '@typescript-eslint/typescript-estree@^7',
+    '@typescript-eslint/eslint-plugin@^8',
+    '@typescript-eslint/parser@^8',
+    '@typescript-eslint/typescript-estree@^8',
   ];
   public readonly workflowRunsOn = ['ubuntu-latest'];
   public readonly cdkVersion = '2.195.0';
@@ -45,10 +45,14 @@ export class RootConfig extends yarn.Monorepo {
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
       projenrcTs: true,
       defaultReleaseBranch: 'main',
-      // Floor required by cdklabs-projen-project-types 0.5.x
-      projenVersion: '^0.99.68',
+      // Floor required by cdklabs-projen-project-types 0.6.x
+      projenVersion: '^0.104.12',
+      // TypeScript 6: the newest line with the classic compiler API (see CLIConfig).
+      typescriptVersion: '~6.0.3',
+      // Jest only supports require(esm) -- needed for the ESM-only tslog 5 / yargs 18 -- on Node >=24.9.
+      workflowNodeVersion: '24.x',
       devDeps: [
-        'cdklabs-projen-project-types@^0.5.2',
+        'cdklabs-projen-project-types@^0.6.22',
         `constructs@${CONSTRUCTS_VERSION}`,
         // The monorepo release task runs `yarn workspaces run shx rm -rf dist`, but neither
         // cdklabs-projen-project-types nor projen >=0.99 declares shx (projen 0.97 pulled it in
@@ -56,9 +60,9 @@ export class RootConfig extends yarn.Monorepo {
         'shx@^0.4.0',
         'node-fetch@^2',
         'eslint@^8',
-        '@typescript-eslint/eslint-plugin@^7',
-        '@typescript-eslint/parser@^7',
-        '@typescript-eslint/typescript-estree@^7',
+        '@typescript-eslint/eslint-plugin@^8',
+        '@typescript-eslint/parser@^8',
+        '@typescript-eslint/typescript-estree@^8',
       ],
       buildWorkflow: true,
       clobber: true,

@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BuildImage } from '../../src/config/build-image';
 import { defineCICD, defineDeployment, resolveCicdConfig } from '../../src/config/define';
 import { Repository } from '../../src/config/repository';
 import { EngineType, RegionOrder, SynthesizerType } from '../../src/config/types';
@@ -8,6 +9,20 @@ import { EngineType, RegionOrder, SynthesizerType } from '../../src/config/types
 const REPO = Repository.github('org/repo');
 
 describe('m3-config: defineCICD stage normalization', () => {
+  test('a container-mode config must declare at least one validation stage', () => {
+    expect(() =>
+      defineCICD({ application: 'shop', repository: REPO, stages: [], deployerImage: BuildImage.docker() }),
+    ).toThrow(/needs at least one stage/);
+    expect(
+      defineCICD({
+        application: 'shop',
+        repository: REPO,
+        stages: ['ci'],
+        deployerImage: BuildImage.docker(),
+      }).stages.map((stage) => stage.name),
+    ).toEqual(['ci']);
+  });
+
   test('a bare-name stage becomes an object with an empty (env-agnostic) region list', () => {
     const cfg = defineCICD({ repository: REPO, stages: ['dev'] });
     expect(cfg.stages[0]).toEqual({

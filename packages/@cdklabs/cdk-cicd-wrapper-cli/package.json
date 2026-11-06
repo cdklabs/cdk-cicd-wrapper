@@ -12,6 +12,7 @@
   "scripts": {
     "build": "projen build",
     "bump": "projen bump",
+    "bump:releasable-commits": "projen bump:releasable-commits",
     "check-for-updates": "projen check-for-updates",
     "cli-exec": "projen cli-exec",
     "compile": "projen compile",
@@ -29,11 +30,11 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/node": "^26",
-    "@typescript-eslint/eslint-plugin": "^7",
-    "@typescript-eslint/parser": "^7",
-    "@typescript-eslint/typescript-estree": "^7",
-    "commit-and-tag-version": "^12",
+    "@types/node": "^20",
+    "@typescript-eslint/eslint-plugin": "^8",
+    "@typescript-eslint/parser": "^8",
+    "@typescript-eslint/typescript-estree": "^8",
+    "commit-and-tag-version": "^13",
     "constructs": "^10.0.0",
     "eslint": "^8",
     "eslint-config-prettier": "^10.1.8",
@@ -44,22 +45,22 @@
     "jest-junit": "^17",
     "prettier": "^3.9.10",
     "ts-jest": "^29.4.14",
-    "typescript": "^5.9.3"
+    "typescript": "~6.0.3"
   },
   "dependencies": {
-    "@aws-cdk/cloud-assembly-schema": "^48.12.0",
+    "@aws-cdk/cloud-assembly-schema": "^55.2.0",
     "@aws-sdk/client-s3": "^3.1126.0",
     "@aws-sdk/credential-providers": "^3.1130.0",
     "@cdklabs/cdk-cicd-wrapper": "^0.0.0",
     "@types/fs-extra": "^11.0.4",
-    "@types/yargs": "^17.0.33",
+    "@types/yargs": "^17.0.35",
     "csv": "^6.6.3",
     "fs-extra": "^11.3.5",
     "globby": "11.1.0",
     "ts-node": "^10.9.2",
-    "tslog": "^4.10.2",
-    "typescript": "^5.9.3",
-    "yargs": "^17.7.3"
+    "tslog": "^5.4.0",
+    "typescript": "~6.0.3",
+    "yargs": "^18.2.0"
   },
   "keywords": [
     "aws",
@@ -70,6 +71,9 @@
     "cli",
     "vanilla-pipeline"
   ],
+  "engines": {
+    "node": ">= 20.19.0"
+  },
   "devEngines": {
     "packageManager": {
       "name": "yarn",
@@ -121,7 +125,7 @@
       "^.+\\.[t]sx?$": [
         "ts-jest",
         {
-          "tsconfig": "tsconfig.dev.json"
+          "tsconfig": "test/tsconfig.json"
         }
       ]
     }

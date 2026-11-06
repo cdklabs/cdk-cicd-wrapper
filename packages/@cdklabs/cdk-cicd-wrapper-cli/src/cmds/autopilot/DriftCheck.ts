@@ -89,11 +89,23 @@ export const readManifestFromDisk: ManifestReader = (dir) => {
   if (!existsSync(manifestPath)) {
     throw new Error(`cloud assembly: no manifest.json at ${manifestPath}`);
   }
+  let manifest: any;
   try {
-    return Manifest.loadAssemblyManifest(manifestPath);
+    manifest = Manifest.loadAssemblyManifest(manifestPath);
   } catch (error) {
     throw new Error(`cloud assembly: ${manifestPath} is invalid (${(error as Error).message})`);
   }
+  // Newer cloud-assembly-schema releases no longer reject a stack artifact without a template while
+  // loading. A stack that cannot be deployed must fail the plan rather than drop out of it silently.
+  const artifacts = isRecord(manifest?.artifacts) ? manifest.artifacts : {};
+  for (const [id, artifact] of Object.entries(artifacts)) {
+    if (!isRecord(artifact) || artifact.type !== CLOUDFORMATION_STACK_ARTIFACT) continue;
+    const templateFile = artifact.properties?.templateFile;
+    if (typeof templateFile !== 'string' || templateFile.trim().length === 0) {
+      throw new Error(`cloud assembly: ${manifestPath} is invalid (stack artifact '${id}' has no templateFile)`);
+    }
+  }
+  return manifest;
 };
 
 /** One recursively discovered CloudFormation stack artifact. */

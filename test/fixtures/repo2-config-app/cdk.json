@@ -1,0 +1,4 @@
+{
+  "app": "npx cdk-cicd exec bin/app.ts",
+  "output": "cdk.out"
+}

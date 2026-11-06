@@ -14,17 +14,21 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         'This repository contains the infrastructure as code to wrap your AWS CDK project with CI/CD around it.',
       keywords: ['cli', 'aws-cdk', 'awscdk', 'aws', 'ci-cd-boot', 'ci-cd', 'vanilla-pipeline'],
       projenrcTs: true,
+      // TypeScript 6: the newest line with the classic compiler API (see CLIConfig).
+      typescriptVersion: '~6.0.3',
+      // yargs 18 / tslog 5 are ESM-only and load through require(esm), unflagged from Node 20.19 / 22.12.
+      minNodeVersion: '20.19.0',
       npmTrustedPublishing: true,
       releaseEnvironment: 'release',
       bin: {
         'cdk-cicd': './bin/cdk-cicd',
       },
       deps: [
-        // Pinned to the v17 line: the CLI's yargs usage (namespace `ya.command(...)`) is not
-        // compatible with the v18 major, which floated in on a regen and broke the whole CLI.
-        // See finding code-review-cli-yargs18-incompatible.
-        'yargs@^17.7.3',
-        '@types/yargs@^17.0.33',
+        // yargs 18 is ESM-only. The CommonJS CLI loads it through Node's require(esm) (Node >=20.19 /
+        // >=22.12) and builds an instance from the factory (src/index.ts) instead of the removed v17
+        // singleton namespace. yargs 18 ships no typings; @types/yargs 17 still describes its API.
+        'yargs@^18.2.0',
+        '@types/yargs@^17.0.35',
         'globby@11.1.0', // globby version 12+ only support ESM
         'fs-extra',
         '@types/fs-extra',
@@ -36,8 +40,9 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         // Match the schema range consumed by the repository's CDK CLI. Older manifests remain
         // backwards-compatible, while assemblies emitted at schema 42-48 are no longer rejected by
         // our pre-deploy parser even though the installed `cdk deploy` supports them.
-        '@aws-cdk/cloud-assembly-schema@^48.12.0',
-        'tslog',
+        '@aws-cdk/cloud-assembly-schema@^55.2.0',
+        // tslog 5 is ESM-only; loaded through require(esm) like yargs.
+        'tslog@^5.4.0',
         // Autopilot `cdk-cicd exec` resolves the register preload and reuses the config loader from the
         // constructs package. Kept a workspace dependency, NOT folded into the jsii package (D5).
         //
@@ -59,7 +64,9 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         // `cdk-cicd migrate` parses a Blueprint entry file with the TypeScript compiler API at RUNTIME, so
         // typescript must be a runtime dep, not just a devDep (a global CLI install would not otherwise
         // resolve it). ts-node peer-depends on it too.
-        'typescript@^5.9.3',
+        // The TypeScript 6 line: jsii 6 / jsii-rosetta 6 compile with it, and ts-node plus
+        // typescript-eslint need the classic compiler API that TypeScript 7 no longer ships.
+        'typescript@~6.0.3',
       ],
       // Enabled for Autopilot: `cdk-cicd exec`'s pure logic (stage->env resolution, the non-clobbering
       // CDK_CONTEXT_JSON merge) is unit-tested here; the spawn itself is proven by the harness.
@@ -68,6 +75,9 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
 
     this.addPackageIgnore('*.ts');
     this.addDevDeps(...root.eslintDeps);
+    // tslog 5 and yargs 18 are ESM-only. Node loads them from the CommonJS CLI through require(esm), but
+    // Jest evaluates ES modules with node:vm module APIs that are still behind this flag.
+    this.testTask.env('NODE_OPTIONS', '--experimental-vm-modules');
 
     const cliExec = this.addTask('cli-exec');
     cliExec.spawn(this.tasks.tryFind('compile')!);

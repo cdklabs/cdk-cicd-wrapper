@@ -795,6 +795,11 @@ export class CodePipelineEngine implements IEngine {
       ...(config.npmRegistry ? npmRegistryLoginCommands(config.npmRegistry) : []),
       ...(config.codeArtifact ? [codeArtifactLogin(stack, config.codeArtifact)] : []),
       ...defaultCiCommands(),
+      // Validation gate: synthesize the image's declared stages (cdk-nag and the app's config schema run
+      // under the injection hook) BEFORE building the image, so a defective app never reaches ECR and is
+      // not first synthesized at its first deployment. The assembly is discarded -- Repo 2 synthesizes
+      // at deploy time against each target's own configuration.
+      ...imageValidationSynthCommands(config),
       ...(immutableTag
         ? [
             ...immutableImageTagCommands(config.repository.repositoryType),
@@ -858,6 +863,15 @@ export class CodePipelineEngine implements IEngine {
       }),
     });
     grantCodeBuildImageCredentialKeyDecrypt(project, config.ci.codeBuildImageCredentials);
+    // The validation synth may resolve context lookups, exactly like the flat Build project.
+    this.grantLookupPermissions(
+      project,
+      config.stages.map((stage) => ({
+        account: stage.env.account ?? stack.account,
+        regions: stage.env.regions.length > 0 ? stage.env.regions : [stack.region],
+      })),
+      config.qualifier,
+    );
     repository.grantPullPush(project);
     if (immutableTag) repository.grantRead(project);
     if (config.codeArtifact) grantCodeArtifactRead(project, config.codeArtifact);
@@ -1459,6 +1473,25 @@ function ciSynthStages(config: ResolvedCicdConfig, promote: boolean): string[] {
     throw new Error(`cdk-cicd: ci.synthStages names unknown stage(s): ${unknown.join(', ')}`);
   }
   return configured;
+}
+
+/**
+ * The validation synth the container-mode image build runs before `docker build`: `ci.synthStages`
+ * when set, otherwise every declared stage (they exist only to be validated). `.dockerignore` should
+ * exclude `cdk.out`; it is removed afterwards regardless so the validation assembly never ships.
+ */
+export function imageValidationSynthCommands(config: ResolvedCicdConfig): string[] {
+  const names = config.stages.map((stage) => stage.name);
+  if (names.length === 0) {
+    throw new Error('cdk-cicd: a deployerImage pipeline needs at least one stage to validate before pushing');
+  }
+  const configured = config.ci.synthStages;
+  const unknown = configured.filter((name) => !names.includes(name));
+  if (unknown.length > 0) {
+    throw new Error(`cdk-cicd: ci.synthStages names unknown stage(s): ${unknown.join(', ')}`);
+  }
+  const selected = configured.length > 0 ? configured : names;
+  return [...synthCommands(selected, selected.length === names.length), 'rm -rf cdk.out'];
 }
 
 /** The synth command(s) the CI phase runs for `synthed`. */

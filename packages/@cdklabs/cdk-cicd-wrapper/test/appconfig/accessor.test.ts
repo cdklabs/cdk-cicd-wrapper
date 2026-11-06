@@ -62,6 +62,20 @@ describe('appconfig-accessor-context', () => {
     expectKind(() => AppConfig.of(stack, { schema: SCHEMA }), ConfigErrorKind.MISSING_ATTRIBUTE);
   });
 
+  test('a validation error names the injected config source (deploy target) and the key', () => {
+    const app = new App({
+      context: {
+        [AppConfig.CONTEXT_KEY]: { aws: {} },
+        [AppConfig.SOURCE_CONTEXT_KEY]: "deploy repository config/SBCD.json for target 'SBCD'",
+      },
+    });
+    const stack = new Stack(app, 'Stack');
+
+    expect(() => AppConfig.of(stack, { schema: SCHEMA })).toThrow(
+      /'application' in context 'cicd:config' \(deploy repository config\/SBCD\.json for target 'SBCD'\)/,
+    );
+  });
+
   test('a non-object context value raises PARSE_ERROR', () => {
     for (const bad of ['a string', 42, ['an', 'array'], true]) {
       const app = new App({ context: { [AppConfig.CONTEXT_KEY]: bad } });

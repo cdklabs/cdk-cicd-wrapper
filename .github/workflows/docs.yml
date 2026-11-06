@@ -16,18 +16,23 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - id: auto_637d35d9
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - id: auto_e5877e7f
+        uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - uses: actions/setup-python@v5
+      - id: auto_8dd8b1ae
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Build docs
+        id: build_docs
         run: ./scripts/build-docs
         working-directory: docs
       - name: Publish to gh-pages
+        id: publish_to_gh-pages
         run: .venv/bin/mkdocs gh-deploy --force
         working-directory: docs/build/docs

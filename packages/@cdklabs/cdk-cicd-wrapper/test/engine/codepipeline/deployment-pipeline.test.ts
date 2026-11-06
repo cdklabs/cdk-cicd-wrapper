@@ -502,6 +502,21 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       const lockChanged = runFingerprint();
       expect(lockChanged.status).toBe(0);
       expect(lockChanged.stdout).not.toBe(fingerprint.stdout);
+      writeFileSync(packageLock, JSON.stringify({ lockfileVersion: 3, packages: { '': { version: '1.0.0' } } }));
+      expect(runFingerprint().stdout).toBe(fingerprint.stdout);
+
+      // A Repo 2 stage configuration (keys besides version) is a deployment input: changing it with the
+      // same image version must redeploy. A version-only file keeps the previous fingerprint.
+      const devConfig = path.join(cwd, 'config', 'dev.json');
+      writeFileSync(devConfig, JSON.stringify({ version: '1.2.3', greeting: 'alpha' }));
+      const withStageConfig = runFingerprint();
+      expect(withStageConfig.status).toBe(0);
+      expect(withStageConfig.stdout).not.toBe(fingerprint.stdout);
+      writeFileSync(devConfig, JSON.stringify({ version: '1.2.3', greeting: 'bravo' }));
+      const stageConfigChanged = runFingerprint();
+      expect(stageConfigChanged.stdout).not.toBe(withStageConfig.stdout);
+      writeFileSync(devConfig, JSON.stringify({ version: '1.2.3' }));
+      expect(runFingerprint().stdout).toBe(fingerprint.stdout);
 
       writeDeploymentConfig(parallel.targets, { qualifier: 'changedq' });
       const identityChanged = runFingerprint();

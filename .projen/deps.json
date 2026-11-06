@@ -10,21 +10,22 @@
     },
     {
       "name": "@types/node",
+      "version": "ts6.0",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/eslint-plugin",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/parser",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
       "name": "@typescript-eslint/typescript-estree",
-      "version": "^7",
+      "version": "^8",
       "type": "build"
     },
     {
@@ -37,12 +38,12 @@
     },
     {
       "name": "cdklabs-projen-project-types",
-      "version": "^0.5.2",
+      "version": "^0.6.22",
       "type": "build"
     },
     {
       "name": "constructs",
-      "version": "10.5.0",
+      "version": "10.8.1",
       "type": "build"
     },
     {
@@ -73,7 +74,7 @@
     },
     {
       "name": "projen",
-      "version": "^0.99.68",
+      "version": "^0.104.12",
       "type": "build"
     },
     {
@@ -87,11 +88,12 @@
     },
     {
       "name": "typescript",
+      "version": "~6.0.3",
       "type": "build"
     },
     {
       "name": "constructs",
-      "version": "10.5.0",
+      "version": "10.8.1",
       "type": "override"
     }
   ],

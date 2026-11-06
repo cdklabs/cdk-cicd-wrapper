@@ -7,7 +7,7 @@
 #   bash test/proof/container-verify.sh
 #
 # Reuses the pipeline-app fixture + a generated Dockerfile + a container cicd.config.ts. Uses the gitignored
-# .env + ambient creds; every AWS call redacted; ECR repo + pipeline stack + source bucket torn down.
+# .env + ambient creds; every AWS call redacted; ECR repo + pipeline stack + CodeCommit source repo torn down.
 # Requires the wrapper + CLI published to CodeArtifact.
 # =============================================================================
 set -uo pipefail
@@ -23,7 +23,7 @@ readonly POLL_INTERVAL=20
 readonly POLL_MAX=60   # 20 min ceiling
 
 pipeline_stack() { printf 'cdkcicdtest-%s-pipeline\n' "$CDK_CICD_TEST_RUN_ID"; }
-src_bucket()     { printf 'cdkcicdtest-%s-csrc\n' "$CDK_CICD_TEST_RUN_ID"; }
+src_repo()       { printf 'cdkcicdtest-%s-csrc\n' "$CDK_CICD_TEST_RUN_ID"; }  # CodeCommit source repo
 ecr_repo()       { printf 'cdkcicdtest-%s-deployer\n' "$CDK_CICD_TEST_RUN_ID"; }
 
 main_container() {
@@ -33,8 +33,8 @@ main_container() {
   local actual; actual="$(caller_account)" || die 'no caller identity'
   [ "$actual" = "$CDK_CICD_TEST_ACCOUNT" ] || die 'caller is not the test account'
 
-  local pstack bucket repo bundle rc=0
-  pstack="$(pipeline_stack)"; bucket="$(src_bucket)"; repo="$(ecr_repo)"
+  local pstack src repo bundle rc=0
+  pstack="$(pipeline_stack)"; src="$(src_repo)"; repo="$(ecr_repo)"
 
   # --- bundle: pipeline-app fixture + a Dockerfile + a container config -----------------------------
   log 'leg 1: build the source bundle (fixture + Dockerfile + container cicd.config.ts)'
@@ -54,20 +54,21 @@ EOF
 import { defineCICD, Repository, BuildImage } from '@cdklabs/cdk-cicd-wrapper';
 export default defineCICD({
   application: '${app}',
-  repository: Repository.s3('${bucket}/app.zip'),
+  repository: Repository.codecommit('${src}', 'main', { existing: true }),
   codeArtifact: { domain: '${CA_DOMAIN}', repository: '${CA_REPO}', npmScope: 'cdklabs' },
   deployerImage: BuildImage.docker({ repositoryName: '${repo}' }),
   stages: [{ name: 'dev', env: { region: '${REGION}' } }],
 });
 EOF
   # Pre-create the ECR repo the config references, tagged so teardown can find + delete it. (The engine
-  # references it by name when repositoryName is set, so the gate owns its lifecycle.)
-  aws ecr create-repository --repository-name "$repo" --region "$REGION" \
+  # references it by name when repositoryName is set, so the gate owns its lifecycle.) IMMUTABLE because
+  # the default GIT_SHA tag strategy refuses to push into a mutable repository.
+  aws ecr create-repository --repository-name "$repo" --region "$REGION" --image-tag-mutability IMMUTABLE \
     --tags "Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID" >/dev/null 2>&1 \
     || die "could not create ECR repo $repo"
   # Arm teardown NOW that a standalone resource (the ECR repo) exists. Every `die` below fires before the
   # explicit teardown is reachable, and `harness.sh sweep` only finds CloudFormation stacks -- so without
-  # this trap an early failure (login/install/staleness/bucket) would leak the ECR repo with no recovery.
+  # this trap an early failure (login/install/staleness/push) would leak the ECR repo with no recovery.
   # destroy_all is guarded + idempotent, so running it once on EXIT (success or die) is safe.
   trap 'destroy_all' EXIT
 
@@ -84,11 +85,8 @@ EOF
     die 'installed wrapper differs from the local build -- stale CodeArtifact/npm cache; republish'
   fi
 
-  ensure_src_bucket "$bucket"
-  rm -f /tmp/container-app.zip
-  ( cd "$bundle" && zip -qr /tmp/container-app.zip . -x 'node_modules/*' 'cdk.out/*' ) || die 'zip failed'
-  aws s3 cp /tmp/container-app.zip "s3://$bucket/app.zip" --region "$REGION" 2>&1 | redact || die 'upload failed'
-  info "uploaded source to s3://$bucket/app.zip"
+  ensure_cc_repo "$src" "$REGION"
+  ( cc_push "$bundle" "$src" "$REGION" "container-verify $CDK_CICD_TEST_RUN_ID" ) || die 'source push failed'
 
   # --- provision the image-build pipeline ---------------------------------------------------------
   log 'leg 2: cdk-cicd deploy-ci --disposable (provision the image-build pipeline)'
@@ -116,8 +114,8 @@ EOF
 
   # Teardown runs via the EXIT trap (armed after the ECR repo was created), so it covers this normal
   # return AND every early `die`. rm the local bundle here; the trap does the AWS teardown.
-  log 'teardown (pipeline stack, ECR repo, source bucket) runs on exit'
-  rm -rf "$bundle" /tmp/container-app.zip
+  log 'teardown (pipeline stack, ECR repo, source repo) runs on exit'
+  rm -rf "$bundle"
   [ "$rc" = 0 ] && log 'container-verify PASSED: image-build pipeline from cicd.config.ts pushed a deployer image to ECR, then torn down' \
                 || log 'container-verify FAILED'
   return "$rc"
@@ -153,17 +151,9 @@ dump_failed_logs() {
   done
 }
 
-ensure_src_bucket() {
-  local b="$1"
-  aws s3api head-bucket --bucket "$b" --region "$REGION" >/dev/null 2>&1 || \
-    aws s3api create-bucket --bucket "$b" --region "$REGION" --create-bucket-configuration "LocationConstraint=$REGION" >/dev/null 2>&1 || die "bucket create failed"
-  aws s3api put-bucket-versioning --bucket "$b" --region "$REGION" --versioning-configuration Status=Enabled >/dev/null 2>&1 || die 'versioning failed'
-  aws s3api put-bucket-tagging --bucket "$b" --region "$REGION" --tagging "TagSet=[{Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID}]" >/dev/null 2>&1 || die 'bucket tag failed'
-}
-
-# Tag the pipeline stack (deploy-ci does not), then destroy stack + ECR repo + source bucket, all guarded.
+# Tag the pipeline stack (deploy-ci does not), then destroy stack + ECR repo + source repo, all guarded.
 destroy_all() {
-  local pstack bucket repo; pstack="$(pipeline_stack)"; bucket="$(src_bucket)"; repo="$(ecr_repo)"
+  local pstack src repo; pstack="$(pipeline_stack)"; src="$(src_repo)"; repo="$(ecr_repo)"
   aws cloudformation update-stack --stack-name "$pstack" --region "$REGION" --use-previous-template \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --tags "Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID" >/dev/null 2>&1 || true
   aws cloudformation wait stack-update-complete --stack-name "$pstack" --region "$REGION" >/dev/null 2>&1 || true
@@ -174,11 +164,8 @@ destroy_all() {
   if [ "$t" = "$CDK_CICD_TEST_RUN_ID" ]; then
     aws ecr delete-repository --repository-name "$repo" --region "$REGION" --force >/dev/null 2>&1 && info "deleted ECR repo $repo" || log "could not delete ECR repo $repo"
   else log "ECR repo $repo not tagged for this run -- leaving"; fi
-  # source bucket
-  for vid in $(aws s3api list-object-versions --bucket "$bucket" --region "$REGION" --query '[Versions[].VersionId, DeleteMarkers[].VersionId][]' --output text 2>/dev/null); do
-    aws s3api delete-object --bucket "$bucket" --region "$REGION" --key app.zip --version-id "$vid" >/dev/null 2>&1
-  done
-  aws s3 rb "s3://$bucket" --region "$REGION" >/dev/null 2>&1 && info "deleted source bucket $bucket" || true
+  # source repo
+  destroy_cc_repo "$src" "$REGION" || true
 }
 
 main_container "$@"
