@@ -40,6 +40,31 @@ r1_stack()     { printf 'cdkcicdtest-%s-r1-pipeline\n' "$CDK_CICD_TEST_RUN_ID"; 
 r1_src()       { printf 'cdkcicdtest-%s-r1src\n' "$CDK_CICD_TEST_RUN_ID"; }
 r2_src()       { printf 'cdkcicdtest-%s-r2src\n' "$CDK_CICD_TEST_RUN_ID"; }
 r2_stack()     { printf 'cdkcicdtest-%s-r2src-cd-pipeline\n' "$CDK_CICD_TEST_RUN_ID"; }   # <repository>-cd-pipeline
+# The CD pipeline's own name is CloudFormation-generated, so read it from the stack.
+r2_pipeline() {
+  aws cloudformation describe-stack-resources --stack-name "$(r2_stack)" --region "$REGION" \
+    --query "StackResources[?ResourceType=='AWS::CodePipeline::Pipeline'].PhysicalResourceId | [0]" \
+    --output text 2>/dev/null || true
+}
+APPROVALS=0
+# Approve every pending Repo 2 manual-approval gate. The targets keep the default manualApproval:true,
+# so this also proves the gate is enforced for stages the image never declared.
+approve_pending() {
+  local name="$1" action token stage
+  while read -r action token; do
+    [ -n "$token" ] && [ "$token" != 'None' ] || continue
+    # </dev/null on every inner call: the AWS CLI would otherwise consume the loop's remaining input.
+    stage="$(aws codepipeline get-pipeline-state --name "$name" --region "$REGION" </dev/null \
+      --query "stageStates[?actionStates[?actionName=='$action']].stageName | [0]" --output text 2>/dev/null)" || continue
+    if aws codepipeline put-approval-result --pipeline-name "$name" --region "$REGION" </dev/null \
+         --stage-name "$stage" --action-name "$action" --token "$token" \
+         --result 'summary=container-pipeline-verify auto-approve,status=Approved' >/dev/null 2>&1; then
+      APPROVALS=$((APPROVALS + 1)); info "approved $action"
+    fi
+  done < <(aws codepipeline get-pipeline-state --name "$name" --region "$REGION" \
+             --query "stageStates[].actionStates[?starts_with(actionName,'Approve-') && latestExecution.status=='InProgress'][].[actionName,latestExecution.token]" \
+             --output text 2>/dev/null)
+}
 ecr_repo()     { printf 'cdkcicdtest-%s-deployer\n' "$CDK_CICD_TEST_RUN_ID"; }
 app_stack()    { printf 'cdkcicdtest-%s-%s-r2\n' "$CDK_CICD_TEST_RUN_ID" "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"; }
 greeting_param() { printf '/cdkcicdtest/%s/%s/greeting\n' "$CDK_CICD_TEST_RUN_ID" "$1"; }
@@ -107,6 +132,7 @@ wait_for_values() {
   local name="$1"; shift
   local i pair stage want got all
   for (( i=0; i<POLL_MAX; i++ )); do
+    approve_pending "$name"
     all=1
     for pair in "$@"; do
       stage="${pair%%=*}"; want="${pair#*=}"; got="$(param_value "$stage")"
@@ -264,21 +290,26 @@ EOF
   ( cc_push "$r2" "$(r2_src)" "$REGION" "Repo 2 $CDK_CICD_TEST_RUN_ID" ) || return 1
   deploy_ci "$r2" || { log 'Repo 2 deploy-ci failed'; return 1; }
 
-  log 'leg 3: one image tag, per-target configuration'
-  wait_for_values "$(r2_stack)" SBCD=alpha SBCD2=bravo || rc=1
+  local pipeline; pipeline="$(r2_pipeline)"
+  [ -n "$pipeline" ] && [ "$pipeline" != 'None' ] || { log 'could not resolve the CD pipeline name'; return 1; }
+  info "CD pipeline: $pipeline"
+
+  log 'leg 3: one image tag, per-target configuration (approving each target gate)'
+  wait_for_values "$pipeline" SBCD=alpha SBCD2=bravo || rc=1
   if [ "$rc" = 0 ]; then
     info "SBCD=alpha, SBCD2=bravo from the same image (the image's baked SBCD greeting was ignored)"
   fi
   local i st
   for (( i=0; i<POLL_MAX; i++ )); do
-    st="$(action_status "$(r2_stack)" Deploy-BAD)"
+    approve_pending "$pipeline"
+    st="$(action_status "$pipeline" Deploy-BAD)"
     [ "$st" = 'Failed' ] || [ "$st" = 'Succeeded' ] && break
     sleep "$POLL_INTERVAL"
   done
   if [ "$st" != 'Failed' ]; then
     log "BAD target should have failed validation but its action is '$st'"; rc=1
   else
-    local bad_log; bad_log="$(dump_failed_logs "$(r2_stack)" Deploy-BAD)"
+    local bad_log; bad_log="$(dump_failed_logs "$pipeline" Deploy-BAD)"
     if printf '%s' "$bad_log" | grep -q "'greeting'" && printf '%s' "$bad_log" | grep -q "target 'BAD'"; then
       info "BAD failed validation naming the key and the target:"
       printf '%s\n' "$bad_log" | grep "'greeting'" | head -1
@@ -295,7 +326,7 @@ EOF
   log 'leg 4: change a non-version key in Repo 2 only -> redeploy, same image tag, no rebuild'
   printf '{ "version": "latest", "greeting": "charlie" }\n' > "$r2/config/SBCD.json"
   ( cc_push "$r2" "$(r2_src)" "$REGION" "Repo 2: SBCD greeting -> charlie" ) || rc=1
-  if wait_for_values "$(r2_stack)" SBCD=charlie SBCD2=bravo; then
+  if wait_for_values "$pipeline" SBCD=charlie SBCD2=bravo; then
     digest_after="$(image_digest)"
     if [ "$digest_after" = "$digest_before" ]; then
       info 'SBCD redeployed with greeting=charlie from the unchanged image digest'
@@ -306,9 +337,22 @@ EOF
     rc=1
   fi
 
+  if [ "$APPROVALS" -eq 0 ]; then
+    log 'no Repo 2 approval gate was ever pending -- the default manualApproval gate was not enforced'; rc=1
+  else
+    info "Repo 2 enforced its manual-approval gates ($APPROVALS approvals)"
+  fi
+
   [ "$rc" = 0 ] && log 'container-pipeline-verify PASSED: Repo 2 owned the stages and their configuration, then torn down' \
                 || log 'container-pipeline-verify FAILED'
   return "$rc"
 }
 
+# `teardown` reclaims an interrupted run: CDK_CICD_TEST_RUN_ID=<id> bash container-pipeline-verify.sh teardown
+if [ "${1:-}" = 'teardown' ]; then
+  load_env
+  [ -n "${CDK_CICD_TEST_RUN_ID:-}" ] || die 'teardown needs CDK_CICD_TEST_RUN_ID'
+  destroy_all
+  exit $?
+fi
 main "$@"

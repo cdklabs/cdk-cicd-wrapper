@@ -140,6 +140,9 @@ import { defineCICD, DeployModel, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: '${app}',
+  // Pinned to the account's standard bootstrap: a qualifier derived from the application name would
+  // need its own \`cdk bootstrap --qualifier\` in every target region.
+  qualifier: 'hnb659fds',
   repository: Repository.codecommit('${repo}', 'main', { existing: true }),
   codeArtifact: { domain: '${CA_DOMAIN}', repository: '${CA_REPO}', npmScope: 'cdklabs' },
 ${modelLine}
