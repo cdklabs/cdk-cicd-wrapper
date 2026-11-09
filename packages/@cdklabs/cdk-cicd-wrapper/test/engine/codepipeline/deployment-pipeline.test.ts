@@ -123,7 +123,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const t = render(cfg());
     const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
     const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
-    const fingerprintIndex = commands.findIndex((command) => command.startsWith('TARGET_FINGERPRINT='));
+    const fingerprintIndex = commands.findIndex((command) => command.includes('TARGET_FINGERPRINT=$('));
     const stateReadIndex = commands.findIndex((command) => command.includes('ssm get-parameter'));
 
     expect(fingerprintIndex).toBeGreaterThan(-1);
@@ -178,7 +178,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
     const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
     const fingerprintScript = extractEmbeddedNodeScript(
-      commands.find((command) => command.startsWith('TARGET_FINGERPRINT='))!,
+      commands.find((command) => command.includes('TARGET_FINGERPRINT=$('))!,
     );
     const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
     const action = pipeline.Properties.Stages[1].Actions[0];
@@ -303,6 +303,19 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       const retried = run(0, retriedTrace);
       expect(retried.status).toBe(0);
       expect(readFileSync(retriedTrace, 'utf8')).toMatch(/^deploy\nsleep 60\ndeploy\n.*ssm put-parameter/s);
+
+      // The same race can surface as CDK's shared change set having been replaced by the other deploy.
+      writeFileSync(
+        fakeCdkCicd,
+        '#!/bin/sh\nprintf "deploy\\n" >> "$TRACE_FILE"\n' +
+          'if [ ! -f "$TRACE_FILE.once" ]; then touch "$TRACE_FILE.once"; ' +
+          'echo "ChangeSet [arn:aws:cloudformation:eu-west-1:111111111111:changeSet/cdk-deploy-change-set/x] does not exist"; ' +
+          'exit 1; fi\nexit 0\n',
+      );
+      const changeSetTrace = path.join(cwd, 'changeset.trace');
+      const changeSetRetried = run(0, changeSetTrace);
+      expect(changeSetRetried.status).toBe(0);
+      expect(readFileSync(changeSetTrace, 'utf8')).toMatch(/^deploy\nsleep 60\ndeploy\n.*ssm put-parameter/s);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -423,7 +436,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       JSON.parse(deploy.Actions[0].Configuration.EnvironmentVariables).map((entry: any) => [entry.name, entry.value]),
     );
     const fingerprintScript = extractEmbeddedNodeScript(
-      commands.find((command) => command.startsWith('TARGET_FINGERPRINT='))!,
+      commands.find((command) => command.includes('TARGET_FINGERPRINT=$('))!,
     );
     const parallelConfigScript = extractEmbeddedNodeScript(
       commands.find((command) => command.includes('.cdk-cicd-target'))!,
@@ -963,7 +976,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const project = Object.values(placeholderTemplate.findResources('AWS::CodeBuild::Project'))[0] as any;
     const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
     const fingerprintScript = extractEmbeddedNodeScript(
-      commands.find((command) => command.startsWith('TARGET_FINGERPRINT='))!,
+      commands.find((command) => command.includes('TARGET_FINGERPRINT=$('))!,
     );
     const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-role-specialization-'));
     try {
@@ -1203,7 +1216,9 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(spec).toContain('/tmp/cdk-cicd-npmrc');
     expect(spec).toContain('@cdklabs:registry=https://npm.example.com/');
     expect(spec).toContain('//npm.example.com/:_authToken=$NPM_AUTH_TOKEN');
-    expect(buildSpec.phases.build.commands).toContain('rm -f "$NPM_CONFIG_USERCONFIG"');
+    expect(
+      (buildSpec.phases.build.commands as string[]).some((c) => c.includes('\nrm -f "$NPM_CONFIG_USERCONFIG"\n')),
+    ).toBe(true);
     expect(buildSpec.phases.build.finally).toContain('rm -f "$NPM_CONFIG_USERCONFIG"');
     expect(spec).not.toContain('> ./.npmrc');
     const policies = JSON.stringify(t.findResources('AWS::IAM::Policy'));
@@ -1351,6 +1366,110 @@ describe('Repo 2 autoDeploy targets', () => {
     });
   });
 
+  // Runs buildspec entries the way CodeBuild does: each entry is its own script, shell variables carry
+  // over to the next entry, a non-zero exit fails the build, and `exit 0` ends only that one entry.
+  const runLikeCodeBuild = (entries: string[], cwd: string, env: Record<string, string>) => {
+    let vars: Record<string, string> = { ...(process.env as Record<string, string>), ...env };
+    const dump = path.join(cwd, 'env.dump');
+    for (const entry of entries) {
+      rmSync(dump, { force: true });
+      const r = spawnSync('/bin/sh', ['-c', `set -a\n${entry}\nenv > "${dump}"`], { cwd, encoding: 'utf8', env: vars });
+      if (r.status !== 0) return r.status;
+      try {
+        vars = Object.fromEntries(
+          readFileSync(dump, 'utf8')
+            .split('\n')
+            .filter((line) => line.includes('='))
+            .map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]),
+        );
+      } catch {
+        // The entry ended with `exit 0` before the dump: CodeBuild keeps going with the previous variables.
+      }
+    }
+    return 0;
+  };
+
+  const fakeTools = (cwd: string, previousFingerprint: string) => {
+    const bin = path.join(cwd, 'bin');
+    mkdirSync(bin);
+    const trace = '#!/bin/sh\nprintf "%s %s\\n" "$(basename "$0")" "$*" >> "$TRACE_FILE"\n';
+    writeFileSync(
+      path.join(bin, 'aws'),
+      trace +
+        'case "$*" in\n' +
+        '  *get-pipeline-execution*) echo "$FAKE_TRIGGER" ;;\n' +
+        `  *"ssm get-parameter"*) echo "${previousFingerprint}" ;;\n` +
+        'esac\n',
+    );
+    for (const tool of ['npm', 'docker', 'node', 'curl', 'jq']) writeFileSync(path.join(bin, tool), trace);
+    for (const tool of ['aws', 'npm', 'docker', 'node', 'curl', 'jq']) chmodSync(path.join(bin, tool), 0o755);
+    return bin;
+  };
+
+  test("an autoDeploy pipeline's creation run really skips every later buildspec entry", () => {
+    const t = render(autoCfg());
+    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
+    expect(commands[0]).toContain('skipping the creation run');
+    expect(commands.join('\n')).not.toMatch(/skipping[^\n]*\n?[^\n]*exit 0/);
+
+    const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-skip-creation-'));
+    try {
+      const bin = fakeTools(cwd, '');
+      const traceFile = path.join(cwd, 'trace');
+      const base = {
+        PATH: `${bin}:${process.env.PATH ?? ''}`,
+        TRACE_FILE: traceFile,
+        TARGET_STAGE: 'dev',
+        AUTO_DEPLOY: '1',
+        CODEBUILD_INITIATOR: 'codepipeline/auto-dev',
+        PIPELINE_EXECUTION_ID: 'exec-1',
+      };
+      expect(runLikeCodeBuild(commands, cwd, { ...base, FAKE_TRIGGER: 'CreatePipeline' })).toBe(0);
+      const skipped = readFileSync(traceFile, 'utf8');
+      expect(skipped).toContain('get-pipeline-execution');
+      expect(skipped).not.toMatch(/^(npm|docker) /m);
+      expect(skipped).not.toContain('put-parameter');
+
+      // Any other trigger (the ECR push) goes on to install and deploy.
+      rmSync(traceFile);
+      runLikeCodeBuild(commands, cwd, { ...base, FAKE_TRIGGER: 'CloudWatchEvent' });
+      expect(readFileSync(traceFile, 'utf8')).toMatch(/^npm ci/m);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test('an unchanged target really skips the image pull, deploy and state write', () => {
+    const t = render(cfg());
+    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
+    // Start at the state read: the fingerprint itself is covered by the executable fingerprint tests.
+    const from = commands.findIndex((command) => command.includes('ssm get-parameter'));
+    expect(from).toBeGreaterThan(-1);
+
+    const fingerprint = 'a'.repeat(64);
+    const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-skip-unchanged-'));
+    try {
+      const bin = fakeTools(cwd, fingerprint);
+      const traceFile = path.join(cwd, 'trace');
+      const env = {
+        PATH: `${bin}:${process.env.PATH ?? ''}`,
+        TRACE_FILE: traceFile,
+        TARGET_STAGE: 'dev',
+        TARGET_STATE_PARAMETER: '/cdk-cicd/test/dev',
+        TARGET_FINGERPRINT: fingerprint,
+      };
+      expect(runLikeCodeBuild(commands.slice(from), cwd, env)).toBe(0);
+      const trace = readFileSync(traceFile, 'utf8');
+      expect(trace).toContain('ssm get-parameter');
+      expect(trace).not.toMatch(/^(npm|docker) /m);
+      expect(trace).not.toContain('put-parameter');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test('no autoDeploy target renders no extra pipeline or rule', () => {
     const t = render(cfg());
     t.resourceCountIs('AWS::CodePipeline::Pipeline', 1);
@@ -1378,7 +1497,7 @@ describe('Repo 2 autoDeploy targets', () => {
     const t = Template.fromStack(stack);
     const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
     const spec = JSON.parse(project.Properties.Source.BuildSpec);
-    const fingerprint = (spec.phases.build.commands as string[]).find((c) => c.startsWith('TARGET_FINGERPRINT='))!;
+    const fingerprint = (spec.phases.build.commands as string[]).find((c) => c.includes('TARGET_FINGERPRINT=$('))!;
     const script = extractEmbeddedNodeScript(fingerprint);
     expect(script).toContain('sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest');
     expect(script).toContain('target.autoDeploy === true');

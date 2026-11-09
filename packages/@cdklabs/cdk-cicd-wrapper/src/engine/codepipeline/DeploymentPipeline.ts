@@ -227,7 +227,9 @@ export class DeploymentPipeline extends Construct {
       '  } 2>&1 | tee /tmp/cdk-cicd-deploy.log',
       '  rc=$(cat /tmp/cdk-cicd-deploy-rc)',
       '  [ "$rc" -eq 0 ] && break',
-      '  if [ "$attempt" -lt 3 ] && grep -qE "_IN_PROGRESS|in status CREATE_IN_PROGRESS" /tmp/cdk-cicd-deploy.log; then',
+      // CloudFormation reports the collision either as a stack `*_IN_PROGRESS` status or, when the
+      // other deploy replaced CDK's shared `cdk-deploy-change-set`, as that change set not existing.
+      '  if [ "$attempt" -lt 3 ] && grep -qE "_IN_PROGRESS|ChangeSet .*does not exist" /tmp/cdk-cicd-deploy.log; then',
       '    echo "cdk-cicd: another deployment of $TARGET_STAGE is in progress; retrying in 60s (attempt $attempt)"',
       '    attempt=$((attempt + 1))',
       '    sleep 60',
@@ -238,8 +240,13 @@ export class DeploymentPipeline extends Construct {
       'aws ssm put-parameter --name "$TARGET_STATE_PARAMETER" --type String ' +
         '--value "$TARGET_FINGERPRINT" --overwrite >/dev/null',
     ].join('\n');
+    // CodeBuild runs each buildspec command as its own script: `exit 0` ends only that entry and the
+    // phase carries on with the next one, so a skip can never be an exit. A skip sets CDK_CICD_SKIP
+    // instead (shell variables persist between entries, like TARGET_FINGERPRINT), and every later entry
+    // runs only while it is unset.
+    const unlessSkipped = (command: string) => `if [ -z "\${CDK_CICD_SKIP:-}" ]; then\n${command}\nfi`;
     // An autoDeploy pipeline's creation run (CodePipeline starts every new pipeline once) would race the
-    // main pipeline's first deployment of the same target, so it exits cleanly. The starting pipeline is
+    // main pipeline's first deployment of the same target, so it is skipped. The starting pipeline is
     // in CODEBUILD_INITIATOR (`codepipeline/<name>`); only autoDeploy actions set AUTO_DEPLOY.
     const skipCreationRun = [
       'if [ "${AUTO_DEPLOY:-}" = "1" ]; then',
@@ -247,31 +254,35 @@ export class DeploymentPipeline extends Construct {
         '--pipeline-execution-id "$PIPELINE_EXECUTION_ID" --query "pipelineExecution.trigger.triggerType" --output text)',
       '  if [ "$TRIGGER" = "CreatePipeline" ]; then',
       '    echo "cdk-cicd: skipping the creation run of the autoDeploy pipeline for $TARGET_STAGE"',
-      '    exit 0',
+      '    CDK_CICD_SKIP=1',
       '  fi',
       'fi',
     ].join('\n');
+    const skipUnchanged =
+      'if [ "$PREVIOUS_TARGET_FINGERPRINT" = "$TARGET_FINGERPRINT" ]; then ' +
+      'echo "cdk-cicd: target $TARGET_STAGE is unchanged; skipping deployment"; CDK_CICD_SKIP=1; fi';
     const hasAutoDeploy = config.targets.some((target) => target.autoDeploy === true);
     const commands = [
       ...(hasAutoDeploy ? [skipCreationRun] : []),
-      ...(privateNpm ? npmConfigSetupCommands() : []),
-      ...codeArtifactLogin,
-      ...npmRegistryLogin,
-      'npm ci',
-      ...(privateNpm ? ['rm -f "$NPM_CONFIG_USERCONFIG"', 'unset NPM_AUTH_TOKEN'] : []),
-      fingerprintCommand,
-      'if [ "${#TARGET_FINGERPRINT}" -ne 64 ] || printf "%s" "$TARGET_FINGERPRINT" | grep -q "[^0-9a-f]"; then ' +
-        'echo "cdk-cicd: could not compute a valid target fingerprint" >&2; exit 1; fi',
-      readPreviousFingerprint,
-      'if [ "$PREVIOUS_TARGET_FINGERPRINT" = "$TARGET_FINGERPRINT" ]; then ' +
-        'echo "cdk-cicd: target $TARGET_STAGE is unchanged; skipping deployment"; exit 0; fi',
-      ...ecrLoginCommands,
-      'eval "$(aws configure export-credentials --format env 2>/dev/null)" || { ' +
-        'CREDS=$(curl -s "http://169.254.170.2${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI}"); ' +
-        'export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId); ' +
-        'export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey); ' +
-        'export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .Token); }',
-      deployAndRecord,
+      ...[
+        ...(privateNpm ? npmConfigSetupCommands() : []),
+        ...codeArtifactLogin,
+        ...npmRegistryLogin,
+        'npm ci',
+        ...(privateNpm ? ['rm -f "$NPM_CONFIG_USERCONFIG"', 'unset NPM_AUTH_TOKEN'] : []),
+        fingerprintCommand,
+        'if [ "${#TARGET_FINGERPRINT}" -ne 64 ] || printf "%s" "$TARGET_FINGERPRINT" | grep -q "[^0-9a-f]"; then ' +
+          'echo "cdk-cicd: could not compute a valid target fingerprint" >&2; exit 1; fi',
+        readPreviousFingerprint,
+        skipUnchanged,
+        ...ecrLoginCommands,
+        'eval "$(aws configure export-credentials --format env 2>/dev/null)" || { ' +
+          'CREDS=$(curl -s "http://169.254.170.2${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI}"); ' +
+          'export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId); ' +
+          'export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey); ' +
+          'export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .Token); }',
+        deployAndRecord,
+      ].map(unlessSkipped),
     ];
     const project = new codebuild.PipelineProject(this, 'Deploy', {
       environment: {
