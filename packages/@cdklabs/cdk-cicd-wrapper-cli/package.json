@@ -54,7 +54,7 @@
     "@cdklabs/cdk-cicd-wrapper": "^0.0.0",
     "@types/fs-extra": "^11.0.4",
     "@types/yargs": "^17.0.35",
-    "csv": "^6.6.3",
+    "csv": "^6.6.4",
     "fs-extra": "^11.3.5",
     "globby": "11.1.0",
     "ts-node": "^10.9.2",
