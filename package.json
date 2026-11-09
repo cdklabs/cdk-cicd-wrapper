@@ -37,13 +37,13 @@
     "organization": false
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.2.2",
+    "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.3",
     "@types/node": "ts6.0",
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",
     "@typescript-eslint/typescript-estree": "^8",
-    "aislop": "^0.16.1",
+    "aislop": "^0.20.0",
     "all-contributors-cli": "^6.26.1",
     "cdklabs-projen-project-types": "^0.6.22",
     "constructs": "10.8.1",
