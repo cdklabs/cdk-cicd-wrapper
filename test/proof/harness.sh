@@ -56,6 +56,18 @@ die()  { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 log()  { printf '\n== %s\n' "$*"; }
 info() { printf '   %s\n' "$*"; }
 
+# EXIT-trap teardown for the pipeline proofs. CDK_CICD_KEEP=1 leaves the run deployed for a human to
+# review in the console and prints the command that reclaims it later. Every resource stays tagged with
+# the run id, so the guarded teardown still applies when it is finally run.
+keep_or_destroy() {
+  if [ "${CDK_CICD_KEEP:-}" = 1 ]; then
+    log "CDK_CICD_KEEP=1: leaving run $CDK_CICD_TEST_RUN_ID deployed for review"
+    info "tear down later: CDK_CICD_TEST_RUN_ID=$CDK_CICD_TEST_RUN_ID bash $0 teardown"
+  else
+    destroy_all
+  fi
+}
+
 # Mask the account id in anything this script prints: the proof log is meant to be
 # readable by a human and pasted into a review, so the account id may not leak in.
 redact() {

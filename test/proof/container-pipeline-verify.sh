@@ -247,7 +247,7 @@ main() {
   # The ECR repo is the first standalone resource; arm teardown immediately after it exists.
   aws ecr create-repository --repository-name "$(ecr_repo)" --region "$REGION" \
     --tags "Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID" >/dev/null 2>&1 || die "could not create ECR repo $(ecr_repo)"
-  trap 'destroy_all; rm -rf "${r1:-}" "${r2:-}"' EXIT
+  trap 'keep_or_destroy; rm -rf "${r1:-}" "${r2:-}"' EXIT
 
   # --- Repo 1: deployer image, no stages ------------------------------------------------------------
   log 'leg 1: Repo 1 -- image-build pipeline with one validation stage (ci), no deployment targets'

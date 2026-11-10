@@ -70,7 +70,7 @@ EOF
   # explicit teardown is reachable, and `harness.sh sweep` only finds CloudFormation stacks -- so without
   # this trap an early failure (login/install/staleness/push) would leak the ECR repo with no recovery.
   # destroy_all is guarded + idempotent, so running it once on EXIT (success or die) is safe.
-  trap 'destroy_all' EXIT
+  trap 'keep_or_destroy' EXIT
 
   local npmrc; npmrc="$(mktemp)"
   NPM_CONFIG_USERCONFIG="$npmrc" aws codeartifact login --tool npm --domain "$CA_DOMAIN" \
@@ -168,4 +168,11 @@ destroy_all() {
   destroy_cc_repo "$src" "$REGION" || true
 }
 
+# `teardown` reclaims a kept or interrupted run: CDK_CICD_TEST_RUN_ID=<id> bash container-verify.sh teardown
+if [ "${1:-}" = 'teardown' ]; then
+  load_env
+  [ -n "${CDK_CICD_TEST_RUN_ID:-}" ] || die 'teardown needs CDK_CICD_TEST_RUN_ID'
+  destroy_all
+  exit $?
+fi
 main_container "$@"
