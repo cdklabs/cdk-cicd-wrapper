@@ -20,7 +20,10 @@
 #      configuration, while SBCD stays on its pinned version and the deploy repository is untouched.
 #   6. Promote SBCD alone to the new image by changing only `version` in config/SBCD.json: SBCD runs the
 #      new version, SBCD2 stays on the old one and its stage is skipped.
-#   7. Tear everything down: both pipeline stacks, the app stacks, the ECR repo, both CodeCommit repos
+#   7. Range + config-file environment: target RANGE pins `^0.1.0` and takes its account and Region
+#      (us-west-1, not the pipeline's) only from config/RANGE.json. It stays on 0.1.0 while 0.2.0
+#      exists; once 0.1.1 is published, the next Repo 2 commit moves it to 0.1.1 -- never to 0.2.0.
+#   8. Tear everything down: both pipeline stacks, the app stacks, the ECR repo, both CodeCommit repos
 #      and the CD pipeline's target-state parameters.
 #
 #   bash test/proof/container-pipeline-verify.sh
@@ -37,6 +40,8 @@ readonly CA_DOMAIN='cdk-cicd-wrapper'
 readonly CA_REPO='cdk-cicd-wrapper'
 readonly FIXTURE='repo2-config-app'
 readonly REGION='us-west-2'
+# RANGE's Region comes only from its config/RANGE.json, so it must differ from the pipeline's.
+readonly RANGE_REGION='us-west-1'
 readonly QUALIFIER='hnb659fds'   # the only qualifier bootstrapped in the test account
 readonly POLL_INTERVAL=20
 readonly POLL_MAX=90             # 30 min ceiling per wait
@@ -82,8 +87,9 @@ ecr_repo()     { printf 'cdkcicdtest-%s-deployer\n' "$CDK_CICD_TEST_RUN_ID"; }
 app_stack()    { printf 'cdkcicdtest-%s-%s-r2\n' "$CDK_CICD_TEST_RUN_ID" "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"; }
 greeting_param() { printf '/cdkcicdtest/%s/%s/greeting\n' "$CDK_CICD_TEST_RUN_ID" "$1"; }
 image_param()    { printf '/cdkcicdtest/%s/%s/image\n' "$CDK_CICD_TEST_RUN_ID" "$1"; }
+region_of()      { if [ "$1" = RANGE ]; then printf '%s\n' "$RANGE_REGION"; else printf '%s\n' "$REGION"; fi; }
 image_marker() {
-  aws ssm get-parameter --name "$(image_param "$1")" --region "$REGION" --query Parameter.Value --output text 2>/dev/null || true
+  aws ssm get-parameter --name "$(image_param "$1")" --region "$(region_of "$1")" --query Parameter.Value --output text 2>/dev/null || true
 }
 
 # Install the bundle's dependencies from CodeArtifact into a throwaway npmrc, producing the lockfile
@@ -167,7 +173,7 @@ wait_for_image() {
 }
 
 param_value() {
-  aws ssm get-parameter --name "$(greeting_param "$1")" --region "$REGION" \
+  aws ssm get-parameter --name "$(greeting_param "$1")" --region "$(region_of "$1")" \
     --query Parameter.Value --output text 2>/dev/null || true
 }
 
@@ -230,10 +236,10 @@ destroy_all() {
       ( destroy_stack "$stack" "$REGION" ) || { log "teardown of $stack incomplete -- run harness.sh sweep"; rc=1; }
     fi
   done
-  for stage in SBCD SBCD2 BAD AUTO; do
+  for stage in SBCD SBCD2 BAD AUTO RANGE; do
     stack="$(app_stack "$stage")"
-    if aws cloudformation describe-stacks --stack-name "$stack" --region "$REGION" >/dev/null 2>&1; then
-      ( destroy_stack "$stack" "$REGION" ) || { log "teardown of $stack incomplete"; rc=1; }
+    if aws cloudformation describe-stacks --stack-name "$stack" --region "$(region_of "$stage")" >/dev/null 2>&1; then
+      ( destroy_stack "$stack" "$(region_of "$stage")" ) || { log "teardown of $stack incomplete"; rc=1; }
     fi
   done
   repo="$(ecr_repo)"
@@ -344,6 +350,8 @@ export default defineDeployment({
     { stage: 'SBCD', env },
     { stage: 'SBCD2', env },
     { stage: 'BAD', env },
+    // No env: account and Region come only from config/RANGE.json; version is a range.
+    { stage: 'RANGE' },
   ],
 });
 EOF
@@ -353,6 +361,8 @@ EOF
   printf '{ "version": "%s", "greeting": "bravo" }\n' "$v1" > "$r2/config/SBCD2.json"
   # Missing the image schema's required `greeting`: must fail before any CloudFormation call.
   printf '{ "version": "%s", "greting": "typo" }\n' "$v1" > "$r2/config/BAD.json"
+  printf '{ "version": "^0.1.0", "greeting": "echo", "aws": { "accountId": "%s", "region": "%s" } }\n' \
+    "$CDK_CICD_TEST_ACCOUNT" "$RANGE_REGION" > "$r2/config/RANGE.json"
   install_bundle "$r2"
   ensure_cc_repo "$(r2_src)" "$REGION"
   ( cc_push "$r2" "$(r2_src)" "$REGION" "Repo 2 $CDK_CICD_TEST_RUN_ID" ) || return 1
@@ -363,7 +373,13 @@ EOF
   info "CD pipeline: $pipeline"
 
   log 'leg 3: one image tag, per-target configuration (approving each target gate)'
-  wait_for_values "$pipeline" AUTO=delta SBCD=alpha SBCD2=bravo || rc=1
+  wait_for_values "$pipeline" AUTO=delta SBCD=alpha SBCD2=bravo RANGE=echo || rc=1
+  if aws cloudformation describe-stacks --stack-name "$(app_stack RANGE)" --region "$RANGE_REGION" >/dev/null 2>&1 \
+     && [ "$(image_marker RANGE)" = 'v1' ]; then
+    info "RANGE (^0.1.0) deployed 0.1.0 to ${RANGE_REGION}, the Region only its config/RANGE.json names"
+  else
+    log "RANGE should run 0.1.0 in ${RANGE_REGION} (marker '$(image_marker RANGE)')"; rc=1
+  fi
   if [ "$rc" = 0 ]; then
     info "SBCD=alpha, SBCD2=bravo from the same image (the image's baked SBCD greeting was ignored)"
   fi
@@ -502,6 +518,36 @@ EOF
     info 'SBCD2 stayed on v1 and its stage was Skipped -- promotion is per target'
   else
     log "SBCD2 should have been skipped in the promotion run (SBCD: '$sbcd_run', SBCD2: '$sbcd2_run')"; rc=1
+  fi
+
+  [ "$(image_marker RANGE)" = 'v1' ] || { log "RANGE (^0.1.0) left 0.1.0 although only 0.2.0 is newer"; rc=1; }
+
+  log 'leg 7: publish 0.1.1 -> the ^0.1.0 target moves to it on the next Repo 2 commit, never to 0.2.0'
+  printf 'v3\n' > "$r1/image-marker.txt"
+  set_package_version "$r1" 0.1.1
+  ( cc_push "$r1" "$(r1_src)" "$REGION" "Repo 1: image marker -> v3, version 0.1.1" ) || rc=1
+  # AUTO follows every push; wait for it so the next Repo 2 run does not race the autoDeploy pipeline.
+  for (( i=0; i<POLL_MAX; i++ )); do
+    [ "$(image_marker AUTO)" = 'v3' ] && break
+    sleep "$POLL_INTERVAL"
+  done
+  [ "$(image_marker AUTO)" = 'v3' ] || { log 'AUTO did not follow the 0.1.1 image'; rc=1; }
+  printf 'Range leg of run %s\n' "$CDK_CICD_TEST_RUN_ID" > "$r2/NOTES.md"
+  ( cc_push "$r2" "$(r2_src)" "$REGION" "Repo 2: unrelated change" ) || rc=1
+  for (( i=0; i<POLL_MAX; i++ )); do
+    approve_pending "$pipeline"
+    [ "$(image_marker RANGE)" = 'v3' ] && break
+    sleep "$POLL_INTERVAL"
+  done
+  if [ "$(image_marker RANGE)" = 'v3' ] && [ "$(param_value RANGE)" = 'echo' ]; then
+    info 'RANGE (^0.1.0) moved to 0.1.1 with no change to its config file, and skipped 0.2.0'
+  else
+    log "RANGE did not move to 0.1.1 (marker '$(image_marker RANGE)')"; rc=1
+  fi
+  if [ "$(image_marker SBCD)" = 'v2' ] && [ "$(image_marker SBCD2)" = 'v1' ]; then
+    info 'SBCD stayed on 0.2.0 and SBCD2 on 0.1.0: exact versions do not float'
+  else
+    log "pinned targets moved (SBCD '$(image_marker SBCD)', SBCD2 '$(image_marker SBCD2)')"; rc=1
   fi
 
   if [ "$APPROVALS" -eq 0 ]; then

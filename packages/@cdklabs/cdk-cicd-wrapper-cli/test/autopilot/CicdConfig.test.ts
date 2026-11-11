@@ -144,3 +144,70 @@ describe('m6-container: loadDeployment (Repo 2 deploy.config discovery)', () => 
     expect(cfg?.targets[0].stage).toBe('dev');
   });
 });
+
+describe('account and Region from config/<stage>.json', () => {
+  const target = (stage: string, env: object = {}) => ({
+    stage,
+    env: { regions: [], regionOrder: 'sequential', ...env },
+    manualApproval: true,
+  });
+  const repoWith = (targets: object[], files: Record<string, unknown>) => {
+    const dir = tempDir();
+    fs.writeFileSync(
+      path.join(dir, 'deploy.config.js'),
+      `module.exports.default = ${JSON.stringify({ image: 'img:1', targets })};`,
+    );
+    fs.mkdirSync(path.join(dir, 'config'));
+    for (const [stage, body] of Object.entries(files)) {
+      fs.writeFileSync(
+        path.join(dir, 'config', `${stage}.json`),
+        typeof body === 'string' ? body : JSON.stringify(body),
+      );
+    }
+    return dir;
+  };
+
+  test('fills a target that leaves account and Region out', () => {
+    const dir = repoWith([target('int')], {
+      int: { version: '0.1.0', aws: { accountId: '222222222222', region: 'eu-west-1' } },
+    });
+    expect(loadDeployment(dir)?.targets[0].env).toEqual({
+      account: '222222222222',
+      regions: ['eu-west-1'],
+      regionOrder: 'sequential',
+    });
+  });
+
+  test('a matching value is fine; deploy.config values are kept when the file has none', () => {
+    const dir = repoWith(
+      [target('int', { account: '222222222222', regions: ['eu-west-1'] }), target('prod', { account: '333333333333' })],
+      { int: { aws: { accountId: '222222222222', region: 'eu-west-1' } }, prod: { version: '1.0.0' } },
+    );
+    const [int, prod] = loadDeployment(dir)!.targets;
+    expect(int.env.account).toBe('222222222222');
+    expect(prod.env).toEqual({ account: '333333333333', regions: [], regionOrder: 'sequential' });
+  });
+
+  test('a file that disagrees with the target fails instead of being ignored', () => {
+    expect(() =>
+      loadDeployment(
+        repoWith([target('int', { account: '222222222222' })], { int: { aws: { accountId: '999999999999' } } }),
+      ),
+    ).toThrow(
+      /config\/int.json sets aws.accountId 999999999999, but deploy.config target 'int' deploys to 222222222222/,
+    );
+    expect(() =>
+      loadDeployment(
+        repoWith([target('int', { regions: ['eu-west-1', 'us-east-1'] })], { int: { aws: { region: 'eu-west-1' } } }),
+      ),
+    ).toThrow(/sets aws.region eu-west-1, but deploy.config target 'int' deploys to eu-west-1, us-east-1/);
+  });
+
+  test('rejects malformed values; an unreadable file contributes nothing', () => {
+    expect(() => loadDeployment(repoWith([target('int')], { int: { aws: { accountId: '12' } } }))).toThrow(/12-digit/);
+    expect(() => loadDeployment(repoWith([target('int')], { int: { aws: { region: 'Ireland' } } }))).toThrow(
+      /AWS Region/,
+    );
+    expect(loadDeployment(repoWith([target('int')], { int: '{' }))?.targets[0].env.account).toBeUndefined();
+  });
+});

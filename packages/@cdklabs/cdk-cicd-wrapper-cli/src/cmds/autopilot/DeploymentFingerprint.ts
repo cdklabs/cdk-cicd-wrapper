@@ -21,7 +21,7 @@ import type {
   ResolvedDeploymentTarget,
 } from '@cdklabs/cdk-cicd-wrapper';
 import { deploymentPipelineShapeFingerprint, parseEcrRepository } from '@cdklabs/cdk-cicd-wrapper';
-import { resolveLatestEcrImage, resolveTargetImage, VERSION_KEY } from './DeployFromImage';
+import { RangeImageResolver, resolveDeployImage, VERSION_KEY } from './DeployFromImage';
 
 /** What the CD pipeline's CodeBuild projects provide to check the checked-out deploy.config. */
 export interface PipelineContext {
@@ -131,6 +131,7 @@ export const describeEcrDigest: EcrDigestResolver = (repository, tag) => {
 export interface FingerprintDependencies {
   readonly resolveDigest?: EcrDigestResolver;
   readonly resolveLatestImage?: (baseImage: string) => string;
+  readonly resolveRangeImage?: RangeImageResolver;
 }
 
 const TOOLING_FILES = ['package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml'];
@@ -204,11 +205,11 @@ export function targetFingerprint(
   dependencies: FingerprintDependencies = {},
 ): string {
   const { version, stageConfig } = readStageFile(cwd, target.stage);
-  const resolvedImage = resolveTargetImage(target, config, cwd, () => version ?? undefined);
-  const effectiveImage =
-    target.autoDeploy === true && resolvedImage !== undefined
-      ? (dependencies.resolveLatestImage ?? resolveLatestEcrImage)(resolvedImage)
-      : resolvedImage;
+  const effectiveImage = resolveDeployImage(target, config, cwd, {
+    readVersion: () => version ?? undefined,
+    resolveLatestImage: dependencies.resolveLatestImage,
+    resolveRangeImage: dependencies.resolveRangeImage,
+  })?.image;
   const ecrImage = immutableEcrImage(effectiveImage, dependencies.resolveDigest ?? describeEcrDigest);
   const tooling = Object.fromEntries(
     TOOLING_FILES.filter((name) => existsSync(path.resolve(cwd, name))).map((name) => [

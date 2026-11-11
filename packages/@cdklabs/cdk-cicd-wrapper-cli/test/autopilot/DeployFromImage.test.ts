@@ -12,7 +12,10 @@ import {
   dockerRunArgs,
   HOST_STAGE_CONFIG_DIR,
   imageRepository,
+  isVersionRange,
+  pickRangeImage,
   prepareStageConfig,
+  resolveDeployImage,
   resolveLatestEcrImage,
   readVersionFromConfig,
   resolveTargetImage,
@@ -1045,5 +1048,81 @@ describe('runFromImage --region (one region of a parallel target)', () => {
   test('refuses a sequential target or a missing --target', async () => {
     expect((await run({ target: 'int', region: 'us-east-1' })).code).toBe(1);
     expect((await run({ region: 'us-east-1' })).code).toBe(1);
+  });
+});
+
+describe('version ranges in config/<stage>.json', () => {
+  const repo = 'acct.dkr.ecr.eu-west-1.amazonaws.com/app';
+  const digest = (c: string) => `sha256:${c.repeat(64)}`;
+
+  test('only values with range syntax are ranges; exact versions and commit SHAs stay tags', () => {
+    for (const range of ['^0.1.0', '~0.2.0', '0.2.x', '0.x', '*', '>=0.2.0 <0.3.0', '1.2.3 || 2.x']) {
+      expect([range, isVersionRange(range)]).toEqual([range, true]);
+    }
+    for (const tag of [
+      '0.2.34',
+      'v0.2.34',
+      '1234567',
+      '3aff301815d16a8db41850895003428c378a5ae1',
+      'latest',
+      'dev-42',
+    ]) {
+      expect([tag, isVersionRange(tag)]).toEqual([tag, false]);
+    }
+  });
+
+  test('picks the highest matching version, never a newer major or a prerelease', () => {
+    const tags = new Map([
+      ['0.1.0', digest('a')],
+      ['0.1.7', digest('b')],
+      ['0.1.8-rc.1', digest('c')],
+      ['0.2.0', digest('d')],
+    ]);
+    expect(pickRangeImage(repo, '^0.1.0', tags)).toEqual({ image: `${repo}@${digest('b')}`, version: '0.1.7' });
+    expect(pickRangeImage(repo, '>=0.1.0', tags).version).toBe('0.2.0');
+    expect(pickRangeImage(repo, '^0.1.8-rc.0', tags).version).toBe('0.1.8-rc.1');
+    expect(() => pickRangeImage(repo, '^0.3.0', tags)).toThrow(
+      /no image version .* satisfies '\^0.3.0' \(semver tags: 0.1.0, 0.1.7/,
+    );
+  });
+
+  const target = (extra: object = {}) =>
+    ({
+      stage: 'int',
+      env: { regions: ['eu-west-1'], regionOrder: 'sequential' },
+      manualApproval: false,
+      ...extra,
+    }) as any;
+  const config = { image: `${repo}:base` } as unknown as ResolvedDeploymentConfig;
+  const range = (_base: string, r: string) => ({ image: `${repo}@${digest('e')}`, version: `max(${r})` });
+
+  test('resolveDeployImage: an exact version or SHA is the tag; a range is resolved and pinned by digest', () => {
+    const resolve = (version: string, extra: object = {}) =>
+      resolveDeployImage(target(extra), config, '/nowhere', {
+        readVersion: () => version,
+        resolveRangeImage: range,
+        resolveLatestImage: () => `${repo}@${digest('f')}`,
+      });
+    expect(resolve('0.2.34')).toEqual({ image: `${repo}:0.2.34` });
+    expect(resolve('3aff301')).toEqual({ image: `${repo}:3aff301` });
+    expect(resolve('^0.1.0')).toEqual({ image: `${repo}@${digest('e')}`, version: 'max(^0.1.0)' });
+    // autoDeploy follows the newest image, or the newest within its range.
+    expect(resolve('0.2.34', { autoDeploy: true })).toEqual({ image: `${repo}@${digest('f')}` });
+    expect(resolve('^0.1.0', { autoDeploy: true })?.version).toBe('max(^0.1.0)');
+    // A digest pinned on the target stays authoritative.
+    expect(resolve('^0.1.0', { image: `${repo}@${digest('9')}` })).toEqual({ image: `${repo}@${digest('9')}` });
+  });
+
+  test('runFromImage deploys the resolved range image', async () => {
+    const calls: string[][] = [];
+    const code = await runFromImage({ ...config, targets: [target()] } as ResolvedDeploymentConfig, {
+      yes: true,
+      readVersion: () => '^0.1.0',
+      resolveRangeImage: range,
+      prepareConfig: () => undefined,
+      spawn: (args) => (calls.push(args), ok()),
+    });
+    expect(code).toBe(0);
+    expect(calls[0]).toContain(`${repo}@${digest('e')}`);
   });
 });

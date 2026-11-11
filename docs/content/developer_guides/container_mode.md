@@ -180,6 +180,41 @@ version than `prod`, and the version is plain config, reviewable in a pull reque
 but is unreadable, malformed, or lacks a non-empty string `version`, deployment fails instead of
 silently falling back to the base image.
 
+`version` takes three forms:
+
+| `version` | Deploys |
+|---|---|
+| `0.2.34` | exactly that tag |
+| `3aff301…` | exactly that commit-SHA tag |
+| `^0.1.0`, `~0.2.0`, `0.2.x`, `>=0.2.0 <0.3.0` | the highest semver-tagged image that matches, pinned by digest |
+
+A range follows npm's rules: prereleases match only when the range names one, and tags that are not
+semver versions (commit SHAs, `latest`) are ignored. Only a value with a range operator or an `x`/`*`
+placeholder is a range, so a short all-digit commit hash stays a literal tag. Use
+`packageVersionTag` in Repo 1 so the image carries semver tags.
+
+A range target counts as changed when a newer matching version is published, but the main pipeline
+runs on deploy-repository commits, so it moves on the next commit. Combine a range with `autoDeploy`
+to follow it on every push: the target then runs the newest image within its range, so a dev target on
+`^0.2.0` never jumps to `0.3.0`. Git records the range, not the exact version; the deploy log names
+the version it resolved.
+
+### Account and Region from the config file
+
+A target can leave `env` out of `deploy.config.ts` and take its account and Region from its
+`config/<stage>.json`:
+
+```jsonc
+// config/int.json
+{ "version": "^1.4.0", "aws": { "accountId": "222222222222", "region": "eu-west-1" }, "ordersTableName": "orders-int" }
+```
+
+- A value set in `deploy.config.ts` still wins. A config file that disagrees with it fails, naming the
+  file and the target, instead of being silently ignored.
+- `deploy-ci` reads the file when it builds the pipeline, because the account and Region decide the
+  pipeline's IAM grants. Changing them later makes Plan ask you to re-run `deploy-ci`.
+- `aws.region` names one Region. Declare a multi-Region target's Regions in `deploy.config.ts`.
+
 ### Provision the CD pipeline, or run locally
 
 With a `repository` set, `cdk-cicd deploy-ci` provisions the CD pipeline (the deploy-side twin of the CI

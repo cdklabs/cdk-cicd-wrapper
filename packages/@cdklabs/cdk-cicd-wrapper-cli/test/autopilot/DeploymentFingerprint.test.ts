@@ -215,6 +215,22 @@ describe('targetFingerprint', () => {
     expect(() => fingerprint()).toThrow('must contain a non-empty string version field');
   });
 
+  test('a range target changes when a newer matching version is published', () => {
+    write('config/dev.json', { version: '^1.2.0' });
+    const run = (newest: string) =>
+      targetFingerprint(config, target, 'eu-west-1', cwd, {
+        resolveRangeImage: () => ({
+          image: `111111111111.dkr.ecr.eu-west-1.amazonaws.com/app@${newest}`,
+          version: 'x',
+        }),
+        resolveDigest: () => {
+          throw new Error('a range resolves to a digest; no tag lookup');
+        },
+      });
+    expect(run(DIGEST_A)).toBe(run(DIGEST_A));
+    expect(run(DIGEST_B)).not.toBe(run(DIGEST_A));
+  });
+
   test('an autoDeploy target fingerprints the newest pushed image', () => {
     const seen: string[] = [];
     const auto = { ...target, autoDeploy: true };
