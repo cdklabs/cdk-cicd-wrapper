@@ -397,11 +397,12 @@ EOF
     log "SBCD2 should have been skipped in SBCD's run (SBCD: '$sbcd_run', SBCD2: '$sbcd2_run')"; rc=1
   fi
 
-  # The deploy log shows short CLI commands: no generated program and no exported access keys.
+  # The deploy log shows short CLI commands: no generated program and no exported access keys. Count
+  # event ids: the CLI prints one result page per log stream, so a per-page count is not one number.
   local deploy_log
   deploy_log="$(aws_masked logs filter-log-events --log-group-name "/aws/codebuild/$(deploy_project)" \
     --region "$REGION" --filter-pattern '?"EXPECTED_TARGET_ENVIRONMENTS" ?"export-credentials" ?"AWS_SECRET_ACCESS_KEY="' \
-    --query 'length(events)' --output text 2>/dev/null)"
+    --query 'events[].eventId' --output text 2>/dev/null | wc -w | tr -d ' ')"
   if [ "$deploy_log" = '0' ]; then
     info 'the deploy logs contain no inline fingerprint script and no exported credentials'
   else
