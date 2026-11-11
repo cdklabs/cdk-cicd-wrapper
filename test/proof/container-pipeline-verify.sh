@@ -349,9 +349,10 @@ export default defineDeployment({
     { stage: 'AUTO', env, manualApproval: false, autoDeploy: true },
     { stage: 'SBCD', env },
     { stage: 'SBCD2', env },
-    { stage: 'BAD', env },
-    // No env: account and Region come only from config/RANGE.json; version is a range.
+    // No env: account and Region come only from config/RANGE.json; version is a range. Declared before
+    // BAD, whose failing stage ends the run for every target declared after it.
     { stage: 'RANGE' },
+    { stage: 'BAD', env },
   ],
 });
 EOF
