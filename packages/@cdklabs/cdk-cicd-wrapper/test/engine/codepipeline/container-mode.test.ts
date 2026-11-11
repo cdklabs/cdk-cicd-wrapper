@@ -4,6 +4,10 @@
 // Container mode (Repo 1): the CodePipeline engine renders a build-and-push-to-ECR pipeline instead of a
 // deploy pipeline when the config carries a deployerImage.
 
+import { spawnSync } from 'child_process';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import * as path from 'path';
 import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
@@ -11,7 +15,7 @@ import { BuildImage, ImageTagStrategy } from '../../../src/config/build-image';
 import { defineCICD } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
 import { SynthesizerType } from '../../../src/config/types';
-import { CodePipelineEngine } from '../../../src/engine/codepipeline/CodePipelineEngine';
+import { CodePipelineEngine, packageVersionTagCommand } from '../../../src/engine/codepipeline/CodePipelineEngine';
 
 function render(config: ReturnType<typeof defineCICD>, removalPolicy?: RemovalPolicy): Template {
   const stack = new Stack(new App(), 'PipelineStack', { env: { account: '111111111111', region: 'us-west-2' } });
@@ -186,5 +190,101 @@ describe('m6-container: image-build pipeline', () => {
         ]),
       }),
     });
+  });
+});
+
+describe('package-version image tag (immutable repository)', () => {
+  const URI = '111111111111.dkr.ecr.us-west-2.amazonaws.com/shop-deployer';
+  const SHA_DIGEST = `sha256:${'a'.repeat(64)}`;
+  const OTHER_DIGEST = `sha256:${'b'.repeat(64)}`;
+
+  test('is opt-in, needs GIT_SHA, and runs after the commit-SHA push', () => {
+    expect(buildCommands(render(cfg(BuildImage.docker())))).not.toContain('PACKAGE_VERSION');
+    const cmds = buildCommands(render(cfg(BuildImage.docker({ packageVersionTag: true }))));
+    expect(cmds.indexOf('PACKAGE_VERSION')).toBeGreaterThan(cmds.indexOf('docker push'));
+    expect(() => BuildImage.docker({ packageVersionTag: true, tagStrategy: ImageTagStrategy.LATEST })).toThrow(
+      /packageVersionTag needs tagStrategy GIT_SHA/,
+    );
+  });
+
+  // Fake aws/docker: describe-images answers from <dir>/tags/<tag> (a digest); `docker push` of the
+  // version tag publishes the commit image's digest unless PUSH_FAILS is set.
+  const run = (version: string, existing: Record<string, string>, pushFails = false) => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'cdk-cicd-version-tag-'));
+    try {
+      const tags = path.join(dir, 'tags');
+      mkdirSync(path.join(dir, 'bin'));
+      mkdirSync(tags);
+      writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ version }));
+      for (const [tag, digest] of Object.entries(existing)) writeFileSync(path.join(tags, tag), digest);
+      writeFileSync(
+        path.join(dir, 'bin', 'aws'),
+        '#!/bin/sh\nfor a in "$@"; do case "$a" in imageTag=*) t="${a#imageTag=}" ;; esac; done\n' +
+          '[ -f "$TAGS/$t" ] || { echo "ImageNotFoundException" >&2; exit 254; }\ncat "$TAGS/$t"\n',
+      );
+      writeFileSync(
+        path.join(dir, 'bin', 'docker'),
+        '#!/bin/sh\necho "docker $*" >> "$TRACE"\n' +
+          'if [ "$1" = push ] && [ -z "$PUSH_FAILS" ]; then t="${2##*:}"; [ -f "$TAGS/$t" ] || cp "$TAGS/$IMAGE_TAG" "$TAGS/$t"; fi\n' +
+          '[ "$1" = push ] && [ -n "$PUSH_FAILS" ] && exit 1\nexit 0\n',
+      );
+      chmodSync(path.join(dir, 'bin', 'aws'), 0o755);
+      chmodSync(path.join(dir, 'bin', 'docker'), 0o755);
+      const trace = path.join(dir, 'trace');
+      writeFileSync(trace, '');
+      const result = spawnSync('/bin/sh', ['-c', packageVersionTagCommand('us-west-2', 'shop-deployer', URI)], {
+        cwd: dir,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${path.join(dir, 'bin')}:${process.env.PATH ?? ''}`,
+          TAGS: tags,
+          TRACE: trace,
+          IMAGE_TAG: 'c0ffee',
+          ...(pushFails ? { PUSH_FAILS: '1' } : {}),
+        },
+      });
+      const versionDigest = existsSync(path.join(tags, version)) ? readFileSync(path.join(tags, version), 'utf8') : '';
+      return { result, docker: readFileSync(trace, 'utf8'), versionDigest };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  test('tags the commit image with a version that is not published yet', () => {
+    const { result, docker, versionDigest } = run('1.4.2', { c0ffee: SHA_DIGEST });
+    expect(result.status).toBe(0);
+    expect(versionDigest).toBe(SHA_DIGEST);
+    expect(docker).toContain(`docker tag ${URI}:c0ffee ${URI}:1.4.2`);
+    expect(docker).toContain(`docker push ${URI}:1.4.2`);
+    expect(result.stdout).toContain(`tagged ${URI}:c0ffee as 1.4.2`);
+  });
+
+  test('a retried build whose version already is this image does nothing', () => {
+    const { result, docker } = run('1.4.2', { c0ffee: SHA_DIGEST, '1.4.2': SHA_DIGEST });
+    expect(result.status).toBe(0);
+    expect(docker).toBe('');
+    expect(result.stdout).toContain('already is this image');
+  });
+
+  test('a version already held by another image never moves; the build keeps its SHA tag', () => {
+    const { result, docker, versionDigest } = run('1.4.2', { c0ffee: SHA_DIGEST, '1.4.2': OTHER_DIGEST });
+    expect(result.status).toBe(0);
+    expect(docker).toBe('');
+    expect(versionDigest).toBe(OTHER_DIGEST);
+    expect(result.stdout).toContain('Bump package.json version to publish it under a version');
+  });
+
+  test('fails when the version tag could not be published at all', () => {
+    const { result } = run('1.4.2', { c0ffee: SHA_DIGEST }, true);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('could not publish version tag 1.4.2');
+  });
+
+  test('rejects a version that is not a valid image tag', () => {
+    const { result, docker } = run('1.4.2+build.7', { c0ffee: SHA_DIGEST });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('is not a valid image tag');
+    expect(docker).toBe('');
   });
 });

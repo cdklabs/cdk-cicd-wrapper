@@ -5,17 +5,18 @@
 #
 #   1. Repo 1 (CodeCommit): the repo2-config-app fixture with a cicd.config.ts that declares only one
 #      validation stage `ci`. `deploy-ci` provisions the image-build pipeline, which synthesizes `ci`
-#      with config/ci.json (cdk-nag + schema) and only then builds and pushes the image, tagged with the
-#      Repo 1 commit SHA (the default GIT_SHA strategy: one immutable tag per build).
+#      with config/ci.json (cdk-nag + schema) and only then builds and pushes the image to an immutable
+#      repository, tagged with the Repo 1 commit SHA and, via packageVersionTag, its package.json
+#      version 0.1.0.
 #   2. Repo 2 (CodeCommit): deploy.config.ts with targets SBCD, SBCD2 and BAD that exist ONLY here, plus
 #      config/<stage>.json carrying `version` and the stage configuration. `deploy-ci` provisions the CD
-#      pipeline, which deploys every target from the same pinned image version (that commit SHA).
+#      pipeline, which deploys every target from the same pinned image version, 0.1.0.
 #   3. Assert: SBCD and SBCD2 deploy different values from one image tag (and SBCD ignores the
 #      `greeting` baked into the image); BAD, whose config lacks the required key, fails with an error
 #      naming the target and the key, and never creates a stack.
 #   4. Commit a changed config/SBCD.json to Repo 2: SBCD redeploys with the new value, same image tag,
 #      no image rebuild.
-#   5. Push a new image from Repo 1 only: the `autoDeploy` target AUTO redeploys from it with its Repo 2
+#   5. Push a new image from Repo 1 only (package.json bumped to 0.2.0): the `autoDeploy` target AUTO redeploys from it with its Repo 2
 #      configuration, while SBCD stays on its pinned version and the deploy repository is untouched.
 #   6. Promote SBCD alone to the new image by changing only `version` in config/SBCD.json: SBCD runs the
 #      new version, SBCD2 stays on the old one and its stage is skipped.
@@ -201,10 +202,15 @@ image_digest() {
     --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true
 }
 
-# The tag of the most recently pushed image: the Repo 1 commit SHA under the GIT_SHA strategy.
-newest_image_tag() {
+# The newest image's other tag than the given version: its Repo 1 commit SHA.
+newest_image_tag_except() {
   aws ecr describe-images --repository-name "$(ecr_repo)" --region "$REGION" \
-    --query 'sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageTags[0]' --output text 2>/dev/null || true
+    --query "sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageTags[?@ != '$1'] | [0]" --output text 2>/dev/null || true
+}
+
+# Set Repo 1's package.json version: the image build publishes it as a tag.
+set_package_version() {
+  node -e 'const f=process.argv[1]+"/package.json";const p=require(f);p.version=process.argv[2];require("fs").writeFileSync(f,JSON.stringify(p,null,2)+"\n")' "$1" "$2"
 }
 
 tag_stack() {
@@ -266,7 +272,7 @@ main() {
   ecr_uri="${CDK_CICD_TEST_ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/$(ecr_repo)"
 
   # The ECR repo is the first standalone resource; arm teardown immediately after it exists.
-  aws ecr create-repository --repository-name "$(ecr_repo)" --region "$REGION" \
+  aws ecr create-repository --repository-name "$(ecr_repo)" --region "$REGION" --image-tag-mutability IMMUTABLE \
     --tags "Key=$TAG_KEY,Value=$CDK_CICD_TEST_RUN_ID" >/dev/null 2>&1 || die "could not create ECR repo $(ecr_repo)"
   trap 'keep_or_destroy; rm -rf "${r1:-}" "${r2:-}"' EXIT
 
@@ -284,19 +290,24 @@ export default defineCICD({
   stages: [{ name: 'ci', env: { region: '${REGION}' } }],
   repository: Repository.codecommit('$(r1_src)', 'main', { existing: true }),
   codeArtifact: { domain: '${CA_DOMAIN}', repository: '${CA_REPO}', npmScope: 'cdklabs' },
-  deployerImage: BuildImage.docker({ repositoryName: '$(ecr_repo)', tagStrategy: ImageTagStrategy.GIT_SHA }),
+  deployerImage: BuildImage.docker({ repositoryName: '$(ecr_repo)', tagStrategy: ImageTagStrategy.GIT_SHA, packageVersionTag: true }),
 });
 EOF
   printf 'v1\n' > "$r1/image-marker.txt"
+  set_package_version "$r1" 0.1.0
   install_bundle "$r1"
   ensure_cc_repo "$(r1_src)" "$REGION"
   ( cc_push "$r1" "$(r1_src)" "$REGION" "Repo 1 $CDK_CICD_TEST_RUN_ID" ) || return 1
   deploy_ci "$r1" || { log 'Repo 1 deploy-ci failed'; return 1; }
   wait_for_image "$(r1_stack)" || return 1
-  v1="$(newest_image_tag)"
-  [ -n "$v1" ] && [ "$v1" != 'None' ] && [ "$v1" != 'latest' ] || { log "no commit-SHA image tag in ECR ('$v1')"; return 1; }
+  v1=0.1.0
   digest_before="$(image_digest "$v1")"
-  info "deployer image version v1 = ${ecr_uri}:${v1} (the Repo 1 commit SHA)"
+  local sha1; sha1="$(newest_image_tag_except "$v1")"
+  if [ -n "$digest_before" ] && [ "$digest_before" != 'None' ] && [ "$(image_digest "$sha1")" = "$digest_before" ]; then
+    info "deployer image ${ecr_uri}:${v1} = :${sha1} (package version and commit SHA name one image)"
+  else
+    log "expected ${v1} and a commit-SHA tag on one image (version '$digest_before', sha '$sha1')"; return 1
+  fi
 
   # --- Repo 2: targets and stage configuration --------------------------------------------------------
   log 'leg 2: Repo 2 -- CD pipeline whose targets and stage configuration exist only in this repo'
@@ -427,7 +438,8 @@ EOF
                     --query 'Stacks[0].LastUpdatedTime' --output text 2>/dev/null)"
   [ "$(image_marker AUTO)" = 'v1' ] || { log "AUTO should start on image v1, has '$(image_marker AUTO)'"; rc=1; }
   printf 'v2\n' > "$r1/image-marker.txt"
-  ( cc_push "$r1" "$(r1_src)" "$REGION" "Repo 1: image marker -> v2" ) || rc=1
+  set_package_version "$r1" 0.2.0
+  ( cc_push "$r1" "$(r1_src)" "$REGION" "Repo 1: image marker -> v2, version 0.2.0" ) || rc=1
   for (( i=0; i<POLL_MAX; i++ )); do
     marker="$(image_marker AUTO)"
     [ "$marker" = 'v2' ] && break
@@ -450,11 +462,18 @@ EOF
   else
     info 'SBCD (not autoDeploy) stayed on its pinned version v1; the deploy repository did not change'
   fi
-  v2="$(newest_image_tag)"
-  if [ "$v2" != "$v1" ] && [ "$(image_digest "$v1")" = "$digest_before" ]; then
-    info "the new build pushed its own immutable version v2 = ${v2}; v1 = ${v1} is still there, unchanged"
+  v2=0.2.0
+  if [ -n "$(image_digest "$v2")" ] && [ "$(image_digest "$v2")" != 'None' ] \
+     && [ "$(image_digest "$v2")" != "$digest_before" ] && [ "$(image_digest "$v1")" = "$digest_before" ]; then
+    info "the new build published ${v2} as a new image; ${v1} still names the old one, unchanged"
   else
-    log "expected a second immutable image version (v1 '$v1', v2 '$v2')"; rc=1
+    log "expected ${v2} on a new image and ${v1} unchanged"; rc=1
+  fi
+  if [ "$(aws ecr describe-repositories --repository-names "$(ecr_repo)" --region "$REGION" \
+          --query 'repositories[0].imageTagMutability' --output text 2>/dev/null)" = 'IMMUTABLE' ]; then
+    info 'the ECR repository is IMMUTABLE'
+  else
+    log 'the ECR repository is not immutable'; rc=1
   fi
 
   log 'leg 6: promote SBCD alone to the new version by changing only its version in Repo 2'

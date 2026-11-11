@@ -40,6 +40,7 @@ export default defineCICD({
     dockerfile: 'Dockerfile', // default; the image payload is your app + deps, NOT cdk.out
     // repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one
     // tagStrategy: ImageTagStrategy.GIT_SHA, // default: immutable revision tag; or ImageTagStrategy.LATEST
+    // packageVersionTag: true, // also tag the image with package.json's version, e.g. 1.4.2
   }),
 });
 ```
@@ -62,6 +63,20 @@ Repo 2 target defines and uses that target's configuration (see below). Keep a r
 4. `docker build`s your Dockerfile and pushes the image, tagged by strategy (`GIT_SHA` by default —
    the lowercase commit SHA for Git sources or a deterministic SHA-256 of another source revision;
    `LATEST` is simplest but not immutable).
+5. with `packageVersionTag: true`, adds the `version` from `package.json` (for example `1.4.2`) as a
+   second tag on the same image, so Repo 2 can pin `"version": "1.4.2"` instead of a commit SHA.
+
+The repository stays **immutable** with `packageVersionTag`. ECR immutability stops an existing tag from
+moving to another image; it does not stop a new tag from being added to an image. So the version tag is
+added only while that version is unpublished:
+
+- A retried build whose version already names this image changes nothing.
+- A build whose version is already held by another image keeps only its commit-SHA tag and says so.
+  Bump `version` in `package.json` to publish it under a version.
+- A version that is not a valid image tag (semver build metadata such as `1.4.2+7`) fails the build.
+
+`1.4.2` therefore always names exactly one image, and promoting a release in Repo 2 means setting another
+target's `version` to the same value.
 
 If you do not name an existing repository, the pipeline **provisions** one named `<application>-deployer`;
 a disposable pipeline (`deploy-ci --disposable`) empties and deletes it on teardown.

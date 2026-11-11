@@ -2600,6 +2600,7 @@ const dockerBuildProps: DockerBuildProps = { ... }
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.dockerfile">dockerfile</a></code> | <code>string</code> | Path to the Dockerfile in the source, relative to its root. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.packageVersionTag">packageVersionTag</a></code> | <code>boolean</code> | Also tag the image with the `version` from the source's `package.json` (for example `1.4.2`), so Repo 2 can pin a readable release instead of a commit SHA. The repository stays immutable: the version tag is added to the commit's image only when that version is not published yet. A build whose version is already taken by another image keeps only its commit-SHA tag and says so -- bump `version` to publish it. Requires {@link ImageTagStrategy.GIT_SHA}. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.repositoryName">repositoryName</a></code> | <code>string</code> | Name of the ECR repository to push to. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.tagStrategy">tagStrategy</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ImageTagStrategy">ImageTagStrategy</a></code> | How the image is tagged. |
 
@@ -2616,6 +2617,19 @@ public readonly dockerfile: string;
 Path to the Dockerfile in the source, relative to its root.
 
 Defaults to `Dockerfile`.
+
+---
+
+##### `packageVersionTag`<sup>Optional</sup> <a name="packageVersionTag" id="@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.packageVersionTag"></a>
+
+```typescript
+public readonly packageVersionTag: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Also tag the image with the `version` from the source's `package.json` (for example `1.4.2`), so Repo 2 can pin a readable release instead of a commit SHA. The repository stays immutable: the version tag is added to the commit's image only when that version is not published yet. A build whose version is already taken by another image keeps only its commit-SHA tag and says so -- bump `version` to publish it. Requires {@link ImageTagStrategy.GIT_SHA}.
 
 ---
 
@@ -5134,6 +5148,7 @@ Build and push a Docker deployer image to ECR.
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.dockerfile">dockerfile</a></code> | <code>string</code> | Dockerfile path relative to the source root. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.kind">kind</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImageKind">BuildImageKind</a></code> | The artifact kind. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.packageVersionTag">packageVersionTag</a></code> | <code>boolean</code> | Whether the image is also tagged with the source's `package.json` version. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.tagStrategy">tagStrategy</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ImageTagStrategy">ImageTagStrategy</a></code> | Image tag strategy. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.repositoryName">repositoryName</a></code> | <code>string</code> | ECR repository name to push to; |
 
@@ -5160,6 +5175,18 @@ public readonly kind: BuildImageKind;
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.BuildImageKind">BuildImageKind</a>
 
 The artifact kind.
+
+---
+
+##### `packageVersionTag`<sup>Required</sup> <a name="packageVersionTag" id="@cdklabs/cdk-cicd-wrapper.BuildImage.property.packageVersionTag"></a>
+
+```typescript
+public readonly packageVersionTag: boolean;
+```
+
+- *Type:* boolean
+
+Whether the image is also tagged with the source's `package.json` version.
 
 ---
 
