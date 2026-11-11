@@ -5,18 +5,21 @@
 #
 #   1. Repo 1 (CodeCommit): the repo2-config-app fixture with a cicd.config.ts that declares only one
 #      validation stage `ci`. `deploy-ci` provisions the image-build pipeline, which synthesizes `ci`
-#      with config/ci.json (cdk-nag + schema) and only then builds and pushes the image as `:latest`.
+#      with config/ci.json (cdk-nag + schema) and only then builds and pushes the image, tagged with the
+#      Repo 1 commit SHA (the default GIT_SHA strategy: one immutable tag per build).
 #   2. Repo 2 (CodeCommit): deploy.config.ts with targets SBCD, SBCD2 and BAD that exist ONLY here, plus
 #      config/<stage>.json carrying `version` and the stage configuration. `deploy-ci` provisions the CD
-#      pipeline, which deploys every target from the same image tag.
+#      pipeline, which deploys every target from the same pinned image version (that commit SHA).
 #   3. Assert: SBCD and SBCD2 deploy different values from one image tag (and SBCD ignores the
 #      `greeting` baked into the image); BAD, whose config lacks the required key, fails with an error
 #      naming the target and the key, and never creates a stack.
 #   4. Commit a changed config/SBCD.json to Repo 2: SBCD redeploys with the new value, same image tag,
 #      no image rebuild.
 #   5. Push a new image from Repo 1 only: the `autoDeploy` target AUTO redeploys from it with its Repo 2
-#      configuration, while SBCD stays on the old image and the deploy repository is untouched.
-#   6. Tear everything down: both pipeline stacks, the app stacks, the ECR repo, both CodeCommit repos
+#      configuration, while SBCD stays on its pinned version and the deploy repository is untouched.
+#   6. Promote SBCD alone to the new image by changing only `version` in config/SBCD.json: SBCD runs the
+#      new version, SBCD2 stays on the old one and its stage is skipped.
+#   7. Tear everything down: both pipeline stacks, the app stacks, the ECR repo, both CodeCommit repos
 #      and the CD pipeline's target-state parameters.
 #
 #   bash test/proof/container-pipeline-verify.sh
@@ -194,8 +197,14 @@ action_status() {
 }
 
 image_digest() {
-  aws ecr describe-images --repository-name "$(ecr_repo)" --region "$REGION" --image-ids imageTag=latest \
+  aws ecr describe-images --repository-name "$(ecr_repo)" --region "$REGION" --image-ids "imageTag=$1" \
     --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true
+}
+
+# The tag of the most recently pushed image: the Repo 1 commit SHA under the GIT_SHA strategy.
+newest_image_tag() {
+  aws ecr describe-images --repository-name "$(ecr_repo)" --region "$REGION" \
+    --query 'sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageTags[0]' --output text 2>/dev/null || true
 }
 
 tag_stack() {
@@ -251,7 +260,7 @@ main() {
   [ "$actual" = "$CDK_CICD_TEST_ACCOUNT" ] || die 'caller is not the test account'
   command -v git >/dev/null 2>&1 || die 'git is not on PATH'
 
-  local rc=0 ecr_uri digest_before digest_after
+  local rc=0 ecr_uri digest_before digest_after v1 v2
   # Globals, not locals: the EXIT trap runs after main returns, when its locals no longer exist.
   r1="$(mktemp -d)"; r2="$(mktemp -d)"
   ecr_uri="${CDK_CICD_TEST_ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/$(ecr_repo)"
@@ -275,7 +284,7 @@ export default defineCICD({
   stages: [{ name: 'ci', env: { region: '${REGION}' } }],
   repository: Repository.codecommit('$(r1_src)', 'main', { existing: true }),
   codeArtifact: { domain: '${CA_DOMAIN}', repository: '${CA_REPO}', npmScope: 'cdklabs' },
-  deployerImage: BuildImage.docker({ repositoryName: '$(ecr_repo)', tagStrategy: ImageTagStrategy.LATEST }),
+  deployerImage: BuildImage.docker({ repositoryName: '$(ecr_repo)', tagStrategy: ImageTagStrategy.GIT_SHA }),
 });
 EOF
   printf 'v1\n' > "$r1/image-marker.txt"
@@ -284,9 +293,10 @@ EOF
   ( cc_push "$r1" "$(r1_src)" "$REGION" "Repo 1 $CDK_CICD_TEST_RUN_ID" ) || return 1
   deploy_ci "$r1" || { log 'Repo 1 deploy-ci failed'; return 1; }
   wait_for_image "$(r1_stack)" || return 1
-  digest_before="$(image_digest)"
-  [ -n "$digest_before" ] && [ "$digest_before" != 'None' ] || { log 'no :latest image in ECR'; return 1; }
-  info "deployer image ${ecr_uri}:latest = ${digest_before%%:*}:..."
+  v1="$(newest_image_tag)"
+  [ -n "$v1" ] && [ "$v1" != 'None' ] && [ "$v1" != 'latest' ] || { log "no commit-SHA image tag in ECR ('$v1')"; return 1; }
+  digest_before="$(image_digest "$v1")"
+  info "deployer image version v1 = ${ecr_uri}:${v1} (the Repo 1 commit SHA)"
 
   # --- Repo 2: targets and stage configuration --------------------------------------------------------
   log 'leg 2: Repo 2 -- CD pipeline whose targets and stage configuration exist only in this repo'
@@ -327,11 +337,11 @@ export default defineDeployment({
 });
 EOF
   mkdir -p "$r2/config"
-  printf '{ "version": "latest", "greeting": "delta" }\n' > "$r2/config/AUTO.json"
-  printf '{ "version": "latest", "greeting": "alpha" }\n' > "$r2/config/SBCD.json"
-  printf '{ "version": "latest", "greeting": "bravo" }\n' > "$r2/config/SBCD2.json"
+  printf '{ "version": "%s", "greeting": "delta" }\n' "$v1" > "$r2/config/AUTO.json"
+  printf '{ "version": "%s", "greeting": "alpha" }\n' "$v1" > "$r2/config/SBCD.json"
+  printf '{ "version": "%s", "greeting": "bravo" }\n' "$v1" > "$r2/config/SBCD2.json"
   # Missing the image schema's required `greeting`: must fail before any CloudFormation call.
-  printf '{ "version": "latest", "greting": "typo" }\n' > "$r2/config/BAD.json"
+  printf '{ "version": "%s", "greting": "typo" }\n' "$v1" > "$r2/config/BAD.json"
   install_bundle "$r2"
   ensure_cc_repo "$(r2_src)" "$REGION"
   ( cc_push "$r2" "$(r2_src)" "$REGION" "Repo 2 $CDK_CICD_TEST_RUN_ID" ) || return 1
@@ -371,10 +381,10 @@ EOF
   fi
 
   log 'leg 4: change a non-version key in Repo 2 only -> redeploy, same image tag, no rebuild'
-  printf '{ "version": "latest", "greeting": "charlie" }\n' > "$r2/config/SBCD.json"
+  printf '{ "version": "%s", "greeting": "charlie" }\n' "$v1" > "$r2/config/SBCD.json"
   ( cc_push "$r2" "$(r2_src)" "$REGION" "Repo 2: SBCD greeting -> charlie" ) || rc=1
   if wait_for_values "$pipeline" SBCD=charlie SBCD2=bravo; then
-    digest_after="$(image_digest)"
+    digest_after="$(image_digest "$v1")"
     if [ "$digest_after" = "$digest_before" ]; then
       info 'SBCD redeployed with greeting=charlie from the unchanged image digest'
     else
@@ -438,7 +448,41 @@ EOF
      || [ "$(image_marker SBCD)" != 'v1' ]; then
     log 'SBCD (not autoDeploy) was redeployed by an image push'; rc=1
   else
-    info 'SBCD (not autoDeploy) stayed on image v1; the deploy repository did not change'
+    info 'SBCD (not autoDeploy) stayed on its pinned version v1; the deploy repository did not change'
+  fi
+  v2="$(newest_image_tag)"
+  if [ "$v2" != "$v1" ] && [ "$(image_digest "$v1")" = "$digest_before" ]; then
+    info "the new build pushed its own immutable version v2 = ${v2}; v1 = ${v1} is still there, unchanged"
+  else
+    log "expected a second immutable image version (v1 '$v1', v2 '$v2')"; rc=1
+  fi
+
+  log 'leg 6: promote SBCD alone to the new version by changing only its version in Repo 2'
+  printf '{ "version": "%s", "greeting": "charlie" }\n' "$v2" > "$r2/config/SBCD.json"
+  ( cc_push "$r2" "$(r2_src)" "$REGION" "Repo 2: promote SBCD to ${v2}" ) || rc=1
+  for (( i=0; i<POLL_MAX; i++ )); do
+    approve_pending "$pipeline"
+    marker="$(image_marker SBCD)"
+    [ "$marker" = 'v2' ] && break
+    sleep "$POLL_INTERVAL"
+  done
+  if [ "$marker" = 'v2' ] && [ "$(param_value SBCD)" = 'charlie' ]; then
+    info "SBCD now runs version v2 (${v2}) with its unchanged greeting 'charlie'"
+  else
+    log "SBCD was not promoted to v2 (marker '$marker', greeting '$(param_value SBCD)')"; rc=1
+  fi
+  [ "$(image_marker SBCD2)" = 'v1' ] || { log "SBCD2 moved off its pinned v1 ('$(image_marker SBCD2)')"; rc=1; }
+  local sbcd_run sbcd2_run
+  for (( i=0; i<POLL_MAX; i++ )); do
+    sbcd_run="$(stage_execution "$pipeline" Deploy-SBCD)"
+    sbcd2_run="$(stage_execution "$pipeline" Deploy-SBCD2)"
+    [ "${sbcd2_run%%[[:space:]]*}" = "${sbcd_run%%[[:space:]]*}" ] && break
+    sleep "$POLL_INTERVAL"
+  done
+  if [ "${sbcd2_run%%[[:space:]]*}" = "${sbcd_run%%[[:space:]]*}" ] && [ "${sbcd2_run##*[[:space:]]}" = 'Skipped' ]; then
+    info 'SBCD2 stayed on v1 and its stage was Skipped -- promotion is per target'
+  else
+    log "SBCD2 should have been skipped in the promotion run (SBCD: '$sbcd_run', SBCD2: '$sbcd2_run')"; rc=1
   fi
 
   if [ "$APPROVALS" -eq 0 ]; then
