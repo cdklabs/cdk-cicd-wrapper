@@ -355,6 +355,14 @@ export interface DeploymentTargetInput {
    * @default false
    */
   readonly autoDeploy?: boolean;
+  /**
+   * Ask for this target's manual approval on every pipeline run, even when nothing it deploys has
+   * changed. By default the CD pipeline skips the whole stage of an unchanged target -- approval
+   * included -- because there is nothing to approve. Requires `manualApproval`.
+   *
+   * @default false
+   */
+  readonly alwaysApprove?: boolean;
 }
 
 /** What a user passes to `defineDeployment` (Repo 2). Deliberately permissive; normalized to resolved structs. */
@@ -459,6 +467,13 @@ function normalizeTarget(
         '(always deploy the newest pushed image); remove one of them.',
     );
   }
+  const alwaysApprove = target.alwaysApprove ?? false;
+  if (alwaysApprove && !manualApproval) {
+    throw new Error(
+      `cdk-cicd: target '${target.stage}' sets alwaysApprove but has no manual approval; ` +
+        'set manualApproval: true on it, or remove alwaysApprove.',
+    );
+  }
 
   return {
     stage: target.stage,
@@ -474,6 +489,8 @@ function normalizeTarget(
     complianceLogBucketAccount,
     complianceLogBucketRegion,
     ...(autoDeploy ? { autoDeploy } : {}),
+    // Only present when on, so existing targets keep their recorded fingerprints.
+    ...(alwaysApprove ? { alwaysApprove } : {}),
   };
 }
 

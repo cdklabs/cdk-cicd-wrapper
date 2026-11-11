@@ -378,8 +378,12 @@ export function dockerRunArgs(
     setEnv('CONFIG_FILE', target.stageConfig.containerPath);
     setEnv(STAGE_CONFIG_SOURCE_FLAG, target.stageConfig.source);
   }
-  // Creds inherited from the caller (who assumed the target account, for cross-account deploys).
-  ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'].forEach(passEnv);
+  // Creds inherited from the caller (who assumed the target account, for cross-account deploys). On
+  // CodeBuild/ECS no key is in the environment at all: the container-credentials URI is forwarded
+  // instead, and the SDK inside the container fetches short-lived role credentials from that endpoint.
+  ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI'].forEach(
+    passEnv,
+  );
 
   // Validate-only synthesizes the target -- which runs the app's own AppConfig schema validation against
   // the injected config -- and stops before any CloudFormation change set exists.
@@ -500,6 +504,8 @@ export async function runFromImage(
     yes: boolean;
     network?: string;
     target?: string;
+    /** With `target`: deploy only this one region of a parallel multi-region target. */
+    region?: string;
     /** Synthesize each target (schema validation) without deploying; no approval needed. */
     validateOnly?: boolean;
     cwd?: string;
@@ -516,11 +522,28 @@ export async function runFromImage(
 
   // `target` deploys just that one stage (its own image version) -- how a CD pipeline runs one action per
   // target, so bumping a stage's image in deploy.config and committing deploys only that stage.
-  const targets =
+  let targets =
     options.target !== undefined ? config.targets.filter((t) => t.stage === options.target) : config.targets;
   if (options.target !== undefined && targets.length === 0) {
     logger.error(`cdk-cicd deploy --from-image: no target '${options.target}' in deploy.config`);
     return 1;
+  }
+  // `region` narrows a parallel multi-region target to one of its regions: the CD pipeline runs one
+  // action per region of such a target.
+  if (options.region !== undefined) {
+    const target = targets[0];
+    if (options.target === undefined || target.env.regionOrder !== 'parallel') {
+      logger.error('cdk-cicd deploy --from-image: --region needs --target naming a parallel multi-region target');
+      return 1;
+    }
+    if (!target.env.regions.includes(options.region)) {
+      logger.error(
+        `cdk-cicd deploy --from-image: target '${target.stage}' no longer defines parallel region ` +
+          `${options.region}; re-run cdk-cicd deploy-ci to update the pipeline topology`,
+      );
+      return 1;
+    }
+    targets = [{ ...target, env: { ...target.env, regions: [options.region] } }];
   }
 
   const bucketCoordinates = new Map<string, string>();

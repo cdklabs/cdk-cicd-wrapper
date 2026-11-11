@@ -559,6 +559,13 @@ export interface ResolvedDeploymentTarget {
    * @default false
    */
   readonly autoDeploy?: boolean;
+  /**
+   * Ask for this target's manual approval on every pipeline run, even when its deployment inputs are
+   * unchanged. Without it, the CD pipeline skips an unchanged target's whole stage, approval included.
+   *
+   * @default false
+   */
+  readonly alwaysApprove?: boolean;
 }
 
 /**

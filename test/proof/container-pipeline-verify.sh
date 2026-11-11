@@ -120,6 +120,20 @@ dump_failed_logs() {
   done
 }
 
+# The CD stack's deploy CodeBuild project (the other one is Plan).
+deploy_project() {
+  aws cloudformation describe-stack-resources --stack-name "$(r2_stack)" --region "$REGION" \
+    --query "StackResources[?ResourceType=='AWS::CodeBuild::Project' && contains(LogicalResourceId, 'Deploy')].PhysicalResourceId | [0]" \
+    --output text 2>/dev/null || true
+}
+
+# "<pipelineExecutionId> <status>" of the stage holding the given action.
+stage_execution() {
+  aws codepipeline get-pipeline-state --name "$1" --region "$REGION" \
+    --query "stageStates[?actionStates[?actionName=='$2']].latestExecution.[pipelineExecutionId,status] | [0]" \
+    --output text 2>/dev/null || true
+}
+
 # The WHOLE CodeBuild log of an action's latest execution. The validation error sits well above the
 # trailing CodeBuild phase lines, so a tail is not enough to assert on it.
 #
@@ -127,9 +141,7 @@ dump_failed_logs() {
 # app-config error instead of reconstructing a single build id from pipeline state.
 config_error_log() {
   local project
-  project="$(aws cloudformation describe-stack-resources --stack-name "$(r2_stack)" --region "$REGION" \
-    --query "StackResources[?ResourceType=='AWS::CodeBuild::Project'].PhysicalResourceId | [0]" \
-    --output text 2>/dev/null)" || return 0
+  project="$(deploy_project)"
   [ -n "$project" ] && [ "$project" != 'None' ] || return 0
   aws_masked logs filter-log-events --log-group-name "/aws/codebuild/$project" --region "$REGION" \
     --filter-pattern '"ConfigError"' --query 'events[].message' --output text 2>/dev/null | tr '\t' '\n' | redact || true
@@ -370,6 +382,30 @@ EOF
     fi
   else
     rc=1
+  fi
+  # Plan found SBCD2 unchanged, so CodePipeline skipped its whole stage: no approval was requested.
+  local sbcd_run sbcd2_run
+  for (( i=0; i<POLL_MAX; i++ )); do
+    sbcd_run="$(stage_execution "$pipeline" Deploy-SBCD)"
+    sbcd2_run="$(stage_execution "$pipeline" Deploy-SBCD2)"
+    [ "${sbcd2_run%%[[:space:]]*}" = "${sbcd_run%%[[:space:]]*}" ] && break
+    sleep "$POLL_INTERVAL"
+  done
+  if [ "${sbcd2_run%%[[:space:]]*}" = "${sbcd_run%%[[:space:]]*}" ] && [ "${sbcd2_run##*[[:space:]]}" = 'Skipped' ]; then
+    info 'the unchanged SBCD2 stage was Skipped in the same run -- no approval was requested for it'
+  else
+    log "SBCD2 should have been skipped in SBCD's run (SBCD: '$sbcd_run', SBCD2: '$sbcd2_run')"; rc=1
+  fi
+
+  # The deploy log shows short CLI commands: no generated program and no exported access keys.
+  local deploy_log
+  deploy_log="$(aws_masked logs filter-log-events --log-group-name "/aws/codebuild/$(deploy_project)" \
+    --region "$REGION" --filter-pattern '?"EXPECTED_TARGET_ENVIRONMENTS" ?"export-credentials" ?"AWS_SECRET_ACCESS_KEY="' \
+    --query 'length(events)' --output text 2>/dev/null)"
+  if [ "$deploy_log" = '0' ]; then
+    info 'the deploy logs contain no inline fingerprint script and no exported credentials'
+  else
+    log "the deploy logs still show the inline script or exported credentials ($deploy_log matching lines)"; rc=1
   fi
 
   log 'leg 5: push a new image from Repo 1 only -> the autoDeploy target follows it; nothing else moves'

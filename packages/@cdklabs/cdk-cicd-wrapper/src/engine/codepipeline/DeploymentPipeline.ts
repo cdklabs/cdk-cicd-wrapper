@@ -25,6 +25,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { RegionInfo } from 'aws-cdk-lib/region-info';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
+import { deploymentPipelineShapeFingerprint, EcrRepositoryReference, parseEcrRepository } from './deployment-shape';
 import { buildSourceAction } from './source';
 import {
   resolveDefaultSynthesizerQualifier,
@@ -50,6 +51,43 @@ const MAX_ACTIONS_PER_STAGE = 100;
 const MAX_ACTIONS_PER_PIPELINE = 1_000;
 const MAX_STAGES_PER_PIPELINE = 50;
 const CODEPIPELINE_IDENTIFIER = /^[A-Za-z0-9.@_-]{1,100}$/;
+/** Variable namespace of the Plan action; deployment stages' entry conditions read from it. */
+const PLAN_NAMESPACE = 'Plan';
+/** Plan exports `<prefix><n>` = `true` | `false` for deployment stage `Deploy-<n>`. */
+const PLAN_VARIABLE_PREFIX = 'CDK_CICD_RUN_';
+/** Where `cdk-cicd pipeline plan` writes its `NAME=true|false` lines inside the Plan build. */
+const PLAN_OUTPUT_PATH = '/tmp/cdk-cicd-plan.env';
+
+/** The Plan variable that decides whether the deployment stage at `index` runs. */
+function planVariableName(index: number): string {
+  return `${PLAN_VARIABLE_PREFIX}${index + 1}`;
+}
+
+/**
+ * An entry condition that enters the stage only when Plan exported `true` for it. CodePipeline skips
+ * the stage when the rule fails -- a Skip result supports only VariableCheck and LambdaInvoke rules.
+ */
+function skipUnlessChanged(stageName: string, variable: string): codepipeline.Conditions {
+  return {
+    conditions: [
+      {
+        result: codepipeline.Result.SKIP,
+        rules: [
+          new codepipeline.Rule({
+            name: `Changed-${stageName}`,
+            provider: 'VariableCheck',
+            version: '1',
+            configuration: {
+              Variable: `#{${PLAN_NAMESPACE}.${variable}}`,
+              Value: 'true',
+              Operator: 'EQ',
+            },
+          }),
+        ],
+      },
+    ],
+  };
+}
 
 /** Options for the CD deployment pipeline. */
 export interface DeploymentPipelineProps {
@@ -116,9 +154,12 @@ export class DeploymentPipeline extends Construct {
         `cdk-cicd: Repo 2 pipeline region '${stack.region}' has no known AWS partition in this aws-cdk-lib version.`,
       );
     }
+    const targetEnvironments = Object.fromEntries(
+      effectiveTargets.map(({ target, account, regions }) => [target.stage, { account, regions }]),
+    );
     const expectedDeploymentTopology = deploymentPipelineShapeFingerprint(
       config,
-      effectiveTargets,
+      targetEnvironments,
       pipelinePartition,
       qualifier,
     );
@@ -136,7 +177,7 @@ export class DeploymentPipeline extends Construct {
     // registry/repository, role, account/region, synthesizer, or action-topology changes fail with an
     // instruction to re-run `deploy-ci`; ordinary tag/version changes remain runtime deployments.
     const images = config.targets.map((t) => t.image ?? config.image).filter((i): i is string => i !== undefined);
-    const ecrRepositories = new Map<string, EcrRepository>();
+    const ecrRepositories = new Map<string, EcrRepositoryReference>();
     const ecrHosts = new Map<string, string>();
     for (const image of images) {
       const repository = parseEcrRepository(image);
@@ -165,7 +206,11 @@ export class DeploymentPipeline extends Construct {
 
     const sourceOutput = new codepipeline.Artifact();
     const support = new SupportResources(this, 'Support', { removalPolicy });
-    const pipeline = new codepipeline.Pipeline(this, 'Pipeline', { artifactBucket: support.artifactBucket });
+    const pipeline = new codepipeline.Pipeline(this, 'Pipeline', {
+      artifactBucket: support.artifactBucket,
+      // Stage entry conditions, which skip unchanged targets, exist only on V2 pipelines.
+      pipelineType: codepipeline.PipelineType.V2,
+    });
 
     pipeline.addStage({ stageName: 'Source', actions: [buildSourceAction(this, config.repository, sourceOutput)] });
 
@@ -184,20 +229,29 @@ export class DeploymentPipeline extends Construct {
     const npmRegistry = config.npmRegistry;
     const npmRegistryLogin = npmRegistry ? npmRegistryLoginCommands(npmRegistry) : [];
 
-    // ONE deploy build, run once per target as a separate pipeline action that sets TARGET_STAGE. It
-    // deploys just that target from ITS OWN image version (read from deploy.config at run time), so bumping
-    // a stage's image tag and committing deploys only that stage. Privileged for docker; creds materialized
-    // to static env vars (CodeBuild serves them via the container-credentials endpoint) so
-    // `deploy --from-image` can forward them into the deployer container by name.
+    // Install steps shared by the Plan and Deploy builds: private-registry login, then `npm ci` installs
+    // the wrapper CLI pinned by the deploy repository's lockfile. The fingerprint logic lives in that
+    // CLI (`cdk-cicd pipeline plan|fingerprint`), so the builds log one short command, not its code.
+    const installCommands = [
+      ...(privateNpm ? npmConfigSetupCommands() : []),
+      ...codeArtifactLogin,
+      ...npmRegistryLogin,
+      'npm ci',
+      ...(privateNpm ? ['rm -f "$NPM_CONFIG_USERCONFIG"', 'unset NPM_AUTH_TOKEN'] : []),
+    ];
+    // What the CLI needs to check the checked-out deploy.config against this pipeline's shape. Constant
+    // per pipeline, so it is set on the projects instead of appearing in any logged command.
+    const fingerprintEnvironment: { [name: string]: codebuild.BuildEnvironmentVariable } = {
+      EXPECTED_DEPLOYMENT_TOPOLOGY: { value: expectedDeploymentTopology },
+      CDK_CICD_TARGET_ENVIRONMENTS: { value: JSON.stringify(targetEnvironments) },
+      CDK_CICD_QUALIFIER: { value: qualifier },
+      CDK_CICD_PARTITION: { value: pipelinePartition },
+    };
+    const regionFlag = '${TARGET_REGION:+--region "$TARGET_REGION"}';
+    const deployTarget = `npm run cdk-cicd -- deploy --from-image --target "$TARGET_STAGE" ${regionFlag} --yes`;
     const fingerprintCommand =
-      `TARGET_FINGERPRINT=$(TS_NODE_COMPILER_OPTIONS='{"module":"commonjs"}' ` +
-      `node -r ts-node/register/transpile-only -e ${shellQuote(
-        deploymentFingerprintScript(effectiveTargets, pipelinePartition, qualifier),
-      )})`;
-    const prepareParallelTarget =
-      `TS_NODE_COMPILER_OPTIONS='{"module":"commonjs"}' ` +
-      `node -r ts-node/register/transpile-only -e ${shellQuote(parallelTargetConfigScript())}`;
-    const deployTarget = 'npm run cdk-cicd -- deploy --from-image --target "$TARGET_STAGE" --yes';
+      `npm run --silent cdk-cicd -- pipeline fingerprint --target "$TARGET_STAGE" ${regionFlag} ` +
+      '--out /tmp/cdk-cicd-target-fingerprint && TARGET_FINGERPRINT=$(cat /tmp/cdk-cicd-target-fingerprint)';
     const readPreviousFingerprint = [
       'if PREVIOUS_TARGET_FINGERPRINT=$(aws ssm get-parameter --name "$TARGET_STATE_PARAMETER" ' +
         '--query "Parameter.Value" --output text 2>/tmp/cdk-cicd-target-state-error); then',
@@ -217,12 +271,7 @@ export class DeploymentPipeline extends Construct {
       'attempt=1',
       'while :; do',
       '  {',
-      '    if [ -n "${TARGET_REGION:-}" ]; then',
-      `      ${prepareParallelTarget} &&`,
-      `        (cd .cdk-cicd-target && ${deployTarget})`,
-      '    else',
-      `      ${deployTarget}`,
-      '    fi',
+      `    ${deployTarget}`,
       '    echo $? > /tmp/cdk-cicd-deploy-rc',
       '  } 2>&1 | tee /tmp/cdk-cicd-deploy.log',
       '  rc=$(cat /tmp/cdk-cicd-deploy-rc)',
@@ -258,51 +307,98 @@ export class DeploymentPipeline extends Construct {
       '  fi',
       'fi',
     ].join('\n');
+    // The Plan stage already skips an unchanged target's whole stage. This re-check, right before the
+    // deploy, covers what happened since Plan ran: the autoDeploy pipeline, or another execution, may
+    // have deployed the same inputs while an approval was pending.
     const skipUnchanged =
       'if [ "$PREVIOUS_TARGET_FINGERPRINT" = "$TARGET_FINGERPRINT" ]; then ' +
       'echo "cdk-cicd: target $TARGET_STAGE is unchanged; skipping deployment"; CDK_CICD_SKIP=1; fi';
     const hasAutoDeploy = config.targets.some((target) => target.autoDeploy === true);
+    // The deployer container gets the CodeBuild role's credentials through the container-credentials
+    // endpoint (`deploy --from-image` forwards AWS_CONTAINER_CREDENTIALS_RELATIVE_URI by name), so no
+    // access key is ever materialized into this build's shell environment.
     const commands = [
       ...(hasAutoDeploy ? [skipCreationRun] : []),
       ...[
-        ...(privateNpm ? npmConfigSetupCommands() : []),
-        ...codeArtifactLogin,
-        ...npmRegistryLogin,
-        'npm ci',
-        ...(privateNpm ? ['rm -f "$NPM_CONFIG_USERCONFIG"', 'unset NPM_AUTH_TOKEN'] : []),
+        ...installCommands,
         fingerprintCommand,
         'if [ "${#TARGET_FINGERPRINT}" -ne 64 ] || printf "%s" "$TARGET_FINGERPRINT" | grep -q "[^0-9a-f]"; then ' +
           'echo "cdk-cicd: could not compute a valid target fingerprint" >&2; exit 1; fi',
         readPreviousFingerprint,
         skipUnchanged,
         ...ecrLoginCommands,
-        'eval "$(aws configure export-credentials --format env 2>/dev/null)" || { ' +
-          'CREDS=$(curl -s "http://169.254.170.2${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI}"); ' +
-          'export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId); ' +
-          'export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey); ' +
-          'export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .Token); }',
         deployAndRecord,
       ].map(unlessSkipped),
     ];
+    // The bearer token `npmRegistryLoginCommands` writes into the temporary npm config; resolved by
+    // CodeBuild at container start, not read via a shell `aws secretsmanager` call.
+    const npmTokenEnv = npmRegistry ? { 'secrets-manager': { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } } : {};
+    const installPhase =
+      props.buildImage === undefined ? { install: { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } } : {};
     const project = new codebuild.PipelineProject(this, 'Deploy', {
       environment: {
         buildImage,
         privileged: true,
+        environmentVariables: fingerprintEnvironment,
       },
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
-          ...(props.buildImage === undefined
-            ? { install: { 'runtime-versions': { nodejs: NODE_RUNTIME_VERSION } } }
-            : {}),
+          ...installPhase,
           build: {
             commands,
             ...(privateNpm ? { finally: ['rm -f "$NPM_CONFIG_USERCONFIG"'] } : {}),
           },
         },
-        // The bearer token `npmRegistryLoginCommands` writes into the temporary npm config; resolved
-        // by CodeBuild at container start, not read via a shell `aws secretsmanager` call.
-        ...(npmRegistry ? { env: { 'secrets-manager': { NPM_AUTH_TOKEN: npmRegistry.basicAuthSecretArn } } } : {}),
+        ...(npmRegistry ? { env: npmTokenEnv } : {}),
+      }),
+    });
+
+    // The Plan build fingerprints every target once, right after Source, and exports one variable per
+    // deployment stage: `true` when any of the stage's deployment units changed. Each stage's entry
+    // condition skips the stage -- its approval included -- when its variable is not `true`. Plan
+    // marks a unit it cannot fingerprint as changed, so the stage runs and its deploy action reports
+    // the real error; only a pipeline-shape mismatch fails Plan itself.
+    const stagePlans = deploymentStages.map((deploymentStage, index) => ({
+      variable: planVariableName(index),
+      stage: deploymentStage.name,
+      units: deploymentStage.targets.flatMap((target) =>
+        deploymentUnits
+          .filter((unit) => unit.target === target)
+          .map((unit) => ({
+            target: unit.target.stage,
+            ...(unit.region !== undefined ? { region: unit.region } : {}),
+            parameter: unit.stateParameterName,
+          })),
+      ),
+    }));
+    const planProject = new codebuild.PipelineProject(this, 'Plan', {
+      environment: {
+        buildImage,
+        environmentVariables: {
+          ...fingerprintEnvironment,
+          CDK_CICD_PLAN: { value: JSON.stringify(stagePlans) },
+        },
+      },
+      buildSpec: codebuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          ...installPhase,
+          build: {
+            commands: [
+              ...installCommands,
+              `npm run --silent cdk-cicd -- pipeline plan --out ${PLAN_OUTPUT_PATH}`,
+              `if grep -qvE "^${PLAN_VARIABLE_PREFIX}[0-9]+=(true|false)$" ${PLAN_OUTPUT_PATH}; then ` +
+                'echo "cdk-cicd: malformed plan output" >&2; exit 1; fi',
+              `set -a; . ${PLAN_OUTPUT_PATH}; set +a`,
+            ],
+            ...(privateNpm ? { finally: ['rm -f "$NPM_CONFIG_USERCONFIG"'] } : {}),
+          },
+        },
+        env: {
+          ...npmTokenEnv,
+          'exported-variables': stagePlans.map((stagePlan) => stagePlan.variable),
+        },
       }),
     });
 
@@ -375,18 +471,33 @@ export class DeploymentPipeline extends Construct {
           ),
         }),
       );
+      // Plan only resolves tags and the newest autoDeploy image to digests; it never pulls.
+      planProject.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['ecr:DescribeImages'],
+          resources: [...ecrRepositories.values()].map(
+            (repository) =>
+              `arn:${repository.partition}:ecr:${repository.region}:${repository.account}:repository/${repository.repositoryName}`,
+          ),
+        }),
+      );
     }
+    // Both builds run `npm ci`, so both need the registry read and token permissions.
+    const addInstallPolicy = (statement: iam.PolicyStatement) => {
+      project.addToRolePolicy(statement);
+      planProject.addToRolePolicy(statement);
+    };
     // CodeArtifact read for the build's `npm ci` (pre-release CLI install).
     if (ca) {
       const caAccount = ca.account ?? stack.account;
       const caRegion = ca.region ?? stack.region;
-      project.addToRolePolicy(
+      addInstallPolicy(
         new iam.PolicyStatement({
           actions: ['codeartifact:GetAuthorizationToken'],
           resources: [`arn:${stack.partition}:codeartifact:${caRegion}:${caAccount}:domain/${ca.domain}`],
         }),
       );
-      project.addToRolePolicy(
+      addInstallPolicy(
         new iam.PolicyStatement({
           actions: ['codeartifact:GetRepositoryEndpoint', 'codeartifact:ReadFromRepository'],
           resources: [
@@ -394,7 +505,7 @@ export class DeploymentPipeline extends Construct {
           ],
         }),
       );
-      project.addToRolePolicy(
+      addInstallPolicy(
         new iam.PolicyStatement({
           actions: ['sts:GetServiceBearerToken'],
           resources: ['*'],
@@ -404,7 +515,7 @@ export class DeploymentPipeline extends Construct {
     }
     // The private-registry bearer token `npmRegistryLoginCommands` resolves via Secrets Manager.
     if (npmRegistry) {
-      project.addToRolePolicy(
+      addInstallPolicy(
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue'],
           resources: [npmRegistry.basicAuthSecretArn],
@@ -412,7 +523,7 @@ export class DeploymentPipeline extends Construct {
       );
       const encryptionKeyArn = npmRegistry.encryptionKeyArn;
       if (encryptionKeyArn !== undefined && encryptionKeyArn.length > 0) {
-        project.addToRolePolicy(
+        addInstallPolicy(
           new iam.PolicyStatement({
             actions: ['kms:Decrypt'],
             resources: [encryptionKeyArn],
@@ -435,20 +546,21 @@ export class DeploymentPipeline extends Construct {
     // region. A successful region can therefore never mask another region's failed/missing deployment.
     const stateParameterNames = new Set(deploymentUnits.map((unit) => unit.stateParameterName));
     if (stateParameterNames.size > 0) {
+      const stateParameterArns = [...stateParameterNames.values()].map(
+        (parameterName) => `arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter${parameterName}`,
+      );
       project.addToRolePolicy(
-        new iam.PolicyStatement({
-          actions: ['ssm:GetParameter', 'ssm:PutParameter'],
-          resources: [...stateParameterNames.values()].map(
-            (parameterName) => `arn:${stack.partition}:ssm:${stack.region}:${stack.account}:parameter${parameterName}`,
-          ),
-        }),
+        new iam.PolicyStatement({ actions: ['ssm:GetParameter', 'ssm:PutParameter'], resources: stateParameterArns }),
+      );
+      // Plan reads what each unit last deployed; only a successful deploy action writes it.
+      planProject.addToRolePolicy(
+        new iam.PolicyStatement({ actions: ['ssm:GetParameter'], resources: stateParameterArns }),
       );
     }
 
     // Each deployment unit reads its target's OWN image version at run time. TARGET_REGION is present only
-    // for a RegionOrder.PARALLEL fan-out action; the build then narrows an ephemeral deploy.config to that
-    // region before invoking the existing CLI, whose from-image executor remains the source of truth for
-    // image resolution, account/role environment, and the inner `deploy --region` command.
+    // for a RegionOrder.PARALLEL fan-out action; `deploy --from-image --region` then deploys just that
+    // region, through the same image resolution and docker contract as a sequential target.
     const deployAction = (
       unit: DeploymentUnit,
       runOrder?: number,
@@ -463,7 +575,6 @@ export class DeploymentPipeline extends Construct {
         environmentVariables: {
           TARGET_STAGE: { value: unit.target.stage },
           TARGET_STATE_PARAMETER: { value: unit.stateParameterName },
-          EXPECTED_DEPLOYMENT_TOPOLOGY: { value: expectedDeploymentTopology },
           ...(unit.region !== undefined ? { TARGET_REGION: { value: unit.region } } : {}),
           ...(autoDeploy
             ? {
@@ -477,11 +588,27 @@ export class DeploymentPipeline extends Construct {
       deploymentUnits.filter((unit) => unit.target === target).map((unit) => deployAction(unit, runOrder));
 
     // Render the exact plan used by quota validation. A gate always precedes every later target, while only
-    // adjacent ungated targets are grouped into the same parallel CodePipeline stage.
-    for (const deploymentStage of deploymentStages) {
+    // adjacent ungated targets are grouped into the same parallel CodePipeline stage. Every deployment
+    // stage is entered only when Plan found a change in it; otherwise CodePipeline marks it Skipped and
+    // runs none of its actions, so nobody is asked to approve a no-op. `alwaysApprove` keeps the gate.
+    pipeline.addStage({
+      stageName: 'Plan',
+      actions: [
+        new actions.CodeBuildAction({
+          actionName: 'Plan',
+          project: planProject,
+          input: sourceOutput,
+          variablesNamespace: PLAN_NAMESPACE,
+        }),
+      ],
+    });
+    deploymentStages.forEach((deploymentStage, index) => {
       const approvalTarget = deploymentStage.approvalTarget;
       pipeline.addStage({
         stageName: deploymentStage.name,
+        ...(approvalTarget?.alwaysApprove === true
+          ? {}
+          : { beforeEntry: skipUnlessChanged(deploymentStage.name, planVariableName(index)) }),
         actions:
           approvalTarget === undefined
             ? deploymentStage.targets.flatMap((target) => actionsForTarget(target))
@@ -493,7 +620,7 @@ export class DeploymentPipeline extends Construct {
                 ...actionsForTarget(approvalTarget, 2),
               ],
       });
-    }
+    });
 
     // autoDeploy targets: one small pipeline per target (config-repo checkout without a commit trigger,
     // then that target's deploy actions), started by an EventBridge rule on every successful push to the
@@ -588,6 +715,16 @@ export class DeploymentPipeline extends Construct {
       ],
       true,
     );
+    NagSuppressions.addResourceSuppressions(
+      planProject,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason: 'CodeBuild default log/report/artifact wildcards and registry bearer tokens.',
+        },
+      ],
+      true,
+    );
     NagSuppressions.addResourceSuppressions(support.artifactBucket, [
       { id: 'AwsSolutions-S1', reason: 'Pipeline artifact bucket; server access logging is not required for it.' },
     ]);
@@ -637,15 +774,6 @@ function npmConfigSetupCommands(): string[] {
     'rm -f "$NPM_CONFIG_USERCONFIG"',
     'umask 077 && touch "$NPM_CONFIG_USERCONFIG"',
   ];
-}
-
-interface EcrRepository {
-  readonly registryHost: string;
-  readonly account: string;
-  readonly partition: string;
-  readonly region: string;
-  readonly repositoryName: string;
-  readonly tagOrDigest?: string;
 }
 
 interface EffectiveDeploymentTarget {
@@ -807,6 +935,7 @@ function validateDeploymentTopology(
   const unitsForTarget = (target: ResolvedDeploymentTarget) => deploymentUnits.filter((unit) => unit.target === target);
   const stages = [
     { name: 'Source', actionNames: ['Source'] },
+    { name: PLAN_NAMESPACE, actionNames: ['Plan'] },
     ...deploymentStages.map((stage) => ({
       name: stage.name,
       actionNames: [
@@ -876,182 +1005,10 @@ function deploymentSynthesizer(config: ResolvedDeploymentConfig): NonNullable<Re
   return config.synthesizer ?? { type: SynthesizerType.DEFAULT };
 }
 
-function deploymentRepositoryIdentity(repository: ResolvedDeploymentConfig['repository']): unknown {
-  if (repository === undefined) return null;
-  const base = {
-    type: repository.repositoryType,
-    name: repository.name,
-  };
-  switch (repository.repositoryType) {
-    case 'codecommit':
-      return {
-        ...base,
-        branch: repository.branch ?? 'main',
-        existing: repository.existing ?? false,
-      };
-    case 'github':
-    case 'codestar_connection':
-      return {
-        ...base,
-        branch: repository.branch ?? 'main',
-        connectionArn: repository.connectionArn ?? null,
-      };
-    case 's3':
-      return base;
-    default:
-      return {
-        ...base,
-        branch: repository.branch ?? null,
-        connectionArn: repository.connectionArn ?? null,
-        existing: repository.existing ?? null,
-      };
-  }
-}
-
-/**
- * Hash every deploy.config field that changes the synthesized CD pipeline: action topology, IAM,
- * registry login, and the deployer image's bootstrap/app-staging identity. Image tags/digests and
- * application config versions remain runtime inputs and are handled by the per-target fingerprint.
- */
-function deploymentPipelineShapeFingerprint(
-  config: ResolvedDeploymentConfig,
-  effectiveTargets: readonly EffectiveDeploymentTarget[],
-  partition: string,
-  qualifier: string,
-): string {
-  const synthesizer = deploymentSynthesizer(config);
-  const ecrRepositoryIdentity = (image: string | undefined) => {
-    const repository = image === undefined ? undefined : parseEcrRepository(image);
-    return repository === undefined
-      ? null
-      : {
-          registryHost: repository.registryHost,
-          account: repository.account,
-          region: repository.region,
-          repositoryName: repository.repositoryName,
-        };
-  };
-  const roleIdentity = (roleArn: string | undefined, target: EffectiveDeploymentTarget): string | string[] | null => {
-    const normalizedRoleArn = roleArn?.trim();
-    if (normalizedRoleArn === undefined || normalizedRoleArn.length === 0) return normalizedRoleArn ?? null;
-    return target.regions.map((region) =>
-      specializeDefaultSynthesizerRoleArn(normalizedRoleArn, {
-        qualifier,
-        account: target.account,
-        region,
-        partition,
-      }),
-    );
-  };
-  const shape = {
-    application: config.application ?? null,
-    qualifier,
-    repository: deploymentRepositoryIdentity(config.repository),
-    synthesizer: {
-      type: synthesizer.type,
-      appId: synthesizer.appId ?? null,
-    },
-    crossAccountEcrRepositoryPolicyConfigured: config.crossAccountEcrRepositoryPolicyConfigured ?? false,
-    codeArtifact:
-      config.codeArtifact === undefined
-        ? null
-        : {
-            domain: config.codeArtifact.domain,
-            repository: config.codeArtifact.repository,
-            account: config.codeArtifact.account ?? null,
-            region: config.codeArtifact.region ?? null,
-            npmScope: config.codeArtifact.npmScope ?? null,
-          },
-    npmRegistry:
-      config.npmRegistry === undefined
-        ? null
-        : {
-            url: config.npmRegistry.url,
-            basicAuthSecretArn: config.npmRegistry.basicAuthSecretArn,
-            encryptionKeyArn: config.npmRegistry.encryptionKeyArn ?? null,
-            scope: config.npmRegistry.scope ?? null,
-          },
-    targets: effectiveTargets.map((effectiveTarget) => {
-      const target = effectiveTarget.target;
-      return {
-        stage: target.stage,
-        manualApproval: target.manualApproval,
-        account: target.env.account ?? null,
-        regions: target.env.regions,
-        regionOrder: target.env.regionOrder,
-        deployRole: roleIdentity(target.deployment?.deployRole, effectiveTarget),
-        cfnExecutionRole: roleIdentity(target.deployment?.cfnExecutionRole, effectiveTarget),
-        externalId: target.deployment?.externalId ?? null,
-        ecrRepository: ecrRepositoryIdentity(target.image ?? config.image),
-        // Only present when on, so existing pipelines keep their recorded shape fingerprint.
-        ...(target.autoDeploy === true ? { autoDeploy: true } : {}),
-      };
-    }),
-  };
-  return createHash('sha256')
-    .update(JSON.stringify({ schema: 'container-deployment-pipeline-shape-v3', ...shape }))
-    .digest('hex');
-}
-
-/**
- * Parse a private ECR image reference into the fields needed by `docker login`, repository-scoped IAM,
- * and CodeBuild custom-image binding. Nested repository paths and an optional tag/digest are preserved.
- */
-function parseEcrRepository(image: string): EcrRepository | undefined {
-  const firstSlash = image.indexOf('/');
-  if (firstSlash < 1) return undefined;
-
-  const registryHost = image.slice(0, firstSlash);
-  const registry = /^([0-9]{12})\.dkr\.ecr(?:-fips)?\.([a-z0-9-]+)\.(.+)$/.exec(registryHost);
-  if (registry === null) return undefined;
-  const regionInfo = RegionInfo.get(registry[2]);
-  const expectedSuffix = regionInfo.domainSuffix;
-  const partition = regionInfo.partition;
-  if (expectedSuffix === undefined || partition === undefined) {
-    throw new Error(
-      `cdk-cicd: ECR image '${image}' uses region '${registry[2]}', whose partition/domain suffix is ` +
-        'not known to this aws-cdk-lib version. Upgrade the wrapper/CDK before using this image.',
-    );
-  }
-  if (registry[3] !== expectedSuffix) {
-    throw new Error(
-      `cdk-cicd: ECR image '${image}' has registry suffix '${registry[3]}', but region '${registry[2]}' ` +
-        `belongs to partition '${partition}' and requires '${expectedSuffix}'.`,
-    );
-  }
-
-  const imagePath = image.slice(firstSlash + 1);
-  const digestSeparator = imagePath.indexOf('@');
-  const lastSlash = imagePath.lastIndexOf('/');
-  const tagSeparator = imagePath.lastIndexOf(':');
-  const repositoryName =
-    digestSeparator >= 0
-      ? imagePath.slice(0, digestSeparator)
-      : tagSeparator > lastSlash
-        ? imagePath.slice(0, tagSeparator)
-        : imagePath;
-  if (repositoryName.length === 0) return undefined;
-  const tagOrDigest =
-    digestSeparator >= 0
-      ? imagePath.slice(digestSeparator + 1)
-      : tagSeparator > lastSlash
-        ? imagePath.slice(tagSeparator + 1)
-        : undefined;
-
-  return {
-    registryHost,
-    account: registry[1],
-    partition,
-    region: registry[2],
-    repositoryName,
-    tagOrDigest,
-  };
-}
-
 function validateEcrRepositoryAccount(
   scope: Construct,
   stack: Stack,
-  repository: EcrRepository,
+  repository: EcrRepositoryReference,
   image: string,
   ownerPolicyAcknowledged: boolean,
 ): void {
@@ -1132,392 +1089,4 @@ function deploymentStateParameterName(stack: Stack, scope: Construct, stage: str
   const stateKey = region === undefined ? stage : `${stage}\0${region}`;
   const stageHash = createHash('sha256').update(stateKey).digest('hex').slice(0, 20);
   return `/cdk-cicd/deployment-state/${stack.stackName}/${scope.node.addr}/${stageHash}`;
-}
-
-/**
- * JavaScript executed after `npm ci` to fingerprint only the selected target's effective deployment
- * inputs plus the config repo's package manifest/lock identity. `defineDeployment` normalizes target
- * property order, so JSON serialization is deterministic. The version parser intentionally mirrors the
- * deploy executor: a missing file means "use the configured image reference as-is", while malformed
- * JSON and invalid version values fail before the unchanged-target shortcut can hide them.
- */
-function deploymentFingerprintScript(
-  effectiveTargets: readonly EffectiveDeploymentTarget[],
-  partition: string,
-  qualifier: string,
-): string {
-  const targetEnvironments = Object.fromEntries(
-    effectiveTargets.map((target) => [
-      target.target.stage,
-      {
-        account: target.account,
-        regions: target.regions,
-      },
-    ]),
-  );
-  return [
-    'const { execFileSync } = require("child_process");',
-    'const crypto = require("crypto");',
-    'const fs = require("fs");',
-    'const path = require("path");',
-    'const writeFingerprint = process.stdout.write.bind(process.stdout);',
-    'process.stdout.write = process.stderr.write.bind(process.stderr);',
-    'const file = ["deploy.config.ts", "deploy.config.js"]',
-    '  .map((name) => path.resolve(name))',
-    '  .find((candidate) => fs.existsSync(candidate));',
-    'if (file === undefined) throw new Error("cdk-cicd: no deploy.config.ts or deploy.config.js found");',
-    'const loaded = require(file);',
-    'const config = loaded.default ?? loaded;',
-    `const EFFECTIVE_QUALIFIER = ${JSON.stringify(qualifier)};`,
-    `const PIPELINE_PARTITION = ${JSON.stringify(partition)};`,
-    `const EXPECTED_TARGET_ENVIRONMENTS = ${JSON.stringify(targetEnvironments)};`,
-    'const replaceAll = (value, search, replacement) => value.split(search).join(replacement);',
-    'const specializeRoleArn = (roleArn, account, region) => {',
-    '  let specialized = replaceAll(roleArn, "${Qualifier}", config.qualifier ?? EFFECTIVE_QUALIFIER);',
-    '  specialized = replaceAll(specialized, "${AWS::AccountId}", account);',
-    '  specialized = replaceAll(specialized, "${AWS::Region}", region);',
-    '  return replaceAll(specialized, "${AWS::Partition}", PIPELINE_PARTITION);',
-    '};',
-    'const roleIdentity = (roleArn, target) => {',
-    '  const normalizedRoleArn = roleArn?.trim();',
-    '  if (normalizedRoleArn === undefined || normalizedRoleArn.length === 0) return normalizedRoleArn ?? null;',
-    '  const expectedEnvironment = EXPECTED_TARGET_ENVIRONMENTS[target.stage];',
-    '  const account = target.env.account ?? expectedEnvironment?.account;',
-    '  const regions = target.env.regions.length > 0 ? target.env.regions : expectedEnvironment?.regions;',
-    '  if (account === undefined || regions === undefined) return [];',
-    '  return regions.map((region) => specializeRoleArn(normalizedRoleArn, account, region));',
-    '};',
-    'const parseEcrImage = (image) => {',
-    '  if (typeof image !== "string") return null;',
-    '  const firstSlash = image.indexOf("/");',
-    '  if (firstSlash < 1) return null;',
-    '  const registryHost = image.slice(0, firstSlash);',
-    '  const registry = /^([0-9]{12})\\.dkr\\.ecr(?:-fips)?\\.([a-z0-9-]+)\\..+$/.exec(registryHost);',
-    '  if (registry === null) return null;',
-    '  const imagePath = image.slice(firstSlash + 1);',
-    '  const digestSeparator = imagePath.indexOf("@");',
-    '  const lastSlash = imagePath.lastIndexOf("/");',
-    '  const tagSeparator = imagePath.lastIndexOf(":");',
-    '  const repositoryName =',
-    '    digestSeparator >= 0',
-    '      ? imagePath.slice(0, digestSeparator)',
-    '      : tagSeparator > lastSlash',
-    '        ? imagePath.slice(0, tagSeparator)',
-    '        : imagePath;',
-    '  if (repositoryName.length === 0) return null;',
-    '  return {',
-    '    registryHost,',
-    '    account: registry[1],',
-    '    region: registry[2],',
-    '    repositoryName,',
-    '    imageDigest: digestSeparator >= 0 ? imagePath.slice(digestSeparator + 1) : null,',
-    '    imageTag:',
-    '      digestSeparator < 0 && tagSeparator > lastSlash ? imagePath.slice(tagSeparator + 1) : null,',
-    '  };',
-    '};',
-    'const ecrRepositoryIdentity = (image) => {',
-    '  const parsed = parseEcrImage(image);',
-    '  return parsed === null',
-    '    ? null',
-    '    : {',
-    '        registryHost: parsed.registryHost,',
-    '        account: parsed.account,',
-    '        region: parsed.region,',
-    '        repositoryName: parsed.repositoryName,',
-    '      };',
-    '};',
-    'const resolveEffectiveImage = (target, version) => {',
-    '  if (target.image?.includes("@")) return target.image;',
-    '  const base = target.image ?? config.image;',
-    '  if (base === undefined || version === null) return base;',
-    '  if (base.includes("@")) {',
-    '    throw new Error(',
-    '      "cdk-cicd deploy --from-image: image " + base + " is pinned by digest and cannot be combined " +',
-    '        "with config/" + target.stage + ".json version " + version +',
-    '        "; remove the separate version or use a tag-based image",',
-    '    );',
-    '  }',
-    '  const lastSlash = base.lastIndexOf("/");',
-    '  const lastColon = base.lastIndexOf(":");',
-    '  const repository = lastColon > lastSlash ? base.slice(0, lastColon) : base;',
-    '  return repository + ":" + version;',
-    '};',
-    'const immutableEcrImageIdentity = (image) => {',
-    '  const parsed = parseEcrImage(image);',
-    '  if (parsed === null) return null;',
-    '  let imageDigest = parsed.imageDigest;',
-    '  if (imageDigest === null) {',
-    '    const imageTag = parsed.imageTag ?? "latest";',
-    '    try {',
-    '      imageDigest = execFileSync(',
-    '        "aws",',
-    '        [',
-    '          "ecr",',
-    '          "describe-images",',
-    '          "--registry-id",',
-    '          parsed.account,',
-    '          "--repository-name",',
-    '          parsed.repositoryName,',
-    '          "--image-ids",',
-    '          "imageTag=" + imageTag,',
-    '          "--query",',
-    '          "imageDetails[0].imageDigest",',
-    '          "--output",',
-    '          "text",',
-    '          "--region",',
-    '          parsed.region,',
-    '          "--no-cli-pager",',
-    '        ],',
-    '        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },',
-    '      ).trim();',
-    '    } catch (error) {',
-    '      const detail = error.stderr?.toString().trim() || error.message;',
-    '      throw new Error(',
-    '        "cdk-cicd: could not resolve immutable ECR digest for " + image + ": " + detail,',
-    '      );',
-    '    }',
-    '  }',
-    '  if (!/^sha256:[0-9a-f]{64}$/.test(imageDigest)) {',
-    '    throw new Error("cdk-cicd: ECR returned an invalid image digest for " + image + ": " + imageDigest);',
-    '  }',
-    '  return {',
-    '    registryHost: parsed.registryHost,',
-    '    account: parsed.account,',
-    '    region: parsed.region,',
-    '    repositoryName: parsed.repositoryName,',
-    '    imageDigest,',
-    '  };',
-    '};',
-    'const repositoryIdentity = (repository) => {',
-    '  if (repository === undefined) return null;',
-    '  const base = { type: repository.repositoryType, name: repository.name };',
-    '  switch (repository.repositoryType) {',
-    '    case "codecommit":',
-    '      return { ...base, branch: repository.branch ?? "main", existing: repository.existing ?? false };',
-    '    case "github":',
-    '    case "codestar_connection":',
-    '      return {',
-    '        ...base,',
-    '        branch: repository.branch ?? "main",',
-    '        connectionArn: repository.connectionArn ?? null,',
-    '      };',
-    '    case "s3":',
-    '      return base;',
-    '    default:',
-    '      return {',
-    '        ...base,',
-    '        branch: repository.branch ?? null,',
-    '        connectionArn: repository.connectionArn ?? null,',
-    '        existing: repository.existing ?? null,',
-    '      };',
-    '  }',
-    '};',
-    'const synthesizer = config.synthesizer ?? { type: "default" };',
-    'const pipelineShape = {',
-    '  application: config.application ?? null,',
-    '  qualifier: config.qualifier ?? EFFECTIVE_QUALIFIER,',
-    '  repository: repositoryIdentity(config.repository),',
-    '  synthesizer: { type: synthesizer.type, appId: synthesizer.appId ?? null },',
-    '  crossAccountEcrRepositoryPolicyConfigured:',
-    '    config.crossAccountEcrRepositoryPolicyConfigured ?? false,',
-    '  codeArtifact:',
-    '    config.codeArtifact === undefined',
-    '      ? null',
-    '      : {',
-    '          domain: config.codeArtifact.domain,',
-    '          repository: config.codeArtifact.repository,',
-    '          account: config.codeArtifact.account ?? null,',
-    '          region: config.codeArtifact.region ?? null,',
-    '          npmScope: config.codeArtifact.npmScope ?? null,',
-    '        },',
-    '  npmRegistry:',
-    '    config.npmRegistry === undefined',
-    '      ? null',
-    '      : {',
-    '          url: config.npmRegistry.url,',
-    '          basicAuthSecretArn: config.npmRegistry.basicAuthSecretArn,',
-    '          encryptionKeyArn: config.npmRegistry.encryptionKeyArn ?? null,',
-    '          scope: config.npmRegistry.scope ?? null,',
-    '        },',
-    '  targets: config.targets.map((candidate) => ({',
-    '    stage: candidate.stage,',
-    '    manualApproval: candidate.manualApproval,',
-    '    account: candidate.env.account ?? null,',
-    '    regions: candidate.env.regions,',
-    '    regionOrder: candidate.env.regionOrder,',
-    '    deployRole: roleIdentity(candidate.deployment?.deployRole, candidate),',
-    '    cfnExecutionRole: roleIdentity(candidate.deployment?.cfnExecutionRole, candidate),',
-    '    externalId: candidate.deployment?.externalId ?? null,',
-    '    ecrRepository: ecrRepositoryIdentity(candidate.image ?? config.image),',
-    '    ...(candidate.autoDeploy === true ? { autoDeploy: true } : {}),',
-    '  })),',
-    '};',
-    'const currentTopology = crypto',
-    '  .createHash("sha256")',
-    '  .update(JSON.stringify({ schema: "container-deployment-pipeline-shape-v3", ...pipelineShape }))',
-    '  .digest("hex");',
-    'if (currentTopology !== process.env.EXPECTED_DEPLOYMENT_TOPOLOGY) {',
-    '  throw new Error(',
-    '    "cdk-cicd: deploy.config changed fields that shape the CD pipeline; " +',
-    '      "re-run cdk-cicd deploy-ci to update its actions and permissions",',
-    '  );',
-    '}',
-    'const stage = process.env.TARGET_STAGE;',
-    'const target = config.targets.find((candidate) => candidate.stage === stage);',
-    'if (target === undefined) throw new Error("cdk-cicd: no deployment target named " + stage);',
-    'if (',
-    '  process.env.TARGET_REGION === undefined &&',
-    '  target.env.regionOrder === "parallel" &&',
-    '  target.env.regions.length > 1',
-    ') {',
-    '  throw new Error(',
-    '    "cdk-cicd: target " + stage + " now needs parallel region actions; " +',
-    '      "re-run cdk-cicd deploy-ci to update the pipeline topology",',
-    '  );',
-    '}',
-    'const versionFile = path.resolve("config", stage + ".json");',
-    'let version = null;',
-    'let stageConfig = null;',
-    'if (fs.existsSync(versionFile)) {',
-    '  let document;',
-    '  try {',
-    '    document = JSON.parse(fs.readFileSync(versionFile, "utf8"));',
-    '  } catch (error) {',
-    '    throw new Error(',
-    '      "cdk-cicd deploy --from-image: " + versionFile + " exists but could not be read as JSON (" +',
-    '        error.message + ")",',
-    '    );',
-    '  }',
-    '  const candidate =',
-    '    document !== null && typeof document === "object" && !Array.isArray(document)',
-    '      ? document.version',
-    '      : undefined;',
-    '  if (typeof candidate !== "string" || candidate.length === 0 || candidate.trim() !== candidate) {',
-    '    throw new Error(',
-    '      "cdk-cicd deploy --from-image: " + versionFile +',
-    '        " must contain a non-empty string version field with no surrounding whitespace",',
-    '    );',
-    '  }',
-    '  version = candidate;',
-    // Keys besides `version` make the file the target's injected stage configuration, so a change to
-    // any of them must redeploy the target with the same image. A version-only file contributes
-    // nothing extra, which keeps the fingerprint of existing version-only targets unchanged.
-    '  const { version: _version, ...rest } = document;',
-    '  if (Object.keys(rest).length > 0) {',
-    '    stageConfig = crypto.createHash("sha256").update(JSON.stringify(rest)).digest("hex");',
-    '  }',
-    '}',
-    // An autoDeploy target always runs the newest tagged image in its repository -- the same rule the
-    // CLI applies -- so a new push changes this fingerprint and a config-repo run never rolls it back.
-    'const latestEcrImage = (image) => {',
-    '  const parsed = parseEcrImage(image);',
-    '  if (parsed === null) throw new Error("cdk-cicd: autoDeploy needs an ECR image, got " + image);',
-    '  let digest;',
-    '  try {',
-    '    digest = execFileSync(',
-    '      "aws",',
-    '      [',
-    '        "ecr", "describe-images", "--registry-id", parsed.account,',
-    '        "--repository-name", parsed.repositoryName, "--region", parsed.region,',
-    '        "--query", "sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest",',
-    '        "--output", "text", "--no-cli-pager",',
-    '      ],',
-    '      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },',
-    '    ).trim();',
-    '  } catch (error) {',
-    '    const detail = error.stderr?.toString().trim() || error.message;',
-    '    throw new Error("cdk-cicd: could not resolve the newest image for " + image + ": " + detail);',
-    '  }',
-    '  return parsed.registryHost + "/" + parsed.repositoryName + "@" + digest;',
-    '};',
-    'const resolvedImage = resolveEffectiveImage(target, version);',
-    'const effectiveImage =',
-    '  target.autoDeploy === true && resolvedImage !== undefined ? latestEcrImage(resolvedImage) : resolvedImage;',
-    'const immutableEcrImage = immutableEcrImageIdentity(effectiveImage);',
-    'const toolingFiles = [',
-    '  "package.json",',
-    '  "package-lock.json",',
-    '  "npm-shrinkwrap.json",',
-    '  "yarn.lock",',
-    '  "pnpm-lock.yaml",',
-    '];',
-    'const tooling = Object.fromEntries(',
-    '  toolingFiles',
-    '    .filter((name) => fs.existsSync(path.resolve(name)))',
-    '    .map((name) => [',
-    '      name,',
-    '      crypto.createHash("sha256").update(fs.readFileSync(path.resolve(name))).digest("hex"),',
-    '    ]),',
-    ');',
-    'const fingerprintInput = {',
-    '  schema: "container-deployment-target-v3",',
-    '  target,',
-    '  image: target.image ?? config.image ?? null,',
-    '  version,',
-    '  ...(stageConfig === null ? {} : { stageConfig }),',
-    '  ...(immutableEcrImage === null ? {} : { immutableEcrImage }),',
-    '  region: process.env.TARGET_REGION ?? null,',
-    '  tooling,',
-    '};',
-    'writeFingerprint(',
-    '  crypto.createHash("sha256").update(JSON.stringify(fingerprintInput)).digest("hex"),',
-    ');',
-  ].join('\n');
-}
-
-/**
- * Build a temporary one-target, one-region config for a PARALLEL action. The existing from-image CLI
- * then performs image/version resolution and emits the same docker/inner-deploy contract as sequential
- * mode; no ignored top-level `--region` flag or duplicate docker implementation is introduced here.
- */
-function parallelTargetConfigScript(): string {
-  return [
-    'const fs = require("fs");',
-    'const path = require("path");',
-    'const file = ["deploy.config.ts", "deploy.config.js"]',
-    '  .map((name) => path.resolve(name))',
-    '  .find((candidate) => fs.existsSync(candidate));',
-    'if (file === undefined) throw new Error("cdk-cicd: no deploy.config.ts or deploy.config.js found");',
-    'const loaded = require(file);',
-    'const config = loaded.default ?? loaded;',
-    'const stage = process.env.TARGET_STAGE;',
-    'const region = process.env.TARGET_REGION;',
-    'if (region === undefined || region.length === 0) throw new Error("cdk-cicd: TARGET_REGION is empty");',
-    'const target = config.targets.find((candidate) => candidate.stage === stage);',
-    'if (target === undefined) throw new Error("cdk-cicd: no deployment target named " + stage);',
-    'if (target.env.regionOrder !== "parallel" || !target.env.regions.includes(region)) {',
-    '  throw new Error(',
-    '    "cdk-cicd: target " + stage + " no longer defines parallel region " + region +',
-    '      "; re-run cdk-cicd deploy-ci to update the pipeline topology",',
-    '  );',
-    '}',
-    'const output = path.resolve(".cdk-cicd-target");',
-    'fs.mkdirSync(output, { recursive: true });',
-    'const narrowed = {',
-    '  application: config.application,',
-    '  qualifier: config.qualifier,',
-    '  synthesizer: config.synthesizer,',
-    '  image: config.image,',
-    '  targets: [{ ...target, env: { ...target.env, regions: [region] } }],',
-    '};',
-    'fs.writeFileSync(',
-    '  path.join(output, "deploy.config.js"),',
-    '  "module.exports = " + JSON.stringify(narrowed) + ";\\n",',
-    ');',
-    'fs.writeFileSync(',
-    '  path.join(output, "package.json"),',
-    '  JSON.stringify({ private: true, scripts: { "cdk-cicd": "../node_modules/.bin/cdk-cicd" } }) + "\\n",',
-    ');',
-    'const versionFile = path.resolve("config", stage + ".json");',
-    'if (fs.existsSync(versionFile)) {',
-    '  const outputConfig = path.join(output, "config");',
-    '  fs.mkdirSync(outputConfig, { recursive: true });',
-    '  fs.copyFileSync(versionFile, path.join(outputConfig, stage + ".json"));',
-    '}',
-  ].join('\n');
-}
-
-/** Quote a value as one POSIX-shell argument. */
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
 }

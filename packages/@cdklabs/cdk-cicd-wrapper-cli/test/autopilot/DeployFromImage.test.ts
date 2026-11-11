@@ -94,6 +94,10 @@ describe('m6-container: dockerRunArgs', () => {
       expect.arrayContaining(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']),
     );
     expect(envPart.some((e) => e.startsWith('AWS_ACCESS_KEY_ID='))).toBe(false);
+    // On CodeBuild/ECS no key is in the environment: the container-credentials URI is forwarded by name
+    // so the SDK inside the container fetches short-lived role credentials itself.
+    expect(envPart).toContain('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI');
+    expect(envPart.some((e) => e.startsWith('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI='))).toBe(false);
 
     // The role is synthesized from its presence-sensitive env flag; it must never be forwarded as
     // `cdk deploy --role-arn`, whose CDK semantics are CloudFormation execution role.
@@ -995,5 +999,51 @@ describe('autoDeploy targets', () => {
 
   test('resolveLatestEcrImage refuses a non-ECR image', () => {
     expect(() => resolveLatestEcrImage('docker.io/library/app:1')).toThrow(/needs an ECR image/);
+  });
+});
+
+describe('runFromImage --region (one region of a parallel target)', () => {
+  const parallel = {
+    image: 'acct.dkr.ecr.eu-west-1.amazonaws.com/app:1',
+    targets: [
+      {
+        stage: 'dev',
+        env: { account: '111111111111', regions: ['eu-west-1', 'us-east-1'], regionOrder: 'parallel' },
+        manualApproval: false,
+      },
+      {
+        stage: 'int',
+        env: { account: '111111111111', regions: ['eu-west-1', 'us-east-1'], regionOrder: 'sequential' },
+        manualApproval: false,
+      },
+    ],
+  } as unknown as ResolvedDeploymentConfig;
+  const run = (options: { target?: string; region: string }) => {
+    const calls: string[][] = [];
+    return runFromImage(parallel, {
+      yes: true,
+      ...options,
+      readVersion: () => undefined,
+      prepareConfig: () => undefined,
+      spawn: (args) => (calls.push(args), ok()),
+    }).then((code) => ({ code, calls }));
+  };
+
+  test('deploys only that region of the target', async () => {
+    const { code, calls } = await run({ target: 'dev', region: 'us-east-1' });
+    expect(code).toBe(0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].slice(-2)).toEqual(['--region', 'us-east-1']);
+  });
+
+  test('refuses a region the target no longer declares, naming deploy-ci', async () => {
+    const { code, calls } = await run({ target: 'dev', region: 'ap-southeast-2' });
+    expect(code).toBe(1);
+    expect(calls).toHaveLength(0);
+  });
+
+  test('refuses a sequential target or a missing --target', async () => {
+    expect((await run({ target: 'int', region: 'us-east-1' })).code).toBe(1);
+    expect((await run({ region: 'us-east-1' })).code).toBe(1);
   });
 });

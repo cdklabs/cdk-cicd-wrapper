@@ -168,16 +168,45 @@ silently falling back to the base image.
 ### Provision the CD pipeline, or run locally
 
 With a `repository` set, `cdk-cicd deploy-ci` provisions the CD pipeline (the deploy-side twin of the CI
-`deploy-ci`): a `Source` stage followed by ordered deployment waves. Adjacent **ungated** targets share
-a parallel wave; each **gated** target gets its own approval/deploy stage. Declaration order is
-preserved, so a gate blocks that target and every target declared after it. Each deploy action runs
-`cdk-cicd deploy --from-image --target <stage>`, which reads that stage's `version` at run time, pulls
-`<base-repo>:<version>`, and synth-and-deploys the stage.
+`deploy-ci`): a `Source` stage, a `Plan` stage, then ordered deployment waves. Adjacent **ungated**
+targets share a parallel wave; each **gated** target gets its own approval/deploy stage. Declaration
+order is preserved, so a gate blocks that target and every target declared after it. Each deploy action
+runs `cdk-cicd deploy --from-image --target <stage>`, which reads that stage's `version` at run time,
+pulls `<base-repo>:<version>`, and synth-and-deploys the stage.
+
+### Only changed targets deploy
+
+Every commit to the deploy repository starts the whole pipeline, so the pipeline decides per target
+whether there is anything to deploy:
+
+- After each successful deploy, the target's **fingerprint** is stored in an SSM parameter. The
+  fingerprint is a SHA-256 over the target's `deploy.config.ts` entry, its image reference and
+  `version`, the image's ECR **digest** (so re-pushing a tag counts as a change), the rest of its
+  `config/<stage>.json`, and the deploy repository's `package.json` and lockfile.
+- The `Plan` stage (`cdk-cicd pipeline plan`) computes every target's fingerprint and compares it with
+  the stored one. Each deployment stage has a CodePipeline entry condition that **skips** the stage when
+  nothing in it changed. A skipped stage shows as **Skipped** in the console and runs none of its
+  actions, so nobody is asked to approve a target that would not change.
+- A target Plan cannot check (for example a malformed `config/<stage>.json`) counts as changed. Its
+  stage runs, and its deploy action reports the real error.
+- Each deploy action checks the fingerprint once more right before deploying, which covers a deploy
+  that happened while its approval was pending.
+- If `deploy.config.ts` changes something the pipeline was built from (targets, Regions, roles,
+  registries), Plan fails and asks you to re-run `cdk-cicd deploy-ci`.
+
+To ask for approval on every run, even when nothing changed, set `alwaysApprove` on a gated target:
+
+```typescript
+{ stage: 'prod', env: { account: '222222222222', region: 'eu-west-1' }, manualApproval: true, alwaysApprove: true },
+```
+
+The deployer container gets the CodeBuild role's credentials from the container-credentials endpoint.
+No access key is written into the build's environment or its log.
 
 For an image in an ECR account different from the Repo 2 pipeline, the repository owner must grant the
 generated CodeBuild role `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, and
 `ecr:BatchCheckLayerAvailability`, plus `ecr:DescribeImages` so mutable tags can be resolved to an
-immutable digest before the skip comparison. Set `crossAccountEcrRepositoryPolicyConfigured: true` only
+immutable digest before the change check. Set `crossAccountEcrRepositoryPolicyConfigured: true` only
 after that owner-side policy exists; otherwise pipeline rendering fails closed. This acknowledgement
 covers the deployer image pulled after the build starts. A private ECR image used as CodeBuild's own
 environment image must still be in the pipeline Region.

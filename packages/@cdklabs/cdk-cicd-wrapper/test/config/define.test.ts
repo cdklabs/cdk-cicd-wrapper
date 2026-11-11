@@ -597,3 +597,31 @@ describe('defineDeployment autoDeploy', () => {
     ).toThrow(/pins its image by digest/);
   });
 });
+
+describe('defineDeployment alwaysApprove', () => {
+  const env = { account: '111111111111', region: 'eu-west-1' };
+  const image = '111111111111.dkr.ecr.eu-west-1.amazonaws.com/app';
+
+  test('is off by default and carried through on a gated target', () => {
+    const cfg = defineDeployment({
+      image,
+      targets: [
+        { stage: 'int', env },
+        { stage: 'prod', env, alwaysApprove: true },
+      ],
+    });
+    expect(cfg.targets[0].alwaysApprove).toBeUndefined();
+    expect(cfg.targets[1].alwaysApprove).toBe(true);
+    expect(cfg.targets[1].manualApproval).toBe(true);
+  });
+
+  test('refuses a target without manual approval, which has no gate to keep', () => {
+    expect(() =>
+      defineDeployment({ image, targets: [{ stage: 'prod', env, alwaysApprove: true, manualApproval: false }] }),
+    ).toThrow(/alwaysApprove but has no manual approval/);
+    // dev is ungated by default.
+    expect(() => defineDeployment({ image, targets: [{ stage: 'dev', env, alwaysApprove: true }] })).toThrow(
+      /set manualApproval: true/,
+    );
+  });
+});

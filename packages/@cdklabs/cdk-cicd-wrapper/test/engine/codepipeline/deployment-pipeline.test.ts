@@ -13,6 +13,7 @@ import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
 import { defineDeployment } from '../../../src/config/define';
 import { Repository } from '../../../src/config/repository';
 import { RegionOrder, SynthesizerType } from '../../../src/config/types';
+import { deploymentPipelineShapeFingerprint } from '../../../src/engine/codepipeline/deployment-shape';
 import { DeploymentPipeline } from '../../../src/engine/codepipeline/DeploymentPipeline';
 
 function deploymentStack(
@@ -47,57 +48,82 @@ const cfg = () =>
     ],
   });
 
-function extractEmbeddedNodeScript(command: string): string {
-  const start = command.indexOf("-e '");
-  if (start < 0) throw new Error(`missing embedded Node script in command: ${command}`);
-  const scriptStart = start + 4;
-  const end = command.indexOf("'", scriptStart);
-  if (end <= scriptStart) throw new Error(`unterminated embedded Node script in command: ${command}`);
-  return command.slice(scriptStart, end).replace(/'"'"'/g, "'");
+/** The privileged CodeBuild project behind every deploy action. */
+function deployProject(t: Template): any {
+  return Object.values(t.findResources('AWS::CodeBuild::Project')).find(
+    (project: any) => project.Properties.Environment.PrivilegedMode === true,
+  );
+}
+
+/** The unprivileged CodeBuild project behind the Plan action. */
+function planProject(t: Template): any {
+  return Object.values(t.findResources('AWS::CodeBuild::Project')).find(
+    (project: any) => project.Properties.Environment.PrivilegedMode !== true,
+  );
+}
+
+/** A CodeBuild project's environment variables, by name. */
+function projectEnvironment(project: any): Record<string, string> {
+  return Object.fromEntries(
+    (project.Properties.Environment.EnvironmentVariables as any[]).map((entry) => [entry.Name, entry.Value]),
+  );
+}
+
+/** The main (Git-triggered) CD pipeline: the one with the Plan stage. */
+function mainPipeline(t: Template): any {
+  return (Object.values(t.findResources('AWS::CodePipeline::Pipeline')) as any[]).find((pipeline) =>
+    (pipeline.Properties.Stages as any[]).some((stage) => stage.Name === 'Plan'),
+  );
 }
 
 describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
   test('renders Source followed by ordered deployment waves', () => {
     const t = render(cfg()); // cfg: dev (ungated) + prod (gated)
     const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
-    expect((pipeline.Properties.Stages as any[]).map((s) => s.Name)).toEqual(['Source', 'Deploy-1', 'Deploy-2']);
+    expect((pipeline.Properties.Stages as any[]).map((s) => s.Name)).toEqual([
+      'Source',
+      'Plan',
+      'Deploy-1',
+      'Deploy-2',
+    ]);
     t.hasResourceProperties(
       'AWS::CodeBuild::Project',
       Match.objectLike({ Environment: Match.objectLike({ PrivilegedMode: true }) }),
     );
   });
 
-  test('the deploy buildspec logs in to ECR, materializes creds, and runs cdk-cicd deploy --from-image', () => {
+  test('the deploy buildspec logs in to ECR and runs cdk-cicd deploy --from-image without exporting keys', () => {
     const t = render(cfg());
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(t);
     const spec = JSON.stringify(project.Properties.Source.BuildSpec);
     expect(spec).toContain('docker login');
     expect(spec).toContain('get-login-password');
     // Each action deploys ONE target (its own image version), selected by the TARGET_STAGE env var.
-    expect(spec.match(/npm run cdk-cicd -- deploy --from-image --target/g)).toHaveLength(2);
+    expect(spec.match(/npm run cdk-cicd -- deploy --from-image --target/g)).toHaveLength(1);
     expect(spec).not.toContain('npx cdk-cicd');
     expect(spec).toContain('TARGET_STAGE');
     expect(spec).toContain('npm ci');
-    // CodeBuild serves creds via the container-credentials endpoint; they must be materialized to static
-    // AWS_* env vars so `deploy --from-image` (which forwards by name) reaches the inner container.
-    expect(spec).toContain('export-credentials');
+    // The deployer container reaches the role through the container-credentials endpoint, so no access
+    // key is ever written into the build's shell environment.
+    expect(spec).not.toContain('export-credentials');
+    expect(spec).not.toContain('AWS_SECRET_ACCESS_KEY');
+    expect(spec).not.toContain('169.254.170.2');
+    // No generated program in the buildspec: the CLI owns the fingerprint and region narrowing.
+    expect(spec).not.toContain('node -r ts-node');
+    expect(spec).not.toContain("-e '");
     expect(project.Properties.Environment.PrivilegedMode).toBe(true);
   });
 
   test('skips an unchanged target and records its fingerprint only after a successful deployment', () => {
     const t = render(cfg());
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(t);
     const spec = JSON.stringify(project.Properties.Source.BuildSpec);
 
-    // The fingerprint is target-specific: it loads the selected normalized target, its effective image,
-    // and the version field whose stage-local file controls promotion.
-    expect(spec).toContain('container-deployment-target-v3');
-    expect(spec).toContain('TARGET_STAGE');
-    expect(spec).toContain('target.image ?? config.image');
-    expect(spec).toContain('.json');
-    expect(spec).toContain('version');
-    expect(spec).toContain('package.json');
-    expect(spec).toContain('package-lock.json');
+    // The CLI computes the selected target's fingerprint; the pipeline configuration it checks against
+    // lives on the project, not in the logged command.
+    const commandText = (JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[]).join('\n');
+    expect(commandText).toContain('npm run --silent cdk-cicd -- pipeline fingerprint --target "$TARGET_STAGE"');
+    expect(projectEnvironment(project).EXPECTED_DEPLOYMENT_TOPOLOGY).toMatch(/^[0-9a-f]{64}$/);
 
     // A missing state value means first deployment. Other SSM failures remain fatal rather than silently
     // skipping or redeploying, and an exact match exits before the image is pulled/run.
@@ -106,7 +132,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(spec).toContain('target $TARGET_STAGE is unchanged; skipping deployment');
     expect(spec).toContain('exit 1');
 
-    const deploy = spec.indexOf('cdk-cicd deploy --from-image');
+    const deploy = spec.indexOf('cdk-cicd -- deploy --from-image');
     const record = spec.indexOf('ssm put-parameter');
     expect(deploy).toBeGreaterThan(-1);
     expect(record).toBeGreaterThan(deploy);
@@ -119,32 +145,20 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(policies).toContain('parameter/cdk-cicd/deployment-state/CdStack/');
   });
 
-  test('resolves mutable ECR tags before the skip comparison with repository-scoped IAM', () => {
+  test('grants the deploy project pull access and Plan only image describe access, per repository', () => {
     const t = render(cfg());
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
-    const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
+    const commands = JSON.parse(deployProject(t).Properties.Source.BuildSpec).phases.build.commands as string[];
     const fingerprintIndex = commands.findIndex((command) => command.includes('TARGET_FINGERPRINT=$('));
     const stateReadIndex = commands.findIndex((command) => command.includes('ssm get-parameter'));
-
     expect(fingerprintIndex).toBeGreaterThan(-1);
-    expect(commands[fingerprintIndex]).toContain('describe-images');
-    expect(commands[fingerprintIndex]).toContain('imageDetails[0].imageDigest');
-    expect(commands[fingerprintIndex]).toContain('--registry-id');
-    expect(commands[fingerprintIndex]).toContain('registryHost');
     expect(fingerprintIndex).toBeLessThan(stateReadIndex);
 
     const policies = Object.values(t.findResources('AWS::IAM::Policy')) as any[];
     const statements = policies.flatMap((policy) => policy.Properties.PolicyDocument.Statement as any[]);
     const statementActions = (statement: any): string[] =>
       Array.isArray(statement.Action) ? statement.Action : [statement.Action];
-    const describeStatement = statements.find((statement) =>
-      statementActions(statement).includes('ecr:DescribeImages'),
-    );
-    const describeResources = Array.isArray(describeStatement.Resource)
-      ? describeStatement.Resource
-      : [describeStatement.Resource];
-
-    expect(statementActions(describeStatement)).toEqual(
+    const pull = statements.find((statement) => statementActions(statement).includes('ecr:BatchGetImage'));
+    expect(statementActions(pull)).toEqual(
       expect.arrayContaining([
         'ecr:BatchCheckLayerAvailability',
         'ecr:BatchGetImage',
@@ -152,9 +166,12 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
         'ecr:GetDownloadUrlForLayer',
       ]),
     );
-    expect(describeResources).toHaveLength(1);
-    expect(JSON.stringify(describeResources)).toContain(':ecr:eu-west-1:111111111111:repository/my-app-deployer');
-    expect(describeResources).not.toContain('*');
+    expect(JSON.stringify(pull.Resource)).toContain(':ecr:eu-west-1:111111111111:repository/my-app-deployer');
+    expect(pull.Resource).not.toContain('*');
+    const describeOnly = statements.find(
+      (statement) => statementActions(statement).length === 1 && statement.Action === 'ecr:DescribeImages',
+    );
+    expect(JSON.stringify(describeOnly.Resource)).toContain(':ecr:eu-west-1:111111111111:repository/my-app-deployer');
     const authorizationStatement = statements.find((statement) =>
       statementActions(statement).includes('ecr:GetAuthorizationToken'),
     );
@@ -162,89 +179,18 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(statementActions(authorizationStatement)).not.toContain('ecr:DescribeImages');
   });
 
-  test('preserves non-ECR fingerprinting without invoking AWS or adding ECR permissions', () => {
+  test('adds no ECR permissions for a non-ECR image', () => {
     const nonEcr = defineDeployment({
       image: 'registry.example.com/team/app:base',
       repository: Repository.codecommit('cfg'),
-      targets: [
-        {
-          stage: 'dev',
-          env: { account: '111111111111', region: 'eu-west-1' },
-          manualApproval: false,
-        },
-      ],
+      targets: [{ stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: false }],
     });
-    const t = render(nonEcr);
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
-    const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
-    const fingerprintScript = extractEmbeddedNodeScript(
-      commands.find((command) => command.includes('TARGET_FINGERPRINT=$('))!,
-    );
-    const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
-    const action = pipeline.Properties.Stages[1].Actions[0];
-    const actionEnvironment = Object.fromEntries(
-      JSON.parse(action.Configuration.EnvironmentVariables).map((entry: any) => [entry.name, entry.value]),
-    );
-    expect(JSON.stringify(t.findResources('AWS::IAM::Policy'))).not.toContain('ecr:DescribeImages');
-
-    const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-non-ecr-'));
-    try {
-      writeFileSync(
-        path.join(cwd, 'deploy.config.js'),
-        'module.exports = ' +
-          JSON.stringify({
-            application: nonEcr.application,
-            qualifier: nonEcr.qualifier,
-            synthesizer: nonEcr.synthesizer,
-            image: nonEcr.image,
-            repository: nonEcr.repository,
-            targets: nonEcr.targets,
-          }),
-      );
-      mkdirSync(path.join(cwd, 'config'));
-      writeFileSync(path.join(cwd, 'config', 'dev.json'), JSON.stringify({ version: '1.0.0' }));
-      writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ dependencies: { cli: '1.0.0' } }));
-      const bin = path.join(cwd, 'bin');
-      mkdirSync(bin);
-      writeFileSync(path.join(bin, 'aws'), '#!/bin/sh\nexit 87\n');
-      chmodSync(path.join(bin, 'aws'), 0o755);
-      const runFingerprint = () =>
-        spawnSync(process.execPath, ['-e', fingerprintScript], {
-          cwd,
-          encoding: 'utf8',
-          env: {
-            ...process.env,
-            PATH: `${bin}:${process.env.PATH ?? ''}`,
-            TARGET_STAGE: 'dev',
-            EXPECTED_DEPLOYMENT_TOPOLOGY: actionEnvironment.EXPECTED_DEPLOYMENT_TOPOLOGY,
-          },
-        });
-
-      const first = runFingerprint();
-      expect(first.status).toBe(0);
-      expect(first.stdout).toMatch(/^[0-9a-f]{64}$/);
-      writeFileSync(path.join(cwd, 'config', 'dev.json'), JSON.stringify({ version: '2.0.0' }));
-      const second = runFingerprint();
-      expect(second.status).toBe(0);
-      expect(second.stdout).not.toBe(first.stdout);
-
-      writeFileSync(path.join(cwd, 'config', 'dev.json'), '{');
-      const malformed = runFingerprint();
-      expect(malformed.status).not.toBe(0);
-      expect(malformed.stderr).toContain('exists but could not be read as JSON');
-
-      writeFileSync(path.join(cwd, 'config', 'dev.json'), JSON.stringify({ version: ' 2.0.0 ' }));
-      const invalid = runFingerprint();
-      expect(invalid.status).not.toBe(0);
-      expect(invalid.stderr).toContain('must contain a non-empty string version field with no surrounding whitespace');
-    } finally {
-      rmSync(cwd, { recursive: true, force: true });
-    }
+    expect(JSON.stringify(render(nonEcr).findResources('AWS::IAM::Policy'))).not.toContain('ecr:DescribeImages');
   });
 
   test('the executable deploy-and-record command writes state only after a successful deploy', () => {
     const t = render(cfg());
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(t);
     const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
     const deployAndRecord = commands.find((command) => command.includes('done\naws ssm put-parameter'))!;
     expect(deployAndRecord).toBeDefined();
@@ -393,242 +339,14 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(first.TARGET_REGION).toBe('eu-west-1');
     expect(second.TARGET_REGION).toBe('us-east-1');
     expect(first.TARGET_STATE_PARAMETER).not.toEqual(second.TARGET_STATE_PARAMETER);
-    expect(first.EXPECTED_DEPLOYMENT_TOPOLOGY).toMatch(/^[0-9a-f]{64}$/);
-    expect(first.EXPECTED_DEPLOYMENT_TOPOLOGY).toBe(second.EXPECTED_DEPLOYMENT_TOPOLOGY);
 
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
-    const spec = JSON.stringify(project.Properties.Source.BuildSpec);
-    // The current from-image CLI does not consume its outer --region option. Each action instead writes a
-    // temporary one-region config and then uses the normal CLI path, which emits the inner --region command.
-    expect(spec).toContain('.cdk-cicd-target');
-    expect(spec).toContain('regions: [region]');
-    expect(spec).toContain('(cd .cdk-cicd-target && npm run cdk-cicd -- deploy --from-image');
-    expect(spec).toContain('re-run cdk-cicd deploy-ci to update the pipeline topology');
-    expect(spec).not.toContain('--yes --region "$TARGET_REGION"');
-  });
-
-  test('embedded fingerprint and parallel-config scripts execute against the current CLI config shape', () => {
-    const parallel = {
-      ...defineDeployment({
-        application: 'shop',
-        image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/app',
-        repository: Repository.codecommit('cfg'),
-        targets: [
-          {
-            stage: 'dev',
-            env: {
-              account: '111111111111',
-              regions: ['eu-west-1', 'us-east-1'],
-              regionOrder: RegionOrder.PARALLEL,
-            },
-          },
-        ],
-      }),
-      // A custom standard-bootstrap qualifier is part of the pipeline-shape fingerprint.
-      qualifier: 'shopqual',
-    };
-    const t = render(parallel);
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
-    const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
-    const pipeline = Object.values(t.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
-    const deploy = (pipeline.Properties.Stages as any[]).find((stage) => stage.Name === 'Deploy-1');
-    const actionEnvironment = Object.fromEntries(
-      JSON.parse(deploy.Actions[0].Configuration.EnvironmentVariables).map((entry: any) => [entry.name, entry.value]),
+    const project = deployProject(t);
+    const commandText = (JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[]).join('\n');
+    // A parallel action passes its Region to the CLI, which deploys just that Region of the target.
+    expect(commandText).toContain(
+      'deploy --from-image --target "$TARGET_STAGE" ${TARGET_REGION:+--region "$TARGET_REGION"} --yes',
     );
-    const fingerprintScript = extractEmbeddedNodeScript(
-      commands.find((command) => command.includes('TARGET_FINGERPRINT=$('))!,
-    );
-    const parallelConfigScript = extractEmbeddedNodeScript(
-      commands.find((command) => command.includes('.cdk-cicd-target'))!,
-    );
-
-    const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-pipeline-'));
-    try {
-      const writeDeploymentConfig = (targets: unknown[], overrides: Record<string, unknown> = {}) =>
-        writeFileSync(
-          path.join(cwd, 'deploy.config.js'),
-          'module.exports = ' +
-            JSON.stringify({
-              application: parallel.application,
-              qualifier: parallel.qualifier,
-              synthesizer: parallel.synthesizer,
-              image: parallel.image,
-              repository: parallel.repository,
-              crossAccountEcrRepositoryPolicyConfigured: parallel.crossAccountEcrRepositoryPolicyConfigured,
-              targets,
-              ...overrides,
-            }),
-        );
-      writeDeploymentConfig(parallel.targets);
-      mkdirSync(path.join(cwd, 'config'));
-      writeFileSync(path.join(cwd, 'config', 'dev.json'), JSON.stringify({ version: '1.2.3' }));
-      const packageJson = path.join(cwd, 'package.json');
-      const packageLock = path.join(cwd, 'package-lock.json');
-      writeFileSync(packageJson, JSON.stringify({ dependencies: { '@cdklabs/cdk-cicd-wrapper-cli': '1.0.0' } }));
-      writeFileSync(packageLock, JSON.stringify({ lockfileVersion: 3, packages: { '': { version: '1.0.0' } } }));
-
-      const bin = path.join(cwd, 'bin');
-      const aws = path.join(bin, 'aws');
-      const ecrTrace = path.join(cwd, 'ecr.trace');
-      const firstDigest = `sha256:${'a'.repeat(64)}`;
-      const secondDigest = `sha256:${'b'.repeat(64)}`;
-      mkdirSync(bin);
-      writeFileSync(
-        aws,
-        '#!/bin/sh\n' +
-          'if [ "${ECR_FAIL_IF_CALLED:-}" = "1" ]; then exit 91; fi\n' +
-          'printf "%s\\n" "$*" >> "$ECR_TRACE_FILE"\n' +
-          'printf "%s\\n" "$ECR_DIGEST"\n',
-      );
-      chmodSync(aws, 0o755);
-      const env = {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH ?? ''}`,
-        ECR_DIGEST: firstDigest,
-        ECR_TRACE_FILE: ecrTrace,
-        TARGET_STAGE: 'dev',
-        TARGET_REGION: 'eu-west-1',
-        EXPECTED_DEPLOYMENT_TOPOLOGY: actionEnvironment.EXPECTED_DEPLOYMENT_TOPOLOGY,
-      };
-      const runFingerprint = (overrides: NodeJS.ProcessEnv = {}) =>
-        spawnSync(process.execPath, ['-e', fingerprintScript], {
-          cwd,
-          env: { ...env, ...overrides },
-          encoding: 'utf8',
-        });
-      const fingerprint = runFingerprint();
-      expect(fingerprint.status).toBe(0);
-      expect(fingerprint.stdout).toMatch(/^[0-9a-f]{64}$/);
-      expect(readFileSync(ecrTrace, 'utf8')).toContain(
-        'ecr describe-images --registry-id 111111111111 --repository-name app ' +
-          '--image-ids imageTag=1.2.3 --query imageDetails[0].imageDigest --output text ' +
-          '--region eu-west-1 --no-cli-pager',
-      );
-
-      const retagged = runFingerprint({ ECR_DIGEST: secondDigest });
-      expect(retagged.status).toBe(0);
-      expect(retagged.stdout).not.toBe(fingerprint.stdout);
-
-      writeFileSync(ecrTrace, '');
-      writeDeploymentConfig([
-        {
-          ...parallel.targets[0],
-          image: `111111111111.dkr.ecr.eu-west-1.amazonaws.com/app@${firstDigest}`,
-        },
-      ]);
-      const digestPinned = runFingerprint({ ECR_FAIL_IF_CALLED: '1' });
-      expect(digestPinned.status).toBe(0);
-      expect(readFileSync(ecrTrace, 'utf8')).toBe('');
-      writeDeploymentConfig(parallel.targets);
-
-      writeFileSync(packageJson, JSON.stringify({ dependencies: { '@cdklabs/cdk-cicd-wrapper-cli': '1.0.1' } }));
-      const manifestChanged = runFingerprint();
-      expect(manifestChanged.status).toBe(0);
-      expect(manifestChanged.stdout).not.toBe(fingerprint.stdout);
-
-      writeFileSync(packageJson, JSON.stringify({ dependencies: { '@cdklabs/cdk-cicd-wrapper-cli': '1.0.0' } }));
-      writeFileSync(packageLock, JSON.stringify({ lockfileVersion: 3, packages: { '': { version: '1.0.1' } } }));
-      const lockChanged = runFingerprint();
-      expect(lockChanged.status).toBe(0);
-      expect(lockChanged.stdout).not.toBe(fingerprint.stdout);
-      writeFileSync(packageLock, JSON.stringify({ lockfileVersion: 3, packages: { '': { version: '1.0.0' } } }));
-      expect(runFingerprint().stdout).toBe(fingerprint.stdout);
-
-      // A Repo 2 stage configuration (keys besides version) is a deployment input: changing it with the
-      // same image version must redeploy. A version-only file keeps the previous fingerprint.
-      const devConfig = path.join(cwd, 'config', 'dev.json');
-      writeFileSync(devConfig, JSON.stringify({ version: '1.2.3', greeting: 'alpha' }));
-      const withStageConfig = runFingerprint();
-      expect(withStageConfig.status).toBe(0);
-      expect(withStageConfig.stdout).not.toBe(fingerprint.stdout);
-      writeFileSync(devConfig, JSON.stringify({ version: '1.2.3', greeting: 'bravo' }));
-      const stageConfigChanged = runFingerprint();
-      expect(stageConfigChanged.stdout).not.toBe(withStageConfig.stdout);
-      writeFileSync(devConfig, JSON.stringify({ version: '1.2.3' }));
-      expect(runFingerprint().stdout).toBe(fingerprint.stdout);
-
-      writeDeploymentConfig(parallel.targets, { qualifier: 'changedq' });
-      const identityChanged = runFingerprint();
-      expect(identityChanged.status).not.toBe(0);
-      expect(identityChanged.stderr).toContain('re-run cdk-cicd deploy-ci to update its actions and permissions');
-      writeDeploymentConfig(parallel.targets);
-
-      writeDeploymentConfig(parallel.targets, {
-        repository: { ...parallel.repository, branch: 'release' },
-      });
-      const repositoryChanged = runFingerprint();
-      expect(repositoryChanged.status).not.toBe(0);
-      expect(repositoryChanged.stderr).toContain('re-run cdk-cicd deploy-ci to update its actions and permissions');
-      writeDeploymentConfig(parallel.targets);
-
-      const narrow = spawnSync(process.execPath, ['-e', parallelConfigScript], {
-        cwd,
-        env,
-        encoding: 'utf8',
-      });
-      expect(narrow.status).toBe(0);
-      const generatedSource = readFileSync(path.join(cwd, '.cdk-cicd-target', 'deploy.config.js'), 'utf8');
-      const generated = JSON.parse(generatedSource.match(/^module\.exports = (.*);\n$/s)![1]);
-      expect(generated.application).toBe('shop');
-      expect(generated.qualifier).toBe('shopqual');
-      expect(generated.synthesizer).toEqual({ type: SynthesizerType.DEFAULT });
-      expect(generated.targets[0].env.regions).toEqual(['eu-west-1']);
-      expect(JSON.parse(readFileSync(path.join(cwd, '.cdk-cicd-target', 'package.json'), 'utf8'))).toEqual({
-        private: true,
-        scripts: { 'cdk-cicd': '../node_modules/.bin/cdk-cicd' },
-      });
-      expect(readFileSync(path.join(cwd, '.cdk-cicd-target', 'config', 'dev.json'), 'utf8')).toContain('1.2.3');
-
-      const staleRegion = spawnSync(process.execPath, ['-e', parallelConfigScript], {
-        cwd,
-        env: { ...env, TARGET_REGION: 'ap-southeast-2' },
-        encoding: 'utf8',
-      });
-      expect(staleRegion.status).not.toBe(0);
-      expect(staleRegion.stderr).toContain('no longer defines parallel region ap-southeast-2');
-
-      const staleSequentialActionEnv: NodeJS.ProcessEnv = { ...env };
-      delete staleSequentialActionEnv.TARGET_REGION;
-      const staleSequentialAction = spawnSync(process.execPath, ['-e', fingerprintScript], {
-        cwd,
-        env: staleSequentialActionEnv,
-        encoding: 'utf8',
-      });
-      expect(staleSequentialAction.status).not.toBe(0);
-      expect(staleSequentialAction.stderr).toContain('now needs parallel region actions');
-
-      writeDeploymentConfig([
-        {
-          ...parallel.targets[0],
-          env: { ...parallel.targets[0].env, regions: [...parallel.targets[0].env.regions, 'ap-southeast-2'] },
-        },
-      ]);
-      const addedParallelRegion = spawnSync(process.execPath, ['-e', fingerprintScript], {
-        cwd,
-        env,
-        encoding: 'utf8',
-      });
-      expect(addedParallelRegion.status).not.toBe(0);
-      expect(addedParallelRegion.stderr).toContain('re-run cdk-cicd deploy-ci');
-
-      writeDeploymentConfig([
-        ...parallel.targets,
-        {
-          stage: 'prod',
-          env: { regions: ['eu-west-1'], regionOrder: RegionOrder.SEQUENTIAL },
-          manualApproval: true,
-        },
-      ]);
-      const addedTarget = spawnSync(process.execPath, ['-e', fingerprintScript], {
-        cwd,
-        env,
-        encoding: 'utf8',
-      });
-      expect(addedTarget.status).not.toBe(0);
-      expect(addedTarget.stderr).toContain('re-run cdk-cicd deploy-ci');
-    } finally {
-      rmSync(cwd, { recursive: true, force: true });
-    }
+    expect(commandText).not.toContain('.cdk-cicd-target');
   });
 
   test('uses one approval before all parallel region actions for a gated target', () => {
@@ -667,7 +385,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       targets: [{ stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } }],
     });
     const t = render(crossRegion);
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(t);
     const spec = JSON.stringify(project.Properties.Source.BuildSpec);
     expect(spec).toContain('111111111111.dkr.ecr.us-east-2.amazonaws.com');
     expect(spec).toContain('--region us-east-2');
@@ -702,7 +420,8 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     expect(policies).toContain('ecr:GetDownloadUrlForLayer');
     expect(policies).toContain(devRepository);
     expect(policies).toContain(prodRepository);
-    expect(policies.split(devRepository)).toHaveLength(2);
+    // Once in the deploy project's pull grant and once in Plan's describe-only grant.
+    expect(policies.split(devRepository)).toHaveLength(3);
     expect(policies).not.toContain('repository/team/apps/deployer:dev-42');
     expect(policies).not.toContain('repository/platform/prod/deployer@sha256');
   });
@@ -764,7 +483,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
 
     const privateImage = '111111111111.dkr.ecr.eu-west-1.amazonaws.com/build/deployer@sha256:abcdef';
     const privateTemplate = render(cfg(), undefined, privateImage);
-    const privateProject = Object.values(privateTemplate.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const privateProject = deployProject(privateTemplate);
     expect(privateProject.Properties.Environment.ImagePullCredentialsType).toBe('SERVICE_ROLE');
     expect(JSON.stringify(privateProject.Properties.Environment.Image)).toContain('build/deployer@sha256:abcdef');
     expect(JSON.stringify(privateTemplate.findResources('AWS::IAM::Policy'))).toContain(
@@ -790,7 +509,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     });
     const stack = deploymentStack(acknowledged, undefined, image);
     const template = Template.fromStack(stack);
-    const project = Object.values(template.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(template);
     expect(project.Properties.Environment.ImagePullCredentialsType).toBe('SERVICE_ROLE');
     expect(JSON.stringify(template.findResources('AWS::IAM::Policy'))).toContain(
       ':ecr:eu-west-1:999999999999:repository/build/deployer',
@@ -865,12 +584,11 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     };
     const template = render(legacy);
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
-    const project = Object.values(template.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(template);
 
     expect(policies).toContain('role/cdk-hnb659fds-deploy-role-111111111111-eu-west-1');
     expect(policies).not.toContain('-file-role-eu-west-1');
-    expect(project.Properties.Source.BuildSpec).toContain('const synthesizer = config.synthesizer ??');
-    expect(project.Properties.Source.BuildSpec).toContain('default');
+    expect(projectEnvironment(project).EXPECTED_DEPLOYMENT_TOPOLOGY).toMatch(/^[0-9a-f]{64}$/);
   });
 
   test('rejects APP_STAGING because its bootstrapless support stack bypasses the deployment role', () => {
@@ -957,44 +675,12 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
         },
       ],
     });
-    const expectedTopology = (template: Template): string => {
-      const pipeline = Object.values(template.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
-      const deployAction = (pipeline.Properties.Stages as any[])
-        .flatMap((stage) => stage.Actions as any[])
-        .find((action) => action.Name === 'Deploy-prod');
-      const environment = JSON.parse(deployAction.Configuration.EnvironmentVariables) as Array<{
-        name: string;
-        value: string;
-      }>;
-      return environment.find((entry) => entry.name === 'EXPECTED_DEPLOYMENT_TOPOLOGY')!.value;
-    };
+    const expectedTopology = (template: Template): string =>
+      projectEnvironment(deployProject(template)).EXPECTED_DEPLOYMENT_TOPOLOGY;
 
     const placeholderTemplate = render(placeholderConfig);
     const expected = expectedTopology(placeholderTemplate);
     expect(expected).toBe(expectedTopology(render(concreteConfig)));
-
-    const project = Object.values(placeholderTemplate.findResources('AWS::CodeBuild::Project'))[0] as any;
-    const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
-    const fingerprintScript = extractEmbeddedNodeScript(
-      commands.find((command) => command.includes('TARGET_FINGERPRINT=$('))!,
-    );
-    const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-role-specialization-'));
-    try {
-      writeFileSync(path.join(cwd, 'deploy.config.js'), `module.exports = ${JSON.stringify(concreteConfig)};\n`);
-      const result = spawnSync(process.execPath, ['-e', fingerprintScript], {
-        cwd,
-        env: {
-          ...process.env,
-          TARGET_STAGE: 'prod',
-          EXPECTED_DEPLOYMENT_TOPOLOGY: expected,
-        },
-        encoding: 'utf8',
-      });
-      expect(result.status).toBe(0);
-      expect(result.stdout).toMatch(/^[0-9a-f]{64}$/);
-    } finally {
-      rmSync(cwd, { recursive: true, force: true });
-    }
   });
 
   test('leaves custom CloudFormation execution-role passing to the assumed deployment role', () => {
@@ -1104,12 +790,12 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const pipeline = Object.values(render(gatedFirst).findResources('AWS::CodePipeline::Pipeline'))[0] as any;
     const stages = pipeline.Properties.Stages as any[];
 
-    expect(stages.map((stage) => stage.Name)).toEqual(['Source', 'Deploy-1', 'Deploy-2']);
-    expect(stages[1].Actions.map((action: any) => [action.Name, action.RunOrder])).toEqual([
+    expect(stages.map((stage) => stage.Name)).toEqual(['Source', 'Plan', 'Deploy-1', 'Deploy-2']);
+    expect(stages[2].Actions.map((action: any) => [action.Name, action.RunOrder])).toEqual([
       ['Approve-prod', 1],
       ['Deploy-prod', 2],
     ]);
-    expect(stages[2].Actions.map((action: any) => action.Name)).toEqual(['Deploy-smoke', 'Deploy-verify']);
+    expect(stages[3].Actions.map((action: any) => action.Name)).toEqual(['Deploy-smoke', 'Deploy-verify']);
   });
 
   test('interleaved gates preserve target order and split only contiguous ungated waves', () => {
@@ -1131,13 +817,14 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
 
     expect(stages.map((stage) => stage.Name)).toEqual([
       'Source',
+      'Plan',
       'Deploy-1',
       'Deploy-2',
       'Deploy-3',
       'Deploy-4',
       'Deploy-5',
     ]);
-    expect(stages.slice(1).map((stage) => stage.Actions.map((action: any) => action.Name))).toEqual([
+    expect(stages.slice(2).map((stage) => stage.Actions.map((action: any) => action.Name))).toEqual([
       ['Deploy-dev', 'Deploy-qa'],
       ['Approve-preprod', 'Deploy-preprod'],
       ['Deploy-smoke', 'Deploy-canary'],
@@ -1157,7 +844,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     });
     const pipeline = Object.values(render(twoGated).findResources('AWS::CodePipeline::Pipeline'))[0] as any;
     const names = (pipeline.Properties.Stages as any[]).map((s) => s.Name);
-    expect(names).toEqual(['Source', 'Deploy-1', 'Deploy-2']);
+    expect(names).toEqual(['Source', 'Plan', 'Deploy-1', 'Deploy-2']);
 
     const pairedActions = (stageName: string) =>
       (pipeline.Properties.Stages as any[]).find((stage) => stage.Name === stageName).Actions as any[];
@@ -1187,7 +874,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
         },
       ],
     });
-    const project = Object.values(render(perTarget).findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(render(perTarget));
     const spec = JSON.stringify(project.Properties.Source.BuildSpec);
     // both distinct registries get a docker login, each in its own region
     expect(spec).toContain('111111111111.dkr.ecr.eu-west-1.amazonaws.com');
@@ -1210,7 +897,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       targets: [{ stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } }],
     });
     const t = render(withRegistry);
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(t);
     const buildSpec = JSON.parse(project.Properties.Source.BuildSpec);
     const spec = JSON.stringify(buildSpec);
     expect(spec).toContain('/tmp/cdk-cicd-npmrc');
@@ -1262,7 +949,8 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
         manualApproval: true,
       })),
     });
-    expect(() => render(tooManyActions)).toThrow(/would contain 1021 actions.*1000-action/);
+    // Source, Plan, and one approval + 50 region actions for each of the 20 gated targets.
+    expect(() => render(tooManyActions)).toThrow(/would contain 1022 actions.*1000-action/);
 
     const tooManyStages = defineDeployment({
       image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/app:1',
@@ -1273,7 +961,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
         manualApproval: true,
       })),
     });
-    expect(() => render(tooManyStages)).toThrow(/would contain 51 stages.*50-stage/);
+    expect(() => render(tooManyStages)).toThrow(/would contain 52 stages.*50-stage/);
   });
 
   test('rejects generated CodePipeline names that exceed the 100-character identifier limit', () => {
@@ -1344,9 +1032,7 @@ describe('Repo 2 autoDeploy targets', () => {
     const t = render(autoCfg());
     const pipelines = Object.values(t.findResources('AWS::CodePipeline::Pipeline')) as any[];
     expect(pipelines).toHaveLength(2);
-    const auto = pipelines.find(
-      (p) => p.Properties.PipelineType === 'V2' && p.Properties.ExecutionMode === 'SUPERSEDED',
-    );
+    const auto = pipelines.find((p) => p !== mainPipeline(t));
     expect(auto).toBeDefined();
     expect((auto.Properties.Stages as any[]).map((s) => s.Name)).toEqual(['Source', 'Deploy-dev']);
     const autoActions = (auto.Properties.Stages as any[]).flatMap((s) => s.Actions);
@@ -1354,8 +1040,8 @@ describe('Repo 2 autoDeploy targets', () => {
     expect(autoActions.map((a: any) => a.Name)).not.toContain('Deploy-prod');
     // The config-repo checkout must not start this pipeline on commits (the main pipeline does that).
     expect(autoActions[0].Configuration.PollForSourceChanges).toBe(false);
-    // Still exactly one deploy project and one created CodeCommit repository.
-    t.resourceCountIs('AWS::CodeBuild::Project', 1);
+    // Still one deploy project (plus Plan) and one created CodeCommit repository.
+    t.resourceCountIs('AWS::CodeBuild::Project', 2);
     t.resourceCountIs('AWS::CodeCommit::Repository', 1);
     t.hasResourceProperties('AWS::Events::Rule', {
       EventPattern: {
@@ -1408,7 +1094,7 @@ describe('Repo 2 autoDeploy targets', () => {
 
   test("an autoDeploy pipeline's creation run really skips every later buildspec entry", () => {
     const t = render(autoCfg());
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(t);
     const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
     expect(commands[0]).toContain('skipping the creation run');
     expect(commands.join('\n')).not.toMatch(/skipping[^\n]*\n?[^\n]*exit 0/);
@@ -1442,7 +1128,7 @@ describe('Repo 2 autoDeploy targets', () => {
 
   test('an unchanged target really skips the image pull, deploy and state write', () => {
     const t = render(cfg());
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+    const project = deployProject(t);
     const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
     // Start at the state read: the fingerprint itself is covered by the executable fingerprint tests.
     const from = commands.findIndex((command) => command.includes('ssm get-parameter'));
@@ -1491,15 +1177,171 @@ describe('Repo 2 autoDeploy targets', () => {
   test('a non-ECR image is refused', () => {
     expect(() => render(autoCfg({ image: 'docker.io/library/app:1' }))).toThrow(/needs an ECR deployer image/);
   });
+});
 
-  test('autoDeploy deploys the newest tagged image from both pipelines (fingerprint script)', () => {
-    const stack = deploymentStack(autoCfg());
-    const t = Template.fromStack(stack);
-    const project = Object.values(t.findResources('AWS::CodeBuild::Project'))[0] as any;
+describe('Repo 2 Plan stage skips unchanged targets', () => {
+  const threeTargets = (prodAlwaysApprove = false) =>
+    defineDeployment({
+      image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.2.3',
+      repository: Repository.codecommit('my-deploy-config'),
+      targets: [
+        { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } },
+        { stage: 'int', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
+        {
+          stage: 'prod',
+          env: { account: '222222222222', region: 'eu-west-1' },
+          manualApproval: true,
+          ...(prodAlwaysApprove ? { alwaysApprove: true } : {}),
+        },
+      ],
+    });
+  const stages = (t: Template) => mainPipeline(t).Properties.Stages as any[];
+  const actionEnvironment = (action: any) =>
+    Object.fromEntries(
+      JSON.parse(action.Configuration.EnvironmentVariables).map((entry: any) => [entry.name, entry.value]),
+    );
+
+  test('renders an unprivileged Plan build after Source that exports one variable per deployment stage', () => {
+    const t = render(threeTargets());
+    expect(stages(t).map((stage) => stage.Name)).toEqual(['Source', 'Plan', 'Deploy-1', 'Deploy-2', 'Deploy-3']);
+    const plan = stages(t)[1].Actions[0];
+    expect(plan.ActionTypeId.Provider).toBe('CodeBuild');
+    expect(plan.Namespace).toBe('Plan');
+
+    const project = planProject(t);
+    expect(project.Properties.Environment.PrivilegedMode).toBe(false);
     const spec = JSON.parse(project.Properties.Source.BuildSpec);
-    const fingerprint = (spec.phases.build.commands as string[]).find((c) => c.includes('TARGET_FINGERPRINT=$('))!;
-    const script = extractEmbeddedNodeScript(fingerprint);
-    expect(script).toContain('sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest');
-    expect(script).toContain('target.autoDeploy === true');
+    expect(spec.env['exported-variables']).toEqual(['CDK_CICD_RUN_1', 'CDK_CICD_RUN_2', 'CDK_CICD_RUN_3']);
+    const commands = spec.phases.build.commands as string[];
+    expect(commands.indexOf('npm ci')).toBeLessThan(
+      commands.findIndex((command) => command.includes('cdk-cicd -- pipeline plan --out')),
+    );
+    expect(JSON.stringify(spec)).not.toContain("-e '");
+
+    // Plan checks exactly the units the deploy actions record state for.
+    const plans = JSON.parse(projectEnvironment(project).CDK_CICD_PLAN);
+    expect(plans.map((entry: any) => [entry.variable, entry.stage])).toEqual([
+      ['CDK_CICD_RUN_1', 'Deploy-1'],
+      ['CDK_CICD_RUN_2', 'Deploy-2'],
+      ['CDK_CICD_RUN_3', 'Deploy-3'],
+    ]);
+    const deployActions = stages(t)
+      .flatMap((stage) => stage.Actions as any[])
+      .filter((action) => action.Name.startsWith('Deploy-'));
+    for (const action of deployActions) {
+      const environment = actionEnvironment(action);
+      const unit = plans.flatMap((entry: any) => entry.units).find((u: any) => u.target === environment.TARGET_STAGE);
+      expect(unit.parameter).toBe(environment.TARGET_STATE_PARAMETER);
+    }
+    expect(projectEnvironment(project).EXPECTED_DEPLOYMENT_TOPOLOGY).toBe(
+      projectEnvironment(deployProject(t)).EXPECTED_DEPLOYMENT_TOPOLOGY,
+    );
+  });
+
+  test('every deployment stage, approval included, is entered only when Plan found a change', () => {
+    const t = render(threeTargets());
+    stages(t)
+      .filter((stage) => stage.Name.startsWith('Deploy-'))
+      .forEach((stage, index) => {
+        expect(stage.BeforeEntry).toEqual({
+          Conditions: [
+            {
+              Result: 'SKIP',
+              Rules: [
+                expect.objectContaining({
+                  Name: `Changed-${stage.Name}`,
+                  RuleTypeId: expect.objectContaining({ Category: 'Rule', Owner: 'AWS', Provider: 'VariableCheck' }),
+                  Configuration: {
+                    Variable: `#{Plan.CDK_CICD_RUN_${index + 1}}`,
+                    Value: 'true',
+                    Operator: 'EQ',
+                  },
+                }),
+              ],
+            },
+          ],
+        });
+      });
+    // The gated stage keeps its approval: a changed target still needs a human.
+    expect(stages(t)[3].Actions.map((action: any) => action.Name)).toEqual(['Approve-int', 'Deploy-int']);
+    expect(mainPipeline(t).Properties.PipelineType).toBe('V2');
+  });
+
+  test('alwaysApprove keeps a target gated on every run and changes the pipeline shape', () => {
+    const always = render(threeTargets(true));
+    const prod = stages(always).find((stage) => stage.Name === 'Deploy-3');
+    expect(prod.BeforeEntry).toBeUndefined();
+    expect(prod.Actions.map((action: any) => action.Name)).toEqual(['Approve-prod', 'Deploy-prod']);
+    expect(stages(always).find((stage) => stage.Name === 'Deploy-2').BeforeEntry).toBeDefined();
+
+    const topology = (t: Template) => projectEnvironment(deployProject(t)).EXPECTED_DEPLOYMENT_TOPOLOGY;
+    expect(topology(always)).not.toBe(topology(render(threeTargets())));
+  });
+
+  test('both builds carry the shape hash and environments the CLI recomputes at run time', () => {
+    const config = threeTargets();
+    const t = render(config);
+    for (const project of [deployProject(t), planProject(t)]) {
+      const environment = projectEnvironment(project);
+      const targetEnvironments = JSON.parse(environment.CDK_CICD_TARGET_ENVIRONMENTS);
+      expect(targetEnvironments).toEqual({
+        dev: { account: '111111111111', regions: ['eu-west-1'] },
+        int: { account: '111111111111', regions: ['eu-west-1'] },
+        prod: { account: '222222222222', regions: ['eu-west-1'] },
+      });
+      expect(environment.CDK_CICD_QUALIFIER).toBe('hnb659fds');
+      expect(environment.CDK_CICD_PARTITION).toBe('aws');
+      // `cdk-cicd pipeline` calls this same exported function on the checked-out deploy.config.
+      expect(environment.EXPECTED_DEPLOYMENT_TOPOLOGY).toBe(
+        deploymentPipelineShapeFingerprint(config, targetEnvironments, 'aws', 'hnb659fds'),
+      );
+    }
+  });
+
+  test('Plan reads deployment state but can neither write it nor assume deployment roles', () => {
+    const t = render(threeTargets());
+    const roleId = planProject(t).Properties.ServiceRole['Fn::GetAtt'][0];
+    const planStatements = (Object.values(t.findResources('AWS::IAM::Policy')) as any[])
+      .filter((policy) => JSON.stringify(policy.Properties.Roles) === JSON.stringify([{ Ref: roleId }]))
+      .flatMap((policy) => policy.Properties.PolicyDocument.Statement as any[]);
+    const actionsOf = (statement: any): string[] => [statement.Action].flat();
+    const allActions = planStatements.flatMap(actionsOf);
+    expect(allActions).toContain('ssm:GetParameter');
+    expect(allActions).toContain('ecr:DescribeImages');
+    expect(allActions).not.toContain('ssm:PutParameter');
+    expect(allActions).not.toContain('sts:AssumeRole');
+    expect(allActions).not.toContain('ecr:BatchGetImage');
+    const ssm = planStatements.find((statement) => actionsOf(statement).includes('ssm:GetParameter'));
+    expect(JSON.stringify(ssm.Resource)).toContain('parameter/cdk-cicd/deployment-state/CdStack/');
+  });
+
+  test('the Plan buildspec exports only well-formed stage decisions', () => {
+    const commands = JSON.parse(planProject(render(threeTargets())).Properties.Source.BuildSpec).phases.build
+      .commands as string[];
+    const validate = commands.find((command) => command.includes('malformed plan output'))!;
+    const load = commands.find((command) => command.startsWith('set -a;'))!;
+    const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-plan-output-'));
+    try {
+      const output = path.join(cwd, 'plan.env');
+      const run = (contents: string) => {
+        writeFileSync(output, contents);
+        const script = [validate, load, 'printf "%s,%s" "$CDK_CICD_RUN_1" "$CDK_CICD_RUN_2"']
+          .join('\n')
+          .split('/tmp/cdk-cicd-plan.env')
+          .join(output);
+        return spawnSync('/bin/sh', ['-c', script], { encoding: 'utf8' });
+      };
+      const good = run('CDK_CICD_RUN_1=true\nCDK_CICD_RUN_2=false\n');
+      expect(good.status).toBe(0);
+      expect(good.stdout).toBe('true,false');
+
+      for (const bad of ['CDK_CICD_RUN_1=yes\n', 'PATH=/tmp\n', 'CDK_CICD_RUN_1=true; touch x\n']) {
+        const rejected = run(bad);
+        expect(rejected.status).toBe(1);
+        expect(rejected.stderr).toContain('malformed plan output');
+      }
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });

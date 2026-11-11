@@ -260,7 +260,13 @@ describe('deploy mode contracts', () => {
         prepareOnly: true,
         planParameter: '/plan',
       }),
-    ).toThrow(/--stage, --region, --prepare-only, --plan-parameter/);
+    ).toThrow(/--stage, --region \(without --target\), --prepare-only, --plan-parameter/);
+  });
+
+  test('accepts --region with --from-image --target (one region of a parallel target)', () => {
+    expect(() =>
+      assertDeploymentModeOptions({ ...direct, fromImage: true, target: 'dev', region: 'eu-west-1' }),
+    ).not.toThrow();
   });
 
   test('rejects image-only and prepare-only companion flags in direct mode', () => {
