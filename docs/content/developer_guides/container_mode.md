@@ -40,6 +40,7 @@ export default defineCICD({
     dockerfile: 'Dockerfile', // default; the image payload is your app + deps, NOT cdk.out
     // repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one
     // tagStrategy: ImageTagStrategy.GIT_SHA, // default: immutable revision tag; or ImageTagStrategy.LATEST
+    // packageVersionTag: true, // also tag the image with package.json's version, e.g. 1.4.2
   }),
 });
 ```
@@ -62,6 +63,20 @@ Repo 2 target defines and uses that target's configuration (see below). Keep a r
 4. `docker build`s your Dockerfile and pushes the image, tagged by strategy (`GIT_SHA` by default —
    the lowercase commit SHA for Git sources or a deterministic SHA-256 of another source revision;
    `LATEST` is simplest but not immutable).
+5. with `packageVersionTag: true`, adds the `version` from `package.json` (for example `1.4.2`) as a
+   second tag on the same image, so Repo 2 can pin `"version": "1.4.2"` instead of a commit SHA.
+
+The repository stays **immutable** with `packageVersionTag`. ECR immutability stops an existing tag from
+moving to another image; it does not stop a new tag from being added to an image. So the version tag is
+added only while that version is unpublished:
+
+- A retried build whose version already names this image changes nothing.
+- A build whose version is already held by another image keeps only its commit-SHA tag and says so.
+  Bump `version` in `package.json` to publish it under a version.
+- A version that is not a valid image tag (semver build metadata such as `1.4.2+7`) fails the build.
+
+`1.4.2` therefore always names exactly one image, and promoting a release in Repo 2 means setting another
+target's `version` to the same value.
 
 If you do not name an existing repository, the pipeline **provisions** one named `<application>-deployer`;
 a disposable pipeline (`deploy-ci --disposable`) empties and deletes it on teardown.
@@ -165,19 +180,83 @@ version than `prod`, and the version is plain config, reviewable in a pull reque
 but is unreadable, malformed, or lacks a non-empty string `version`, deployment fails instead of
 silently falling back to the base image.
 
+`version` takes three forms:
+
+| `version` | Deploys |
+|---|---|
+| `0.2.34` | exactly that tag |
+| `3aff301…` | exactly that commit-SHA tag |
+| `^0.1.0`, `~0.2.0`, `0.2.x`, `>=0.2.0 <0.3.0` | the highest semver-tagged image that matches, pinned by digest |
+
+A range follows npm's rules: prereleases match only when the range names one, and tags that are not
+semver versions (commit SHAs, `latest`) are ignored. Only a value with a range operator or an `x`/`*`
+placeholder is a range, so a short all-digit commit hash stays a literal tag. Use
+`packageVersionTag` in Repo 1 so the image carries semver tags.
+
+A range target counts as changed when a newer matching version is published, but the main pipeline
+runs on deploy-repository commits, so it moves on the next commit. Combine a range with `autoDeploy`
+to follow it on every push: the target then runs the newest image within its range, so a dev target on
+`^0.2.0` never jumps to `0.3.0`. Git records the range, not the exact version; the deploy log names
+the version it resolved.
+
+### Account and Region from the config file
+
+A target can leave `env` out of `deploy.config.ts` and take its account and Region from its
+`config/<stage>.json`:
+
+```jsonc
+// config/int.json
+{ "version": "^1.4.0", "aws": { "accountId": "222222222222", "region": "eu-west-1" }, "ordersTableName": "orders-int" }
+```
+
+- A value set in `deploy.config.ts` still wins. A config file that disagrees with it fails, naming the
+  file and the target, instead of being silently ignored.
+- `deploy-ci` reads the file when it builds the pipeline, because the account and Region decide the
+  pipeline's IAM grants. Changing them later makes Plan ask you to re-run `deploy-ci`.
+- `aws.region` names one Region. Declare a multi-Region target's Regions in `deploy.config.ts`.
+
 ### Provision the CD pipeline, or run locally
 
 With a `repository` set, `cdk-cicd deploy-ci` provisions the CD pipeline (the deploy-side twin of the CI
-`deploy-ci`): a `Source` stage followed by ordered deployment waves. Adjacent **ungated** targets share
-a parallel wave; each **gated** target gets its own approval/deploy stage. Declaration order is
-preserved, so a gate blocks that target and every target declared after it. Each deploy action runs
-`cdk-cicd deploy --from-image --target <stage>`, which reads that stage's `version` at run time, pulls
-`<base-repo>:<version>`, and synth-and-deploys the stage.
+`deploy-ci`): a `Source` stage, a `Plan` stage, then ordered deployment waves. Adjacent **ungated**
+targets share a parallel wave; each **gated** target gets its own approval/deploy stage. Declaration
+order is preserved, so a gate blocks that target and every target declared after it. Each deploy action
+runs `cdk-cicd deploy --from-image --target <stage>`, which reads that stage's `version` at run time,
+pulls `<base-repo>:<version>`, and synth-and-deploys the stage.
+
+### Only changed targets deploy
+
+Every commit to the deploy repository starts the whole pipeline, so the pipeline decides per target
+whether there is anything to deploy:
+
+- After each successful deploy, the target's **fingerprint** is stored in an SSM parameter. The
+  fingerprint is a SHA-256 over the target's `deploy.config.ts` entry, its image reference and
+  `version`, the image's ECR **digest** (so re-pushing a tag counts as a change), the rest of its
+  `config/<stage>.json`, and the deploy repository's `package.json` and lockfile.
+- The `Plan` stage (`cdk-cicd pipeline plan`) computes every target's fingerprint and compares it with
+  the stored one. Each deployment stage has a CodePipeline entry condition that **skips** the stage when
+  nothing in it changed. A skipped stage shows as **Skipped** in the console and runs none of its
+  actions, so nobody is asked to approve a target that would not change.
+- A target Plan cannot check (for example a malformed `config/<stage>.json`) counts as changed. Its
+  stage runs, and its deploy action reports the real error.
+- Each deploy action checks the fingerprint once more right before deploying, which covers a deploy
+  that happened while its approval was pending.
+- If `deploy.config.ts` changes something the pipeline was built from (targets, Regions, roles,
+  registries), Plan fails and asks you to re-run `cdk-cicd deploy-ci`.
+
+To ask for approval on every run, even when nothing changed, set `alwaysApprove` on a gated target:
+
+```typescript
+{ stage: 'prod', env: { account: '222222222222', region: 'eu-west-1' }, manualApproval: true, alwaysApprove: true },
+```
+
+The deployer container gets the CodeBuild role's credentials from the container-credentials endpoint.
+No access key is written into the build's environment or its log.
 
 For an image in an ECR account different from the Repo 2 pipeline, the repository owner must grant the
 generated CodeBuild role `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, and
 `ecr:BatchCheckLayerAvailability`, plus `ecr:DescribeImages` so mutable tags can be resolved to an
-immutable digest before the skip comparison. Set `crossAccountEcrRepositoryPolicyConfigured: true` only
+immutable digest before the change check. Set `crossAccountEcrRepositoryPolicyConfigured: true` only
 after that owner-side policy exists; otherwise pipeline rendering fails closed. This acknowledgement
 covers the deployer image pulled after the build starts. A private ECR image used as CodeBuild's own
 environment image must still be in the pipeline Region.
@@ -225,6 +304,32 @@ deploying, run the preflight. It needs no `--yes`, because it changes nothing:
 npm run cdk-cicd -- deploy --from-image --validate-only
 npm run cdk-cicd -- deploy --from-image --validate-only --target int
 ```
+
+### Deploy a target automatically on every new image
+
+For a dev environment whose configuration does not change between image versions, set `autoDeploy` on
+its target. Every successful push to the target's ECR repository then deploys it, with no commit to
+the deploy repository:
+
+```typescript
+targets: [
+  { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' }, autoDeploy: true },
+  { stage: 'int', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
+],
+```
+
+- `cdk-cicd deploy-ci` adds a small pipeline for that target. An EventBridge rule on ECR pushes starts
+  it, and it deploys only that target. The main pipeline keeps running on deploy repository commits,
+  so other targets and their approval gates are never touched by an image push.
+- An `autoDeploy` target always runs the **newest tagged image** in its repository, from either
+  pipeline. Its `version` in `config/<stage>.json` is not used. The rest of that file is still its
+  stage configuration, and a commit that changes it redeploys the target as usual.
+- The target must have no manual approval, and its ECR repository must be in the CD pipeline's own
+  account and Region (ECR push events are delivered only to the local event bus).
+- If a new image needs a configuration change, its deployment fails at the validation synth, before
+  any CloudFormation change, until `config/<stage>.json` is updated.
+- The running version of an `autoDeploy` target is not recorded in Git. To pin it again, remove
+  `autoDeploy`, set `version`, and re-run `deploy-ci`.
 
 ## Division of authority: WHAT vs WHERE
 

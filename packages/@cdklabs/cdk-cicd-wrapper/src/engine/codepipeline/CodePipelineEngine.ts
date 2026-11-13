@@ -815,6 +815,7 @@ export class CodePipelineEngine implements IEngine {
             `if aws ecr describe-images --region ${stack.region} --repository-name ${repository.repositoryName} --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then echo "Immutable image ${uri}:$IMAGE_TAG already exists; reusing it"; else docker build -f ${build.dockerfile} -t ${uri}:$IMAGE_TAG . && (docker push ${uri}:$IMAGE_TAG || { aws ecr describe-images --region ${stack.region} --repository-name ${repository.repositoryName} --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1 && echo "Immutable image ${uri}:$IMAGE_TAG was published concurrently; reusing it"; }); fi`,
           ]
         : [`docker build -f ${build.dockerfile} -t ${uri}:${tag} .`, `docker push ${uri}:${tag}`]),
+      ...(build.packageVersionTag ? [packageVersionTagCommand(stack.region, repository.repositoryName, uri)] : []),
     ];
 
     // The proxy's exports run first, in `install` -- ahead of the codeArtifact login and `npm ci`, same
@@ -1570,6 +1571,49 @@ function immutableImageTagCommands(sourceType: RepositorySourceType): string[] {
     'export SOURCE_REVISION="${CODEBUILD_RESOLVED_SOURCE_VERSION:?CODEBUILD_RESOLVED_SOURCE_VERSION is required for GIT_SHA image tagging}"',
     `export IMAGE_TAG="$(node -e '${nodeProgram}' "$SOURCE_REVISION")"`,
   ];
+}
+
+/**
+ * Add the source's `package.json` version as a second tag on the commit's image, in an immutable
+ * repository. The tag is added only while that version is unpublished; when another image already holds
+ * it, the build keeps the commit-SHA tag alone and says so, because an immutable version tag can never
+ * move. The retag goes through Docker (pull when the image was reused, `docker tag`, push), which pushes
+ * the identical manifest, and the final check proves both tags resolve to one digest. One buildspec
+ * element, because CodeBuild parses each separately.
+ */
+export function packageVersionTagCommand(region: string, repositoryName: string, uri: string): string {
+  const digestOf = (tagVariable: string) =>
+    `aws ecr describe-images --region ${region} --repository-name ${repositoryName} ` +
+    `--image-ids imageTag="${tagVariable}" --query 'imageDetails[0].imageDigest' --output text 2>/dev/null`;
+  return [
+    'PACKAGE_VERSION="$(node -p "require(\'./package.json\').version")"',
+    // An OCI tag allows [A-Za-z0-9_.-] only; semver build metadata (`+...`) cannot be a tag.
+    'if ! printf "%s" "$PACKAGE_VERSION" | grep -Eq "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"; then',
+    '  echo "cdk-cicd: package.json version \'$PACKAGE_VERSION\' is not a valid image tag" >&2; exit 1',
+    'fi',
+    `IMAGE_DIGEST="$(${digestOf('$IMAGE_TAG')})"`,
+    `VERSION_DIGEST="$(${digestOf('$PACKAGE_VERSION')} || true)"`,
+    'if [ "$VERSION_DIGEST" = "$IMAGE_DIGEST" ]; then',
+    `  echo "cdk-cicd: ${uri}:$PACKAGE_VERSION already is this image"`,
+    'elif [ -n "$VERSION_DIGEST" ] && [ "$VERSION_DIGEST" != "None" ]; then',
+    '  echo "cdk-cicd: version $PACKAGE_VERSION is already published as another image ($VERSION_DIGEST);' +
+      ' this build is tagged $IMAGE_TAG only. Bump package.json version to publish it under a version."',
+    'else',
+    `  docker image inspect ${uri}:$IMAGE_TAG >/dev/null 2>&1 || docker pull ${uri}:$IMAGE_TAG`,
+    `  docker tag ${uri}:$IMAGE_TAG ${uri}:$PACKAGE_VERSION`,
+    // A concurrent build may publish the same version first; only that same image is acceptable.
+    `  docker push ${uri}:$PACKAGE_VERSION || true`,
+    `  VERSION_DIGEST="$(${digestOf('$PACKAGE_VERSION')} || true)"`,
+    '  if [ "$VERSION_DIGEST" = "$IMAGE_DIGEST" ]; then',
+    `    echo "cdk-cicd: tagged ${uri}:$IMAGE_TAG as $PACKAGE_VERSION"`,
+    '  elif [ -z "$VERSION_DIGEST" ] || [ "$VERSION_DIGEST" = "None" ]; then',
+    '    echo "cdk-cicd: could not publish version tag $PACKAGE_VERSION" >&2; exit 1',
+    '  else',
+    '    echo "cdk-cicd: version $PACKAGE_VERSION was published as another image ($VERSION_DIGEST);' +
+      ' this build is tagged $IMAGE_TAG only."',
+    '  fi',
+    'fi',
+  ].join('\n');
 }
 
 /**

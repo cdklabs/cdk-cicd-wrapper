@@ -205,7 +205,7 @@ export function assertDeploymentModeOptions(options: {
       options.fromAssembly ? '--from-assembly' : undefined,
       options.deployRole !== undefined ? '--deploy-role' : undefined,
       options.stage !== undefined ? '--stage' : undefined,
-      options.region !== undefined ? '--region' : undefined,
+      options.region !== undefined && options.target === undefined ? '--region (without --target)' : undefined,
       options.prepareOnly ? '--prepare-only' : undefined,
       options.planParameter !== undefined ? '--plan-parameter' : undefined,
     ].filter((flag): flag is string => flag !== undefined);
@@ -353,7 +353,9 @@ class Command implements yargs.CommandModule {
         })
         .option('region', {
           type: 'string',
-          describe: 'Deploy only this one region, ignoring the stage config region list (used by container mode)',
+          describe:
+            'Deploy only this one region, ignoring the stage config region list (used by container mode). ' +
+            "With --from-image --target: one of that parallel target's regions",
         })
         .option('deploy-role', {
           type: 'string',
@@ -429,6 +431,7 @@ class Command implements yargs.CommandModule {
         yes: args.yes as boolean,
         network: args.dockerNetwork as string | undefined,
         target: args.target as string | undefined,
+        region: args.region as string | undefined,
         validateOnly: args.validateOnly as boolean,
       });
       process.exit(code);

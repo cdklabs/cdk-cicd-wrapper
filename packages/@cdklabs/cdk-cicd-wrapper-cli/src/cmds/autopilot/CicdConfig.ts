@@ -9,7 +9,7 @@
 // A missing file is not an error: it means Level 0 (a plain app with no pipeline), so callers get
 // `undefined` and behave as if no wrapper pipeline was configured.
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import type { ResolvedCicdConfig, ResolvedDeploymentConfig, ResolvedStage } from '@cdklabs/cdk-cicd-wrapper';
 
@@ -111,7 +111,68 @@ export function loadDeployment(cwd: string): ResolvedDeploymentConfig | undefine
   if (file === undefined) {
     return undefined;
   }
-  return requireConfigFile<ResolvedDeploymentConfig>(file);
+  return withStageFileEnvironments(requireConfigFile<ResolvedDeploymentConfig>(file), cwd);
+}
+
+const AWS_ACCOUNT_ID = /^\d{12}$/;
+const AWS_REGION = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+-\d+$/;
+
+/**
+ * Let a target's `config/<stage>.json` supply its account and Region (`aws.accountId`, `aws.region`), so
+ * they are written once. A target's `env` in deploy.config.ts still wins where it is set, and a config
+ * file that disagrees with it fails instead of being ignored: the deployer container always deploys to
+ * the target's account and Region, so a different value in the file would never take effect.
+ *
+ * Every consumer -- the pipeline synth, `deploy --from-image`, `pipeline plan|fingerprint` -- loads the
+ * deployment through here, so they resolve the same targets. A file that cannot be read as a JSON
+ * object contributes nothing; the deploy itself reports it.
+ */
+export function withStageFileEnvironments(config: ResolvedDeploymentConfig, cwd: string): ResolvedDeploymentConfig {
+  const targets = config.targets.map((target) => {
+    const file = path.join(cwd, 'config', `${target.stage}.json`);
+    if (!existsSync(file)) return target;
+    let document: unknown;
+    try {
+      document = JSON.parse(readFileSync(file, 'utf-8'));
+    } catch {
+      return target;
+    }
+    const aws = (document as { aws?: unknown } | null)?.aws;
+    if (aws === null || typeof aws !== 'object' || Array.isArray(aws)) return target;
+    const { accountId, region } = aws as { accountId?: unknown; region?: unknown };
+    const source = `config/${target.stage}.json`;
+
+    let account = target.env?.account;
+    if (accountId !== undefined) {
+      if (typeof accountId !== 'string' || !AWS_ACCOUNT_ID.test(accountId)) {
+        throw new Error(`cdk-cicd: ${source} aws.accountId must be a 12-digit AWS account id`);
+      }
+      if (account !== undefined && account !== accountId) {
+        throw new Error(
+          `cdk-cicd: ${source} sets aws.accountId ${accountId}, but deploy.config target '${target.stage}' ` +
+            `deploys to ${account}. Set the account in one place, or make them match.`,
+        );
+      }
+      account = accountId;
+    }
+    let regions = target.env?.regions ?? [];
+    if (region !== undefined) {
+      if (typeof region !== 'string' || !AWS_REGION.test(region)) {
+        throw new Error(`cdk-cicd: ${source} aws.region must be an AWS Region such as eu-west-1`);
+      }
+      if (regions.length === 0) {
+        regions = [region];
+      } else if (regions.length !== 1 || regions[0] !== region) {
+        throw new Error(
+          `cdk-cicd: ${source} sets aws.region ${region}, but deploy.config target '${target.stage}' deploys ` +
+            `to ${regions.join(', ')}. Set the Region in one place, or make them match.`,
+        );
+      }
+    }
+    if (account === target.env?.account && regions === target.env?.regions) return target;
+    return { ...target, env: { ...target.env, account, regions } };
+  });
+  return { ...config, targets };
 }
 
 /** The stage with the given name, or undefined. */

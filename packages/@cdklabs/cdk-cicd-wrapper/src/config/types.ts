@@ -551,6 +551,21 @@ export interface ResolvedDeploymentTarget {
   readonly complianceLogBucketAccount?: string;
   /** Region containing `complianceLogBucketName`. */
   readonly complianceLogBucketRegion?: string;
+  /**
+   * Deploy this target automatically whenever a new deployer image is pushed to its ECR repository.
+   * The target then always runs the NEWEST tagged image in that repository (its `config/<stage>.json`
+   * `version` is not used), with its stage configuration still taken from the deploy repository.
+   *
+   * @default false
+   */
+  readonly autoDeploy?: boolean;
+  /**
+   * Ask for this target's manual approval on every pipeline run, even when its deployment inputs are
+   * unchanged. Without it, the CD pipeline skips an unchanged target's whole stage, approval included.
+   *
+   * @default false
+   */
+  readonly alwaysApprove?: boolean;
 }
 
 /**

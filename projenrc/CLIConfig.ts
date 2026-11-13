@@ -43,6 +43,10 @@ export class CLIConfig extends yarn.TypeScriptWorkspace {
         '@aws-cdk/cloud-assembly-schema@^55.2.0',
         // tslog 5 is ESM-only; loaded through require(esm) like yargs.
         'tslog@^5.4.0',
+        // Repo 2 `version` ranges (`^0.1.0`) resolve against an ECR repository's semver tags with npm's
+        // own matching rules.
+        'semver@^7.8.5',
+        '@types/semver@^7.7.1',
         // Autopilot `cdk-cicd exec` resolves the register preload and reuses the config loader from the
         // constructs package. Kept a workspace dependency, NOT folded into the jsii package (D5).
         //
