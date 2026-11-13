@@ -46,7 +46,7 @@
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",
     "@typescript-eslint/typescript-estree": "^8",
-    "aws-cdk-lib": "2.195.0",
+    "aws-cdk-lib": "2.275.0",
     "cdk-nag": "2.37.55",
     "cdk-pipelines-github": "0.4.140",
     "commit-and-tag-version": "^13",
