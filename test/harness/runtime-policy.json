@@ -1,0 +1,25 @@
+{
+  "//": "Maintained runtime-currency policy for the sample apps. Update `deprecationDate` and `latest` from the AWS Lambda runtimes docs (https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html) when AWS publishes changes. The harness (test/harness/check-samples.mjs) FAILS on a runtime past its deprecationDate and WARNS on one that is supported but not the family's `latest`. A sample may intentionally pin an older runtime with an inline `cdk-cicd:allow-runtime <reason>` comment on the same or preceding line.",
+  "asOf": "2026-08-27",
+  "lambda": {
+    "//": "family -> ordered list of runtimes; `latest: true` marks the newest generally-available identifier to prefer. `deprecationDate` is AWS's published Lambda deprecation date (ISO). A preview-only runtime is NOT marked latest.",
+    "nodejs": [
+      { "id": "nodejs22.x", "deprecationDate": "2027-04-30", "latest": true },
+      { "id": "nodejs20.x", "deprecationDate": "2026-04-30" },
+      { "id": "nodejs18.x", "deprecationDate": "2025-09-01" },
+      { "id": "nodejs16.x", "deprecationDate": "2024-06-12" }
+    ],
+    "python": [
+      { "id": "python3.13", "deprecationDate": "2029-06-30", "latest": true },
+      { "id": "python3.12", "deprecationDate": "2028-10-31" },
+      { "id": "python3.11", "deprecationDate": "2027-06-30" },
+      { "id": "python3.10", "deprecationDate": "2026-06-30" },
+      { "id": "python3.9", "deprecationDate": "2025-12-15" },
+      { "id": "python3.8", "deprecationDate": "2024-10-14" }
+    ]
+  },
+  "cdkMagVersion": {
+    "//": "Minimum aws-cdk-lib the samples should track. Bump when the samples are refreshed; the harness WARNS (does not fail) when a sample declares an older floor.",
+    "awsCdkLib": "2.195.0"
+  }
+}

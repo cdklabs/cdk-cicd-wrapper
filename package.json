@@ -10,6 +10,8 @@
     "audit": "projen audit",
     "build": "projen build",
     "check-dependencies": "projen check-dependencies",
+    "check:samples": "projen check:samples",
+    "check:samples:test": "projen check:samples:test",
     "clobber": "projen clobber",
     "commitlint": "projen commitlint",
     "compile": "projen compile",
