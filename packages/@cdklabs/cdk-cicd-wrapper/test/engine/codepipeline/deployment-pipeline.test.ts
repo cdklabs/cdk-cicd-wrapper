@@ -1098,7 +1098,7 @@ describe('Repo 2 autoDeploy targets', () => {
       path.join(bin, 'aws'),
       trace +
         'case "$*" in\n' +
-        '  *get-pipeline-execution*) echo "$FAKE_TRIGGER" ;;\n' +
+        '  *get-pipeline-execution*) [ -n "${FAKE_TRIGGER_FAILS:-}" ] && exit 254; echo "$FAKE_TRIGGER" ;;\n' +
         `  *"ssm get-parameter"*) echo "${previousFingerprint}" ;;\n` +
         'esac\n',
     );
@@ -1136,6 +1136,11 @@ describe('Repo 2 autoDeploy targets', () => {
       rmSync(traceFile);
       runLikeCodeBuild(commands, cwd, { ...base, FAKE_TRIGGER: 'CloudWatchEvent' });
       expect(readFileSync(traceFile, 'utf8')).toMatch(/^npm ci/m);
+
+      // A failed lookup (throttling, a missing permission) fails the run instead of deploying blind.
+      rmSync(traceFile);
+      expect(runLikeCodeBuild(commands, cwd, { ...base, FAKE_TRIGGER_FAILS: '1' })).not.toBe(0);
+      expect(readFileSync(traceFile, 'utf8')).not.toMatch(/^(npm|docker) /m);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

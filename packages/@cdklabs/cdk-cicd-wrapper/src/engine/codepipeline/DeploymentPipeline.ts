@@ -299,11 +299,15 @@ export class DeploymentPipeline extends Construct {
     const unlessSkipped = (command: string) => `if [ -z "\${CDK_CICD_SKIP:-}" ]; then\n${command}\nfi`;
     // An autoDeploy pipeline's creation run (CodePipeline starts every new pipeline once) would race the
     // main pipeline's first deployment of the same target, so it is skipped. The starting pipeline is
-    // in CODEBUILD_INITIATOR (`codepipeline/<name>`); only autoDeploy actions set AUTO_DEPLOY.
+    // in CODEBUILD_INITIATOR (`codepipeline/<name>`); only autoDeploy actions set AUTO_DEPLOY. A failed
+    // lookup fails the run: carrying on would deploy into exactly the race this check exists to prevent.
     const skipCreationRun = [
       'if [ "${AUTO_DEPLOY:-}" = "1" ]; then',
       '  TRIGGER=$(aws codepipeline get-pipeline-execution --pipeline-name "${CODEBUILD_INITIATOR#codepipeline/}" ' +
-        '--pipeline-execution-id "$PIPELINE_EXECUTION_ID" --query "pipelineExecution.trigger.triggerType" --output text)',
+        '--pipeline-execution-id "$PIPELINE_EXECUTION_ID" --query "pipelineExecution.trigger.triggerType" --output text) || {',
+      '    echo "cdk-cicd: could not read what started this autoDeploy run; not deploying" >&2',
+      '    exit 1',
+      '  }',
       '  if [ "$TRIGGER" = "CreatePipeline" ]; then',
       '    echo "cdk-cicd: skipping the creation run of the autoDeploy pipeline for $TARGET_STAGE"',
       '    CDK_CICD_SKIP=1',
