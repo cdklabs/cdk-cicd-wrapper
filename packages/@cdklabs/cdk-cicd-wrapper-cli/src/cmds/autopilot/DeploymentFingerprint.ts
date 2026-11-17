@@ -224,6 +224,26 @@ export function targetFingerprint(
   return sha256(JSON.stringify(input));
 }
 
+/**
+ * The fingerprint of what a deploy action deploys: `targetFingerprint` over the image the deploy itself
+ * resolved. An autoDeploy or range target resolves its image again when it deploys, and a push between
+ * the pre-deploy check and the deploy would otherwise record the fingerprint of an image that never ran.
+ */
+export function deployedFingerprint(
+  config: ResolvedDeploymentConfig,
+  stage: string,
+  region: string | undefined,
+  cwd: string,
+  deployed: { image: string; version?: string },
+  dependencies: Pick<FingerprintDependencies, 'resolveDigest'> = {},
+): string {
+  return targetFingerprint(config, pipelineTarget(config, stage, region), region, cwd, {
+    ...dependencies,
+    resolveLatestImage: () => deployed.image,
+    resolveRangeImage: () => ({ image: deployed.image, version: deployed.version ?? '' }),
+  });
+}
+
 /** The target a pipeline action names, after checking the action still matches the target's topology. */
 export function pipelineTarget(
   config: ResolvedDeploymentConfig,

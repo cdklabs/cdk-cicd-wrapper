@@ -1008,6 +1008,65 @@ describe('autoDeploy targets', () => {
     expect(calls[1]).toContain(`${base}:1.0.0`);
   });
 
+  describe('fingerprintOut', () => {
+    const autoConfig = {
+      image: base,
+      targets: [
+        {
+          stage: 'dev',
+          env: { regions: ['eu-west-1'], regionOrder: 'sequential' },
+          manualApproval: false,
+          autoDeploy: true,
+        },
+      ],
+    } as unknown as ResolvedDeploymentConfig;
+    const newest = `${base}@sha256:${'b'.repeat(64)}`;
+    let out: string;
+    beforeEach(() => {
+      out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cdk-cicd-deployed-')), 'fingerprint');
+    });
+    afterEach(() => fs.rmSync(path.dirname(out), { recursive: true, force: true }));
+    const deploy = (status: number, compute: (stage: string, resolved: { image: string }) => string) => {
+      const calls: string[][] = [];
+      return runFromImage(autoConfig, {
+        yes: true,
+        target: 'dev',
+        readVersion: () => undefined,
+        resolveLatestImage: () => newest,
+        prepareConfig: () => undefined,
+        spawn: (args) => (calls.push(args), { ...ok(), status }),
+        fingerprintOut: { path: out, compute },
+      }).then((code) => ({ code, calls }));
+    };
+
+    test('is written after a successful deploy, from the image that deploy resolved and ran', async () => {
+      const seen: Array<[string, string]> = [];
+      const { code, calls } = await deploy(
+        0,
+        (stage, resolved) => (seen.push([stage, resolved.image]), 'f'.repeat(64)),
+      );
+      expect(code).toBe(0);
+      expect(calls[0]).toContain(newest);
+      expect(seen).toEqual([['dev', newest]]);
+      expect(fs.readFileSync(out, 'utf8')).toBe('f'.repeat(64));
+    });
+
+    test('is not written when the deploy fails', async () => {
+      const { code } = await deploy(3, () => 'f'.repeat(64));
+      expect(code).toBe(3);
+      expect(fs.existsSync(out)).toBe(false);
+    });
+
+    test('a fingerprint that cannot be computed stops before Docker', async () => {
+      const { code, calls } = await deploy(0, () => {
+        throw new Error('ECR unavailable');
+      });
+      expect(code).toBe(1);
+      expect(calls).toHaveLength(0);
+      expect(fs.existsSync(out)).toBe(false);
+    });
+  });
+
   test('a failure to resolve the newest image stops before Docker', async () => {
     const calls: string[][] = [];
     const code = await runFromImage(

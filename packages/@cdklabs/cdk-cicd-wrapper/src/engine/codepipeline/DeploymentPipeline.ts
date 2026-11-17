@@ -58,6 +58,9 @@ const PLAN_VARIABLE_PREFIX = 'CDK_CICD_RUN_';
 /** Where `cdk-cicd pipeline plan` writes its `NAME=true|false` lines inside the Plan build. */
 const PLAN_OUTPUT_PATH = '/tmp/cdk-cicd-plan.env';
 
+/** Where `deploy --from-image --fingerprint-out` writes the fingerprint of what it deployed. */
+const DEPLOYED_FINGERPRINT_PATH = '/tmp/cdk-cicd-deployed-fingerprint';
+
 /** The Plan variable that decides whether the deployment stage at `index` runs. */
 function planVariableName(index: number): string {
   return `${PLAN_VARIABLE_PREFIX}${index + 1}`;
@@ -248,7 +251,11 @@ export class DeploymentPipeline extends Construct {
       CDK_CICD_PARTITION: { value: pipelinePartition },
     };
     const regionFlag = '${TARGET_REGION:+--region "$TARGET_REGION"}';
-    const deployTarget = `npm run cdk-cicd -- deploy --from-image --target "$TARGET_STAGE" ${regionFlag} --yes`;
+    // The deploy writes the fingerprint of the image it actually ran, which is what gets recorded:
+    // an autoDeploy or range target resolves its image again here, after the pre-deploy check.
+    const deployTarget =
+      `npm run cdk-cicd -- deploy --from-image --target "$TARGET_STAGE" ${regionFlag} ` +
+      `--fingerprint-out ${DEPLOYED_FINGERPRINT_PATH} --yes`;
     const fingerprintCommand =
       `npm run --silent cdk-cicd -- pipeline fingerprint --target "$TARGET_STAGE" ${regionFlag} ` +
       '--out /tmp/cdk-cicd-target-fingerprint && TARGET_FINGERPRINT=$(cat /tmp/cdk-cicd-target-fingerprint)';
@@ -268,6 +275,7 @@ export class DeploymentPipeline extends Construct {
     // and retries, re-resolving its image, instead of leaving the target on a stale version. Any other
     // failure exits immediately. One buildspec element, because CodeBuild parses each separately.
     const deployAndRecord = [
+      `rm -f ${DEPLOYED_FINGERPRINT_PATH}`,
       'attempt=1',
       'while :; do',
       '  {',
@@ -289,8 +297,11 @@ export class DeploymentPipeline extends Construct {
       '  fi',
       '  exit "$rc"',
       'done',
+      `DEPLOYED_FINGERPRINT=$(cat ${DEPLOYED_FINGERPRINT_PATH})`,
+      'if [ "${#DEPLOYED_FINGERPRINT}" -ne 64 ] || printf "%s" "$DEPLOYED_FINGERPRINT" | grep -q "[^0-9a-f]"; then ' +
+        'echo "cdk-cicd: the deploy recorded no valid fingerprint" >&2; exit 1; fi',
       'aws ssm put-parameter --name "$TARGET_STATE_PARAMETER" --type String ' +
-        '--value "$TARGET_FINGERPRINT" --overwrite >/dev/null',
+        '--value "$DEPLOYED_FINGERPRINT" --overwrite >/dev/null',
     ].join('\n');
     // CodeBuild runs each buildspec command as its own script: `exit 0` ends only that entry and the
     // phase carries on with the next one, so a skip can never be an exit. A skip sets CDK_CICD_SKIP

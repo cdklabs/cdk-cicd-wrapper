@@ -645,6 +645,16 @@ export async function runFromImage(
     prepareConfig?: (cwd: string, stage: string) => StageConfigMount | undefined;
     spawn?: DockerSpawn;
     resolveExternalId?: (value?: string) => Promise<string | undefined>;
+    /**
+     * With `target`: write `compute(stage, image)` to `path` once the target deployed. `compute` gets the
+     * image this run resolved and deploys -- an autoDeploy or range target resolves its own at run time --
+     * and runs before the deploy, so a failure to compute it stops before any change. The CD pipeline
+     * records this, not a fingerprint resolved earlier that a newer push could have overtaken.
+     */
+    fingerprintOut?: {
+      readonly path: string;
+      readonly compute: (stage: string, resolved: { image: string; version?: string }) => string;
+    };
   },
 ): Promise<number> {
   const spawn = options.spawn ?? spawnDocker;
@@ -713,8 +723,9 @@ export async function runFromImage(
     // matching version. Bump that file, commit, and only this stage redeploys. An autoDeploy target
     // runs the newest pushed image instead, or the newest within its range.
     let image: string | undefined;
+    let resolved: { image: string; version?: string } | undefined;
     try {
-      const resolved = resolveDeployImage(target, config, cwd, {
+      resolved = resolveDeployImage(target, config, cwd, {
         readVersion: options.readVersion,
         resolveLatestImage: options.resolveLatestImage,
         resolveRangeImage: options.resolveRangeImage,
@@ -729,11 +740,24 @@ export async function runFromImage(
       logger.error(error instanceof Error ? error.message : String(error));
       return 1;
     }
-    if (image === undefined) {
+    if (image === undefined || resolved === undefined) {
       logger.error(
         `cdk-cicd deploy --from-image: target '${target.stage}' has no image -- set the config-level (or target) image, plus a version in config/${target.stage}.json`,
       );
       return 1;
+    }
+
+    let deployedFingerprint: string | undefined;
+    if (options.fingerprintOut !== undefined && !validateOnly) {
+      try {
+        deployedFingerprint = options.fingerprintOut.compute(target.stage, resolved);
+      } catch (error) {
+        logger.error(
+          `cdk-cicd deploy --from-image: could not fingerprint target '${target.stage}': ` +
+            (error instanceof Error ? error.message : String(error)),
+        );
+        return 1;
+      }
     }
 
     let externalId: string | undefined;
@@ -807,6 +831,9 @@ export async function runFromImage(
     }
     if (firstFailure !== undefined) {
       return firstFailure;
+    }
+    if (deployedFingerprint !== undefined) {
+      writeFileSync(options.fingerprintOut!.path, deployedFingerprint);
     }
   }
   return 0;

@@ -136,8 +136,9 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const record = spec.indexOf('ssm put-parameter');
     expect(deploy).toBeGreaterThan(-1);
     expect(record).toBeGreaterThan(deploy);
-    // State is recorded only after the deploy loop exits successfully.
-    expect(spec).toMatch(/done\\+naws ssm put-parameter/);
+    // State is recorded only after the deploy loop exits successfully, and it is what the deploy ran.
+    expect(spec).toMatch(/done\\+nDEPLOYED_FINGERPRINT=\$\(cat [^)]*\).*aws ssm put-parameter/);
+    expect(commandText).toContain('--value "$DEPLOYED_FINGERPRINT"');
 
     const policies = JSON.stringify(t.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('ssm:GetParameter');
@@ -192,7 +193,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const t = render(cfg());
     const project = deployProject(t);
     const commands = JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[];
-    const deployAndRecord = commands.find((command) => command.includes('done\naws ssm put-parameter'))!;
+    const deployAndRecord = commands.find((command) => command.includes('done\nDEPLOYED_FINGERPRINT='))!;
     expect(deployAndRecord).toBeDefined();
 
     const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-state-write-'));
@@ -205,7 +206,16 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
         path.join(cwd, 'package.json'),
         JSON.stringify({ private: true, scripts: { 'cdk-cicd': './bin/fake-cdk-cicd' } }),
       );
-      writeFileSync(fakeCdkCicd, '#!/bin/sh\nprintf "deploy\\n" >> "$TRACE_FILE"\nexit "${DEPLOY_EXIT:-0}"\n');
+      // A successful fake deploy writes the fingerprint of what it ran to its --fingerprint-out file.
+      const recordDeployed =
+        'for a in "$@"; do [ "$prev" = --fingerprint-out ] && out="$a"; prev="$a"; done\n' +
+        'record() { printf "%s" "$DEPLOYED_FINGERPRINT_VALUE" > "$out"; }\n';
+      writeFileSync(
+        fakeCdkCicd,
+        '#!/bin/sh\n' +
+          recordDeployed +
+          'printf "deploy\\n" >> "$TRACE_FILE"\n[ "${DEPLOY_EXIT:-0}" -eq 0 ] && record\nexit "${DEPLOY_EXIT:-0}"\n',
+      );
       writeFileSync(aws, '#!/bin/sh\nprintf "%s\\n" "$*" >> "$TRACE_FILE"\n');
       chmodSync(fakeCdkCicd, 0o755);
       chmodSync(aws, 0o755);
@@ -221,6 +231,7 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
             TARGET_STAGE: 'dev',
             TARGET_STATE_PARAMETER: '/cdk-cicd/test/dev',
             TARGET_FINGERPRINT: 'a'.repeat(64),
+            DEPLOYED_FINGERPRINT_VALUE: 'b'.repeat(64),
             TRACE_FILE: traceFile,
           },
         });
@@ -233,7 +244,11 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       const successfulTrace = path.join(cwd, 'successful.trace');
       const successful = run(0, successfulTrace);
       expect(successful.status).toBe(0);
-      expect(readFileSync(successfulTrace, 'utf8')).toContain('ssm put-parameter');
+      // The recorded fingerprint is the one the deploy wrote, not the one checked before it: an
+      // autoDeploy or range target may have resolved a newer image in between.
+      expect(readFileSync(successfulTrace, 'utf8')).toContain(
+        `ssm put-parameter --name /cdk-cicd/test/dev --type String --value ${'b'.repeat(64)}`,
+      );
 
       // A concurrent update of the same stack (the autoDeploy pipeline racing the main one) is retried;
       // the first attempt fails with an *_IN_PROGRESS error and the second succeeds.
@@ -241,9 +256,11 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       chmodSync(path.join(bin, 'sleep'), 0o755);
       writeFileSync(
         fakeCdkCicd,
-        '#!/bin/sh\nprintf "deploy\\n" >> "$TRACE_FILE"\n' +
+        '#!/bin/sh\n' +
+          recordDeployed +
+          'printf "deploy\\n" >> "$TRACE_FILE"\n' +
           'if [ ! -f "$TRACE_FILE.once" ]; then touch "$TRACE_FILE.once"; ' +
-          'echo "Stack app is in UPDATE_IN_PROGRESS state and can not be updated"; exit 1; fi\nexit 0\n',
+          'echo "Stack app is in UPDATE_IN_PROGRESS state and can not be updated"; exit 1; fi\nrecord\nexit 0\n',
       );
       const retriedTrace = path.join(cwd, 'retried.trace');
       const retried = run(0, retriedTrace);
@@ -253,10 +270,12 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       // The same race can surface as CDK's shared change set having been replaced by the other deploy.
       writeFileSync(
         fakeCdkCicd,
-        '#!/bin/sh\nprintf "deploy\\n" >> "$TRACE_FILE"\n' +
+        '#!/bin/sh\n' +
+          recordDeployed +
+          'printf "deploy\\n" >> "$TRACE_FILE"\n' +
           'if [ ! -f "$TRACE_FILE.once" ]; then touch "$TRACE_FILE.once"; ' +
           'echo "ChangeSet [arn:aws:cloudformation:eu-west-1:111111111111:changeSet/cdk-deploy-change-set/x] does not exist"; ' +
-          'exit 1; fi\nexit 0\n',
+          'exit 1; fi\nrecord\nexit 0\n',
       );
       const changeSetTrace = path.join(cwd, 'changeset.trace');
       const changeSetRetried = run(0, changeSetTrace);
@@ -359,7 +378,8 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
     const commandText = (JSON.parse(project.Properties.Source.BuildSpec).phases.build.commands as string[]).join('\n');
     // A parallel action passes its Region to the CLI, which deploys just that Region of the target.
     expect(commandText).toContain(
-      'deploy --from-image --target "$TARGET_STAGE" ${TARGET_REGION:+--region "$TARGET_REGION"} --yes',
+      'deploy --from-image --target "$TARGET_STAGE" ${TARGET_REGION:+--region "$TARGET_REGION"} ' +
+        '--fingerprint-out /tmp/cdk-cicd-deployed-fingerprint --yes',
     );
     expect(commandText).not.toContain('.cdk-cicd-target');
   });

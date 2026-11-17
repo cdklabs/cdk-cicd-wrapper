@@ -13,6 +13,7 @@ import {
 } from '@cdklabs/cdk-cicd-wrapper';
 import {
   assertPipelineShape,
+  deployedFingerprint,
   parseStagePlans,
   pipelineTarget,
   planOutput,
@@ -169,6 +170,17 @@ describe('targetFingerprint', () => {
     expect(lookups).toEqual([['app', '1.2.3']]);
     expect(fingerprint(DIGEST_B)).not.toBe(first);
     expect(fingerprint()).toBe(first);
+  });
+
+  test('deployedFingerprint records the image the deploy ran, not the one checked before it', () => {
+    const auto = { ...config, targets: [{ ...target, autoDeploy: true }] };
+    const image = (digest: string) => `111111111111.dkr.ecr.eu-west-1.amazonaws.com/app@${digest}`;
+    const planned = (digest: string) =>
+      targetFingerprint(auto, auto.targets[0], 'eu-west-1', cwd, { resolveLatestImage: () => image(digest) });
+    // The pre-deploy check saw A; B was pushed before the deploy resolved its image.
+    const deployed = deployedFingerprint(auto, 'dev', 'eu-west-1', cwd, { image: image(DIGEST_B) });
+    expect(deployed).toBe(planned(DIGEST_B));
+    expect(deployed).not.toBe(planned(DIGEST_A));
   });
 
   test('a digest-pinned image needs no lookup', () => {
