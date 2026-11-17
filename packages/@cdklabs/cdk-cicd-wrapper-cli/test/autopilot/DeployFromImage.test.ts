@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as childProcess from 'child_process';
 import { SpawnSyncReturns } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -31,6 +32,13 @@ import {
   DEPLOY_ROLE_FLAG,
   STAGE_CONFIG_SOURCE_FLAG,
 } from '../../src/cmds/autopilot/ExecCommand';
+
+// spawnSync stays the real one except where a test replaces `aws` (withFakeAws); core-module properties
+// cannot be spied on directly.
+jest.mock('child_process', () => {
+  const actual = jest.requireActual('child_process');
+  return { ...actual, spawnSync: jest.fn(actual.spawnSync) };
+});
 
 const IMAGE = 'acct.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.4.2';
 
@@ -1002,6 +1010,39 @@ describe('autoDeploy targets', () => {
 
   test('resolveLatestEcrImage refuses a non-ECR image', () => {
     expect(() => resolveLatestEcrImage('docker.io/library/app:1')).toThrow(/needs an ECR image/);
+  });
+
+  /**
+   * Run `fn` with `aws` replaced: stdout is `jsonOutput` for `--output json`, else `textOutput` (what the
+   * CLI prints when it applies --query per result page). Never reaches the real AWS CLI.
+   */
+  const withFakeAws = (jsonOutput: string, textOutput: string, fn: () => void) => {
+    const spawnSync = childProcess.spawnSync as unknown as jest.Mock;
+    spawnSync.mockImplementation((command: string, args: string[]) => {
+      if (command !== 'aws') throw new Error(`unexpected spawn of ${command}`);
+      const json = args[args.indexOf('--output') + 1] === 'json';
+      return { status: 0, stdout: json ? jsonOutput : textOutput, stderr: '' };
+    });
+    try {
+      fn();
+    } finally {
+      spawnSync.mockReset();
+      spawnSync.mockImplementation(jest.requireActual('child_process').spawnSync);
+    }
+  };
+  const ecrBase = '111111111111.dkr.ecr.eu-west-1.amazonaws.com/app';
+
+  test('resolveLatestEcrImage takes one answer for the whole repository, not one per result page', () => {
+    const newest = `sha256:${'c'.repeat(64)}`;
+    withFakeAws(`"${newest}"\n`, `${newest}\nsha256:${'d'.repeat(64)}\n`, () => {
+      expect(resolveLatestEcrImage(`${ecrBase}:1`)).toBe(`${ecrBase}@${newest}`);
+    });
+  });
+
+  test('resolveLatestEcrImage names a repository with no tagged image', () => {
+    withFakeAws('null\n', 'None\n', () => {
+      expect(() => resolveLatestEcrImage(`${ecrBase}:1`)).toThrow(/has no tagged image/);
+    });
   });
 });
 

@@ -18,6 +18,7 @@ import { spawn as spawnProcess, spawnSync } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 import type { ResolvedDeploymentConfig, ResolvedDeploymentTarget } from '@cdklabs/cdk-cicd-wrapper';
+import { parseEcrRepository } from '@cdklabs/cdk-cicd-wrapper';
 import * as semver from 'semver';
 import {
   CFN_EXEC_ROLE_FLAG,
@@ -190,36 +191,13 @@ export function isVersionRange(version: string): boolean {
  */
 export const resolveRangeEcrImage: RangeImageResolver = (baseImage, range) => {
   const repository = imageRepository(baseImage);
-  const match = ECR_REPOSITORY_URI.exec(repository);
-  if (match === null) {
-    throw new Error(`cdk-cicd deploy --from-image: version range '${range}' needs an ECR image, got '${baseImage}'`);
-  }
-  const [, , account, region, repositoryName] = match;
-  const result = spawnSync(
-    'aws',
-    [
-      'ecr',
-      'describe-images',
-      '--registry-id',
-      account,
-      '--repository-name',
-      repositoryName,
-      '--region',
-      region,
-      '--query',
-      'imageDetails[?imageTags].[imageDigest, imageTags]',
-      '--output',
-      'json',
-      '--no-cli-pager',
-    ],
-    { encoding: 'utf-8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 },
+  const listing = describeRepositoryImages(
+    baseImage,
+    'imageDetails[?imageTags].[imageDigest, imageTags]',
+    `version range '${range}'`,
   );
-  if (result.error !== undefined || result.status !== 0) {
-    const detail = result.error?.message ?? String(result.stderr ?? '').trim();
-    throw new Error(`cdk-cicd deploy --from-image: could not list the images in ${repository}: ${detail}`);
-  }
   const digestByVersion = new Map<string, string>();
-  for (const [digest, tags] of JSON.parse(String(result.stdout)) as Array<[string, string[]]>) {
+  for (const [digest, tags] of listing as Array<[string, string[]]>) {
     for (const tag of tags) {
       if (semver.valid(tag) === tag) digestByVersion.set(tag, digest);
     }
@@ -283,7 +261,47 @@ export function resolveDeployImage(
   return { image };
 }
 
-const ECR_REPOSITORY_URI = /^(([0-9]{12})\.dkr\.ecr(?:-fips)?\.([a-z0-9-]+)\.[^/]+)\/(.+)$/;
+/**
+ * `aws ecr describe-images` over the whole repository of `baseImage`, filtered by `query`, parsed. The
+ * one ECR listing both image resolvers use. Always `--output json`: with `--output text` the CLI applies
+ * `--query` to each result page separately, so "the newest image" came back once per page (100 images)
+ * instead of once for the repository.
+ */
+function describeRepositoryImages(baseImage: string, query: string, purpose: string): unknown {
+  const repository = imageRepository(baseImage);
+  const ecr = parseEcrRepository(repository);
+  if (ecr === undefined) {
+    throw new Error(`cdk-cicd deploy --from-image: ${purpose} needs an ECR image, got '${baseImage}'`);
+  }
+  const result = spawnSync(
+    'aws',
+    [
+      'ecr',
+      'describe-images',
+      '--registry-id',
+      ecr.account,
+      '--repository-name',
+      ecr.repositoryName,
+      '--region',
+      ecr.region,
+      '--query',
+      query,
+      '--output',
+      'json',
+      '--no-cli-pager',
+    ],
+    { encoding: 'utf-8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 },
+  );
+  if (result.error !== undefined || result.status !== 0) {
+    const detail = result.error?.message ?? String(result.stderr ?? '').trim();
+    throw new Error(`cdk-cicd deploy --from-image: could not list the images in ${repository}: ${detail}`);
+  }
+  try {
+    return JSON.parse(String(result.stdout));
+  } catch {
+    throw new Error(`cdk-cicd deploy --from-image: unreadable describe-images output for ${repository}`);
+  }
+}
 
 /** The repository part of an image reference: everything before a trailing `:tag` or `@digest`. */
 export function imageRepository(image: string): string {
@@ -301,33 +319,13 @@ export function imageRepository(image: string): string {
  */
 export const resolveLatestEcrImage: LatestImageResolver = (baseImage) => {
   const repository = imageRepository(baseImage);
-  const match = ECR_REPOSITORY_URI.exec(repository);
-  if (match === null) {
-    throw new Error(`cdk-cicd deploy --from-image: autoDeploy needs an ECR image, got '${baseImage}'`);
-  }
-  const [, , account, region, repositoryName] = match;
-  const result = spawnSync(
-    'aws',
-    [
-      'ecr',
-      'describe-images',
-      '--registry-id',
-      account,
-      '--repository-name',
-      repositoryName,
-      '--region',
-      region,
-      '--query',
-      'sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest',
-      '--output',
-      'text',
-      '--no-cli-pager',
-    ],
-    { encoding: 'utf-8', timeout: 60_000 },
+  const digest = describeRepositoryImages(
+    baseImage,
+    'sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest',
+    'autoDeploy',
   );
-  const digest = String(result.stdout ?? '').trim();
-  if (result.error !== undefined || result.status !== 0 || !/^sha256:[0-9a-f]{64}$/.test(digest)) {
-    const detail = result.error?.message ?? (String(result.stderr ?? '').trim() || `got '${digest}'`);
+  if (typeof digest !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(digest)) {
+    const detail = digest === null ? 'it has no tagged image' : `got '${JSON.stringify(digest)}'`;
     throw new Error(`cdk-cicd deploy --from-image: could not resolve the newest image in ${repository}: ${detail}`);
   }
   return `${repository}@${digest}`;
