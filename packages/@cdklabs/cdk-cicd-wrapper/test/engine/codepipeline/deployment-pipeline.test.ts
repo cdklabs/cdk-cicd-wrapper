@@ -508,6 +508,13 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
         Match.stringLikeRegexp('identity-side pull permissions only.*owner-account repository policy'),
       ),
     ).toHaveLength(1);
+    // Plan has its own role; an owner policy naming only the Deploy role would silently disable skipping.
+    expect(
+      Annotations.fromStack(stack).findWarning(
+        '*',
+        Match.stringLikeRegexp('Deploy role.*Plan role ecr:DescribeImages'),
+      ),
+    ).toHaveLength(1);
   });
 
   test('uses CodeBuild credentials for managed build images and repository grants for private ECR images', () => {

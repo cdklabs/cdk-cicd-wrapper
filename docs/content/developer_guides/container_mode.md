@@ -258,9 +258,12 @@ The deployer container gets the CodeBuild role's credentials from the container-
 No access key is written into the build's environment or its log.
 
 For an image in an ECR account different from the Repo 2 pipeline, the repository owner must grant the
-generated CodeBuild role `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, and
-`ecr:BatchCheckLayerAvailability`, plus `ecr:DescribeImages` so mutable tags can be resolved to an
-immutable digest before the change check. Set `crossAccountEcrRepositoryPolicyConfigured: true` only
+generated Deploy CodeBuild role `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`,
+`ecr:BatchCheckLayerAvailability` and `ecr:DescribeImages`, and the generated Plan CodeBuild role
+`ecr:DescribeImages`. Both use it to resolve a mutable tag, a range or the newest `autoDeploy` image
+to an immutable digest for the change check. Without the Plan grant, Plan cannot check any target that
+uses such an image from that repository, so those targets' stages and approvals run on every commit. A
+target pinned by digest needs no lookup. Granting the pipeline account covers both roles. Set `crossAccountEcrRepositoryPolicyConfigured: true` only
 after that owner-side policy exists; otherwise pipeline rendering fails closed. This acknowledgement
 covers the deployer image pulled after the build starts. A private ECR image used as CodeBuild's own
 environment image must still be in the pipeline Region.

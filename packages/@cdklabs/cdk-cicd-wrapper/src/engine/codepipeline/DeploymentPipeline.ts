@@ -1077,9 +1077,11 @@ function validateEcrRepositoryAccount(
   Annotations.of(scope).addWarningV2(
     `cdk-cicd:cross-account-ecr-${createHash('sha256').update(repositoryArn).digest('hex').slice(0, 12)}`,
     `cdk-cicd: cross-account ECR access acknowledged for ${repositoryArn}. This stack grants the Repo 2 ` +
-      'CodeBuild role identity-side pull permissions only; keep the owner-account repository policy ' +
-      'granting that generated role/account ecr:BatchCheckLayerAvailability, ecr:BatchGetImage, ' +
-      'ecr:DescribeImages, and ecr:GetDownloadUrlForLayer.',
+      'CodeBuild roles identity-side pull permissions only; keep the owner-account repository policy ' +
+      'granting the generated Deploy role (or this account) ecr:BatchCheckLayerAvailability, ' +
+      'ecr:BatchGetImage, ecr:DescribeImages, and ecr:GetDownloadUrlForLayer, and the generated Plan ' +
+      'role ecr:DescribeImages. Without the Plan grant, every target that takes a tag, range or the ' +
+      'newest image from this repository runs its stage and approval on every commit.',
   );
 }
 
