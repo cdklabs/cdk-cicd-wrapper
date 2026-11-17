@@ -329,6 +329,59 @@ describe('planStages', () => {
     expect(decisions[1].reasons[0]).toContain('AccessDenied');
   });
 
+  test('a unit listed by a gate and by its own stage is decided once, so both stages agree', () => {
+    const state: Record<string, string> = { '/state/dev': current('dev'), '/state/prod': '' };
+    let reads = 0;
+    const guarded: StagePlan[] = [
+      {
+        variable: 'CDK_CICD_RUN_1',
+        stage: 'Deploy-1',
+        units: [
+          { target: 'prod', parameter: '/state/prod' },
+          { target: 'dev', parameter: '/state/dev' },
+        ],
+      },
+      { variable: 'CDK_CICD_RUN_2', stage: 'Deploy-2', units: [{ target: 'dev', parameter: '/state/dev' }] },
+    ];
+    // The second read of /state/dev would fail (throttled); it must never happen.
+    const decisions = planStages(config, guarded, cwd, (name) => {
+      if (name === '/state/dev' && ++reads > 1) throw new Error('ThrottlingException');
+      return state[name];
+    });
+    expect(reads).toBe(1);
+    expect(decisions[0].reasons).toEqual(['prod: never deployed', 'dev: unchanged']);
+    expect(decisions[1]).toMatchObject({ run: false, reasons: ['dev: unchanged'] });
+  });
+
+  test('resolves an image once per run, not once per Region of a parallel target', () => {
+    const auto = { ...parallelConfig(), targets: [{ ...parallelConfig().targets[0], autoDeploy: true }] };
+    writeFileSync(path.join(cwd, 'config', 'dev.json'), JSON.stringify({ version: '1.0.0' }));
+    const resolved: string[] = [];
+    const decisions = planStages(
+      auto,
+      [
+        {
+          variable: 'CDK_CICD_RUN_1',
+          stage: 'Deploy-1',
+          units: [
+            { target: 'dev', region: 'eu-west-1', parameter: '/state/dev/eu-west-1' },
+            { target: 'dev', region: 'us-east-1', parameter: '/state/dev/us-east-1' },
+          ],
+        },
+      ],
+      cwd,
+      () => '',
+      {
+        resolveLatestImage: (image) => (
+          resolved.push(image),
+          `111111111111.dkr.ecr.eu-west-1.amazonaws.com/app@${DIGEST_A}`
+        ),
+      },
+    );
+    expect(decisions[0].reasons).toEqual(['dev (eu-west-1): never deployed', 'dev (us-east-1): never deployed']);
+    expect(resolved).toHaveLength(1);
+  });
+
   test('a stage runs when any of its units changed', () => {
     const state: Record<string, string> = { '/state/dev': current('dev'), '/state/prod': current('prod') };
     const both: StagePlan[] = [

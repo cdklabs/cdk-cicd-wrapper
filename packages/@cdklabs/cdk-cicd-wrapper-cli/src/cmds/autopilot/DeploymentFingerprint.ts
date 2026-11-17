@@ -21,7 +21,13 @@ import type {
   ResolvedDeploymentTarget,
 } from '@cdklabs/cdk-cicd-wrapper';
 import { deploymentPipelineShapeFingerprint, parseEcrRepository } from '@cdklabs/cdk-cicd-wrapper';
-import { RangeImageResolver, readStageFile, resolveDeployImage } from './DeployFromImage';
+import {
+  RangeImageResolver,
+  readStageFile,
+  resolveDeployImage,
+  resolveLatestEcrImage,
+  resolveRangeEcrImage,
+} from './DeployFromImage';
 
 /** What the CD pipeline's CodeBuild projects provide to check the checked-out deploy.config. */
 export interface PipelineContext {
@@ -307,28 +313,45 @@ export function planStages(
   readState: StateReader = readStateParameter,
   dependencies: FingerprintDependencies = {},
 ): StageDecision[] {
-  return plans.map((plan) => {
-    const reasons: string[] = [];
-    let run = false;
-    for (const unit of plan.units) {
-      const label = unit.region === undefined ? unit.target : `${unit.target} (${unit.region})`;
-      try {
-        const target = pipelineTarget(config, unit.target, unit.region);
-        const current = targetFingerprint(config, target, unit.region, cwd, dependencies);
-        const previous = readState(unit.parameter);
-        if (previous === current) {
-          reasons.push(`${label}: unchanged`);
-        } else {
-          run = true;
-          reasons.push(`${label}: ${previous === '' ? 'never deployed' : 'changed'}`);
-        }
-      } catch (error) {
-        run = true;
-        reasons.push(`${label}: could not be checked (${(error as Error).message}); running it`);
-      }
+  // Resolve each image once per run: every Region of a parallel target, and a gate's guarded targets,
+  // would otherwise list the same ECR repository again for each unit.
+  const cached: FingerprintDependencies = {
+    resolveDigest: memoize(dependencies.resolveDigest ?? describeEcrDigest),
+    resolveLatestImage: memoize(dependencies.resolveLatestImage ?? resolveLatestEcrImage),
+    resolveRangeImage: memoize(dependencies.resolveRangeImage ?? resolveRangeEcrImage),
+  };
+  // A unit listed by two stages (a gate and the targets it guards) is decided once, so both act on the
+  // same answer: a throttled second SSM read must not run a target whose gate was skipped.
+  const decideUnit = memoize((target: string, region: string | undefined, parameter: string) => {
+    const label = region === undefined ? target : `${target} (${region})`;
+    try {
+      const current = targetFingerprint(config, pipelineTarget(config, target, region), region, cwd, cached);
+      const previous = readState(parameter);
+      if (previous === current) return { changed: false, reason: `${label}: unchanged` };
+      return { changed: true, reason: `${label}: ${previous === '' ? 'never deployed' : 'changed'}` };
+    } catch (error) {
+      return { changed: true, reason: `${label}: could not be checked (${(error as Error).message}); running it` };
     }
-    return { variable: plan.variable, stage: plan.stage, run, reasons };
   });
+  return plans.map((plan) => {
+    const decisions = plan.units.map((unit) => decideUnit(unit.target, unit.region, unit.parameter));
+    return {
+      variable: plan.variable,
+      stage: plan.stage,
+      run: decisions.some((decision) => decision.changed),
+      reasons: decisions.map((decision) => decision.reason),
+    };
+  });
+}
+
+/** `fn` with its results cached by argument list. A thrown error is not cached. */
+function memoize<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
+  const results = new Map<string, R>();
+  return (...args: A) => {
+    const key = JSON.stringify(args);
+    if (!results.has(key)) results.set(key, fn(...args));
+    return results.get(key) as R;
+  };
 }
 
 /** The `NAME=true|false` lines the Plan build sources and exports. */
