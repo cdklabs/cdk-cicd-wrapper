@@ -14,10 +14,12 @@
 // selected via `CONFIG_FILE` so it replaces any config baked into the image. Each run pins a single
 // region via `deploy --region`, and the image need not declare the stage at all.
 
-import { spawn as spawnProcess } from 'child_process';
+import { spawn as spawnProcess, spawnSync } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 import type { ResolvedDeploymentConfig, ResolvedDeploymentTarget } from '@cdklabs/cdk-cicd-wrapper';
+import { parseEcrRepository } from '@cdklabs/cdk-cicd-wrapper';
+import * as semver from 'semver';
 import {
   CFN_EXEC_ROLE_FLAG,
   COMPLIANCE_LOG_BUCKET_ACCOUNT_FLAG,
@@ -97,9 +99,17 @@ const AWS_ACCOUNT_ID = /^\d{12}$/;
 const AWS_REGION = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+-\d+$/;
 const S3_BUCKET_NAME = /^(?!\d{1,3}(?:\.\d{1,3}){3}$)(?!.*\.\.)[a-z0-9](?:[a-z0-9.-]{1,61}[a-z0-9])$/;
 
-/** Reads the deployed `version` (hash or semver) for a stage from `config/<stage>.json`. Injectable for tests. */
-export type VersionReader = (cwd: string, stage: string) => string | undefined;
-export const readVersionFromConfig: VersionReader = (cwd, stage) => {
+/**
+ * Repo 2's `config/<stage>.json` as every consumer reads it -- the deploy and the pipeline's change
+ * detection alike, so they validate it the same way: undefined when the file is absent, otherwise its
+ * `version` and the remaining keys. The version must be a non-empty string unless `versionOptional`
+ * (an autoDeploy target, which follows the newest image and needs no version).
+ */
+export function readStageFile(
+  cwd: string,
+  stage: string,
+  versionOptional = false,
+): { version?: string; stageConfig: { [key: string]: unknown } } | undefined {
   const file = path.join(cwd, 'config', `${stage}.json`);
   if (!existsSync(file)) return undefined;
 
@@ -113,17 +123,24 @@ export const readVersionFromConfig: VersionReader = (cwd, stage) => {
     );
   }
 
-  const version =
-    document !== null && typeof document === 'object' && !Array.isArray(document)
-      ? (document as { version?: unknown }).version
-      : undefined;
+  const isObject = document !== null && typeof document === 'object' && !Array.isArray(document);
+  const { [VERSION_KEY]: version, ...stageConfig } = (isObject ? document : {}) as { [key: string]: unknown };
+  if (isObject && version === undefined && versionOptional) return { stageConfig };
   if (typeof version !== 'string' || version.length === 0 || version.trim() !== version) {
     throw new Error(
       `cdk-cicd deploy --from-image: ${file} must contain a non-empty string 'version' with no surrounding whitespace`,
     );
   }
-  return version;
-};
+  return { version, stageConfig };
+}
+
+/**
+ * Reads the deployed `version` (hash or semver) for a stage from `config/<stage>.json`; see
+ * `readStageFile` for `versionOptional`. Injectable for tests.
+ */
+export type VersionReader = (cwd: string, stage: string, versionOptional?: boolean) => string | undefined;
+export const readVersionFromConfig: VersionReader = (cwd, stage, versionOptional) =>
+  readStageFile(cwd, stage, versionOptional)?.version;
 
 /**
  * The full deployer image to run for a target. A target-level digest is the strongest possible pin and
@@ -162,6 +179,172 @@ export function resolveTargetImage(
   const repository = lastColon > lastSlash ? base.slice(0, lastColon) : base;
   return `${repository}:${version}`;
 }
+
+/** Resolves the newest tagged image of an ECR repository, as `<repository>@<digest>`. Injectable for tests. */
+export type LatestImageResolver = (baseImage: string) => string;
+
+/**
+ * Resolves the highest semver-tagged image of an ECR repository that satisfies `range`, as
+ * `<repository>@<digest>` plus the matched version. Injectable for tests.
+ */
+export type RangeImageResolver = (baseImage: string, range: string) => { image: string; version: string };
+
+/**
+ * Whether a Repo 2 `version` is a semver range (`^0.1.0`, `~0.2`, `0.2.x`, `>=0.2.0 <0.3.0`) rather than
+ * an exact image tag. Only values with a range operator or an `x`/`*` placeholder count: a bare number
+ * such as a short all-digit commit hash is a valid semver range too, but must stay a literal tag.
+ */
+export function isVersionRange(version: string): boolean {
+  const hasRangeSyntax = /[\^~<>=*|\s]/.test(version) || /(^|\.)[xX*](\.|$)/.test(version);
+  return hasRangeSyntax && semver.validRange(version) !== null;
+}
+
+/**
+ * The image a range resolves to: the highest semver-valid tag of the repository that satisfies `range`
+ * (npm rules -- prereleases only when the range names one), pinned by its digest. Other tags (commit
+ * SHAs, `latest`) are ignored.
+ */
+export const resolveRangeEcrImage: RangeImageResolver = (baseImage, range) => {
+  const repository = imageRepository(baseImage);
+  const listing = describeRepositoryImages(
+    baseImage,
+    'imageDetails[?imageTags].[imageDigest, imageTags]',
+    `version range '${range}'`,
+  );
+  const digestByVersion = new Map<string, string>();
+  for (const [digest, tags] of listing as Array<[string, string[]]>) {
+    for (const tag of tags) {
+      if (semver.valid(tag) === tag) digestByVersion.set(tag, digest);
+    }
+  }
+  return pickRangeImage(repository, range, digestByVersion);
+};
+
+/** The highest version in `digestByVersion` satisfying `range`, pinned by digest. Exported for tests. */
+export function pickRangeImage(
+  repository: string,
+  range: string,
+  digestByVersion: ReadonlyMap<string, string>,
+): { image: string; version: string } {
+  const version = semver.maxSatisfying([...digestByVersion.keys()], range);
+  if (version === null) {
+    throw new Error(
+      `cdk-cicd deploy --from-image: no image version in ${repository} satisfies '${range}' ` +
+        `(semver tags: ${[...digestByVersion.keys()].sort(semver.compare).join(', ') || 'none'})`,
+    );
+  }
+  const digest = digestByVersion.get(version)!;
+  if (!/^sha256:[0-9a-f]{64}$/.test(digest)) {
+    throw new Error(`cdk-cicd deploy --from-image: ECR returned an invalid digest for ${repository}:${version}`);
+  }
+  return { image: `${repository}@${digest}`, version };
+}
+
+/** The image resolvers a deploy decision needs; each defaults to the ECR-backed implementation. */
+export interface ImageResolvers {
+  readonly readVersion?: VersionReader;
+  readonly resolveLatestImage?: LatestImageResolver;
+  readonly resolveRangeImage?: RangeImageResolver;
+}
+
+/**
+ * The image a target deploys, applying every Repo 2 rule in one place -- `deploy --from-image` and the
+ * pipeline's change detection both use it, so they can never disagree:
+ *
+ *   - an exact `version` (`0.2.34`, a commit SHA) is the tag;
+ *   - a range `version` (`^0.1.0`) resolves to the highest matching version, pinned by digest;
+ *   - an `autoDeploy` target follows the newest pushed image, or the newest within its range.
+ *
+ * Returns undefined when the target has no image at all.
+ */
+export function resolveDeployImage(
+  target: ResolvedDeploymentTarget,
+  config: ResolvedDeploymentConfig,
+  cwd: string,
+  resolvers: ImageResolvers = {},
+): { image: string; version?: string } | undefined {
+  const version = (resolvers.readVersion ?? readVersionFromConfig)(cwd, target.stage, target.autoDeploy === true);
+  const image = resolveTargetImage(target, config, cwd, () => version);
+  if (image === undefined) return undefined;
+  const pinnedByTarget = target.image?.includes('@') === true;
+  if (version !== undefined && !pinnedByTarget && isVersionRange(version)) {
+    return (resolvers.resolveRangeImage ?? resolveRangeEcrImage)(imageRepository(image), version);
+  }
+  if (target.autoDeploy === true) {
+    return { image: (resolvers.resolveLatestImage ?? resolveLatestEcrImage)(image) };
+  }
+  return { image };
+}
+
+/**
+ * `aws ecr describe-images` over the whole repository of `baseImage`, filtered by `query`, parsed. The
+ * one ECR listing both image resolvers use. Always `--output json`: with `--output text` the CLI applies
+ * `--query` to each result page separately, so "the newest image" came back once per page (100 images)
+ * instead of once for the repository.
+ */
+function describeRepositoryImages(baseImage: string, query: string, purpose: string): unknown {
+  const repository = imageRepository(baseImage);
+  const ecr = parseEcrRepository(repository);
+  if (ecr === undefined) {
+    throw new Error(`cdk-cicd deploy --from-image: ${purpose} needs an ECR image, got '${baseImage}'`);
+  }
+  const result = spawnSync(
+    'aws',
+    [
+      'ecr',
+      'describe-images',
+      '--registry-id',
+      ecr.account,
+      '--repository-name',
+      ecr.repositoryName,
+      '--region',
+      ecr.region,
+      '--query',
+      query,
+      '--output',
+      'json',
+      '--no-cli-pager',
+    ],
+    { encoding: 'utf-8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 },
+  );
+  if (result.error !== undefined || result.status !== 0) {
+    const detail = result.error?.message ?? String(result.stderr ?? '').trim();
+    throw new Error(`cdk-cicd deploy --from-image: could not list the images in ${repository}: ${detail}`);
+  }
+  try {
+    return JSON.parse(String(result.stdout));
+  } catch {
+    throw new Error(`cdk-cicd deploy --from-image: unreadable describe-images output for ${repository}`);
+  }
+}
+
+/** The repository part of an image reference: everything before a trailing `:tag` or `@digest`. */
+export function imageRepository(image: string): string {
+  const at = image.indexOf('@');
+  if (at >= 0) return image.slice(0, at);
+  const lastSlash = image.lastIndexOf('/');
+  const lastColon = image.lastIndexOf(':');
+  return lastColon > lastSlash ? image.slice(0, lastColon) : image;
+}
+
+/**
+ * The newest TAGGED image in the ECR repository of `baseImage`, pinned by digest. Untagged manifests
+ * (superseded `latest` pushes, attestations) are skipped. Used by `autoDeploy` targets, which always
+ * deploy what was pushed last instead of the `version` recorded in `config/<stage>.json`.
+ */
+export const resolveLatestEcrImage: LatestImageResolver = (baseImage) => {
+  const repository = imageRepository(baseImage);
+  const digest = describeRepositoryImages(
+    baseImage,
+    'sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageDigest',
+    'autoDeploy',
+  );
+  if (typeof digest !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(digest)) {
+    const detail = digest === null ? 'it has no tagged image' : `got '${JSON.stringify(digest)}'`;
+    throw new Error(`cdk-cicd deploy --from-image: could not resolve the newest image in ${repository}: ${detail}`);
+  }
+  return `${repository}@${digest}`;
+};
 
 /** One concrete (target x region) run: the stage/account/region/role the container deploys. */
 export interface DockerTarget {
@@ -325,8 +508,12 @@ export function dockerRunArgs(
     setEnv('CONFIG_FILE', target.stageConfig.containerPath);
     setEnv(STAGE_CONFIG_SOURCE_FLAG, target.stageConfig.source);
   }
-  // Creds inherited from the caller (who assumed the target account, for cross-account deploys).
-  ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'].forEach(passEnv);
+  // Creds inherited from the caller (who assumed the target account, for cross-account deploys). On
+  // CodeBuild/ECS no key is in the environment at all: the container-credentials URI is forwarded
+  // instead, and the SDK inside the container fetches short-lived role credentials from that endpoint.
+  ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI'].forEach(
+    passEnv,
+  );
 
   // Validate-only synthesizes the target -- which runs the app's own AppConfig schema validation against
   // the injected config -- and stops before any CloudFormation change set exists.
@@ -447,13 +634,27 @@ export async function runFromImage(
     yes: boolean;
     network?: string;
     target?: string;
+    /** With `target`: deploy only this one region of a parallel multi-region target. */
+    region?: string;
     /** Synthesize each target (schema validation) without deploying; no approval needed. */
     validateOnly?: boolean;
     cwd?: string;
     readVersion?: VersionReader;
+    resolveLatestImage?: LatestImageResolver;
+    resolveRangeImage?: RangeImageResolver;
     prepareConfig?: (cwd: string, stage: string) => StageConfigMount | undefined;
     spawn?: DockerSpawn;
     resolveExternalId?: (value?: string) => Promise<string | undefined>;
+    /**
+     * With `target`: write `compute(stage, image)` to `path` once the target deployed. `compute` gets the
+     * image this run resolved and deploys -- an autoDeploy or range target resolves its own at run time --
+     * and runs before the deploy, so a failure to compute it stops before any change. The CD pipeline
+     * records this, not a fingerprint resolved earlier that a newer push could have overtaken.
+     */
+    fingerprintOut?: {
+      readonly path: string;
+      readonly compute: (stage: string, resolved: { image: string; version?: string }) => string;
+    };
   },
 ): Promise<number> {
   const spawn = options.spawn ?? spawnDocker;
@@ -462,11 +663,28 @@ export async function runFromImage(
 
   // `target` deploys just that one stage (its own image version) -- how a CD pipeline runs one action per
   // target, so bumping a stage's image in deploy.config and committing deploys only that stage.
-  const targets =
+  let targets =
     options.target !== undefined ? config.targets.filter((t) => t.stage === options.target) : config.targets;
   if (options.target !== undefined && targets.length === 0) {
     logger.error(`cdk-cicd deploy --from-image: no target '${options.target}' in deploy.config`);
     return 1;
+  }
+  // `region` narrows a parallel multi-region target to one of its regions: the CD pipeline runs one
+  // action per region of such a target.
+  if (options.region !== undefined) {
+    const target = targets[0];
+    if (options.target === undefined || target.env.regionOrder !== 'parallel') {
+      logger.error('cdk-cicd deploy --from-image: --region needs --target naming a parallel multi-region target');
+      return 1;
+    }
+    if (!target.env.regions.includes(options.region)) {
+      logger.error(
+        `cdk-cicd deploy --from-image: target '${target.stage}' no longer defines parallel region ` +
+          `${options.region}; re-run cdk-cicd deploy-ci to update the pipeline topology`,
+      );
+      return 1;
+    }
+    targets = [{ ...target, env: { ...target.env, regions: [options.region] } }];
   }
 
   const bucketCoordinates = new Map<string, string>();
@@ -501,19 +719,45 @@ export async function runFromImage(
     }
 
     // Each target runs its OWN version: base repo (target/config image) + the `version` from
-    // config/<stage>.json in this (CD) repo. Bump that file, commit, and only this stage redeploys.
+    // config/<stage>.json in this (CD) repo -- an exact tag, or a range resolved to the highest
+    // matching version. Bump that file, commit, and only this stage redeploys. An autoDeploy target
+    // runs the newest pushed image instead, or the newest within its range.
     let image: string | undefined;
+    let resolved: { image: string; version?: string } | undefined;
     try {
-      image = resolveTargetImage(target, config, cwd, options.readVersion);
+      resolved = resolveDeployImage(target, config, cwd, {
+        readVersion: options.readVersion,
+        resolveLatestImage: options.resolveLatestImage,
+        resolveRangeImage: options.resolveRangeImage,
+      });
+      image = resolved?.image;
+      if (resolved?.version !== undefined) {
+        logger.info(`cdk-cicd deploy --from-image: ${target.stage} resolves its range to version ${resolved.version}`);
+      } else if (target.autoDeploy === true && image !== undefined) {
+        logger.info(`cdk-cicd deploy --from-image: ${target.stage} is autoDeploy; using the newest image ${image}`);
+      }
     } catch (error) {
       logger.error(error instanceof Error ? error.message : String(error));
       return 1;
     }
-    if (image === undefined) {
+    if (image === undefined || resolved === undefined) {
       logger.error(
         `cdk-cicd deploy --from-image: target '${target.stage}' has no image -- set the config-level (or target) image, plus a version in config/${target.stage}.json`,
       );
       return 1;
+    }
+
+    let deployedFingerprint: string | undefined;
+    if (options.fingerprintOut !== undefined && !validateOnly) {
+      try {
+        deployedFingerprint = options.fingerprintOut.compute(target.stage, resolved);
+      } catch (error) {
+        logger.error(
+          `cdk-cicd deploy --from-image: could not fingerprint target '${target.stage}': ` +
+            (error instanceof Error ? error.message : String(error)),
+        );
+        return 1;
+      }
     }
 
     let externalId: string | undefined;
@@ -587,6 +831,9 @@ export async function runFromImage(
     }
     if (firstFailure !== undefined) {
       return firstFailure;
+    }
+    if (deployedFingerprint !== undefined) {
+      writeFileSync(options.fingerprintOut!.path, deployedFingerprint);
     }
   }
   return 0;

@@ -56,6 +56,18 @@ die()  { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 log()  { printf '\n== %s\n' "$*"; }
 info() { printf '   %s\n' "$*"; }
 
+# EXIT-trap teardown for the pipeline proofs. CDK_CICD_KEEP=1 leaves the run deployed for a human to
+# review in the console and prints the command that reclaims it later. Every resource stays tagged with
+# the run id, so the guarded teardown still applies when it is finally run.
+keep_or_destroy() {
+  if [ "${CDK_CICD_KEEP:-}" = 1 ]; then
+    log "CDK_CICD_KEEP=1: leaving run $CDK_CICD_TEST_RUN_ID deployed for review"
+    info "tear down later: CDK_CICD_TEST_RUN_ID=$CDK_CICD_TEST_RUN_ID bash $0 teardown"
+  else
+    destroy_all
+  fi
+}
+
 # Mask the account id in anything this script prints: the proof log is meant to be
 # readable by a human and pasted into a review, so the account id may not leak in.
 redact() {
@@ -241,11 +253,20 @@ ensure_cc_repo() {
   local repo="${1:-}" region="${2:-}"
   case "$repo" in "$STACK_PREFIX"-*) ;; *) die "guard: refusing CodeCommit repo '$repo' -- outside the '$STACK_PREFIX-' prefix" ;; esac
   [ -n "$region" ] || die 'ensure_cc_repo: empty region'
-  aws codecommit get-repository --repository-name "$repo" --region "$region" >/dev/null 2>&1 && return 0
-  aws codecommit create-repository --repository-name "$repo" --region "$region" \
-      --tags "$TAG_KEY=$CDK_CICD_TEST_RUN_ID" >/dev/null 2>&1 \
-    || die "could not create CodeCommit repo $repo in $region"
-  info "created CodeCommit repo $repo ($region)"
+  # CodeCommit occasionally rejects a create transiently (seen with two proofs running at once), so
+  # retry a few times and surface the last error instead of discarding it.
+  local attempt err
+  for attempt in 1 2 3; do
+    aws codecommit get-repository --repository-name "$repo" --region "$region" >/dev/null 2>&1 && return 0
+    if err="$(aws codecommit create-repository --repository-name "$repo" --region "$region" \
+        --tags "$TAG_KEY=$CDK_CICD_TEST_RUN_ID" 2>&1 >/dev/null)"; then
+      info "created CodeCommit repo $repo ($region)"
+      return 0
+    fi
+    sleep $((attempt * 10))
+  done
+  printf '%s\n' "$err" | tail -2 | redact >&2
+  die "could not create CodeCommit repo $repo in $region"
 }
 
 # Commit everything in $dir except node_modules/ and cdk.out/ and push it to `main` of $repo. Callable

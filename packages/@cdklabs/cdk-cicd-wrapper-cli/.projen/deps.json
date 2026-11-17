@@ -99,6 +99,11 @@
       "type": "runtime"
     },
     {
+      "name": "@types/semver",
+      "version": "^7.7.1",
+      "type": "runtime"
+    },
+    {
       "name": "@types/yargs",
       "version": "^17.0.35",
       "type": "runtime"
@@ -114,6 +119,11 @@
     {
       "name": "globby",
       "version": "11.1.0",
+      "type": "runtime"
+    },
+    {
+      "name": "semver",
+      "version": "^7.8.5",
       "type": "runtime"
     },
     {

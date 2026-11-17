@@ -1562,6 +1562,48 @@
         "path": "test/proof/m4-verify.sh",
         "line": 176
       }
+    },
+    {
+      "id": "code-review-compliance-logging-ignores-config-file-env",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "A Repo 2 target with compliance logging cannot take its account and Region from config/<stage>.json: defineDeployment rejects it before the CLI applies the file",
+      "detail": "defineDeployment's normalizeTarget (packages/@cdklabs/cdk-cicd-wrapper/src/config/define.ts) requires a concrete env.account and exactly one Region whenever complianceLogBucketName is set, and derives complianceLogBucketAccount/Region from them. It runs while the user's deploy.config.ts is evaluated. The CLI fills account and Region from config/<stage>.json only afterwards (withStageFileEnvironments in packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts), so a target that relies on the documented 'Account and Region from the config file' feature and has compliance logging (its own complianceLogBucketName, or the deployment-wide default) throws 'compliance logging requires a concrete 12-digit env.account' at load. It fails loudly, never silently, and the error is the same for every consumer. Not fixed in the review pass that found it: fixing it means either deferring the compliance derivation and its cross-target bucket-coordinate check out of defineDeployment (a published jsii function whose output a user can also hand straight to DeploymentPipeline, which would then need its own check), or teaching defineDeployment to read config/<stage>.json. Both are design changes across the two packages. Until then, container_mode.md says that compliance-logging targets must declare env in deploy.config.ts.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/config/define.ts",
+        "line": 439
+      }
+    },
+    {
+      "id": "code-review-one-stage-file-aws-block-fails-every-target",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "One target's invalid aws block in config/<stage>.json fails Plan and every deploy action, not just that target",
+      "detail": "withStageFileEnvironments (packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts) throws on an invalid or disagreeing aws.accountId/aws.region, and every consumer loads the deployment through it. So a typo in config/prod.json stops `pipeline plan` for all stages and every target's `pipeline fingerprint`, including unrelated autoDeploy pipelines. That contradicts the planStages contract that a unit Plan cannot check runs instead of failing every other stage. The error itself is precise. A first fix attempt, setting the target aside and planning it as 'could not be checked', was reverted in review: the pipeline-shape fingerprint (deployment-shape.ts, per-target account/regions) records the file-derived account and Region at deploy-ci time, so a set-aside target trips assertPipelineShape first. Every target then fails with the vaguer 're-run deploy-ci' message. That attempt only worked when the target's env was fully in deploy.config, where the file's aws block is redundant. A real fix has to decide what the shape check compares for a target whose file cannot be read: for example, the shape recorded at synth for that target (CDK_CICD_TARGET_ENVIRONMENTS), or excluding file-derived env from the shape and checking it per target in that target's own action. It also needs a test that runs the plan command wiring with assertPipelineShape, not planStages alone.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts",
+        "line": 130
+      }
+    },
+    {
+      "id": "code-review-older-cli-ignores-fingerprint-out",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "A Repo 2 lockfile pinning a CLI older than the synthesizing wrapper silently ignores --fingerprint-out, so every deploy action fails after a successful deploy",
+      "detail": "The Repo 2 deploy buildspec (DeploymentPipeline.ts deployAndRecord) runs `deploy --from-image ... --fingerprint-out <file>` and then refuses to record state unless that file holds a valid fingerprint. The CLI enables yargs strictCommands but not strict options, so a CLI from before the flag accepts and ignores it. The deploy then succeeds, the action fails with 'the deploy recorded no valid fingerprint', no state is written, and the next run redeploys and fails again. It fails loudly, never silently. It is the same wrapper-vs-pinned-CLI version-skew class as the `pipeline plan|fingerprint` commands added on the same branch: the pipeline shape is synthesized by one wrapper version, and the steps run whatever CLI version Repo 2's lockfile pins. Fix direction: have the pipeline check the CLI version (or a capability) once, early, with a message naming the required version, or enable strict options for the deploy command.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/DeploymentPipeline.ts",
+        "line": 256
+      }
     }
   ]
 }

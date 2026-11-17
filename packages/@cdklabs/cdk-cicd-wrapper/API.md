@@ -283,6 +283,7 @@ Any object.
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.property.node">node</a></code> | <code>constructs.Node</code> | The tree node. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.property.autoDeployPipelines">autoDeployPipelines</a></code> | <code>aws-cdk-lib.aws_codepipeline.Pipeline[]</code> | One pipeline per `autoDeploy` target, started by pushes to that target's ECR repository. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.property.pipeline">pipeline</a></code> | <code>aws-cdk-lib.aws_codepipeline.Pipeline</code> | *No description.* |
 
 ---
@@ -296,6 +297,18 @@ public readonly node: Node;
 - *Type:* constructs.Node
 
 The tree node.
+
+---
+
+##### `autoDeployPipelines`<sup>Required</sup> <a name="autoDeployPipelines" id="@cdklabs/cdk-cicd-wrapper.DeploymentPipeline.property.autoDeployPipelines"></a>
+
+```typescript
+public readonly autoDeployPipelines: Pipeline[];
+```
+
+- *Type:* aws-cdk-lib.aws_codepipeline.Pipeline[]
+
+One pipeline per `autoDeploy` target, started by pushes to that target's ECR repository.
 
 ---
 
@@ -2525,6 +2538,51 @@ Removal policy for the pipeline's own support resources.
 
 ---
 
+### DeploymentTargetEnvironment <a name="DeploymentTargetEnvironment" id="@cdklabs/cdk-cicd-wrapper.DeploymentTargetEnvironment"></a>
+
+The concrete account and Regions a deployment target resolves to in its pipeline.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.DeploymentTargetEnvironment.Initializer"></a>
+
+```typescript
+import { DeploymentTargetEnvironment } from '@cdklabs/cdk-cicd-wrapper'
+
+const deploymentTargetEnvironment: DeploymentTargetEnvironment = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentTargetEnvironment.property.account">account</a></code> | <code>string</code> | Concrete target account. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DeploymentTargetEnvironment.property.regions">regions</a></code> | <code>string[]</code> | Concrete target Regions, in declaration order. |
+
+---
+
+##### `account`<sup>Required</sup> <a name="account" id="@cdklabs/cdk-cicd-wrapper.DeploymentTargetEnvironment.property.account"></a>
+
+```typescript
+public readonly account: string;
+```
+
+- *Type:* string
+
+Concrete target account.
+
+---
+
+##### `regions`<sup>Required</sup> <a name="regions" id="@cdklabs/cdk-cicd-wrapper.DeploymentTargetEnvironment.property.regions"></a>
+
+```typescript
+public readonly regions: string[];
+```
+
+- *Type:* string[]
+
+Concrete target Regions, in declaration order.
+
+---
+
 ### DockerBuildProps <a name="DockerBuildProps" id="@cdklabs/cdk-cicd-wrapper.DockerBuildProps"></a>
 
 Props for {@link BuildImage.docker}.
@@ -2542,6 +2600,7 @@ const dockerBuildProps: DockerBuildProps = { ... }
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.dockerfile">dockerfile</a></code> | <code>string</code> | Path to the Dockerfile in the source, relative to its root. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.packageVersionTag">packageVersionTag</a></code> | <code>boolean</code> | Also tag the image with the `version` from the source's `package.json` (for example `1.4.2`), so Repo 2 can pin a readable release instead of a commit SHA. The repository stays immutable: the version tag is added to the commit's image only when that version is not published yet. A build whose version is already taken by another image keeps only its commit-SHA tag and says so -- bump `version` to publish it. Requires {@link ImageTagStrategy.GIT_SHA}. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.repositoryName">repositoryName</a></code> | <code>string</code> | Name of the ECR repository to push to. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.tagStrategy">tagStrategy</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ImageTagStrategy">ImageTagStrategy</a></code> | How the image is tagged. |
 
@@ -2558,6 +2617,19 @@ public readonly dockerfile: string;
 Path to the Dockerfile in the source, relative to its root.
 
 Defaults to `Dockerfile`.
+
+---
+
+##### `packageVersionTag`<sup>Optional</sup> <a name="packageVersionTag" id="@cdklabs/cdk-cicd-wrapper.DockerBuildProps.property.packageVersionTag"></a>
+
+```typescript
+public readonly packageVersionTag: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Also tag the image with the `version` from the source's `package.json` (for example `1.4.2`), so Repo 2 can pin a readable release instead of a commit SHA. The repository stays immutable: the version tag is added to the commit's image only when that version is not published yet. A build whose version is already taken by another image keeps only its commit-SHA tag and says so -- bump `version` to publish it. Requires {@link ImageTagStrategy.GIT_SHA}.
 
 ---
 
@@ -2588,6 +2660,103 @@ public readonly tagStrategy: ImageTagStrategy;
 How the image is tagged.
 
 Defaults to {@link ImageTagStrategy.GIT_SHA}.
+
+---
+
+### EcrRepositoryReference <a name="EcrRepositoryReference" id="@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference"></a>
+
+A private ECR image reference split into the parts used for login, IAM and digest lookups.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.Initializer"></a>
+
+```typescript
+import { EcrRepositoryReference } from '@cdklabs/cdk-cicd-wrapper'
+
+const ecrRepositoryReference: EcrRepositoryReference = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.account">account</a></code> | <code>string</code> | Registry account. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.partition">partition</a></code> | <code>string</code> | Registry partition. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.region">region</a></code> | <code>string</code> | Registry Region. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.registryHost">registryHost</a></code> | <code>string</code> | `<account>.dkr.ecr.<region>.<suffix>`. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.repositoryName">repositoryName</a></code> | <code>string</code> | Repository name, including any nested path. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.tagOrDigest">tagOrDigest</a></code> | <code>string</code> | The tag or `sha256:` digest, when the reference carries one. |
+
+---
+
+##### `account`<sup>Required</sup> <a name="account" id="@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.account"></a>
+
+```typescript
+public readonly account: string;
+```
+
+- *Type:* string
+
+Registry account.
+
+---
+
+##### `partition`<sup>Required</sup> <a name="partition" id="@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.partition"></a>
+
+```typescript
+public readonly partition: string;
+```
+
+- *Type:* string
+
+Registry partition.
+
+---
+
+##### `region`<sup>Required</sup> <a name="region" id="@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.region"></a>
+
+```typescript
+public readonly region: string;
+```
+
+- *Type:* string
+
+Registry Region.
+
+---
+
+##### `registryHost`<sup>Required</sup> <a name="registryHost" id="@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.registryHost"></a>
+
+```typescript
+public readonly registryHost: string;
+```
+
+- *Type:* string
+
+`<account>.dkr.ecr.<region>.<suffix>`.
+
+---
+
+##### `repositoryName`<sup>Required</sup> <a name="repositoryName" id="@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.repositoryName"></a>
+
+```typescript
+public readonly repositoryName: string;
+```
+
+- *Type:* string
+
+Repository name, including any nested path.
+
+---
+
+##### `tagOrDigest`<sup>Optional</sup> <a name="tagOrDigest" id="@cdklabs/cdk-cicd-wrapper.EcrRepositoryReference.property.tagOrDigest"></a>
+
+```typescript
+public readonly tagOrDigest: string;
+```
+
+- *Type:* string
+
+The tag or `sha256:` digest, when the reference carries one.
 
 ---
 
@@ -4153,6 +4322,8 @@ const resolvedDeploymentTarget: ResolvedDeploymentTarget = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.env">env</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.StageEnvironment">StageEnvironment</a></code> | Where this target deploys. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.manualApproval">manualApproval</a></code> | <code>boolean</code> | Whether a manual approval gates this target. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.stage">stage</a></code> | <code>string</code> | The stage in the image's app to deploy (passed to the in-container `cdk-cicd deploy --stage`). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.alwaysApprove">alwaysApprove</a></code> | <code>boolean</code> | Ask for this target's manual approval on every pipeline run, even when its deployment inputs are unchanged. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.autoDeploy">autoDeploy</a></code> | <code>boolean</code> | Deploy this target automatically whenever a new deployer image is pushed to its ECR repository. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketAccount">complianceLogBucketAccount</a></code> | <code>string</code> | Account containing `complianceLogBucketName`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | Compliance/access-log destination bucket for this target, after applying the deployment-wide default. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.complianceLogBucketRegion">complianceLogBucketRegion</a></code> | <code>string</code> | Region containing `complianceLogBucketName`. |
@@ -4194,6 +4365,37 @@ public readonly stage: string;
 - *Type:* string
 
 The stage in the image's app to deploy (passed to the in-container `cdk-cicd deploy --stage`).
+
+---
+
+##### `alwaysApprove`<sup>Optional</sup> <a name="alwaysApprove" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.alwaysApprove"></a>
+
+```typescript
+public readonly alwaysApprove: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Ask for this target's manual approval on every pipeline run, even when its deployment inputs are unchanged.
+
+Without it, the CD pipeline skips an unchanged target's whole stage, approval included.
+
+---
+
+##### `autoDeploy`<sup>Optional</sup> <a name="autoDeploy" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentTarget.property.autoDeploy"></a>
+
+```typescript
+public readonly autoDeploy: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Deploy this target automatically whenever a new deployer image is pushed to its ECR repository.
+
+The target then always runs the NEWEST tagged image in that repository (its `config/<stage>.json`
+`version` is not used), with its stage configuration still taken from the deploy repository.
 
 ---
 
@@ -4946,6 +5148,7 @@ Build and push a Docker deployer image to ECR.
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.dockerfile">dockerfile</a></code> | <code>string</code> | Dockerfile path relative to the source root. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.kind">kind</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImageKind">BuildImageKind</a></code> | The artifact kind. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.packageVersionTag">packageVersionTag</a></code> | <code>boolean</code> | Whether the image is also tagged with the source's `package.json` version. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.tagStrategy">tagStrategy</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.ImageTagStrategy">ImageTagStrategy</a></code> | Image tag strategy. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage.property.repositoryName">repositoryName</a></code> | <code>string</code> | ECR repository name to push to; |
 
@@ -4972,6 +5175,18 @@ public readonly kind: BuildImageKind;
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.BuildImageKind">BuildImageKind</a>
 
 The artifact kind.
+
+---
+
+##### `packageVersionTag`<sup>Required</sup> <a name="packageVersionTag" id="@cdklabs/cdk-cicd-wrapper.BuildImage.property.packageVersionTag"></a>
+
+```typescript
+public readonly packageVersionTag: boolean;
+```
+
+- *Type:* boolean
+
+Whether the image is also tagged with the source's `package.json` version.
 
 ---
 

@@ -89,6 +89,16 @@ export interface DockerBuildProps {
   readonly repositoryName?: string;
   /** How the image is tagged. Defaults to {@link ImageTagStrategy.GIT_SHA}. */
   readonly tagStrategy?: ImageTagStrategy;
+  /**
+   * Also tag the image with the `version` from the source's `package.json` (for example `1.4.2`), so
+   * Repo 2 can pin a readable release instead of a commit SHA. The repository stays immutable: the
+   * version tag is added to the commit's image only when that version is not published yet. A build
+   * whose version is already taken by another image keeps only its commit-SHA tag and says so --
+   * bump `version` to publish it. Requires {@link ImageTagStrategy.GIT_SHA}.
+   *
+   * @default false
+   */
+  readonly packageVersionTag?: boolean;
 }
 
 /** What kind of artifact the build produces. Only Docker today; kept an enum so more can slot in. */
@@ -103,11 +113,20 @@ export enum BuildImageKind {
 export class BuildImage {
   /** Build and push a Docker deployer image to ECR. */
   public static docker(props: DockerBuildProps = {}): BuildImage {
+    const tagStrategy = props.tagStrategy ?? ImageTagStrategy.GIT_SHA;
+    const packageVersionTag = props.packageVersionTag ?? false;
+    if (packageVersionTag && tagStrategy !== ImageTagStrategy.GIT_SHA) {
+      throw new Error(
+        'cdk-cicd: packageVersionTag needs tagStrategy GIT_SHA -- a version tag only means one image in an ' +
+          'immutable repository.',
+      );
+    }
     return new BuildImage(
       BuildImageKind.DOCKER,
       props.dockerfile ?? 'Dockerfile',
-      props.tagStrategy ?? ImageTagStrategy.GIT_SHA,
+      tagStrategy,
       props.repositoryName,
+      packageVersionTag,
     );
   }
 
@@ -119,16 +138,20 @@ export class BuildImage {
   public readonly tagStrategy: ImageTagStrategy;
   /** ECR repository name to push to; when undefined the pipeline provisions `<application>-deployer`. */
   public readonly repositoryName?: string;
+  /** Whether the image is also tagged with the source's `package.json` version. */
+  public readonly packageVersionTag: boolean;
 
   private constructor(
     kind: BuildImageKind,
     dockerfile: string,
     tagStrategy: ImageTagStrategy,
     repositoryName?: string,
+    packageVersionTag = false,
   ) {
     this.kind = kind;
     this.dockerfile = dockerfile;
     this.tagStrategy = tagStrategy;
     this.repositoryName = repositoryName;
+    this.packageVersionTag = packageVersionTag;
   }
 }

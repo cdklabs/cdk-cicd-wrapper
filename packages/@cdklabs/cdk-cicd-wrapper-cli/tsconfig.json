@@ -30,6 +30,7 @@
       "jest",
       "node",
       "fs-extra",
+      "semver",
       "yargs"
     ],
     "composite": true

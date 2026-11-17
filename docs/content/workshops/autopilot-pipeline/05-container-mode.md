@@ -116,9 +116,11 @@ name for a target in another account or Region; multi-Region targets cannot shar
 destination.
 
 If the deployer image belongs to a different AWS account than the Repo 2 pipeline, its repository owner
-must grant the generated CodeBuild role `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, and
-`ecr:BatchCheckLayerAvailability`, plus `ecr:DescribeImages` so a mutable tag is fingerprinted by its
-current digest. Only then set
+must grant the generated Deploy CodeBuild role `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`,
+`ecr:BatchCheckLayerAvailability` and `ecr:DescribeImages`. The Plan stage has its own generated
+CodeBuild role, which needs `ecr:DescribeImages` to resolve a mutable tag to its current digest.
+Without it, Plan cannot check the targets that take a tag from that repository, so their stages and
+approvals run on every commit. Granting the pipeline account covers both roles. Only then set
 `crossAccountEcrRepositoryPolicyConfigured: true`; rendering fails closed without that acknowledgement.
 This is a runtime pull of the deployer image. Any private ECR image used as CodeBuild's own environment
 image must still be in the pipeline Region.

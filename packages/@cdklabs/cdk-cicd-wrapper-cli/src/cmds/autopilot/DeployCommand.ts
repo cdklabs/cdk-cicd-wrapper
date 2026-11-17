@@ -14,6 +14,7 @@ import type { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, loadDeployment } from './CicdConfig';
 import { RegionalInvocationResult, runFromImage, runRegionalInvocations } from './DeployFromImage';
+import { deployedFingerprint } from './DeploymentFingerprint';
 import {
   AppStagingSupportStack,
   checkAssembly,
@@ -199,15 +200,19 @@ export function assertDeploymentModeOptions(options: {
   readonly target?: string;
   readonly dockerNetwork?: string;
   readonly validateOnly?: boolean;
+  readonly fingerprintOut?: string;
 }): void {
   if (options.fromImage) {
     const incompatible = [
       options.fromAssembly ? '--from-assembly' : undefined,
       options.deployRole !== undefined ? '--deploy-role' : undefined,
       options.stage !== undefined ? '--stage' : undefined,
-      options.region !== undefined ? '--region' : undefined,
+      options.region !== undefined && options.target === undefined ? '--region (without --target)' : undefined,
       options.prepareOnly ? '--prepare-only' : undefined,
       options.planParameter !== undefined ? '--plan-parameter' : undefined,
+      options.fingerprintOut !== undefined && (options.target === undefined || options.validateOnly === true)
+        ? '--fingerprint-out (without --target, or with --validate-only)'
+        : undefined,
     ].filter((flag): flag is string => flag !== undefined);
     if (incompatible.length > 0) {
       throw new Error(`cdk-cicd deploy: --from-image cannot be combined with ${incompatible.join(', ')}`);
@@ -216,8 +221,15 @@ export function assertDeploymentModeOptions(options: {
   }
 
   assertDeployRoleOverrideAllowed(options.fromAssembly, options.deployRole);
-  if (options.target !== undefined || options.dockerNetwork !== undefined || options.validateOnly === true) {
-    throw new Error('cdk-cicd deploy: --target, --docker-network and --validate-only require --from-image');
+  if (
+    options.target !== undefined ||
+    options.dockerNetwork !== undefined ||
+    options.validateOnly === true ||
+    options.fingerprintOut !== undefined
+  ) {
+    throw new Error(
+      'cdk-cicd deploy: --target, --docker-network, --validate-only and --fingerprint-out require --from-image',
+    );
   }
   if (!options.prepareOnly && options.planParameter !== undefined) {
     throw new Error('cdk-cicd deploy: --plan-parameter requires --prepare-only');
@@ -353,7 +365,9 @@ class Command implements yargs.CommandModule {
         })
         .option('region', {
           type: 'string',
-          describe: 'Deploy only this one region, ignoring the stage config region list (used by container mode)',
+          describe:
+            'Deploy only this one region, ignoring the stage config region list (used by container mode). ' +
+            "With --from-image --target: one of that parallel target's regions",
         })
         .option('deploy-role', {
           type: 'string',
@@ -371,6 +385,12 @@ class Command implements yargs.CommandModule {
         .option('target', {
           type: 'string',
           describe: 'With --from-image: deploy only this one deploy.config target (its own image version)',
+        })
+        .option('fingerprint-out', {
+          type: 'string',
+          describe:
+            'With --from-image --target: after a successful deploy, write the fingerprint of the image it ran ' +
+            'to this file (used by the CD pipeline)',
         })
         .option('validate-only', {
           type: 'boolean',
@@ -412,6 +432,7 @@ class Command implements yargs.CommandModule {
         target: args.target as string | undefined,
         dockerNetwork: args.dockerNetwork as string | undefined,
         validateOnly: args.validateOnly as boolean,
+        fingerprintOut: args.fingerprintOut as string | undefined,
       });
     } catch (error) {
       logger.error((error as Error).message);
@@ -425,11 +446,22 @@ class Command implements yargs.CommandModule {
         logger.error('cdk-cicd deploy --from-image: no deploy.config.ts found next to cdk.json');
         process.exit(1);
       }
+      const region = args.region as string | undefined;
+      const fingerprintOut = args.fingerprintOut as string | undefined;
       const code = await runFromImage(deployment, {
         yes: args.yes as boolean,
         network: args.dockerNetwork as string | undefined,
         target: args.target as string | undefined,
+        region,
         validateOnly: args.validateOnly as boolean,
+        ...(fingerprintOut === undefined
+          ? {}
+          : {
+              fingerprintOut: {
+                path: fingerprintOut,
+                compute: (stage, resolved) => deployedFingerprint(deployment, stage, region, cwd, resolved),
+              },
+            }),
       });
       process.exit(code);
     }

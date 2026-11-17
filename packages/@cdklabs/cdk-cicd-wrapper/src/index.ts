@@ -80,6 +80,13 @@ export { CodePipelineEngine, CodePipelineEngineProps } from './engine/codepipeli
 // Container mode (Repo 2) CD pipeline: consumes the pushed image and deploys each target. The deploy-side
 // twin of the CI CodePipeline; `cdk-cicd deploy-ci` provisions it from a `deploy.config.ts` with a `repository`.
 export { DeploymentPipeline, DeploymentPipelineProps } from './engine/codepipeline/DeploymentPipeline';
+// The CD pipeline's shape fingerprint and ECR parsing, shared with `cdk-cicd pipeline plan|fingerprint`.
+export {
+  deploymentPipelineShapeFingerprint,
+  DeploymentTargetEnvironment,
+  EcrRepositoryReference,
+  parseEcrRepository,
+} from './engine/codepipeline/deployment-shape';
 // The Blueprint-compatible engine: builds the pipeline with CDK Pipelines (`aws-cdk-lib/pipelines`), like Blueprint did,
 // for teams that want a pipeline shaped like their old one. Activated by `cdk-cicd exec` (engine:
 // CDK_PIPELINES in cicd.config), which assembles it by replaying the plain bin per stage -- so bin/ stays

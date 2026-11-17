@@ -30,5 +30,12 @@ new ssm.StringParameter(stack, 'Greeting', {
   parameterName: `/cdkcicdtest/${runId}/${stage}/greeting`,
   stringValue: config.greeting,
 });
+// Which image built this stack: a marker file baked into the deployer image by Repo 1. The gate changes
+// it to prove an autoDeploy target picked up a new image with no deploy-repository change.
+const markerFile = path.join(__dirname, '..', 'image-marker.txt');
+new ssm.StringParameter(stack, 'ImageMarker', {
+  parameterName: `/cdkcicdtest/${runId}/${stage}/image`,
+  stringValue: fs.existsSync(markerFile) ? fs.readFileSync(markerFile, 'utf-8').trim() || 'none' : 'none',
+});
 // The teardown guard only deletes stacks that carry this tag.
 cdk.Tags.of(stack).add('cdk-cicd-wrapper-test', runId);

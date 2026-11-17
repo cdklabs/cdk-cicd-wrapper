@@ -28,12 +28,26 @@ export function resolveCodeCommitRepository(scope: Construct, repository: Reposi
   return new codecommit.Repository(scope, 'SourceRepo', { repositoryName: repository.name });
 }
 
+/** Options for {@link buildSourceAction}. */
+export interface SourceActionOptions {
+  /**
+   * When false, a change to the repository does not start the pipeline: the action only supplies the
+   * latest revision to an execution started some other way (e.g. an ECR push rule). A CodeCommit
+   * repository is then always imported, never created, because the primary pipeline owns it.
+   *
+   * @default true
+   */
+  readonly triggerOnChange?: boolean;
+}
+
 /** Build the pipeline's source action for the configured repository, writing into `output`. */
 export function buildSourceAction(
   scope: Construct,
   repository: Repository,
   output: codepipeline.Artifact,
+  options: SourceActionOptions = {},
 ): codepipeline.IAction {
+  const trigger = options.triggerOnChange ?? true;
   switch (repository.repositoryType) {
     case RepositorySourceType.S3: {
       // `name` is `bucket/key`; a bucket-only name defaults the key to source.zip.
@@ -45,14 +59,18 @@ export function buildSourceAction(
         bucket: s3.Bucket.fromBucketName(scope, 'SourceBucket', bucketName),
         bucketKey,
         output,
+        ...(trigger ? {} : { trigger: actions.S3Trigger.NONE }),
       });
     }
     case RepositorySourceType.CODECOMMIT:
       return new actions.CodeCommitSourceAction({
         actionName: 'Source',
-        repository: resolveCodeCommitRepository(scope, repository),
+        repository: trigger
+          ? resolveCodeCommitRepository(scope, repository)
+          : codecommit.Repository.fromRepositoryName(scope, 'SourceRepo', repository.name),
         branch: repository.branch,
         output,
+        ...(trigger ? {} : { trigger: actions.CodeCommitTrigger.NONE }),
       });
     case RepositorySourceType.GITHUB:
     case RepositorySourceType.CODESTAR_CONNECTION: {
@@ -73,6 +91,7 @@ export function buildSourceAction(
         branch: repository.branch,
         connectionArn: repository.connectionArn,
         output,
+        ...(trigger ? {} : { triggerOnPush: false }),
       });
     }
     default:
