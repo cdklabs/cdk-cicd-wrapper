@@ -851,6 +851,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#account-and-region-from-the-config-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Account and Region from the config file
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#provision-the-cd-pipeline-or-run-locally" class="md-nav__link">
     <span class="md-ellipsis">
       Provision the CD pipeline, or run locally
@@ -860,9 +869,27 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#only-changed-targets-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Only changed targets deploy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#stage-configuration-from-repo-2" class="md-nav__link">
     <span class="md-ellipsis">
       Stage configuration from Repo 2
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-a-target-automatically-on-every-new-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy a target automatically on every new image
     </span>
   </a>
   
@@ -2694,6 +2721,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#account-and-region-from-the-config-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Account and Region from the config file
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#provision-the-cd-pipeline-or-run-locally" class="md-nav__link">
     <span class="md-ellipsis">
       Provision the CD pipeline, or run locally
@@ -2703,9 +2739,27 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#only-changed-targets-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Only changed targets deploy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#stage-configuration-from-repo-2" class="md-nav__link">
     <span class="md-ellipsis">
       Stage configuration from Repo 2
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-a-target-automatically-on-every-new-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy a target automatically on every new image
     </span>
   </a>
   
@@ -2797,6 +2851,7 @@ deploying:</p>
 <span class="w">    </span><span class="nx">dockerfile</span><span class="o">:</span><span class="w"> </span><span class="s1">'Dockerfile'</span><span class="p">,</span><span class="w"> </span><span class="c1">// default; the image payload is your app + deps, NOT cdk.out</span>
 <span class="w">    </span><span class="c1">// repositoryName: 'my-app-deployer', // reference an existing ECR repo; omit to provision one</span>
 <span class="w">    </span><span class="c1">// tagStrategy: ImageTagStrategy.GIT_SHA, // default: immutable revision tag; or ImageTagStrategy.LATEST</span>
+<span class="w">    </span><span class="c1">// packageVersionTag: true, // also tag the image with package.json's version, e.g. 1.4.2</span>
 <span class="w">  </span><span class="p">}),</span>
 <span class="p">});</span>
 </code></pre></div>
@@ -2816,7 +2871,20 @@ Repo 2 target defines and uses that target's configuration (see below). Keep a r
 <li><code>docker build</code>s your Dockerfile and pushes the image, tagged by strategy (<code>GIT_SHA</code> by default —
    the lowercase commit SHA for Git sources or a deterministic SHA-256 of another source revision;
    <code>LATEST</code> is simplest but not immutable).</li>
+<li>with <code>packageVersionTag: true</code>, adds the <code>version</code> from <code>package.json</code> (for example <code>1.4.2</code>) as a
+   second tag on the same image, so Repo 2 can pin <code>"version": "1.4.2"</code> instead of a commit SHA.</li>
 </ol>
+<p>The repository stays <strong>immutable</strong> with <code>packageVersionTag</code>. ECR immutability stops an existing tag from
+moving to another image; it does not stop a new tag from being added to an image. So the version tag is
+added only while that version is unpublished:</p>
+<ul>
+<li>A retried build whose version already names this image changes nothing.</li>
+<li>A build whose version is already held by another image keeps only its commit-SHA tag and says so.
+  Bump <code>version</code> in <code>package.json</code> to publish it under a version.</li>
+<li>A version that is not a valid image tag (semver build metadata such as <code>1.4.2+7</code>) fails the build.</li>
+</ul>
+<p><code>1.4.2</code> therefore always names exactly one image, and promoting a release in Repo 2 means setting another
+target's <code>version</code> to the same value.</p>
 <p>If you do not name an existing repository, the pipeline <strong>provisions</strong> one named <code>&lt;application&gt;-deployer</code>;
 a disposable pipeline (<code>deploy-ci --disposable</code>) empties and deletes it on teardown.</p>
 <h3 id="why-the-image-not-cdkout">Why the image, not <code>cdk.out</code></h3>
@@ -2899,18 +2967,97 @@ baked in the image:</p>
 <p>The deploy resolves <code>image = &lt;base-repo&gt;:&lt;version from config/&lt;stage&gt;.json&gt;</code>, so <code>dev</code> can run a newer
 version than <code>prod</code>, and the version is plain config, reviewable in a pull request. If the file exists
 but is unreadable, malformed, or lacks a non-empty string <code>version</code>, deployment fails instead of
-silently falling back to the base image.</p>
+silently falling back to the base image. Only an <code>autoDeploy</code> target may leave <code>version</code> out (see
+below).</p>
+<p><code>version</code> takes three forms:</p>
+<table>
+<thead>
+<tr>
+<th><code>version</code></th>
+<th>Deploys</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0.2.34</code></td>
+<td>exactly that tag</td>
+</tr>
+<tr>
+<td><code>3aff301…</code></td>
+<td>exactly that commit-SHA tag</td>
+</tr>
+<tr>
+<td><code>^0.1.0</code>, <code>~0.2.0</code>, <code>0.2.x</code>, <code>&gt;=0.2.0 &lt;0.3.0</code></td>
+<td>the highest semver-tagged image that matches, pinned by digest</td>
+</tr>
+</tbody>
+</table>
+<p>A range follows npm's rules: prereleases match only when the range names one, and tags that are not
+semver versions (commit SHAs, <code>latest</code>) are ignored. Only a value with a range operator or an <code>x</code>/<code>*</code>
+placeholder is a range, so a short all-digit commit hash stays a literal tag. Use
+<code>packageVersionTag</code> in Repo 1 so the image carries semver tags.</p>
+<p>A range target counts as changed when a newer matching version is published, but the main pipeline
+runs on deploy-repository commits, so it moves on the next commit. Combine a range with <code>autoDeploy</code>
+to follow it on every push: the target then runs the newest image within its range, so a dev target on
+<code>^0.2.0</code> never jumps to <code>0.3.0</code>. Git records the range, not the exact version; the deploy log names
+the version it resolved.</p>
+<h3 id="account-and-region-from-the-config-file">Account and Region from the config file</h3>
+<p>A target can leave <code>env</code> out of <code>deploy.config.ts</code> and take its account and Region from its
+<code>config/&lt;stage&gt;.json</code>:</p>
+<div class="highlight"><pre><span></span><code>// config/int.json
+{ "version": "^1.4.0", "aws": { "accountId": "222222222222", "region": "eu-west-1" }, "ordersTableName": "orders-int" }
+</code></pre></div>
+<ul>
+<li>A value set in <code>deploy.config.ts</code> still wins. A config file that disagrees with it fails, naming the
+  file and the target, instead of being silently ignored.</li>
+<li><code>deploy-ci</code> reads the file when it builds the pipeline, because the account and Region decide the
+  pipeline's IAM grants. Changing them later makes Plan ask you to re-run <code>deploy-ci</code>.</li>
+<li><code>aws.region</code> names one Region. Declare a multi-Region target's Regions in <code>deploy.config.ts</code>.</li>
+<li>A target with compliance logging (<code>complianceLogBucketName</code>, set on it or for the whole deployment)
+  must declare its <code>env</code> in <code>deploy.config.ts</code>. <code>defineDeployment</code> checks the bucket's account and Region
+  before the config file is read.</li>
+</ul>
 <h3 id="provision-the-cd-pipeline-or-run-locally">Provision the CD pipeline, or run locally</h3>
 <p>With a <code>repository</code> set, <code>cdk-cicd deploy-ci</code> provisions the CD pipeline (the deploy-side twin of the CI
-<code>deploy-ci</code>): a <code>Source</code> stage followed by ordered deployment waves. Adjacent <strong>ungated</strong> targets share
-a parallel wave; each <strong>gated</strong> target gets its own approval/deploy stage. Declaration order is
-preserved, so a gate blocks that target and every target declared after it. Each deploy action runs
-<code>cdk-cicd deploy --from-image --target &lt;stage&gt;</code>, which reads that stage's <code>version</code> at run time, pulls
-<code>&lt;base-repo&gt;:&lt;version&gt;</code>, and synth-and-deploys the stage.</p>
+<code>deploy-ci</code>): a <code>Source</code> stage, a <code>Plan</code> stage, then ordered deployment waves. Adjacent <strong>ungated</strong>
+targets share a parallel wave; each <strong>gated</strong> target gets its own approval/deploy stage. Declaration
+order is preserved, so a gate blocks that target and every target declared after it. Each deploy action
+runs <code>cdk-cicd deploy --from-image --target &lt;stage&gt;</code>, which reads that stage's <code>version</code> at run time,
+pulls <code>&lt;base-repo&gt;:&lt;version&gt;</code>, and synth-and-deploys the stage.</p>
+<h3 id="only-changed-targets-deploy">Only changed targets deploy</h3>
+<p>Every commit to the deploy repository starts the whole pipeline, so the pipeline decides per target
+whether there is anything to deploy:</p>
+<ul>
+<li>After each successful deploy, the target's <strong>fingerprint</strong> is stored in an SSM parameter. The
+  fingerprint is a SHA-256 over the target's <code>deploy.config.ts</code> entry, its image reference and
+  <code>version</code>, the image's ECR <strong>digest</strong> (so re-pushing a tag counts as a change), the rest of its
+  <code>config/&lt;stage&gt;.json</code>, and the deploy repository's <code>package.json</code> and lockfile.</li>
+<li>The <code>Plan</code> stage (<code>cdk-cicd pipeline plan</code>) computes every target's fingerprint and compares it with
+  the stored one. Each deployment stage has a CodePipeline entry condition that <strong>skips</strong> the stage when
+  nothing in it changed. A skipped stage shows as <strong>Skipped</strong> in the console and runs none of its
+  actions, so nobody is asked to approve a run that would change nothing.</li>
+<li>A gate also guards the ungated targets declared right after it, up to the next gate. Its stage runs
+  when one of them changed, even if the gated target did not, so they still wait for that approval.
+  The gated target's own deploy action then finds it unchanged and skips it.</li>
+<li>A target Plan cannot check (for example a malformed <code>config/&lt;stage&gt;.json</code>) counts as changed. Its
+  stage runs, and its deploy action reports the real error.</li>
+<li>Each deploy action checks the fingerprint once more right before deploying, which covers a deploy
+  that happened while its approval was pending.</li>
+<li>If <code>deploy.config.ts</code> changes something the pipeline was built from (targets, Regions, roles,
+  registries), Plan fails and asks you to re-run <code>cdk-cicd deploy-ci</code>.</li>
+</ul>
+<p>To ask for approval on every run, even when nothing changed, set <code>alwaysApprove</code> on a gated target:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'222222222222'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">alwaysApprove</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">},</span>
+</code></pre></div>
+<p>The deployer container gets the CodeBuild role's credentials from the container-credentials endpoint.
+No access key is written into the build's environment or its log.</p>
 <p>For an image in an ECR account different from the Repo 2 pipeline, the repository owner must grant the
-generated CodeBuild role <code>ecr:BatchGetImage</code>, <code>ecr:GetDownloadUrlForLayer</code>, and
-<code>ecr:BatchCheckLayerAvailability</code>, plus <code>ecr:DescribeImages</code> so mutable tags can be resolved to an
-immutable digest before the skip comparison. Set <code>crossAccountEcrRepositoryPolicyConfigured: true</code> only
+generated Deploy CodeBuild role <code>ecr:BatchGetImage</code>, <code>ecr:GetDownloadUrlForLayer</code>,
+<code>ecr:BatchCheckLayerAvailability</code> and <code>ecr:DescribeImages</code>, and the generated Plan CodeBuild role
+<code>ecr:DescribeImages</code>. Both use it to resolve a mutable tag, a range or the newest <code>autoDeploy</code> image
+to an immutable digest for the change check. Without the Plan grant, Plan cannot check any target that
+uses such an image from that repository, so those targets' stages and approvals run on every commit. A
+target pinned by digest needs no lookup. Granting the pipeline account covers both roles. Set <code>crossAccountEcrRepositoryPolicyConfigured: true</code> only
 after that owner-side policy exists; otherwise pipeline rendering fails closed. This acknowledgement
 covers the deployer image pulled after the build starts. A private ECR image used as CodeBuild's own
 environment image must still be in the pipeline Region.</p>
@@ -2946,6 +3093,31 @@ deploying, run the preflight. It needs no <code>--yes</code>, because it changes
 <div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>cdk-cicd<span class="w"> </span>--<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w"> </span>--validate-only
 npm<span class="w"> </span>run<span class="w"> </span>cdk-cicd<span class="w"> </span>--<span class="w"> </span>deploy<span class="w"> </span>--from-image<span class="w"> </span>--validate-only<span class="w"> </span>--target<span class="w"> </span>int
 </code></pre></div>
+<h3 id="deploy-a-target-automatically-on-every-new-image">Deploy a target automatically on every new image</h3>
+<p>For a dev environment whose configuration does not change between image versions, set <code>autoDeploy</code> on
+its target. Every successful push to the target's ECR repository then deploys it, with no commit to
+the deploy repository:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">targets</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'dev'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">autoDeploy</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'int'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">manualApproval</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">},</span>
+<span class="p">],</span>
+</code></pre></div>
+<ul>
+<li><code>cdk-cicd deploy-ci</code> adds a small pipeline for that target. An EventBridge rule on ECR pushes starts
+  it, and it deploys only that target. The main pipeline keeps running on deploy repository commits,
+  so other targets and their approval gates are never touched by an image push.</li>
+<li>An <code>autoDeploy</code> target always runs the <strong>newest tagged image</strong> in its repository, from either
+  pipeline. Its <code>config/&lt;stage&gt;.json</code> needs no <code>version</code>: an exact version there is not used, and a
+  range still limits which images it follows. A <code>version</code> that is present must still be a valid
+  non-empty string. The rest of that file is still its stage configuration, and a commit that changes
+  it redeploys the target as usual.</li>
+<li>The target must have no manual approval, and its ECR repository must be in the CD pipeline's own
+  account and Region (ECR push events are delivered only to the local event bus).</li>
+<li>If a new image needs a configuration change, its deployment fails at the validation synth, before
+  any CloudFormation change, until <code>config/&lt;stage&gt;.json</code> is updated.</li>
+<li>The running version of an <code>autoDeploy</code> target is not recorded in Git. To pin it again, remove
+  <code>autoDeploy</code>, set <code>version</code>, and re-run <code>deploy-ci</code>.</li>
+</ul>
 <h2 id="division-of-authority-what-vs-where">Division of authority: WHAT vs WHERE</h2>
 <p>The <strong>image</strong> is authoritative for <em>what</em> to deploy: the app code, its stacks, and the schema of its
 configuration. The <strong>deploy repository</strong> is authoritative for <em>where</em> and <em>with which configuration</em>.
@@ -2985,7 +3157,7 @@ to <code>1.4.1</code>) and re-run. Because the image pins code + deps and config
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-11-06
+    2026-11-17
   </span>
 
     
