@@ -209,7 +209,7 @@ describe('package-version image tag (immutable repository)', () => {
 
   // Fake aws/docker: describe-images answers from <dir>/tags/<tag> (a digest); `docker push` of the
   // version tag publishes the commit image's digest unless PUSH_FAILS is set.
-  const run = (version: string, existing: Record<string, string>, pushFails = false) => {
+  const run = (version: string | undefined, existing: Record<string, string>, pushFails = false) => {
     const dir = mkdtempSync(path.join(tmpdir(), 'cdk-cicd-version-tag-'));
     try {
       const tags = path.join(dir, 'tags');
@@ -244,7 +244,8 @@ describe('package-version image tag (immutable repository)', () => {
           ...(pushFails ? { PUSH_FAILS: '1' } : {}),
         },
       });
-      const versionDigest = existsSync(path.join(tags, version)) ? readFileSync(path.join(tags, version), 'utf8') : '';
+      const versionFile = path.join(tags, version ?? 'undefined');
+      const versionDigest = existsSync(versionFile) ? readFileSync(versionFile, 'utf8') : '';
       return { result, docker: readFileSync(trace, 'utf8'), versionDigest };
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -279,6 +280,14 @@ describe('package-version image tag (immutable repository)', () => {
     const { result } = run('1.4.2', { c0ffee: SHA_DIGEST }, true);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('could not publish version tag 1.4.2');
+  });
+
+  test('fails, without pushing an `undefined` tag, when package.json has no version', () => {
+    const { result, docker, versionDigest } = run(undefined, { c0ffee: SHA_DIGEST });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('packageVersionTag needs a version in package.json');
+    expect(docker).toBe('');
+    expect(versionDigest).toBe('');
   });
 
   test('rejects a version that is not a valid image tag', () => {

@@ -1586,7 +1586,12 @@ export function packageVersionTagCommand(region: string, repositoryName: string,
     `aws ecr describe-images --region ${region} --repository-name ${repositoryName} ` +
     `--image-ids imageTag="${tagVariable}" --query 'imageDetails[0].imageDigest' --output text 2>/dev/null`;
   return [
-    'PACKAGE_VERSION="$(node -p "require(\'./package.json\').version")"',
+    // `|| ""`: a package.json without a version would otherwise print `undefined`, a valid tag that an
+    // immutable repository could never take back.
+    'PACKAGE_VERSION="$(node -p "require(\'./package.json\').version || \'\'")"',
+    'if [ -z "$PACKAGE_VERSION" ]; then',
+    '  echo "cdk-cicd: packageVersionTag needs a version in package.json" >&2; exit 1',
+    'fi',
     // An OCI tag allows [A-Za-z0-9_.-] only; semver build metadata (`+...`) cannot be a tag.
     'if ! printf "%s" "$PACKAGE_VERSION" | grep -Eq "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"; then',
     '  echo "cdk-cicd: package.json version \'$PACKAGE_VERSION\' is not a valid image tag" >&2; exit 1',
