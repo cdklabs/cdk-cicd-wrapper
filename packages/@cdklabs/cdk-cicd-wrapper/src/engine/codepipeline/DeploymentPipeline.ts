@@ -691,6 +691,8 @@ export class DeploymentPipeline extends Construct {
         }),
       );
       const autoPipeline = new codepipeline.Pipeline(autoScope, 'Pipeline', {
+        // Update requires Replacement: the name derives from the stack name and the target stage, so
+        // renaming either replaces this pipeline, and its execution history goes with it.
         pipelineName: autoPipelineName,
         artifactBucket: support.artifactBucket,
         pipelineType: codepipeline.PipelineType.V2,
