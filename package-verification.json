@@ -4,9 +4,10 @@
     "samples/cdk-cicd-wrapper-example/package.json": "2cadb2c157f388fdd1ba7daf8fd636232790f8f0779fcd078ee7663e43b7f82e",
     "samples/security-plugins-proof/package.json": "b71afd924258504c149878fb5da832a586863e9ae22d8cbad1cf2a733739d4a5",
     "packages/@cdklabs/cdk-cicd-wrapper/package.json": "4f304e40d3d38aa86072bcbab3d447848671e7fae110e619174b9381bec642c8",
-    "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "7f8b87e98ce5281284667d410c082b8caa56e26bee5c4ac0a38427b0add8a126",
-    "test/fixtures/pipeline-app/package.json": "112ecd39b9f84f3937cd418f1869065bf21f8dffe2b8ad49402682318867ed79",
-    "projectList": "7e6611b2c0a2bf3cd6e4311e6f7135d8f4a6c10246d81f7112ec2e6eb99525cc"
+    "packages/@cdklabs/cdk-cicd-wrapper-cli/package.json": "cd2849c8c82ac22aec32f40578f9a21e17d9c7e60d7874aaa4ad0763f3855e61",
+    "test/fixtures/pipeline-app/package.json": "f17231179c91895d37d323ca0f7adef17f703d3b31e6d0446a1f26fe5f1a1444",
+    "test/fixtures/repo2-config-app/package.json": "44ba68c1d7f321c342d204bbfc31b7438f01072773e1f1e61d037536d715d0c4",
+    "projectList": "4db5ccffb1190c0ed2fc90c4f2dfb773e14cb60ac9ca8865db9f17d8328f0107"
   },
   "npm-lock-file": "a5fd7950daa823b050f441f914267cdc817d30708623c45deeb62c67a19a7e6b"
 }
