@@ -200,9 +200,8 @@ export function deploymentPipelineShapeFingerprint(
       cfnExecutionRole: roleIdentity(target.deployment?.cfnExecutionRole, target.stage),
       externalId: target.deployment?.externalId ?? null,
       ecrRepository: ecrRepositoryIdentity(target.image ?? config.image),
-      // Only present when on, so existing pipelines keep their recorded shape fingerprint.
-      ...(target.autoDeploy === true ? { autoDeploy: true } : {}),
-      ...(target.alwaysApprove === true ? { alwaysApprove: true } : {}),
+      autoDeploy: target.autoDeploy === true,
+      alwaysApprove: target.alwaysApprove === true,
     })),
   };
   return createHash('sha256')
