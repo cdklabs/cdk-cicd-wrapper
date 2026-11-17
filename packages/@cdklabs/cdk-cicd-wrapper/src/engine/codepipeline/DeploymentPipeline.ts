@@ -276,9 +276,12 @@ export class DeploymentPipeline extends Construct {
       '  } 2>&1 | tee /tmp/cdk-cicd-deploy.log',
       '  rc=$(cat /tmp/cdk-cicd-deploy-rc)',
       '  [ "$rc" -eq 0 ] && break',
-      // CloudFormation reports the collision either as a stack `*_IN_PROGRESS` status or, when the
-      // other deploy replaced CDK's shared `cdk-deploy-change-set`, as that change set not existing.
-      '  if [ "$attempt" -lt 3 ] && grep -qE "_IN_PROGRESS|ChangeSet .*does not exist" /tmp/cdk-cicd-deploy.log; then',
+      // CloudFormation reports the collision either as "Stack ... is in UPDATE_IN_PROGRESS state and can
+      // not be updated" or, when the other deploy replaced CDK's shared `cdk-deploy-change-set`, as that
+      // change set not existing. Not a bare `_IN_PROGRESS`: every deploy logs `*_IN_PROGRESS` stack
+      // events, so any failure, a rollback included, would be retried.
+      '  if [ "$attempt" -lt 3 ] && grep -qE "is in [A-Z_]+_IN_PROGRESS state|ChangeSet .*does not exist" ' +
+        '/tmp/cdk-cicd-deploy.log; then',
       '    echo "cdk-cicd: another deployment of $TARGET_STAGE is in progress; retrying in 60s (attempt $attempt)"',
       '    attempt=$((attempt + 1))',
       '    sleep 60',

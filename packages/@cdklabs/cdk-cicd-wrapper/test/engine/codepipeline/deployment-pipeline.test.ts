@@ -262,6 +262,21 @@ describe('m6-container: CD DeploymentPipeline (Repo 2)', () => {
       const changeSetRetried = run(0, changeSetTrace);
       expect(changeSetRetried.status).toBe(0);
       expect(readFileSync(changeSetTrace, 'utf8')).toMatch(/^deploy\nsleep 60\ndeploy\n.*ssm put-parameter/s);
+
+      // An ordinary failed deploy also logs `*_IN_PROGRESS` stack events (its update and its rollback);
+      // that is no collision, so it fails at once instead of rerunning the failing update.
+      writeFileSync(
+        fakeCdkCicd,
+        '#!/bin/sh\nprintf "deploy\\n" >> "$TRACE_FILE"\n' +
+          'echo "app | 0/3 | 10:00:00 AM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | app"\n' +
+          'echo "app | 1/3 | 10:00:09 AM | UPDATE_FAILED | AWS::SQS::Queue | Queue Invalid property"\n' +
+          'echo "app | 1/3 | 10:00:10 AM | UPDATE_ROLLBACK_IN_PROGRESS | AWS::CloudFormation::Stack | app"\n' +
+          'exit 1\n',
+      );
+      const failedUpdateTrace = path.join(cwd, 'failed-update.trace');
+      const failedUpdate = run(0, failedUpdateTrace);
+      expect(failedUpdate.status).toBe(1);
+      expect(readFileSync(failedUpdateTrace, 'utf8')).toBe('deploy\n');
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
