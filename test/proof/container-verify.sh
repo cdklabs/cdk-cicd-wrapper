@@ -18,7 +18,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly CA_DOMAIN='cdk-cicd-wrapper'
 readonly CA_REPO='cdk-cicd-wrapper'
 readonly FIXTURE='pipeline-app'
-readonly REGION='us-west-2'
+# The Region comes from .env (CDK_CICD_TEST_REGION_PRIMARY), so load it before anything reads it.
+load_env
+readonly REGION="$CDK_CICD_TEST_REGION_PRIMARY"
 readonly POLL_INTERVAL=20
 readonly POLL_MAX=60   # 20 min ceiling
 

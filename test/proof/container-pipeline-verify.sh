@@ -21,7 +21,7 @@
 #   6. Promote SBCD alone to the new image by changing only `version` in config/SBCD.json: SBCD runs the
 #      new version, SBCD2 stays on the old one and its stage is skipped.
 #   7. Range + config-file environment: target RANGE pins `^0.1.0` and takes its account and Region
-#      (us-west-1, not the pipeline's) only from config/RANGE.json. It stays on 0.1.0 while 0.2.0
+#      (the secondary Region, not the pipeline's) only from config/RANGE.json. It stays on 0.1.0 while 0.2.0
 #      exists; once 0.1.1 is published, the next Repo 2 commit moves it to 0.1.1 -- never to 0.2.0.
 #   8. Tear everything down: both pipeline stacks, the app stacks, the ECR repo, both CodeCommit repos
 #      and the CD pipeline's target-state parameters.
@@ -39,9 +39,12 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly CA_DOMAIN='cdk-cicd-wrapper'
 readonly CA_REPO='cdk-cicd-wrapper'
 readonly FIXTURE='repo2-config-app'
-readonly REGION='us-west-2'
-# RANGE's Region comes only from its config/RANGE.json, so it must differ from the pipeline's.
-readonly RANGE_REGION='us-west-1'
+# Regions come from .env (CDK_CICD_TEST_REGION_PRIMARY / _SECONDARY), so load it before anything reads
+# them. RANGE's Region comes only from its config/RANGE.json and must differ from the pipeline's, so
+# RANGE uses the secondary Region.
+load_env
+readonly REGION="$CDK_CICD_TEST_REGION_PRIMARY"
+readonly RANGE_REGION="$CDK_CICD_TEST_REGION_SECONDARY"
 readonly QUALIFIER='hnb659fds'   # the only qualifier bootstrapped in the test account
 readonly POLL_INTERVAL=20
 readonly POLL_MAX=90             # 30 min ceiling per wait
