@@ -1287,6 +1287,37 @@ describe('Repo 2 Plan stage skips unchanged targets', () => {
     expect(mainPipeline(t).Properties.PipelineType).toBe('V2');
   });
 
+  test('a gate also runs when an ungated target behind it changed, so that target never skips approval', () => {
+    const t = render(
+      defineDeployment({
+        image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.2.3',
+        repository: Repository.codecommit('my-deploy-config'),
+        targets: [
+          { stage: 'dev', env: { account: '111111111111', region: 'eu-west-1' } },
+          { stage: 'int', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: true },
+          { stage: 'perf', env: { account: '111111111111', region: 'eu-west-1' }, manualApproval: false },
+          { stage: 'prod', env: { account: '222222222222', region: 'eu-west-1' }, manualApproval: true },
+        ],
+      }),
+    );
+    const plans = JSON.parse(projectEnvironment(planProject(t)).CDK_CICD_PLAN);
+    const targetsOf = (stage: string) =>
+      plans.find((entry: any) => entry.stage === stage).units.map((unit: any) => unit.target);
+    expect(stages(t).map((stage) => [stage.Name, stage.Actions.map((action: any) => action.Name)])).toEqual([
+      ['Source', ['Source']],
+      ['Plan', ['Plan']],
+      ['Deploy-1', ['Deploy-dev']],
+      ['Deploy-2', ['Approve-int', 'Deploy-int']],
+      ['Deploy-3', ['Deploy-perf']],
+      ['Deploy-4', ['Approve-prod', 'Deploy-prod']],
+    ]);
+    expect(targetsOf('Deploy-1')).toEqual(['dev']);
+    // int's gate runs for a perf change too; prod's gate guards nothing after it.
+    expect(targetsOf('Deploy-2')).toEqual(['int', 'perf']);
+    expect(targetsOf('Deploy-3')).toEqual(['perf']);
+    expect(targetsOf('Deploy-4')).toEqual(['prod']);
+  });
+
   test('alwaysApprove keeps a target gated on every run and changes the pipeline shape', () => {
     const always = render(threeTargets(true));
     const prod = stages(always).find((stage) => stage.Name === 'Deploy-3');

@@ -237,7 +237,10 @@ whether there is anything to deploy:
 - The `Plan` stage (`cdk-cicd pipeline plan`) computes every target's fingerprint and compares it with
   the stored one. Each deployment stage has a CodePipeline entry condition that **skips** the stage when
   nothing in it changed. A skipped stage shows as **Skipped** in the console and runs none of its
-  actions, so nobody is asked to approve a target that would not change.
+  actions, so nobody is asked to approve a run that would change nothing.
+- A gate also guards the ungated targets declared right after it, up to the next gate. Its stage runs
+  when one of them changed, even if the gated target did not, so they still wait for that approval.
+  The gated target's own deploy action then finds it unchanged and skips it.
 - A target Plan cannot check (for example a malformed `config/<stage>.json`) counts as changed. Its
   stage runs, and its deploy action reports the real error.
 - Each deploy action checks the fingerprint once more right before deploying, which covers a deploy

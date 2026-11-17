@@ -366,10 +366,13 @@ export class DeploymentPipeline extends Construct {
     // condition skips the stage -- its approval included -- when its variable is not `true`. Plan
     // marks a unit it cannot fingerprint as changed, so the stage runs and its deploy action reports
     // the real error; only a pipeline-shape mismatch fails Plan itself.
-    const stagePlans = deploymentStages.map((deploymentStage, index) => ({
-      variable: planVariableName(index),
-      stage: deploymentStage.name,
-      units: deploymentStage.targets.flatMap((target) =>
+    //
+    // A gate also guards the ungated targets declared right after it, up to the next gate: they wait
+    // behind its approval. So a gated stage runs when its own target OR one of those changed -- skipped
+    // on its own target alone, it would let them deploy with no approval at all. Its deploy action still
+    // skips its own unchanged target. Targets after the next gate are guarded by that gate.
+    const stageUnits = (deploymentStage: DeploymentStagePlan) =>
+      deploymentStage.targets.flatMap((target) =>
         deploymentUnits
           .filter((unit) => unit.target === target)
           .map((unit) => ({
@@ -377,8 +380,19 @@ export class DeploymentPipeline extends Construct {
             ...(unit.region !== undefined ? { region: unit.region } : {}),
             parameter: unit.stateParameterName,
           })),
-      ),
-    }));
+      );
+    const stagePlans = deploymentStages.map((deploymentStage, index) => {
+      const next = deploymentStages[index + 1];
+      const guarded =
+        deploymentStage.approvalTarget !== undefined && next !== undefined && next.approvalTarget === undefined
+          ? [next]
+          : [];
+      return {
+        variable: planVariableName(index),
+        stage: deploymentStage.name,
+        units: [deploymentStage, ...guarded].flatMap(stageUnits),
+      };
+    });
     const planProject = new codebuild.PipelineProject(this, 'Plan', {
       environment: {
         buildImage,
