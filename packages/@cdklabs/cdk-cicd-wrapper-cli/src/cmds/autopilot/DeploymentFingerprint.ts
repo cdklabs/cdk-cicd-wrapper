@@ -21,7 +21,7 @@ import type {
   ResolvedDeploymentTarget,
 } from '@cdklabs/cdk-cicd-wrapper';
 import { deploymentPipelineShapeFingerprint, parseEcrRepository } from '@cdklabs/cdk-cicd-wrapper';
-import { RangeImageResolver, resolveDeployImage, VERSION_KEY } from './DeployFromImage';
+import { RangeImageResolver, readStageFile, resolveDeployImage } from './DeployFromImage';
 
 /** What the CD pipeline's CodeBuild projects provide to check the checked-out deploy.config. */
 export interface PipelineContext {
@@ -140,29 +140,17 @@ const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const sha256 = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 
 /** The `version` and the hash of the remaining keys of `config/<stage>.json`, validated like the deploy. */
-function readStageFile(cwd: string, stage: string): { version: string | null; stageConfig: string | null } {
-  const file = path.resolve(cwd, 'config', `${stage}.json`);
-  if (!existsSync(file)) return { version: null, stageConfig: null };
-  let document: unknown;
-  try {
-    document = JSON.parse(readFileSync(file, 'utf-8'));
-  } catch (error) {
-    throw new Error(
-      `cdk-cicd deploy --from-image: ${file} exists but could not be read as JSON (${(error as Error).message})`,
-    );
-  }
-  const isObject = document !== null && typeof document === 'object' && !Array.isArray(document);
-  const version = isObject ? (document as { [key: string]: unknown })[VERSION_KEY] : undefined;
-  if (typeof version !== 'string' || version.length === 0 || version.trim() !== version) {
-    throw new Error(
-      `cdk-cicd deploy --from-image: ${file} must contain a non-empty string version field with no surrounding whitespace`,
-    );
-  }
+function stageFileInputs(cwd: string, target: ResolvedDeploymentTarget) {
+  const stageFile = readStageFile(cwd, target.stage, target.autoDeploy === true);
+  if (stageFile === undefined) return { version: null, stageConfig: null };
   // Keys besides `version` make the file the target's injected stage configuration, so a change to any
   // of them must redeploy the target with the same image. A version-only file contributes nothing extra,
   // which keeps the fingerprint of existing version-only targets unchanged.
-  const { [VERSION_KEY]: _version, ...rest } = document as { [key: string]: unknown };
-  return { version, stageConfig: Object.keys(rest).length > 0 ? sha256(JSON.stringify(rest)) : null };
+  const { version, stageConfig } = stageFile;
+  return {
+    version: version ?? null,
+    stageConfig: Object.keys(stageConfig).length > 0 ? sha256(JSON.stringify(stageConfig)) : null,
+  };
 }
 
 /** The image's registry identity plus its immutable digest, or null for a non-ECR image. */
@@ -204,7 +192,7 @@ export function targetFingerprint(
   cwd: string,
   dependencies: FingerprintDependencies = {},
 ): string {
-  const { version, stageConfig } = readStageFile(cwd, target.stage);
+  const { version, stageConfig } = stageFileInputs(cwd, target);
   const effectiveImage = resolveDeployImage(target, config, cwd, {
     readVersion: () => version ?? undefined,
     resolveLatestImage: dependencies.resolveLatestImage,

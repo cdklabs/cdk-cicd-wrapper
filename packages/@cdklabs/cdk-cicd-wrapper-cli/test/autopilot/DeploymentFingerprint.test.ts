@@ -212,7 +212,7 @@ describe('targetFingerprint', () => {
     write('config/dev.json', '{');
     expect(() => fingerprint()).toThrow('exists but could not be read as JSON');
     write('config/dev.json', { version: ' 1.2.3 ' });
-    expect(() => fingerprint()).toThrow('must contain a non-empty string version field');
+    expect(() => fingerprint()).toThrow("must contain a non-empty string 'version'");
   });
 
   test('a range target changes when a newer matching version is published', () => {
@@ -244,6 +244,23 @@ describe('targetFingerprint', () => {
     const first = run(DIGEST_A);
     expect(seen).toEqual(['111111111111.dkr.ecr.eu-west-1.amazonaws.com/app:1.2.3']);
     expect(run(DIGEST_B)).not.toBe(first);
+  });
+
+  test('an autoDeploy target needs no version in its stage file; its configuration still counts', () => {
+    const auto = { ...target, autoDeploy: true };
+    const run = () =>
+      targetFingerprint(config, auto, 'eu-west-1', cwd, {
+        resolveLatestImage: () => `111111111111.dkr.ecr.eu-west-1.amazonaws.com/app@${DIGEST_A}`,
+        resolveDigest: () => {
+          throw new Error('a pinned digest needs no tag lookup');
+        },
+      });
+    write('config/dev.json', { greeting: 'alpha' });
+    const alpha = run();
+    write('config/dev.json', { greeting: 'bravo' });
+    expect(run()).not.toBe(alpha);
+    // Not for a target that deploys the recorded version.
+    expect(() => targetFingerprint(config, target, 'eu-west-1', cwd)).toThrow("non-empty string 'version'");
   });
 });
 

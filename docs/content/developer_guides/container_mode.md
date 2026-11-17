@@ -178,7 +178,8 @@ baked in the image:
 The deploy resolves `image = <base-repo>:<version from config/<stage>.json>`, so `dev` can run a newer
 version than `prod`, and the version is plain config, reviewable in a pull request. If the file exists
 but is unreadable, malformed, or lacks a non-empty string `version`, deployment fails instead of
-silently falling back to the base image.
+silently falling back to the base image. Only an `autoDeploy` target may leave `version` out (see
+below).
 
 `version` takes three forms:
 
@@ -322,8 +323,10 @@ targets: [
   it, and it deploys only that target. The main pipeline keeps running on deploy repository commits,
   so other targets and their approval gates are never touched by an image push.
 - An `autoDeploy` target always runs the **newest tagged image** in its repository, from either
-  pipeline. Its `version` in `config/<stage>.json` is not used. The rest of that file is still its
-  stage configuration, and a commit that changes it redeploys the target as usual.
+  pipeline. Its `config/<stage>.json` needs no `version`: an exact version there is not used, and a
+  range still limits which images it follows. A `version` that is present must still be a valid
+  non-empty string. The rest of that file is still its stage configuration, and a commit that changes
+  it redeploys the target as usual.
 - The target must have no manual approval, and its ECR repository must be in the CD pipeline's own
   account and Region (ECR push events are delivered only to the local event bus).
 - If a new image needs a configuration change, its deployment fails at the validation synth, before

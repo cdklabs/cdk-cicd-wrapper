@@ -99,9 +99,17 @@ const AWS_ACCOUNT_ID = /^\d{12}$/;
 const AWS_REGION = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+-\d+$/;
 const S3_BUCKET_NAME = /^(?!\d{1,3}(?:\.\d{1,3}){3}$)(?!.*\.\.)[a-z0-9](?:[a-z0-9.-]{1,61}[a-z0-9])$/;
 
-/** Reads the deployed `version` (hash or semver) for a stage from `config/<stage>.json`. Injectable for tests. */
-export type VersionReader = (cwd: string, stage: string) => string | undefined;
-export const readVersionFromConfig: VersionReader = (cwd, stage) => {
+/**
+ * Repo 2's `config/<stage>.json` as every consumer reads it -- the deploy and the pipeline's change
+ * detection alike, so they validate it the same way: undefined when the file is absent, otherwise its
+ * `version` and the remaining keys. The version must be a non-empty string unless `versionOptional`
+ * (an autoDeploy target, which follows the newest image and needs no version).
+ */
+export function readStageFile(
+  cwd: string,
+  stage: string,
+  versionOptional = false,
+): { version?: string; stageConfig: { [key: string]: unknown } } | undefined {
   const file = path.join(cwd, 'config', `${stage}.json`);
   if (!existsSync(file)) return undefined;
 
@@ -115,17 +123,24 @@ export const readVersionFromConfig: VersionReader = (cwd, stage) => {
     );
   }
 
-  const version =
-    document !== null && typeof document === 'object' && !Array.isArray(document)
-      ? (document as { version?: unknown }).version
-      : undefined;
+  const isObject = document !== null && typeof document === 'object' && !Array.isArray(document);
+  const { [VERSION_KEY]: version, ...stageConfig } = (isObject ? document : {}) as { [key: string]: unknown };
+  if (isObject && version === undefined && versionOptional) return { stageConfig };
   if (typeof version !== 'string' || version.length === 0 || version.trim() !== version) {
     throw new Error(
       `cdk-cicd deploy --from-image: ${file} must contain a non-empty string 'version' with no surrounding whitespace`,
     );
   }
-  return version;
-};
+  return { version, stageConfig };
+}
+
+/**
+ * Reads the deployed `version` (hash or semver) for a stage from `config/<stage>.json`; see
+ * `readStageFile` for `versionOptional`. Injectable for tests.
+ */
+export type VersionReader = (cwd: string, stage: string, versionOptional?: boolean) => string | undefined;
+export const readVersionFromConfig: VersionReader = (cwd, stage, versionOptional) =>
+  readStageFile(cwd, stage, versionOptional)?.version;
 
 /**
  * The full deployer image to run for a target. A target-level digest is the strongest possible pin and
@@ -248,7 +263,7 @@ export function resolveDeployImage(
   cwd: string,
   resolvers: ImageResolvers = {},
 ): { image: string; version?: string } | undefined {
-  const version = (resolvers.readVersion ?? readVersionFromConfig)(cwd, target.stage);
+  const version = (resolvers.readVersion ?? readVersionFromConfig)(cwd, target.stage, target.autoDeploy === true);
   const image = resolveTargetImage(target, config, cwd, () => version);
   if (image === undefined) return undefined;
   const pinnedByTarget = target.image?.includes('@') === true;

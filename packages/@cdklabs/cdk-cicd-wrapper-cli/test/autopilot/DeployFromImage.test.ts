@@ -379,6 +379,34 @@ describe('m6-container: version file validation', () => {
     fs.writeFileSync(path.join(cwd, 'config', 'dev.json'), '{"version":"1.2.3"}');
     expect(readVersionFromConfig(cwd, 'dev')).toBe('1.2.3');
   });
+
+  test('an autoDeploy target needs no version, but one that is present is still validated', () => {
+    const file = path.join(cwd, 'config', 'dev.json');
+    fs.writeFileSync(file, '{"greeting":"hi"}');
+    expect(readVersionFromConfig(cwd, 'dev', true)).toBeUndefined();
+    expect(() => readVersionFromConfig(cwd, 'dev')).toThrow(/non-empty string 'version'/);
+    fs.writeFileSync(file, '{"version":" 1.2.3 "}');
+    expect(() => readVersionFromConfig(cwd, 'dev', true)).toThrow(/non-empty string 'version'/);
+    fs.writeFileSync(file, '[]');
+    expect(() => readVersionFromConfig(cwd, 'dev', true)).toThrow(/non-empty string 'version'/);
+  });
+
+  test('resolveDeployImage deploys an autoDeploy target whose stage file carries only configuration', () => {
+    fs.writeFileSync(path.join(cwd, 'config', 'dev.json'), '{"greeting":"hi"}');
+    const newest = `111111111111.dkr.ecr.eu-west-1.amazonaws.com/app@sha256:${'e'.repeat(64)}`;
+    const resolved = resolveDeployImage(
+      {
+        stage: 'dev',
+        env: { regions: ['eu-west-1'], regionOrder: 'sequential' },
+        manualApproval: false,
+        autoDeploy: true,
+      } as any,
+      { image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/app', targets: [] } as any,
+      cwd,
+      { resolveLatestImage: () => newest },
+    );
+    expect(resolved).toEqual({ image: newest });
+  });
 });
 
 describe('m6-container: runFromImage', () => {
