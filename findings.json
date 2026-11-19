@@ -1744,6 +1744,20 @@
         "path": "packages/@cdklabs/cdk-cicd-wrapper/.projen/tasks.json",
         "line": 126
       }
+    },
+    {
+      "id": "code-review-deploy-driver-iam4-reason-overstates-scope",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The deploy driver's AwsSolutions-IAM4 suppression says AWSLambdaBasicExecutionRole is limited to the function's own log group; it grants logs actions on Resource \"*\"",
+      "detail": "The reason text on the asyncDeploy deploy-driver Lambda's IAM4 suppression claims the managed policy 'grants only CloudWatch Logs writes for this function's own log group'. AWSLambdaBasicExecutionRole grants logs:CreateLogGroup, logs:CreateLogStream and logs:PutLogEvents on Resource \"*\". A suppression reason is the evidence a security reviewer reads, so it should be accurate. The DevOps Agent forwarder copied the same text, and its copy was corrected in the review that found this. Fix direction: correct the reason, or give the function an explicit log group plus a scoped policy instead of the managed one.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 980
+      }
     }
   ]
 }

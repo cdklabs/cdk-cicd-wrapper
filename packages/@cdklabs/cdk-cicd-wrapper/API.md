@@ -2583,6 +2583,65 @@ Concrete target Regions, in declaration order.
 
 ---
 
+### DevOpsAgentConfig <a name="DevOpsAgentConfig" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig"></a>
+
+Start an AWS DevOps Agent investigation whenever a pipeline action fails.
+
+The pipeline stack gets an EventBridge rule on its own pipeline's `CodePipeline Action Execution
+State Change` events in state `FAILED`, and a small Lambda that calls DevOps Agent
+`CreateBacklogTask` (task type `INVESTIGATION`) in the configured Agent Space. Calls are signed with
+the Lambda's own IAM role, granted `aidevops:CreateBacklogTask` on this one Agent Space only. There
+is no webhook, no shared secret and nothing reachable from outside the account.
+
+You create the Agent Space and associate the accounts it may investigate (the pipeline account and
+each stage account) yourself. The wrapper only forwards failures. The Agent Space must be in the
+pipeline's account. Investigations are billed by DevOps Agent per agent-second.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.Initializer"></a>
+
+```typescript
+import { DevOpsAgentConfig } from '@cdklabs/cdk-cicd-wrapper'
+
+const devOpsAgentConfig: DevOpsAgentConfig = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.agentSpaceId">agentSpaceId</a></code> | <code>string</code> | The Agent Space ID that receives the investigations (the ID, not the ARN). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.region">region</a></code> | <code>string</code> | The Region the Agent Space lives in, when it differs from the pipeline stack's Region. |
+
+---
+
+##### `agentSpaceId`<sup>Required</sup> <a name="agentSpaceId" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.agentSpaceId"></a>
+
+```typescript
+public readonly agentSpaceId: string;
+```
+
+- *Type:* string
+
+The Agent Space ID that receives the investigations (the ID, not the ARN).
+
+Changing it only
+updates the Lambda's environment and IAM policy; nothing is replaced.
+
+---
+
+##### `region`<sup>Optional</sup> <a name="region" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.region"></a>
+
+```typescript
+public readonly region: string;
+```
+
+- *Type:* string
+- *Default:* the pipeline stack's Region
+
+The Region the Agent Space lives in, when it differs from the pipeline stack's Region.
+
+---
+
 ### DockerBuildProps <a name="DockerBuildProps" id="@cdklabs/cdk-cicd-wrapper.DockerBuildProps"></a>
 
 Props for {@link BuildImage.docker}.
@@ -3755,6 +3814,7 @@ const resolvedCicdConfig: ResolvedCicdConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.createComplianceLogBucket">createComplianceLogBucket</a></code> | <code>boolean</code> | Whether the pipeline stack creates and manages `complianceLogBucketName`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployerImage">deployerImage</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage">BuildImage</a></code> | Container mode (Repo 1): when set, the pipeline runs CI then builds & pushes a config-agnostic deployer image to ECR instead of deploying stages. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployRoleExternalId">deployRoleExternalId</a></code> | <code>string</code> | Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.devopsAgent">devopsAgent</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a></code> | Start a DevOps Agent investigation when a pipeline action fails, if configured. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.express">express</a></code> | <code>boolean</code> | Deploy with **CloudFormation express mode** (`cdk deploy --express`). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.githubActions">githubActions</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig">GitHubActionsConfig</a></code> | GitHub Actions engine configuration. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the builds authenticate against with a bearer token, if any. |
@@ -3978,6 +4038,20 @@ AWS-managed encryption key; customer-managed KMS keys are not supported without 
 
 ---
 
+##### `devopsAgent`<sup>Optional</sup> <a name="devopsAgent" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.devopsAgent"></a>
+
+```typescript
+public readonly devopsAgent: DevOpsAgentConfig;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a>
+
+Start a DevOps Agent investigation when a pipeline action fails, if configured.
+
+See `DevOpsAgentConfig`.
+
+---
+
 ##### `express`<sup>Optional</sup> <a name="express" id="@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.express"></a>
 
 ```typescript
@@ -4147,6 +4221,7 @@ const resolvedDeploymentConfig: ResolvedDeploymentConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.codeArtifact">codeArtifact</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeArtifactConfig">CodeArtifactConfig</a></code> | Private CodeArtifact repo the CD build authenticates against before `npm ci` (to install the wrapper CLI when it is pre-release / not on public npm). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | Default compliance/access-log destination bucket name for targets that do not provide their own. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.crossAccountEcrRepositoryPolicyConfigured">crossAccountEcrRepositoryPolicyConfigured</a></code> | <code>boolean</code> | Confirms that owner-side repository policies permit the generated pipeline role to pull every cross-account ECR image referenced by this deployment config. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.devopsAgent">devopsAgent</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a></code> | Start a DevOps Agent investigation when an action of the CD pipeline (or of a target's auto-deploy pipeline) fails, if configured. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.image">image</a></code> | <code>string</code> | The default deployer image to run targets against (an ECR/OCI reference, tag or digest). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the CD build authenticates against before `npm ci`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier used by the deployer image; |
@@ -4224,6 +4299,20 @@ public readonly crossAccountEcrRepositoryPolicyConfigured: boolean;
 - *Default:* false
 
 Confirms that owner-side repository policies permit the generated pipeline role to pull every cross-account ECR image referenced by this deployment config.
+
+---
+
+##### `devopsAgent`<sup>Optional</sup> <a name="devopsAgent" id="@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.devopsAgent"></a>
+
+```typescript
+public readonly devopsAgent: DevOpsAgentConfig;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a>
+
+Start a DevOps Agent investigation when an action of the CD pipeline (or of a target's auto-deploy pipeline) fails, if configured.
+
+See `DevOpsAgentConfig`.
 
 ---
 

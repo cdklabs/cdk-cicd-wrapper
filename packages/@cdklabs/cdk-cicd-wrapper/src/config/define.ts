@@ -23,6 +23,7 @@ import {
   CodePipelineRoleNames,
   DeployModel,
   DeploymentConfig,
+  DevOpsAgentConfig,
   EngineType,
   GitHubActionsConfig,
   NpmRegistryConfig,
@@ -162,6 +163,8 @@ export interface CicdConfigProps {
    * name is a custom plugin and must be registered in `bin/` via `CdkCicd.addPlugin`.
    */
   readonly plugins?: PluginRef[];
+  /** Start an AWS DevOps Agent investigation when a pipeline action fails. See `DevOpsAgentConfig`. */
+  readonly devopsAgent?: DevOpsAgentConfig;
 }
 
 /**
@@ -317,7 +320,54 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     express: props.express ?? false,
     deployerImage: props.deployerImage,
     plugins: props.plugins,
+    ...devopsAgentField(props.devopsAgent, engine),
   };
+}
+
+/**
+ * Trim and validate a `devopsAgent` block; `undefined` passes through (the feature is off). The Agent
+ * Space ID has no published pattern -- CreateBacklogTask documents only its length (1-2048) -- so only
+ * shapes that are certainly wrong are rejected.
+ */
+export function normalizeDevOpsAgent(input: DevOpsAgentConfig | undefined): DevOpsAgentConfig | undefined {
+  if (input === undefined) return undefined;
+  const agentSpaceId = input.agentSpaceId?.trim() ?? '';
+  if (agentSpaceId.length === 0) {
+    throw new Error('cdk-cicd: devopsAgent.agentSpaceId is required -- the ID of your DevOps Agent Agent Space.');
+  }
+  if (agentSpaceId.startsWith('arn:')) {
+    throw new Error(
+      'cdk-cicd: devopsAgent.agentSpaceId takes the Agent Space ID, not its ARN (the part after `agentspace/`).',
+    );
+  }
+  if (agentSpaceId.length > 2048 || /[\s/]/.test(agentSpaceId)) {
+    throw new Error(`cdk-cicd: devopsAgent.agentSpaceId '${agentSpaceId}' is not a valid Agent Space ID.`);
+  }
+  const region = input.region?.trim();
+  if (region !== undefined && !AWS_REGION.test(region)) {
+    throw new Error(`cdk-cicd: devopsAgent.region '${input.region}' is not an AWS Region name (e.g. eu-west-1).`);
+  }
+  return { agentSpaceId, ...(region !== undefined ? { region } : {}) };
+}
+
+/**
+ * The resolved `devopsAgent` member, present only when configured so existing configs resolve exactly
+ * as before. The forwarder listens for CodePipeline events, which a GitHub Actions pipeline does not emit.
+ */
+function devopsAgentField(
+  input: DevOpsAgentConfig | undefined,
+  engine?: EngineType,
+): { devopsAgent?: DevOpsAgentConfig } {
+  const devopsAgent = normalizeDevOpsAgent(input);
+  if (devopsAgent === undefined) return {};
+  if (engine === EngineType.GITHUB_ACTIONS) {
+    throw new Error(
+      'cdk-cicd: devopsAgent forwards CodePipeline failures, and the GitHub Actions engine emits no CodePipeline ' +
+        "events. Remove devopsAgent. DevOps Agent's GitHub integration links deployments to its investigations, " +
+        'but it does not open one per failed workflow run.',
+    );
+  }
+  return { devopsAgent };
 }
 
 /**
@@ -405,6 +455,8 @@ export interface DeploymentProps {
    * an owner-side repository policy granting the generated Repo 2 CodeBuild role pull access.
    */
   readonly crossAccountEcrRepositoryPolicyConfigured?: boolean;
+  /** Start an AWS DevOps Agent investigation when a CD pipeline action fails. See `DevOpsAgentConfig`. */
+  readonly devopsAgent?: DevOpsAgentConfig;
 }
 
 const AWS_ACCOUNT_ID = /^\d{12}$/;
@@ -606,5 +658,6 @@ export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConf
     codeArtifact: props.codeArtifact,
     npmRegistry: props.npmRegistry,
     crossAccountEcrRepositoryPolicyConfigured: props.crossAccountEcrRepositoryPolicyConfigured,
+    ...devopsAgentField(props.devopsAgent),
   };
 }

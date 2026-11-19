@@ -47,6 +47,7 @@ export default defineCICD({
 | `express`                 | `boolean`                     | `false`                                | Deploy with CloudFormation express mode. See [Express mode](#express-mode). |
 | `deployerImage`           | `BuildImage`                  | —                                      | Container mode: build & push a deployer image instead of deploying.         |
 | `plugins`                 | `PluginRef[]`                 | the default-on hardening set           | Security plugins (hardening Aspects) applied tree-wide. See [Security plugins](#security-plugins). |
+| `devopsAgent`             | `DevOpsAgentConfig`           | —                                      | Open an AWS DevOps Agent investigation when a pipeline action fails. See [DevOps Agent](#devops-agent). |
 
 `APP_STAGING` is valid for direct/local application deployment (`cdk deploy`, including local
 `cdk-cicd deploy --from-image`) and Repo 1 container-image builds, which deploy no application stacks.
@@ -402,6 +403,15 @@ production; it targets fast iterative deployments. Off by default.
 deployer image instead of deploying stages (CodePipeline engine only). The deploy side is authored
 separately with `defineDeployment` in a `deploy.config.ts`. See the
 [Container mode guide](./container_mode.md) for the full two-repository flow.
+
+## DevOps Agent
+
+`devopsAgent: { agentSpaceId: '<id>' }` opens an [AWS DevOps Agent](https://docs.aws.amazon.com/devopsagent/latest/userguide/about-aws-devops-agent.html)
+investigation every time an action of the pipeline fails. The pipeline stack gets an EventBridge rule on its
+own failed actions and a small Lambda that calls `CreateBacklogTask` in your Agent Space. You create the
+Agent Space (in the pipeline account) and associate the accounts it may investigate. Optional `region`
+names the Agent Space's Region when it differs from the pipeline's. `defineDeployment` (Repo 2) takes the
+same field. Not available with the GitHub Actions engine. See the [DevOps Agent guide](./devops_agent.md).
 
 ## Pipeline role names
 

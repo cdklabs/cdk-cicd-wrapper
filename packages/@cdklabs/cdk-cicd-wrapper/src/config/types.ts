@@ -12,6 +12,33 @@ import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
 /**
+ * Start an AWS DevOps Agent investigation whenever a pipeline action fails.
+ *
+ * The pipeline stack gets an EventBridge rule on its own pipeline's `CodePipeline Action Execution
+ * State Change` events in state `FAILED`, and a small Lambda that calls DevOps Agent
+ * `CreateBacklogTask` (task type `INVESTIGATION`) in the configured Agent Space. Calls are signed with
+ * the Lambda's own IAM role, granted `aidevops:CreateBacklogTask` on this one Agent Space only. There
+ * is no webhook, no shared secret and nothing reachable from outside the account.
+ *
+ * You create the Agent Space and associate the accounts it may investigate (the pipeline account and
+ * each stage account) yourself. The wrapper only forwards failures. The Agent Space must be in the
+ * pipeline's account. Investigations are billed by DevOps Agent per agent-second.
+ */
+export interface DevOpsAgentConfig {
+  /**
+   * The Agent Space ID that receives the investigations (the ID, not the ARN). Changing it only
+   * updates the Lambda's environment and IAM policy; nothing is replaced.
+   */
+  readonly agentSpaceId: string;
+  /**
+   * The Region the Agent Space lives in, when it differs from the pipeline stack's Region.
+   *
+   * @default - the pipeline stack's Region
+   */
+  readonly region?: string;
+}
+
+/**
  * A security plugin's stable identity (issue #241). Serializable, so it is what `cicd.config.ts`
  * carries (through CDK context) to select a built-in plugin or declare a custom one. A custom
  * plugin's actual `IAspect` instance is supplied separately in `bin/` via `CdkCicd.addPlugin`, since
@@ -518,6 +545,8 @@ export interface ResolvedCicdConfig {
    * in `bin/` via `CdkCicd.addPlugin` -- the config carries only its identity, not the instance.
    */
   readonly plugins?: PluginRef[];
+  /** Start a DevOps Agent investigation when a pipeline action fails, if configured. See `DevOpsAgentConfig`. */
+  readonly devopsAgent?: DevOpsAgentConfig;
 }
 
 /**
@@ -632,4 +661,9 @@ export interface ResolvedDeploymentConfig {
    * @default false
    */
   readonly crossAccountEcrRepositoryPolicyConfigured?: boolean;
+  /**
+   * Start a DevOps Agent investigation when an action of the CD pipeline (or of a target's auto-deploy
+   * pipeline) fails, if configured. See `DevOpsAgentConfig`.
+   */
+  readonly devopsAgent?: DevOpsAgentConfig;
 }

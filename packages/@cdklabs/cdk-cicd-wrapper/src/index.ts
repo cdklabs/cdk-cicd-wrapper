@@ -42,6 +42,7 @@ export {
   CodePipelineRoleNames,
   DeployModel,
   DeploymentConfig,
+  DevOpsAgentConfig,
   EngineType,
   GitHubActionsConfig,
   GitHubBuildContainerCredentials,

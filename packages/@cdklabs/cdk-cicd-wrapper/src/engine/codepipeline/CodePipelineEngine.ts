@@ -64,7 +64,9 @@ import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
 import { ssmWarmingCommands, ssmWarmingReadStatements } from '../cdkpipelines/CdkPipelinesEngine';
 import { defaultCiCommands, NODE_RUNTIME_VERSION } from '../ci-commands';
+import { DevOpsAgentForwarder } from '../devops-agent/DevOpsAgentForwarder';
 import { deployRoleExternalIdSecretArnsForStages } from '../external-id-secrets';
+import { latestNodeRuntime } from '../lambda-runtime';
 // Reuse the SSM account-warming helpers the CdkPipelines engine exports (same wiring GitHubActionsEngine
 // does) rather than redefining the scan/grant here -- one source of truth for both the shell and the IAM.
 import { EngineRenderProps, IEngine } from '../types';
@@ -88,25 +90,6 @@ interface ComplianceLoggingEnvironment {
   readonly bucketName: string;
   readonly account: string;
   readonly region: string;
-}
-
-/**
- * The newest Node runtime the CONSUMER's `aws-cdk-lib` knows about, for the deploy-driver Lambda.
- *
- * Deliberately derived rather than pinned. cdk-nag's `AwsSolutions-L1` computes "latest" from
- * `Runtime.ALL` of whatever aws-cdk-lib is resolved, and the wrapper's peer range is `^2.195.0`, so a
- * user gets whatever is current. Any hardcoded version therefore becomes a synth ERROR -- which blocks
- * `deploy-ci` entirely -- the moment AWS adds a newer runtime. Measured, not theorised: pinning
- * `NODEJS_22_X` passed against the repo's own 2.195.0 (whose newest is 22) and FAILED L1 in a real run
- * that resolved 2.266.0 (whose newest is 24). Reading the same list nag reads keeps the two in step by
- * construction. `Runtime.NODEJS_LATEST` is NOT a substitute -- it is a conservative alias (nodejs18.x in
- * 2.195.0) and fails L1 too. The handler is plain JS on the AWS SDK v3, so any modern Node suits it.
- */
-function latestNodeRuntime(): lambda.Runtime {
-  const major = (r: lambda.Runtime): number => parseInt(r.name.replace('nodejs', ''), 10);
-  return lambda.Runtime.ALL.filter(
-    (r) => r.family === lambda.RuntimeFamily.NODEJS && /^nodejs\d+\./.test(r.name),
-  ).reduce((best, r) => (major(r) > major(best) ? r : best), lambda.Runtime.NODEJS_22_X);
 }
 
 /**
@@ -319,6 +302,9 @@ export class CodePipelineEngine implements IEngine {
       // encrypted with the wrapper's key and follows the configured removal policy.
       artifactBucket: support.artifactBucket,
     });
+    if (config.devopsAgent !== undefined) {
+      new DevOpsAgentForwarder(scope, 'DevOpsAgentForwarder', { pipelines: [pipeline], config: config.devopsAgent });
+    }
 
     // Container mode (Repo 1): a SECONDARY pipeline that runs CI and then builds & pushes a deployer image
     // to ECR -- it deploys nothing (Repo 2 deploys from the image). Distinct enough from the deploy
