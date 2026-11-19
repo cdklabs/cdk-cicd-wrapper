@@ -3,13 +3,15 @@
 # devops-agent-verify -- prove the `devopsAgent` investigations and knowledge levels against real AWS:
 #
 #   1. an Agent Space (CloudFormation AWS::DevOpsAgent::AgentSpace), tagged and disposable;
-#   2. a versioned S3 source bucket, with source.zip uploaded BEFORE the pipeline exists, so the pipeline's
-#      first execution gets past Source and the only failure is the one forced below;
-#   3. a flat CodePipeline from this checkout's wrapper (test/proof/devops-agent-app/app.js) whose Build
-#      fails on purpose, with devopsAgent pointing at (1);
-#   4. assert: the `knowledge` level published its two skills into the Agent Space; the Build action FAILS;
-#      the `investigations` level opens exactly the investigation it should ("Pipeline <name> failed at
-#      Build / Build", INVESTIGATION, HIGH); and the forwarder's dead-letter queue is empty;
+#   2. a versioned S3 source bucket and source.zip: uploaded before the flat pipeline exists, so its first
+#      execution gets past Source; for the other shapes uploaded after the stack, then a run is started;
+#   3. a pipeline from this checkout's wrapper (test/proof/devops-agent-app/app.js) whose first real action
+#      fails on purpose, with devopsAgent pointing at (1). CDK_CICD_DEVOPS_AGENT_SHAPE picks it: `flat`
+#      (default; Build / Build fails), `cdk-pipelines` (Build / Synth) or `repo2` (container mode's CD
+#      pipeline; Plan / Plan);
+#   4. assert: the `knowledge` level published its two skills into the Agent Space; that action FAILS; the
+#      `investigations` level opens exactly the investigation it should ("Pipeline <name> failed at
+#      <stage> / <action>", INVESTIGATION, HIGH); and the forwarder's dead-letter queue is empty;
 #   5. cancel that investigation (it only exists to be observed), then destroy all three stacks through the
 #      harness teardown guard, and the log groups their functions and build projects left behind.
 #
@@ -45,9 +47,16 @@ readonly RUN="$CDK_CICD_TEST_RUN_ID"
 readonly SPACE_STACK="cdkcicdtest-$RUN-agentspace"
 readonly SRC_STACK="cdkcicdtest-$RUN-devopssrc"
 readonly PIPE_STACK="cdkcicdtest-$RUN-devopspipeline"
-readonly PIPELINE="cdkcicdtest-$RUN-devops"
 readonly BUCKET="cdkcicdtest-$RUN-devopssrc-$CDK_CICD_TEST_ACCOUNT"
-readonly TITLE="Pipeline $PIPELINE failed at Build / Build"
+# Which pipeline the proof deploys (see devops-agent-app/app.js), and the action that fails in it.
+readonly SHAPE="${CDK_CICD_DEVOPS_AGENT_SHAPE:-flat}"
+case "$SHAPE" in
+  flat) FAIL_STAGE=Build FAIL_ACTION=Build ;;
+  cdk-pipelines) FAIL_STAGE=Build FAIL_ACTION=Synth ;;
+  repo2) FAIL_STAGE=Plan FAIL_ACTION=Plan ;;
+  *) echo "devops-agent-verify: unknown CDK_CICD_DEVOPS_AGENT_SHAPE '$SHAPE' (flat, cdk-pipelines, repo2)" >&2; exit 2 ;;
+esac
+readonly FAIL_STAGE FAIL_ACTION
 readonly APP="node '$DA_DIR/devops-agent-app/app.js'"
 readonly CDK=(npx -y "aws-cdk@$CDK_CLI_VERSION")
 readonly WATCH="${CDK_CICD_DEVOPS_AGENT_WATCH:-0}"
@@ -84,7 +93,7 @@ cancel_open_tasks() {
     --query "Stacks[0].Outputs[?OutputKey=='AgentSpaceId'].OutputValue" --output text || true)"
   [ -n "$space" ] && [ "$space" != None ] || return 0
   { aws_masked devops-agent list-backlog-tasks --region "$REGION" --agent-space-id "$space" --output text \
-      --query "tasks[?title=='$TITLE'].[taskId, status]" || true; printf '\n'; } | while read -r task_id state; do
+      --query "tasks[?starts_with(title, 'Pipeline cdkcicdtest-$RUN')].[taskId, status]" || true; printf '\n'; } | while read -r task_id state; do
     [ -n "${task_id:-}" ] || continue
     case " $FINISHED_TASK_STATES " in *" $state "*) continue ;; esac
     if aws_masked devops-agent update-backlog-task --region "$REGION" --agent-space-id "$space" \
@@ -96,6 +105,18 @@ cancel_open_tasks() {
   done
 }
 
+# A bucket the pipeline wrote artifacts to cannot be deleted with its stack until it is empty. Only buckets
+# under the proof's own prefix are touched.
+empty_stack_buckets() {
+  local stack="$1" bucket
+  for bucket in $(aws_masked cloudformation list-stack-resources --region "$REGION" --stack-name "$stack" \
+      --query "StackResourceSummaries[?ResourceType=='AWS::S3::Bucket'].PhysicalResourceId" --output text); do
+    case "$bucket" in cdkcicdtest-*) ;; *) continue ;; esac
+    aws_masked s3 rm "s3://$bucket" --recursive --only-show-errors --region "$REGION" >/dev/null 2>&1 \
+      && info "emptied bucket $bucket"
+  done
+}
+
 # Called by keep_or_destroy (harness.sh) and by `teardown`.
 destroy_all() {
   local status=0 stack groups group
@@ -103,6 +124,11 @@ destroy_all() {
   for stack in "$PIPE_STACK" "$SRC_STACK" "$SPACE_STACK"; do
     stack_exists "$stack" || continue
     groups="$(stack_log_groups "$stack")"
+    # CDK Pipelines' artifact bucket has no auto-delete; the other shapes' buckets empty themselves.
+    if [ "$stack" = "$PIPE_STACK" ] && [ "$SHAPE" = cdk-pipelines ]; then
+      ( guard_destroyable "$stack" "$REGION" ) || { status=1; continue; }
+      empty_stack_buckets "$stack"
+    fi
     if ( destroy_stack "$stack" "$REGION" ); then
       while read -r group; do
         [ -n "$group" ] || continue
@@ -160,15 +186,20 @@ AGENT_SPACE_ID="$(aws_masked cloudformation describe-stacks --region "$REGION" -
   --query "Stacks[0].Outputs[?OutputKey=='AgentSpaceId'].OutputValue" --output text)"
 [ -n "$AGENT_SPACE_ID" ] && [ "$AGENT_SPACE_ID" != None ] || die 'no AgentSpaceId output'
 info "agent space $AGENT_SPACE_ID"
-export PROOF_REGION="$REGION" PROOF_AGENT_SPACE_ID="$AGENT_SPACE_ID" CDK_CICD_TEST_RUN_ID CDK_CICD_TEST_ACCOUNT
+export PROOF_REGION="$REGION" PROOF_AGENT_SPACE_ID="$AGENT_SPACE_ID" PROOF_SHAPE="$SHAPE" CDK_CICD_TEST_RUN_ID \
+  CDK_CICD_TEST_ACCOUNT
 
 log "2. source bucket ($SRC_STACK) and source.zip"
 "${CDK[@]}" deploy "$SRC_STACK" --app "$APP" --output "$WORK/cdk.out" --require-approval never 2>&1 | redact | tail -5
 printf 'cdk-cicd-wrapper devopsAgent proof %s\n' "$RUN" >"$WORK/README.md"
 ( cd "$WORK" && zip -q source.zip README.md )
-aws s3 cp --region "$REGION" "$WORK/source.zip" "s3://$BUCKET/source.zip" --only-show-errors 2>&1 | redact
+# The flat pipeline's first run starts at creation and its Build waits 60 s, so the forwarder's rule exists
+# before Build fails. The other shapes fail sooner: they get the source, and a run, once the stack is complete.
+if [ "$SHAPE" = flat ]; then
+  aws s3 cp --region "$REGION" "$WORK/source.zip" "s3://$BUCKET/source.zip" --only-show-errors 2>&1 | redact
+fi
 
-log "3. pipeline ($PIPE_STACK), Build fails on purpose"
+log "3. $SHAPE pipeline ($PIPE_STACK), $FAIL_STAGE / $FAIL_ACTION fails on purpose"
 "${CDK[@]}" deploy "$PIPE_STACK" --app "$APP" --output "$WORK/cdk.out" --require-approval never 2>&1 | redact | tail -5
 resource() {
   aws_masked cloudformation list-stack-resources --region "$REGION" --stack-name "$PIPE_STACK" --output text \
@@ -179,6 +210,22 @@ QUEUE_URL="$(resource AWS::SQS::Queue DevOpsAgentDeadLetters)"
 [ -n "$FUNCTION" ] && [ "$FUNCTION" != None ] || die 'the pipeline stack has no DevOps Agent forwarder function'
 [ -n "$QUEUE_URL" ] && [ "$QUEUE_URL" != None ] || die 'the pipeline stack has no forwarder dead-letter queue'
 info "forwarder function $FUNCTION"
+PIPELINE="$(resource AWS::CodePipeline::Pipeline '')"
+[ -n "$PIPELINE" ] && [ "$PIPELINE" != None ] || die 'the pipeline stack has no pipeline'
+readonly PIPELINE
+readonly TITLE="Pipeline $PIPELINE failed at $FAIL_STAGE / $FAIL_ACTION"
+# The execution this proof judges. Empty for flat, whose only run is the one it starts at creation. The S3
+# source may start more runs of its own (the upload, the run at creation); matching on this execution keeps
+# them out of the result, and teardown cancels whatever investigation they open.
+EXEC_ID=''
+if [ "$SHAPE" != flat ]; then
+  aws s3 cp --region "$REGION" "$WORK/source.zip" "s3://$BUCKET/source.zip" --only-show-errors 2>&1 | redact
+  EXEC_ID="$(aws_masked codepipeline start-pipeline-execution --region "$REGION" --name "$PIPELINE" \
+    --query pipelineExecutionId --output text)" || die "could not start $PIPELINE"
+  [ -n "$EXEC_ID" ] && [ "$EXEC_ID" != None ] || die "start-pipeline-execution returned no execution id"
+  info "started $PIPELINE with the uploaded source (execution $EXEC_ID)"
+fi
+readonly EXEC_ID
 
 log "4a. the knowledge level published its skills"
 skills="$(aws_masked devops-agent list-assets --region "$REGION" --agent-space-id "$AGENT_SPACE_ID" --asset-type skill \
@@ -186,33 +233,50 @@ skills="$(aws_masked devops-agent list-assets --region "$REGION" --agent-space-i
 [ "$skills" = 2 ] || die "expected the 2 cdk-cicd skills in the Agent Space, found ${skills:-none}"
 info "skills: cdk-cicd-pipeline-failure-investigation + cdk-cicd-pipeline-map-cdkcicdtest-$RUN"
 
-log "4b. wait for the Build action to fail"
+log "4b. wait for $FAIL_STAGE / $FAIL_ACTION to fail"
 build_state=''
 for _ in $(seq "$BUILD_POLL_MAX"); do
   build_state="$(aws_masked codepipeline list-action-executions --region "$REGION" --pipeline-name "$PIPELINE" \
-    --query "actionExecutionDetails[?stageName=='Build' && actionName=='Build'] | [0].status" --output text || true)"
-  case "$build_state" in Failed) break ;; Succeeded) die 'Build succeeded -- the forced failure did not happen' ;; esac
+    ${EXEC_ID:+--filter "pipelineExecutionId=$EXEC_ID"} \
+    --query "actionExecutionDetails[?stageName=='$FAIL_STAGE' && actionName=='$FAIL_ACTION'] | [0].status" \
+    --output text || true)"
+  case "$build_state" in
+    Failed) break ;;
+    Succeeded) die "$FAIL_STAGE / $FAIL_ACTION succeeded -- the forced failure did not happen" ;;
+  esac
   sleep "$POLL_INTERVAL"
 done
-[ "$build_state" = Failed ] || die "Build did not fail in time (last status: ${build_state:-none})"
-info "Build: Failed"
+[ "$build_state" = Failed ] || die "$FAIL_STAGE / $FAIL_ACTION did not fail in time (last status: ${build_state:-none})"
+info "$FAIL_STAGE / $FAIL_ACTION: Failed"
 
 log "4c. wait for the forwarder's investigation"
-task=''
+# The investigations titled for this failure; with EXEC_ID, only those whose description names that execution.
+matching_tasks() {
+  local id
+  for id in $(aws_masked devops-agent list-backlog-tasks --region "$REGION" --agent-space-id "$AGENT_SPACE_ID" \
+      --query "tasks[?title=='$TITLE'].taskId" --output text || true); do
+    if [ -z "$EXEC_ID" ] || aws_masked devops-agent get-backlog-task --region "$REGION" \
+        --agent-space-id "$AGENT_SPACE_ID" --task-id "$id" --query task.description --output text \
+        | grep -q -- "$EXEC_ID"; then
+      printf '%s\n' "$id"
+    fi
+  done
+}
+task_ids=''
 for _ in $(seq "$TASK_POLL_MAX"); do
-  task="$(aws_masked devops-agent list-backlog-tasks --region "$REGION" --agent-space-id "$AGENT_SPACE_ID" \
-    --query "tasks[?title=='$TITLE'] | [0].[taskId, taskType, priority, status]" --output text || true)"
-  [ -n "$task" ] && [ "$task" != None ] && break
+  task_ids="$(matching_tasks)"
+  [ -n "$task_ids" ] && break
   sleep "$POLL_INTERVAL"
 done
-[ -n "$task" ] && [ "$task" != None ] || die "no investigation titled '$TITLE' appeared"
-read -r TASK_ID TASK_TYPE TASK_PRIORITY TASK_STATUS <<<"$task"
+[ -n "$task_ids" ] || die "no investigation titled '$TITLE'${EXEC_ID:+ for execution $EXEC_ID} appeared"
+count="$(printf '%s\n' "$task_ids" | grep -c .)"
+[ "$count" = 1 ] || die "expected exactly one investigation for the failure, found $count"
+TASK_ID="$task_ids"
+read -r TASK_TYPE TASK_PRIORITY TASK_STATUS <<<"$(aws_masked devops-agent get-backlog-task --region "$REGION" \
+  --agent-space-id "$AGENT_SPACE_ID" --task-id "$TASK_ID" --query 'task.[taskType, priority, status]' --output text)"
 info "task $TASK_ID: $TASK_TYPE $TASK_PRIORITY $TASK_STATUS"
 [ "$TASK_TYPE" = INVESTIGATION ] || die "task type is $TASK_TYPE, expected INVESTIGATION"
 [ "$TASK_PRIORITY" = HIGH ] || die "task priority is $TASK_PRIORITY, expected HIGH"
-count="$(aws_masked devops-agent list-backlog-tasks --region "$REGION" --agent-space-id "$AGENT_SPACE_ID" \
-  --query "length(tasks[?title=='$TITLE'])" --output text)"
-[ "$count" = 1 ] || die "expected exactly one investigation for the failure, found $count"
 
 log "4d. nothing in the dead-letter queue"
 dead="$(aws_masked sqs get-queue-attributes --region "$REGION" --queue-url "$QUEUE_URL" \
