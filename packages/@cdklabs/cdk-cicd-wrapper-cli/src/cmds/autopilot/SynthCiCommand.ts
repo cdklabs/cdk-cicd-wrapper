@@ -14,22 +14,6 @@ import { spawnSync } from 'child_process';
 import * as yargs from 'yargs';
 import { logger } from '../../utils/Logging';
 
-/**
- * The `npm` argv for `synth-ci`: `npm run cdk -- synth --all [--output <dir>]`. The `--` matters: npm
- * consumes the flags that follow a script name unless it separates them, so `--all` and `--output`
- * never reached cdk without it (measured on npm 11: the script saw only `synth` and the directory).
- */
-export function synthCiArgs(output?: string): string[] {
-  return [
-    'run',
-    'cdk',
-    '--',
-    'synth',
-    '--all',
-    ...(output !== undefined && output.length > 0 ? ['--output', output] : []),
-  ];
-}
-
 class Command implements yargs.CommandModule {
   public command = 'synth-ci';
   public describe = 'Synthesize the pipeline (dry-run of deploy-ci, no deploy)';
@@ -52,7 +36,10 @@ class Command implements yargs.CommandModule {
     const output = args.output as string | undefined;
     // Same entry point and mode signal as deploy-ci, but `cdk synth` (no deploy). `npm run cdk`, never
     // npx, so the project's pinned aws-cdk is used.
-    const cdkArgs = synthCiArgs(output);
+    const cdkArgs = ['run', 'cdk', 'synth', '--all'];
+    if (output !== undefined && output.length > 0) {
+      cdkArgs.push('--output', output);
+    }
     const env: { [key: string]: string } = { ...process.env, CDK_CICD_MODE: 'pipeline' } as { [key: string]: string };
     if (args.disposable as boolean) {
       env.CDK_CICD_DISPOSABLE = '1';

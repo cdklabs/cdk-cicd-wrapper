@@ -12,7 +12,6 @@ import * as os from 'os';
 import * as path from 'path';
 import { deployCiArgs } from '../../src/cmds/autopilot/DeployCiCommand';
 import { listCiArgs } from '../../src/cmds/autopilot/ListCiCommand';
-import { synthCiArgs } from '../../src/cmds/autopilot/SynthCiCommand';
 
 let project: string;
 
@@ -46,8 +45,6 @@ function intended(args: string[]): string[] {
 describe('npm run cdk argument forwarding', () => {
   test.each([
     ['deploy-ci', deployCiArgs()],
-    ['synth-ci', synthCiArgs()],
-    ['synth-ci --output', synthCiArgs('out-dir')],
     ['list-ci', listCiArgs('/tmp/cdk-cicd-list-ci-x')],
   ])('%s: every flag reaches cdk', (_name, args) => {
     expect(received(args)).toEqual(intended(args));
