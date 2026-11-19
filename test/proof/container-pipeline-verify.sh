@@ -23,7 +23,9 @@
 #   7. Range + config-file environment: target RANGE pins `^0.1.0` and takes its account and Region
 #      (the secondary Region, not the pipeline's) only from config/RANGE.json. It stays on 0.1.0 while 0.2.0
 #      exists; once 0.1.1 is published, the next Repo 2 commit moves it to 0.1.1 -- never to 0.2.0.
-#   8. Tear everything down: both pipeline stacks, the app stacks, the ECR repo, both CodeCommit repos
+#   8. One invalid config file: an 11-digit aws.accountId in config/RANGE.json. Plan still succeeds and
+#      checks the other targets; only RANGE's deploy action fails, naming the error.
+#   9. Tear everything down: both pipeline stacks, the app stacks, the ECR repo, both CodeCommit repos
 #      and the CD pipeline's target-state parameters.
 #
 #   bash test/proof/container-pipeline-verify.sh
@@ -353,8 +355,9 @@ export default defineDeployment({
     { stage: 'SBCD', env },
     { stage: 'SBCD2', env },
     // No env: account and Region come only from config/RANGE.json; version is a range. Declared before
-    // BAD, whose failing stage ends the run for every target declared after it.
-    { stage: 'RANGE' },
+    // BAD, whose failing stage ends the run for every target declared after it. Compliance logging too:
+    // its bucket can only be placed once the file is applied (defineDeployment alone used to reject it).
+    { stage: 'RANGE', complianceLogBucketName: 'cdkcicdtest-${CDK_CICD_TEST_RUN_ID}-logs' },
     { stage: 'BAD', env },
   ],
 });
@@ -552,6 +555,42 @@ EOF
     info 'SBCD stayed on 0.2.0 and SBCD2 on 0.1.0: exact versions do not float'
   else
     log "pinned targets moved (SBCD '$(image_marker SBCD)', SBCD2 '$(image_marker SBCD2)')"; rc=1
+  fi
+
+  log 'leg 8: an invalid aws.accountId in config/RANGE.json fails RANGE alone; Plan and the rest carry on'
+  local bad_sha exec_id st plan_status range_status sbcd_status hits
+  printf '{ "version": "^0.1.0", "greeting": "echo", "aws": { "accountId": "%s", "region": "%s" } }\n' \
+    "${CDK_CICD_TEST_ACCOUNT:0:11}" "$RANGE_REGION" > "$r2/config/RANGE.json"
+  ( cc_push "$r2" "$(r2_src)" "$REGION" "Repo 2: an 11-digit account in config/RANGE.json" ) || rc=1
+  bad_sha="$(git -C "$r2" rev-parse HEAD)"
+  exec_id=''; st=''
+  for (( i=0; i<POLL_MAX; i++ )); do
+    approve_pending "$pipeline"
+    read -r exec_id st < <(aws_masked codepipeline list-pipeline-executions --pipeline-name "$pipeline" --region "$REGION" \
+      --query "pipelineExecutionSummaries[?sourceRevisions[0].revisionId=='$bad_sha'] | [0].[pipelineExecutionId,status]" \
+      --output text 2>/dev/null) || true
+    case "${st:-}" in Succeeded|Failed|Stopped|Superseded) break ;; esac
+    sleep "$POLL_INTERVAL"
+  done
+  action_result() {
+    aws_masked codepipeline list-action-executions --pipeline-name "$pipeline" --region "$REGION" \
+      --filter "pipelineExecutionId=${exec_id:-none}" --query "actionExecutionDetails[?actionName=='$1'].status | [0]" \
+      --output text 2>/dev/null || true
+  }
+  plan_status="$(action_result Plan)"; range_status="$(action_result Deploy-RANGE)"; sbcd_status="$(action_result Deploy-SBCD)"
+  if [ "$plan_status" = 'Succeeded' ] && [ "$range_status" = 'Failed' ] && [ "$sbcd_status" != 'Failed' ]; then
+    info "Plan Succeeded and only Deploy-RANGE failed (Deploy-SBCD: ${sbcd_status:-not run, its stage Skipped})"
+  else
+    log "expected Plan Succeeded and Deploy-RANGE Failed; got Plan '${plan_status:-?}', RANGE '${range_status:-?}', SBCD '${sbcd_status:-?}' (run ${st:-?})"
+    rc=1
+  fi
+  hits="$(aws_masked logs filter-log-events --log-group-name "/aws/codebuild/$(deploy_project)" --region "$REGION" \
+    --filter-pattern '"config/RANGE.json aws.accountId must be a 12-digit AWS account id"' \
+    --query 'length(events)' --output text 2>/dev/null)" || true
+  if [ -n "$hits" ] && [ "$hits" != '0' ] && [ "$hits" != 'None' ]; then
+    info "RANGE's deploy action named the error: config/RANGE.json aws.accountId must be a 12-digit AWS account id"
+  else
+    log "RANGE's deploy log does not name the invalid aws.accountId"; rc=1
   fi
 
   if [ "$APPROVALS" -eq 0 ]; then
