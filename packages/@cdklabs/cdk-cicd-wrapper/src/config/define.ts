@@ -325,7 +325,10 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
       stages: stages.map((stage) => ({ name: stage.name, manualApproval: stage.manualApproval })),
       repository: props.repository,
       engine,
-      ...(props.deployerImage !== undefined ? { containerMode: 'image-build' as const } : {}),
+      // Only the flat CODEPIPELINE engine renders Repo 1's image build; CDK Pipelines ignores deployerImage.
+      ...(props.deployerImage !== undefined && engine === EngineType.CODEPIPELINE
+        ? { containerMode: 'image-build' as const }
+        : {}),
     }),
   };
 }

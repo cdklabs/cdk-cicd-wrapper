@@ -102,6 +102,21 @@ describe('devopsAgent.investigations', () => {
     expect(() => repo1({ includePipelineActions: false })).toThrow(/leaves nothing to investigate/);
   });
 
+  test('deployerImage makes a Repo 1 pipeline only on the flat engine: CDK Pipelines still renders every stage', () => {
+    const config = defineCICD({
+      ...base,
+      engine: EngineType.CDK_PIPELINES,
+      deployerImage: BuildImage.docker(),
+      devopsAgent: {
+        agentSpaceId: 'as-123',
+        investigations: { stages: ['prod'], includePipelineActions: false },
+        changeRiskAnalysis: { beforeApprovalOf: ['prod'] },
+      },
+    });
+    expect(config.devopsAgent?.investigations?.stages).toEqual(['prod']);
+    expect(config.devopsAgent?.changeRiskAnalysis?.beforeApprovalOf).toEqual(['prod']);
+  });
+
   test('priority must be a DevOps Agent priority', () => {
     expect(
       cicd({ agentSpaceId: 'as-123', investigations: { priority: DevOpsAgentPriority.LOW } }).devopsAgent,
