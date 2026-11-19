@@ -6,6 +6,7 @@ nav:
   - CLI Reference: cli
   - API Reference: https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/packages/%40cdklabs/cdk-cicd-wrapper/API.md
   - MCP Server: mcp
+  - Agent Skills: skills
   - FAQs: faqs
   - Contributing: contributing
   - Workshops: workshops

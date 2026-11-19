@@ -1772,6 +1772,20 @@
         "path": "docs/content/mcp/index.md",
         "line": 33
       }
+    },
+    {
+      "id": "qa-ci-missing-script-warning-links-a-404",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "low",
+      "status": "open",
+      "title": "The default CI's missing-script warning links developer_guides/audit/, which is a 404 on the published docs site",
+      "detail": "CHECKS_DOCS_URL in ci-commands.ts is https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/audit/ (directory style). docs/mkdocs.yml sets use_directory_urls: false, so the page is published as developer_guides/audit.html. Checked live: the audit/ URL returns 404 and audit.html returns 200. Every pipeline whose project lacks an npm audit/build/test script prints the dead link in its build log. Fix: point the constant at audit.html, and check other hard-coded docs URLs for the same directory style.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/ci-commands.ts",
+        "line": 30
+      }
     }
   ]
 }

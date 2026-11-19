@@ -8,7 +8,8 @@ It answers the questions only {{ project_name }} can answer: how your `cicd.conf
 `deploy.config.ts`) resolves, and which pipeline it renders. It does not read live pipeline state. For that
 (executions, CodeBuild logs, CloudFormation events) give your agent the
 [AWS MCP Server](https://docs.aws.amazon.com/agent-toolkit/latest/userguide/getting-started-aws-mcp-server.html),
-and for root-cause analysis of a failed run use [AWS DevOps Agent](../developer_guides/devops_agent.md).
+and for root-cause analysis of a failed run use [AWS DevOps Agent](../developer_guides/devops_agent.md). The
+[agent skills](../skills/index.md) tell an agent how to combine them.
 
 ## Tools
 

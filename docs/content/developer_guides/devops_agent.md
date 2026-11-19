@@ -44,6 +44,11 @@ summary, and links to the action's details and the execution in the console.
    [Connecting multiple AWS accounts](https://docs.aws.amazon.com/devopsagent/latest/userguide/configuring-integrations-and-knowledge-connecting-multiple-aws-accounts.html).
    Without these associations an investigation runs but cannot read the evidence.
 
+3. **Optional: teach DevOps Agent the pipeline's layout.** Import the
+   [`cdk-cicd-pipeline-failure-investigation` skill](../skills/index.md#add-to-aws-devops-agent) into the Agent
+   Space. It tells the agent what each stage and action runs and where its log or stack lives, so an
+   investigation starts in the right place.
+
 The wrapper does not create the Agent Space or the account associations. Both are long-lived and shared
 between pipelines, and access to the operator web app is decided by people. The wrapper only forwards
 failures.
@@ -80,7 +85,9 @@ export default defineDeployment({
 
 Set in Repo 1's `cicd.config.ts`, it forwards failures of the image-build pipeline.
 
-Run `cdk-cicd deploy-ci` (or let the self-updating pipeline pick up the change) to deploy it. Changing
+To deploy it, push the change: the `codepipeline` and `cdk-pipelines` engines run the whole pipeline and their
+self-update step adds the forwarder. A container-mode pipeline (Repo 1 or Repo 2) has no self-update stage, so
+run `npx --no cdk-cicd deploy-ci` there. That also works for the other engines without a full run. Changing
 `agentSpaceId` or `region` later updates the function in place. Removing `devopsAgent` removes the rule and
 the function.
 
