@@ -47,9 +47,13 @@ Three places, three kinds of thing:
   (`cdk-<qualifier>-deploy-role`), so every stage account is bootstrapped with
   `cdk bootstrap --trust <pipeline account>` and the same qualifier.
 
-The numbered callouts on the diagram mark the settings that cannot be changed in place, such as the
-`application` name, which names the pipeline stack (and derives the qualifier when `qualifier` is unset). Its
-open/unverified panel lists what has not been proven on a live deploy yet.
+A few settings cannot be changed in place:
+
+- `application` names the pipeline stack (and derives the qualifier when `qualifier` is unset). Renaming it
+  creates a new pipeline stack instead of updating this one.
+- A new `qualifier` means bootstrapping every stage account again.
+- A stack's name is its CloudFormation identity: a new name creates a new stack and leaves the old one
+  running.
 
 ## CI/CD process
 

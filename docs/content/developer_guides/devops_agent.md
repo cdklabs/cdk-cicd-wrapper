@@ -68,8 +68,8 @@ The forwarder creates it through the `CreateBacklogTask` API, and the web app li
   [Code Change Risk Analysis](https://docs.aws.amazon.com/devopsagent/latest/userguide/working-with-devops-agent-code-change-risk-analysis-index.html)
   of it (`CODE_CHANGE_RISK_ANALYSIS`). The review is a task in the Agent Space, with the commit and the stage in
   its title. Its report gives a recommended action (BLOCK, Deploy with Caution, or Standard Deployment), and the
-  approver reads it there (operator web app) before approving. It informs the approval and does not hold it. See
-  Limits: this path has not been seen end to end yet.
+  approver reads it there (operator web app) before approving. It informs the approval and does not hold it. The
+  level is experimental: see Limits.
 
 **Both of the above share** one function and one SQS dead-letter queue (SQS-managed encryption, TLS only,
 14 days retention). The function has no inbound endpoint and signs its calls with its own IAM role. That role
@@ -218,5 +218,5 @@ assets cost next to nothing.
   does a rejected or timed-out manual approval.
 - **`changeRiskAnalysis` is experimental.** DevOps Agent's Code Change Risk Analysis is in preview. Requesting
   it from a pipeline uses the documented `CreateBacklogTask` API with task type `CODE_CHANGE_RISK_ANALYSIS`.
-  AWS documents chat and pull-request reviews, not this path. We have checked that the API accepts the request.
-  Without a connected repository the review fails at once, so it has not yet been seen running end to end.
+  AWS documents chat and pull-request reviews as its entry points. The review needs the repository connected to
+  the Agent Space; without one, the task fails at once.
