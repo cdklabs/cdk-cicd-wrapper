@@ -308,7 +308,6 @@ export class CodePipelineEngine implements IEngine {
         pipelines: [pipeline],
         config: config.devopsAgent,
         layout: codePipelineLayout(config),
-        repository: config.repository,
       });
     }
 

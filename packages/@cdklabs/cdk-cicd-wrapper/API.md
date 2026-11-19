@@ -2583,63 +2583,13 @@ Concrete target Regions, in declaration order.
 
 ---
 
-### DevOpsAgentChangeRiskAnalysisConfig <a name="DevOpsAgentChangeRiskAnalysisConfig" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig"></a>
-
-The `changeRiskAnalysis` level of `DevOpsAgentConfig`.
-
-When the manual approval of one of these stages
-starts, the pipeline asks DevOps Agent for a Code Change Risk Analysis of the commit being promoted, so
-the approver can read the agent's verdict before approving. It does not hold the approval.
-
-#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.Initializer"></a>
-
-```typescript
-import { DevOpsAgentChangeRiskAnalysisConfig } from '@cdklabs/cdk-cicd-wrapper'
-
-const devOpsAgentChangeRiskAnalysisConfig: DevOpsAgentChangeRiskAnalysisConfig = { ... }
-```
-
-#### Properties <a name="Properties" id="Properties"></a>
-
-| **Name** | **Type** | **Description** |
-| --- | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.property.beforeApprovalOf">beforeApprovalOf</a></code> | <code>string[]</code> | Stages (with a manual approval) whose approval triggers the review. |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.property.priority">priority</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority">DevOpsAgentPriority</a></code> | Priority of each review. |
-
----
-
-##### `beforeApprovalOf`<sup>Required</sup> <a name="beforeApprovalOf" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.property.beforeApprovalOf"></a>
-
-```typescript
-public readonly beforeApprovalOf: string[];
-```
-
-- *Type:* string[]
-
-Stages (with a manual approval) whose approval triggers the review.
-
----
-
-##### `priority`<sup>Optional</sup> <a name="priority" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.property.priority"></a>
-
-```typescript
-public readonly priority: DevOpsAgentPriority;
-```
-
-- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority">DevOpsAgentPriority</a>
-- *Default:* DevOpsAgentPriority.MEDIUM
-
-Priority of each review.
-
----
-
 ### DevOpsAgentConfig <a name="DevOpsAgentConfig" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig"></a>
 
 Connect the pipeline to AWS DevOps Agent.
 
 Off unless configured, and inside the block every capability
-is its own level, on only when its block is present: `investigations`, `knowledge` and
-`changeRiskAnalysis`. A block that enables no level is rejected rather than silently doing nothing.
+is its own level, on only when its block is present: `investigations` and `knowledge`. A block that
+enables no level is rejected rather than silently doing nothing.
 
 You create the Agent Space and associate the accounts it may investigate (the pipeline account and
 each stage account) yourself; the wrapper only connects the pipeline to it. The Agent Space must be in
@@ -2658,7 +2608,6 @@ const devOpsAgentConfig: DevOpsAgentConfig = { ... }
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.agentSpaceId">agentSpaceId</a></code> | <code>string</code> | The Agent Space ID (the ID, not the ARN). |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.changeRiskAnalysis">changeRiskAnalysis</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig">DevOpsAgentChangeRiskAnalysisConfig</a></code> | Ask for a Code Change Risk Analysis of the commit a stage is about to receive, when that stage's manual approval starts. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.investigations">investigations</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig">DevOpsAgentInvestigationsConfig</a></code> | Open an investigation when a pipeline action fails. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.knowledge">knowledge</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig">DevOpsAgentKnowledgeConfig</a></code> | Publish what the wrapper knows about the pipeline into the Agent Space as skills, so investigations start in the right log or stack. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.region">region</a></code> | <code>string</code> | The Region the Agent Space lives in, when it differs from the pipeline stack's Region. |
@@ -2677,22 +2626,6 @@ The Agent Space ID (the ID, not the ARN).
 
 Changing it updates the forwarder in place, but REPLACES
 the `knowledge` assets: an asset's Agent Space cannot be updated.
-
----
-
-##### `changeRiskAnalysis`<sup>Optional</sup> <a name="changeRiskAnalysis" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.changeRiskAnalysis"></a>
-
-```typescript
-public readonly changeRiskAnalysis: DevOpsAgentChangeRiskAnalysisConfig;
-```
-
-- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig">DevOpsAgentChangeRiskAnalysisConfig</a>
-- *Default:* off
-
-Ask for a Code Change Risk Analysis of the commit a stage is about to receive, when that stage's manual approval starts.
-
-DevOps Agent's Code Change Risk Analysis is in preview and needs the
-repository connected to the Agent Space (GitHub or GitLab). Present = on.
 
 ---
 
@@ -4023,7 +3956,7 @@ const resolvedCicdConfig: ResolvedCicdConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.createComplianceLogBucket">createComplianceLogBucket</a></code> | <code>boolean</code> | Whether the pipeline stack creates and manages `complianceLogBucketName`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployerImage">deployerImage</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage">BuildImage</a></code> | Container mode (Repo 1): when set, the pipeline runs CI then builds & pushes a config-agnostic deployer image to ECR instead of deploying stages. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployRoleExternalId">deployRoleExternalId</a></code> | <code>string</code> | Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`. |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.devopsAgent">devopsAgent</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a></code> | Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge, changeRiskAnalysis). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.devopsAgent">devopsAgent</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a></code> | Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.express">express</a></code> | <code>boolean</code> | Deploy with **CloudFormation express mode** (`cdk deploy --express`). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.githubActions">githubActions</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig">GitHubActionsConfig</a></code> | GitHub Actions engine configuration. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the builds authenticate against with a bearer token, if any. |
@@ -4255,7 +4188,7 @@ public readonly devopsAgent: DevOpsAgentConfig;
 
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a>
 
-Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge, changeRiskAnalysis).
+Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge).
 
 Off unless set. See `DevOpsAgentConfig`.
 

@@ -179,38 +179,12 @@ describe('knowledge', () => {
   });
 });
 
-describe('changeRiskAnalysis', () => {
-  test("requests a review when a named stage's approval starts, and may read that pipeline's executions", () => {
-    const t = flat({ agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: ['prod'] } });
-    expect(rule(t, 'FAILED')).toBeUndefined();
-    expect(rule(t, 'STARTED').Properties.EventPattern.detail).toEqual({
-      state: ['STARTED'],
-      type: { category: ['Approval'] },
-      action: ['Approve-prod'],
-    });
-    expect(forwarder(t).Properties.Environment.Variables).toMatchObject({
-      REVIEW_PRIORITY: 'MEDIUM',
-      REPOSITORY: 'org/shop',
-    });
-    expect(actions(t)).toContain('codepipeline:GetPipelineExecution');
-  });
-
-  test('with investigations too, both rules share one function and one dead-letter queue', () => {
-    const t = flat({ agentSpaceId: 'as-123', investigations: {}, changeRiskAnalysis: { beforeApprovalOf: ['prod'] } });
-    forwarder(t);
-    expect(Object.keys(t.findResources('AWS::SQS::Queue'))).toHaveLength(1);
-    expect(rule(t, 'FAILED')).toBeDefined();
-    expect(rule(t, 'STARTED')).toBeDefined();
-  });
-});
-
 describe('every level together', () => {
   test('the pipeline stack stays free of unsuppressed cdk-nag findings', () => {
     const stack = flatStack({
       agentSpaceId: 'as-123',
       investigations: {},
       knowledge: {},
-      changeRiskAnalysis: { beforeApprovalOf: ['prod'] },
     });
     Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: false }));
     const findings = [
@@ -418,33 +392,5 @@ describe('skill names', () => {
     const [map] = assets(Template.fromStack(stack));
     expect(map.Properties.Metadata.name).toMatch(/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/);
     expect(map.Properties.Metadata.name.startsWith('cdk-cicd-pipeline-map-my-very-long-pipeline-stack')).toBe(true);
-  });
-});
-
-describe('changeRiskAnalysis on CDK Pipelines', () => {
-  test('watches the approval of the named stage', () => {
-    class StubStages implements IStageProvider {
-      public stacks(stage: Stage): void {
-        new s3.Bucket(new Stack(stage, 'App'), 'Bucket');
-      }
-    }
-    const stack = new Stack(new App(), 'PipelineStack', { env: ENV });
-    new CdkPipelinesEngine(stack, 'Cd', {
-      config: defineCICD({
-        application: 'shop',
-        repository: Repository.codestarConnection('org/shop', CONNECTION),
-        stages: ['dev', { name: 'prod', manualApproval: true }],
-        devopsAgent: { agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: ['prod'] } },
-      }),
-      stages: new StubStages(),
-    });
-    const t = Template.fromStack(stack);
-    const actionNames = new Set(
-      (Object.values(t.findResources('AWS::CodePipeline::Pipeline')) as any[]).flatMap((p) =>
-        p.Properties.Stages.flatMap((st: any) => st.Actions.map((a: any) => a.Name)),
-      ),
-    );
-    expect(rule(t, 'STARTED').Properties.EventPattern.detail.action).toEqual(['Approve-prod']);
-    expect(actionNames.has('Approve-prod')).toBe(true);
   });
 });

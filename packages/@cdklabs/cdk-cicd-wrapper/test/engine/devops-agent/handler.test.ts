@@ -5,9 +5,7 @@ import {
   ActionFailedEvent,
   BacklogTaskRequest,
   buildBacklogTask,
-  buildRiskReviewTask,
   consoleHost,
-  pickRevision,
   forward,
   ForwarderSettings,
   handler,
@@ -16,8 +14,6 @@ import {
 const SETTINGS: ForwarderSettings = {
   agentSpaceId: 'as-123',
   investigationPriority: 'HIGH',
-  reviewPriority: 'MEDIUM',
-  repository: 'org/shop',
 };
 
 // Shape from the CodePipeline user guide's `Action Execution State Change` example.
@@ -107,14 +103,8 @@ describe('DevOps Agent forwarder handler', () => {
     expect(task.description).toContain('(attempt 1)');
   });
 
-  function clients(
-    sent: BacklogTaskRequest[],
-    revision = { revisionId: 'abc1234def5678', revisionSummary: 'Bump the API' },
-  ) {
-    return {
-      createBacklogTask: async (request: BacklogTaskRequest) => sent.push(request),
-      sourceRevisions: async () => [revision],
-    };
+  function clients(sent: BacklogTaskRequest[]) {
+    return { createBacklogTask: async (request: BacklogTaskRequest) => sent.push(request) };
   }
 
   test('a failed action opens an investigation at the configured priority; other states open nothing', async () => {
@@ -123,51 +113,15 @@ describe('DevOps Agent forwarder handler', () => {
     expect(sent).toHaveLength(0);
     await forward(failedEvent({ type: { category: 'Approval', provider: 'Manual' } }), SETTINGS, clients(sent));
     expect(sent).toHaveLength(0); // a rejected approval is a decision, not an incident
+    await forward(
+      failedEvent({ state: 'STARTED', type: { category: 'Approval', provider: 'Manual' } }),
+      SETTINGS,
+      clients(sent),
+    );
+    expect(sent).toHaveLength(0); // an approval that starts is not an event the forwarder acts on
     await forward(failedEvent(), { ...SETTINGS, investigationPriority: 'CRITICAL' }, clients(sent));
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({ taskType: 'INVESTIGATION', priority: 'CRITICAL' });
-  });
-
-  test('an approval that starts requests a Code Change Risk Analysis of the commit it gates', async () => {
-    const sent: BacklogTaskRequest[] = [];
-    const approval = failedEvent({
-      state: 'STARTED',
-      action: 'Approve-prod',
-      stage: 'prod',
-      type: { category: 'Approval', provider: 'Manual' },
-    });
-    await forward(approval, SETTINGS, clients(sent));
-    expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({
-      agentSpaceId: 'as-123',
-      taskType: 'CODE_CHANGE_RISK_ANALYSIS',
-      priority: 'MEDIUM',
-      title: 'Release risk review: org/shop commit abc1234def56 before prod',
-    });
-    expect(sent[0].description).toContain(
-      'Review commit abc1234def5678 on repo org/shop for release risks before it is approved for stage prod',
-    );
-    expect(sent[0].description).toContain('Commit summary: Bump the API');
-    // A review and an investigation of the same action execution never share an idempotency token.
-    expect(sent[0].clientToken).not.toBe(buildBacklogTask(approval, 'as-123', 'HIGH').clientToken);
-  });
-
-  test("the reviewed revision is the configured repository's, when an execution has several sources", () => {
-    const other = { revisionId: '1111', revisionUrl: 'https://github.com/org/tools/commit/1111' };
-    const ours = { revisionId: '2222', revisionUrl: 'https://github.com/org/shop/commit/2222' };
-    expect(pickRevision([other, ours], 'org/shop')).toBe(ours);
-    expect(pickRevision([other, ours], undefined)).toBe(other);
-    expect(pickRevision([], 'org/shop')).toBeUndefined();
-  });
-
-  test('a review without a known revision still names the execution', () => {
-    const task = buildRiskReviewTask(failedEvent({ state: 'STARTED' }), undefined, {
-      ...SETTINGS,
-      repository: undefined,
-    });
-    expect(task.description).toContain(
-      'Review commit the commit of this pipeline execution on repo the source repository',
-    );
   });
 
   test('a client error propagates, so EventBridge retries the invocation', async () => {
@@ -175,7 +129,6 @@ describe('DevOps Agent forwarder handler', () => {
       createBacklogTask: async () => {
         throw new Error('ThrottlingException');
       },
-      sourceRevisions: async () => [],
     };
     await expect(forward(failedEvent(), SETTINGS, failing)).rejects.toThrow('ThrottlingException');
   });
@@ -185,7 +138,6 @@ describe('DevOps Agent forwarder handler', () => {
     process.env.AGENT_SPACE_ID = 'as-123';
     process.env.AGENT_SPACE_REGION = 'eu-west-1';
     process.env.INVESTIGATION_PRIORITY = 'HIGH';
-    process.env.REVIEW_PRIORITY = 'MEDIUM';
     try {
       await jest.isolateModulesAsync(async () => {
         jest.doMock(
@@ -211,7 +163,7 @@ describe('DevOps Agent forwarder handler', () => {
     delete process.env.AGENT_SPACE_REGION;
     try {
       await expect(handler(failedEvent())).rejects.toThrow(
-        /needs AGENT_SPACE_ID, AGENT_SPACE_REGION, INVESTIGATION_PRIORITY and REVIEW_PRIORITY/,
+        /needs AGENT_SPACE_ID, AGENT_SPACE_REGION and INVESTIGATION_PRIORITY/,
       );
     } finally {
       process.env = saved;

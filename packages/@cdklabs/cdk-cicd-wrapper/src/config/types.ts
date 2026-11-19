@@ -22,8 +22,8 @@ export enum DevOpsAgentPriority {
 
 /**
  * Connect the pipeline to AWS DevOps Agent. Off unless configured, and inside the block every capability
- * is its own level, on only when its block is present: `investigations`, `knowledge` and
- * `changeRiskAnalysis`. A block that enables no level is rejected rather than silently doing nothing.
+ * is its own level, on only when its block is present: `investigations` and `knowledge`. A block that
+ * enables no level is rejected rather than silently doing nothing.
  *
  * You create the Agent Space and associate the accounts it may investigate (the pipeline account and
  * each stage account) yourself; the wrapper only connects the pipeline to it. The Agent Space must be in
@@ -56,15 +56,6 @@ export interface DevOpsAgentConfig {
    * @default - off
    */
   readonly knowledge?: DevOpsAgentKnowledgeConfig;
-  /**
-   * Ask for a Code Change Risk Analysis of the commit a stage is about to receive, when that stage's
-   * manual approval starts. DevOps Agent's Code Change Risk Analysis is in preview and needs the
-   * repository connected to the Agent Space (GitHub or GitLab). Present = on.
-   *
-   * @default - off
-   * @experimental
-   */
-  readonly changeRiskAnalysis?: DevOpsAgentChangeRiskAnalysisConfig;
 }
 
 /** The `investigations` level of `DevOpsAgentConfig`: one investigation per failed pipeline action. */
@@ -107,24 +98,6 @@ export interface DevOpsAgentKnowledgeConfig {
    * @default true
    */
   readonly pipelineMap?: boolean;
-}
-
-/**
- * The `changeRiskAnalysis` level of `DevOpsAgentConfig`. When the manual approval of one of these stages
- * starts, the pipeline asks DevOps Agent for a Code Change Risk Analysis of the commit being promoted, so
- * the approver can read the agent's verdict before approving. It does not hold the approval.
- *
- * @experimental
- */
-export interface DevOpsAgentChangeRiskAnalysisConfig {
-  /** Stages (with a manual approval) whose approval triggers the review. */
-  readonly beforeApprovalOf: string[];
-  /**
-   * Priority of each review.
-   *
-   * @default DevOpsAgentPriority.MEDIUM
-   */
-  readonly priority?: DevOpsAgentPriority;
 }
 
 /**
@@ -634,7 +607,7 @@ export interface ResolvedCicdConfig {
    * in `bin/` via `CdkCicd.addPlugin` -- the config carries only its identity, not the instance.
    */
   readonly plugins?: PluginRef[];
-  /** Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge, changeRiskAnalysis). Off unless set. See `DevOpsAgentConfig`. */
+  /** Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge). Off unless set. See `DevOpsAgentConfig`. */
   readonly devopsAgent?: DevOpsAgentConfig;
 }
 

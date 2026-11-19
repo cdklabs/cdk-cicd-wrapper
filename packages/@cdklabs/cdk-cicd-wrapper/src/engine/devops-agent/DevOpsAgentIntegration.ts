@@ -21,8 +21,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { INVESTIGATION_SKILL_FILES } from './investigation-skill.generated';
 import { PipelineLayout } from './layout';
-import { Repository } from '../../config/repository';
-import { DevOpsAgentConfig, DevOpsAgentPriority } from '../../config/types';
+import { DevOpsAgentConfig, DevOpsAgentInvestigationsConfig, DevOpsAgentPriority } from '../../config/types';
 import { latestNodeRuntime } from '../lambda-runtime';
 
 export interface DevOpsAgentIntegrationProps {
@@ -31,8 +30,6 @@ export interface DevOpsAgentIntegrationProps {
   readonly config: DevOpsAgentConfig;
   /** How the engine names the pipeline's stages and actions; see layout.ts. */
   readonly layout: PipelineLayout;
-  /** The source repository, which a `changeRiskAnalysis` review names. */
-  readonly repository?: Repository;
 }
 
 const SKILL_NAME_MAX = 64;
@@ -54,20 +51,16 @@ function skillName(base: string): string {
  * - `investigations`: an EventBridge rule on the pipelines' own `Action Execution State Change` events in
  *   state FAILED (approvals excluded, optionally filtered to some stages) invokes a Lambda that opens one
  *   INVESTIGATION per failed action with `CreateBacklogTask`.
- * - `changeRiskAnalysis`: a rule on approval actions of the named stages in state STARTED invokes the same
- *   Lambda, which reads the commit being promoted (`GetPipelineExecution`) and requests a
- *   CODE_CHANGE_RISK_ANALYSIS of it.
  * - `knowledge`: skill assets in the Agent Space (`AWS::DevOpsAgent::Asset`), owned by the pipeline stack.
  *
  * Everything stays in the pipeline's account and Region. The Lambda has no inbound endpoint, and its role may
- * call `aidevops:CreateBacklogTask` on the one Agent Space (plus, for reviews, `codepipeline:GetPipelineExecution`
- * on these pipelines) and nothing else.
+ * call `aidevops:CreateBacklogTask` on the one Agent Space and nothing else.
  *
  * Update semantics: changing `agentSpaceId` or `region` updates the Lambda in place, but REPLACES the knowledge
  * assets (an asset's `AgentSpaceId` and `AssetType` cannot be updated). Changing a skill's content updates it.
  */
 export class DevOpsAgentIntegration extends Construct {
-  /** The forwarder, when `investigations` or `changeRiskAnalysis` is on. */
+  /** The forwarder, when `investigations` is on. */
   public readonly function?: lambda.Function;
   private readonly agentSpaceId: string;
 
@@ -79,8 +72,8 @@ export class DevOpsAgentIntegration extends Construct {
     const region = config.region ?? stack.region;
     const agentSpaceArn = `arn:${stack.partition}:aidevops:${region}:${stack.account}:agentspace/${config.agentSpaceId}`;
 
-    if (config.investigations !== undefined || config.changeRiskAnalysis !== undefined) {
-      this.function = this.forwarder(props, region, agentSpaceArn);
+    if (config.investigations !== undefined) {
+      this.function = this.forwarder(props, config.investigations, region, agentSpaceArn);
     }
     if (config.knowledge !== undefined) {
       if (config.region !== undefined && !Token.isUnresolved(stack.region) && config.region !== stack.region) {
@@ -124,7 +117,12 @@ export class DevOpsAgentIntegration extends Construct {
     }
   }
 
-  private forwarder(props: DevOpsAgentIntegrationProps, region: string, agentSpaceArn: string): lambda.Function {
+  private forwarder(
+    props: DevOpsAgentIntegrationProps,
+    investigations: DevOpsAgentInvestigationsConfig,
+    region: string,
+    agentSpaceArn: string,
+  ): lambda.Function {
     const { config, layout, pipelines } = props;
     // A failure the forwarder cannot hand over must not vanish: EventBridge delivery failures and
     // invocations that still fail after Lambda's asynchronous retries both land here.
@@ -141,13 +139,11 @@ export class DevOpsAgentIntegration extends Construct {
       code: lambda.Code.fromAsset(path.join(__dirname, 'forwarder')),
       handler: 'handler.handler',
       timeout: Duration.seconds(30),
-      description: 'cdk-cicd: open AWS DevOps Agent tasks for pipeline events',
+      description: 'cdk-cicd: open an AWS DevOps Agent investigation for each failed pipeline action',
       environment: {
         AGENT_SPACE_ID: config.agentSpaceId,
         AGENT_SPACE_REGION: region,
-        INVESTIGATION_PRIORITY: config.investigations?.priority ?? DevOpsAgentPriority.HIGH,
-        REVIEW_PRIORITY: config.changeRiskAnalysis?.priority ?? DevOpsAgentPriority.MEDIUM,
-        ...(props.repository !== undefined ? { REPOSITORY: props.repository.name } : {}),
+        INVESTIGATION_PRIORITY: investigations.priority ?? DevOpsAgentPriority.HIGH,
       },
       // EventBridge invokes asynchronously; these govern retries of a failing invocation (throttling, a
       // transient API error). Retrying is safe: the handler sends an idempotency token.
@@ -163,44 +159,21 @@ export class DevOpsAgentIntegration extends Construct {
       maxEventAge: Duration.hours(1),
       deadLetterQueue,
     });
-    const pipelineArns = pipelines.map((pipeline) => pipeline.pipelineArn);
-    const base = {
-      source: ['aws.codepipeline'],
-      detailType: ['CodePipeline Action Execution State Change'],
-      resources: pipelineArns,
-    };
-
-    if (config.investigations !== undefined) {
-      new events.Rule(this, 'ActionFailed', {
-        description: 'cdk-cicd: open a DevOps Agent investigation for a failed pipeline action',
-        eventPattern: {
-          ...base,
-          detail: {
-            state: ['FAILED'],
-            // A rejected (or timed-out) manual approval also ends FAILED. That is a decision, not an incident.
-            type: { category: events.Match.anythingBut('Approval') },
-            ...failureScope(config, layout),
-          },
+    new events.Rule(this, 'ActionFailed', {
+      description: 'cdk-cicd: open a DevOps Agent investigation for a failed pipeline action',
+      eventPattern: {
+        source: ['aws.codepipeline'],
+        detailType: ['CodePipeline Action Execution State Change'],
+        resources: pipelines.map((pipeline) => pipeline.pipelineArn),
+        detail: {
+          state: ['FAILED'],
+          // A rejected (or timed-out) manual approval also ends FAILED. That is a decision, not an incident.
+          type: { category: events.Match.anythingBut('Approval') },
+          ...failureScope(config, layout),
         },
-        targets: [target],
-      });
-    }
-
-    if (config.changeRiskAnalysis !== undefined) {
-      const wanted = new Set(config.changeRiskAnalysis.beforeApprovalOf);
-      const approvals = layout.environments
-        .filter((environment) => wanted.has(environment.name) && environment.approvalAction !== undefined)
-        .map((environment) => environment.approvalAction!);
-      new events.Rule(this, 'ApprovalStarted', {
-        description: 'cdk-cicd: request a DevOps Agent Code Change Risk Analysis when a gated stage waits for approval',
-        eventPattern: { ...base, detail: { state: ['STARTED'], type: { category: ['Approval'] }, action: approvals } },
-        targets: [target],
-      });
-      // The review names the commit being promoted, which only the pipeline execution knows.
-      fn.addToRolePolicy(
-        new iam.PolicyStatement({ actions: ['codepipeline:GetPipelineExecution'], resources: pipelineArns }),
-      );
-    }
+      },
+      targets: [target],
+    });
 
     NagSuppressions.addResourceSuppressions(
       fn,

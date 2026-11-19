@@ -427,7 +427,6 @@ export class CdkPipelinesEngine extends Construct {
         pipelines: [this.pipeline.pipeline],
         config: config.devopsAgent,
         layout: cdkPipelinesLayout(config),
-        repository: config.repository,
       });
     }
     this.suppressGeneratedPipelineNag();

@@ -60,7 +60,5 @@ With `devopsAgent` set in the config, the pipeline stack also holds what its lev
 
 - `investigations`: an EventBridge rule and a Lambda that open one investigation per failed action (approvals
   excluded, optionally only for some stages). Their titles read `Pipeline <pipeline> failed at <stage> / <action>`.
-- `changeRiskAnalysis` (experimental): the same Lambda requests a Code Change Risk Analysis when a named stage's
-  approval starts. Its title reads `Release risk review: <repo> commit <sha> before <stage>`.
 - `knowledge`: this skill and a generated `cdk-cicd-pipeline-map-<stack>` skill with the pipeline's exact stage
   and action names, accounts and Regions. Prefer that map's names over the patterns above.

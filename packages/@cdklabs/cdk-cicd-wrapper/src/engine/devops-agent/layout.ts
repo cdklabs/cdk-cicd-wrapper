@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // How each engine names its CodePipeline stages and actions, as the DevOps Agent integration needs it: to
-// filter failures by stage, to find a stage's approval, and to describe the pipeline in the pipeline-map
-// skill. One builder per engine, next to each other, so a rename in an engine has one place to follow here.
+// filter failures by stage and to describe the pipeline in the pipeline-map skill. One builder per engine,
+// next to each other, so a rename in an engine has one place to follow here.
 
 import { RegionOrder, ResolvedCicdConfig, ResolvedDeploymentConfig } from '../../config/types';
 

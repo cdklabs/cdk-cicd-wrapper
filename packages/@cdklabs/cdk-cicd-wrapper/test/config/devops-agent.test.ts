@@ -110,11 +110,9 @@ describe('devopsAgent.investigations', () => {
       devopsAgent: {
         agentSpaceId: 'as-123',
         investigations: { stages: ['prod'], includePipelineActions: false },
-        changeRiskAnalysis: { beforeApprovalOf: ['prod'] },
       },
     });
-    expect(config.devopsAgent?.investigations?.stages).toEqual(['prod']);
-    expect(config.devopsAgent?.changeRiskAnalysis?.beforeApprovalOf).toEqual(['prod']);
+    expect(config.devopsAgent?.investigations).toEqual({ stages: ['prod'], includePipelineActions: false });
   });
 
   test('priority must be a DevOps Agent priority', () => {
@@ -132,49 +130,5 @@ describe('devopsAgent.knowledge', () => {
     expect(() =>
       cicd({ agentSpaceId: 'as-123', knowledge: { investigationSkill: false, pipelineMap: false } }),
     ).toThrow(/turns off both of its skills/);
-  });
-});
-
-describe('devopsAgent.changeRiskAnalysis', () => {
-  test('reviews before the approval of gated stages of a GitHub/CodeStar-connection pipeline', () => {
-    expect(cicd({ agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: ['prod'] } }).devopsAgent).toEqual({
-      agentSpaceId: 'as-123',
-      changeRiskAnalysis: { beforeApprovalOf: ['prod'] },
-    });
-  });
-
-  test('a stage without a manual approval can never start a review', () => {
-    expect(() => cicd({ agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: ['dev'] } })).toThrow(
-      /without a manual approval: dev/,
-    );
-    expect(() => cicd({ agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: [] } })).toThrow(/is empty/);
-    expect(() => cicd({ agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: ['qa'] } })).toThrow(
-      /unknown stage/,
-    );
-  });
-
-  test('needs a source DevOps Agent can read: not CodeCommit or S3', () => {
-    for (const repository of [Repository.codecommit('shop'), Repository.s3('bucket/app.zip')]) {
-      expect(() =>
-        defineCICD({
-          ...base,
-          repository,
-          devopsAgent: { agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: ['prod'] } },
-        }),
-      ).toThrow(/needs a GitHub or CodeStar-connection source/);
-    }
-  });
-
-  test('container mode has no commit to review, in either repo', () => {
-    expect(() =>
-      defineCICD({
-        ...base,
-        deployerImage: BuildImage.docker(),
-        devopsAgent: { agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: ['prod'] } },
-      }),
-    ).toThrow(/Repo 1 only builds images/);
-    expect(() => deployment({ agentSpaceId: 'as-123', changeRiskAnalysis: { beforeApprovalOf: ['prod'] } })).toThrow(
-      /Repo 2 promotes an image/,
-    );
   });
 });

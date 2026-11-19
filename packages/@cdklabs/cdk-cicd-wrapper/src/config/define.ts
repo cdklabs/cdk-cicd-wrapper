@@ -15,7 +15,7 @@
 import { aws_codebuild as codebuild } from 'aws-cdk-lib';
 import { BuildImage } from './build-image';
 import { normalizeDefaultSynthesizerQualifier } from './default-synthesizer-role-arn';
-import { Repository, RepositorySourceType } from './repository';
+import { Repository } from './repository';
 import {
   CiConfig,
   CodeArtifactConfig,
@@ -164,7 +164,7 @@ export interface CicdConfigProps {
    * name is a custom plugin and must be registered in `bin/` via `CdkCicd.addPlugin`.
    */
   readonly plugins?: PluginRef[];
-  /** Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge, changeRiskAnalysis). Off unless set. See `DevOpsAgentConfig`. */
+  /** Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge). Off unless set. See `DevOpsAgentConfig`. */
   readonly devopsAgent?: DevOpsAgentConfig;
 }
 
@@ -322,8 +322,7 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     deployerImage: props.deployerImage,
     plugins: props.plugins,
     ...devopsAgentField(props.devopsAgent, {
-      stages: stages.map((stage) => ({ name: stage.name, manualApproval: stage.manualApproval })),
-      repository: props.repository,
+      stages: stages.map((stage) => stage.name),
       engine,
       // Only the flat CODEPIPELINE engine renders Repo 1's image build; CDK Pipelines ignores deployerImage.
       ...(props.deployerImage !== undefined && engine === EngineType.CODEPIPELINE
@@ -333,14 +332,13 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
   };
 }
 
-/** What the `devopsAgent` levels are validated against: the pipeline's stages, source and engine. */
+/** What the `devopsAgent` levels are validated against: the pipeline's stages and engine. */
 export interface DevOpsAgentContext {
-  /** Stage (Repo 1/flat) or target (Repo 2) names, with whether each has a manual approval. */
-  readonly stages: Array<{ readonly name: string; readonly manualApproval: boolean }>;
-  readonly repository?: Repository;
+  /** Stage (Repo 1/flat) or target (Repo 2) names. */
+  readonly stages: string[];
   readonly engine?: EngineType;
-  /** Set for container mode: Repo 1 builds images (no deploy stages); Repo 2 deploys an image, not a commit. */
-  readonly containerMode?: 'image-build' | 'deployment';
+  /** Set for container mode's Repo 1, which only builds images: it has no deploy stages. */
+  readonly containerMode?: 'image-build';
 }
 
 const PRIORITIES = new Set<string>(Object.values(DevOpsAgentPriority));
@@ -354,7 +352,7 @@ function checkPriority(level: string, priority: DevOpsAgentPriority | undefined)
 }
 
 function checkStageNames(field: string, names: string[], context: DevOpsAgentContext): string[] {
-  const known = new Set(context.stages.map((stage) => stage.name));
+  const known = new Set(context.stages);
   const trimmed = [...new Set(names.map((name) => name.trim()))];
   const unknown = trimmed.filter((name) => !known.has(name));
   if (unknown.length > 0) {
@@ -367,7 +365,7 @@ function checkStageNames(field: string, names: string[], context: DevOpsAgentCon
 
 /**
  * Trim and validate a `devopsAgent` block; `undefined` passes through (the feature is off). Every level is
- * checked against the pipeline it will be attached to, so a stage typo or a review that can never fire fails
+ * checked against the pipeline it will be attached to, so a stage typo or a filter that matches nothing fails
  * here, at config time, instead of silently doing nothing. The Agent Space ID has no published pattern --
  * CreateBacklogTask documents only its length (1-2048) -- so only shapes that are certainly wrong are rejected.
  */
@@ -399,11 +397,11 @@ export function normalizeDevOpsAgent(
         'open one per failed workflow run.',
     );
   }
-  const { investigations, knowledge, changeRiskAnalysis } = input;
-  if (investigations === undefined && knowledge === undefined && changeRiskAnalysis === undefined) {
+  const { investigations, knowledge } = input;
+  if (investigations === undefined && knowledge === undefined) {
     throw new Error(
-      'cdk-cicd: devopsAgent enables no level. Add investigations, knowledge and/or changeRiskAnalysis, ' +
-        'for example `investigations: {}`, or remove devopsAgent.',
+      'cdk-cicd: devopsAgent enables no level. Add investigations and/or knowledge, for example ' +
+        '`investigations: {}`, or remove devopsAgent.',
     );
   }
 
@@ -439,42 +437,11 @@ export function normalizeDevOpsAgent(
     throw new Error('cdk-cicd: devopsAgent.knowledge turns off both of its skills; remove knowledge instead.');
   }
 
-  let resolvedReview = changeRiskAnalysis;
-  if (changeRiskAnalysis !== undefined) {
-    checkPriority('changeRiskAnalysis', changeRiskAnalysis.priority);
-    if (context.containerMode !== undefined) {
-      throw new Error(
-        'cdk-cicd: devopsAgent.changeRiskAnalysis reviews the commit a stage is about to deploy, and a container-mode ' +
-          'pipeline has none: Repo 1 only builds images, and Repo 2 promotes an image.',
-      );
-    }
-    const type = context.repository?.repositoryType;
-    if (type !== RepositorySourceType.GITHUB && type !== RepositorySourceType.CODESTAR_CONNECTION) {
-      throw new Error(
-        "cdk-cicd: devopsAgent.changeRiskAnalysis needs a GitHub or CodeStar-connection source: DevOps Agent's " +
-          `Code Change Risk Analysis reads the repository through its GitHub/GitLab integration (source: ${type ?? 'none'}).`,
-      );
-    }
-    if (changeRiskAnalysis.beforeApprovalOf.length === 0) {
-      throw new Error('cdk-cicd: devopsAgent.changeRiskAnalysis.beforeApprovalOf is empty; name at least one stage.');
-    }
-    const names = checkStageNames('changeRiskAnalysis.beforeApprovalOf', changeRiskAnalysis.beforeApprovalOf, context);
-    const ungated = names.filter((name) => !context.stages.find((stage) => stage.name === name)?.manualApproval);
-    if (ungated.length > 0) {
-      throw new Error(
-        `cdk-cicd: devopsAgent.changeRiskAnalysis.beforeApprovalOf names stage(s) without a manual approval: ` +
-          `${ungated.join(', ')}. The review starts when the approval does.`,
-      );
-    }
-    resolvedReview = { ...changeRiskAnalysis, beforeApprovalOf: names };
-  }
-
   return {
     agentSpaceId,
     ...(region !== undefined ? { region } : {}),
     ...(resolvedInvestigations !== undefined ? { investigations: resolvedInvestigations } : {}),
     ...(knowledge !== undefined ? { knowledge } : {}),
-    ...(resolvedReview !== undefined ? { changeRiskAnalysis: resolvedReview } : {}),
   };
 }
 
@@ -775,10 +742,6 @@ export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConf
     codeArtifact: props.codeArtifact,
     npmRegistry: props.npmRegistry,
     crossAccountEcrRepositoryPolicyConfigured: props.crossAccountEcrRepositoryPolicyConfigured,
-    ...devopsAgentField(props.devopsAgent, {
-      stages: targets.map((target) => ({ name: target.stage, manualApproval: target.manualApproval })),
-      repository: props.repository,
-      containerMode: 'deployment',
-    }),
+    ...devopsAgentField(props.devopsAgent, { stages: targets.map((target) => target.stage) }),
   };
 }

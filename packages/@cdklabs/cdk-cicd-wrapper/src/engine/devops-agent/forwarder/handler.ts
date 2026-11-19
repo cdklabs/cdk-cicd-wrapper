@@ -1,11 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The DevOps Agent forwarder: an EventBridge target that turns CodePipeline `Action Execution State Change`
-// events into DevOps Agent backlog tasks with CreateBacklogTask. A failed action (the `investigations` level)
-// becomes an INVESTIGATION; an approval that started (the `changeRiskAnalysis` level) becomes a
-// CODE_CHANGE_RISK_ANALYSIS of the commit the execution promotes. DevOps Agent has no CodePipeline connector,
-// so this is the documented integration path: EventBridge -> Lambda -> CreateBacklogTask.
+// The DevOps Agent forwarder: an EventBridge target that turns a failed CodePipeline action (an `Action
+// Execution State Change` event in state FAILED) into a DevOps Agent INVESTIGATION with CreateBacklogTask.
+// DevOps Agent has no CodePipeline connector, so this is the documented integration path:
+// EventBridge -> Lambda -> CreateBacklogTask.
 //
 // Each task's clientToken is derived from the action execution, so a redelivered event or a retried
 // invocation asks for the same task again rather than a new one. (The API documents the token as an
@@ -45,34 +44,22 @@ export interface ActionFailedEvent {
 /** The CreateBacklogTask request this forwarder sends. */
 export interface BacklogTaskRequest {
   readonly agentSpaceId: string;
-  readonly taskType: 'INVESTIGATION' | 'CODE_CHANGE_RISK_ANALYSIS';
+  readonly taskType: 'INVESTIGATION';
   readonly priority: string;
   readonly title: string;
   readonly description: string;
   readonly clientToken: string;
 }
 
-/** The source revision of a pipeline execution, from GetPipelineExecution `artifactRevisions`. */
-export interface SourceRevision {
-  readonly revisionId?: string;
-  readonly revisionUrl?: string;
-  readonly revisionSummary?: string;
-}
-
-/** The slices of the DevOps Agent and CodePipeline clients the forwarder needs; tests supply fakes. */
+/** The slice of the DevOps Agent client the forwarder needs; tests supply a fake. */
 export interface ForwarderClients {
   createBacklogTask(request: BacklogTaskRequest): Promise<unknown>;
-  /** The source revisions of a pipeline execution. Needed only for change risk analysis. */
-  sourceRevisions(pipeline: string, executionId: string): Promise<SourceRevision[]>;
 }
 
 /** What the function was configured with (its environment). */
 export interface ForwarderSettings {
   readonly agentSpaceId: string;
   readonly investigationPriority: string;
-  readonly reviewPriority: string;
-  /** The source repository (`owner/repo`), for change risk analysis. */
-  readonly repository?: string;
 }
 
 // CreateBacklogTask limits (API reference): title 1-400, description 0-10000, clientToken 1-64 of
@@ -99,15 +86,13 @@ function executionUrl(event: ActionFailedEvent): string {
   );
 }
 
-/** An idempotency token for one task kind and one action execution (stable across redeliveries). */
-function token(kind: string, event: ActionFailedEvent): string {
+/** An idempotency token for one action execution (stable across redeliveries). */
+function token(event: ActionFailedEvent): string {
   const d = event.detail;
   const attempt = d['pipeline-execution-attempt'] ?? 1;
   const key =
     d['action-execution-id'] ?? [d.pipeline, d['execution-id'], d.stage, d.action, String(attempt)].join('\n');
-  return createHash('sha256')
-    .update(kind === 'INVESTIGATION' ? key : `${kind}\n${key}`)
-    .digest('hex');
+  return createHash('sha256').update(key).digest('hex');
 }
 
 /** Map one failed-action event to the investigation request. Pure; exported for tests. */
@@ -139,52 +124,13 @@ export function buildBacklogTask(event: ActionFailedEvent, agentSpaceId: string,
     priority,
     title: clip(`Pipeline ${d.pipeline} failed at ${d.stage} / ${d.action}`, MAX_TITLE),
     description: clip(lines.join('\n'), MAX_DESCRIPTION),
-    clientToken: token('INVESTIGATION', event),
-  };
-}
-
-/** The revision of the configured repository among an execution's source revisions (the first if none matches). */
-export function pickRevision(revisions: SourceRevision[], repository?: string): SourceRevision | undefined {
-  return (repository && revisions.find((revision) => revision.revisionUrl?.includes(repository))) || revisions[0];
-}
-
-/** Map an approval that started to a Code Change Risk Analysis request for the commit it gates. Pure. */
-export function buildRiskReviewTask(
-  event: ActionFailedEvent,
-  revision: SourceRevision | undefined,
-  settings: ForwarderSettings,
-): BacklogTaskRequest {
-  const d = event.detail;
-  const commit = revision?.revisionId ?? 'the commit of this pipeline execution';
-  const repository = settings.repository ?? 'the source repository of this pipeline';
-  const lines = [
-    `Review commit ${commit} on repo ${repository} for release risks before it is approved for stage ${d.stage} ` +
-      `of the CodePipeline pipeline ${d.pipeline}.`,
-    '',
-    `An approver is waiting at the manual approval ${d.action}. Report the recommended action (BLOCK, Deploy with ` +
-      'Caution or Standard Deployment) with the findings behind it.',
-    '',
-    ...(revision?.revisionSummary ? [`Commit summary: ${revision.revisionSummary}`] : []),
-    ...(revision?.revisionUrl ? [`Commit: ${revision.revisionUrl}`] : []),
-    `Pipeline execution: ${d['execution-id']} (${executionUrl(event)})`,
-    `Pipeline account and Region: ${event.account} / ${event.region}`,
-    '',
-    'This pipeline is generated by cdk-cicd-wrapper from the cicd.config.ts in that repository.',
-  ];
-  return {
-    agentSpaceId: settings.agentSpaceId,
-    taskType: 'CODE_CHANGE_RISK_ANALYSIS',
-    priority: settings.reviewPriority,
-    title: clip(`Release risk review: ${repository} commit ${commit.slice(0, 12)} before ${d.stage}`, MAX_TITLE),
-    description: clip(lines.join('\n'), MAX_DESCRIPTION),
-    clientToken: token('CODE_CHANGE_RISK_ANALYSIS', event),
+    clientToken: token(event),
   };
 }
 
 /**
- * Forward one event: a failed action (not an approval) opens an investigation, and an approval that started
- * opens a Code Change Risk Analysis. Anything else is ignored. The rules already route only those; checking
- * again keeps the function safe on its own.
+ * Forward one event: a failed action that is not an approval opens an investigation. Anything else is ignored.
+ * The rule already routes only those; checking again keeps the function safe on its own.
  */
 export async function forward(
   event: ActionFailedEvent,
@@ -192,19 +138,12 @@ export async function forward(
   clients: ForwarderClients,
 ): Promise<void> {
   const d = event?.detail;
-  if (d === undefined) return;
-  const approval = d.type?.category === 'Approval';
-  if (d.state === 'FAILED' && !approval) {
-    await clients.createBacklogTask(buildBacklogTask(event, settings.agentSpaceId, settings.investigationPriority));
-  } else if (d.state === 'STARTED' && approval) {
-    const revisions = await clients.sourceRevisions(d.pipeline, d['execution-id']);
-    await clients.createBacklogTask(buildRiskReviewTask(event, pickRevision(revisions, settings.repository), settings));
-  }
+  if (d === undefined || d.state !== 'FAILED' || d.type?.category === 'Approval') return;
+  await clients.createBacklogTask(buildBacklogTask(event, settings.agentSpaceId, settings.investigationPriority));
 }
 
 function sdkClients(region: string): ForwarderClients {
   let agent: any;
-  let pipelines: any;
   try {
     agent = require('@aws-sdk/client-devops-agent');
   } catch (err) {
@@ -214,38 +153,23 @@ function sdkClients(region: string): ForwarderClients {
     );
   }
   const agentClient = new agent.DevOpsAgentClient({ region });
-  return {
-    createBacklogTask: (request) => agentClient.send(new agent.CreateBacklogTaskCommand(request)),
-    sourceRevisions: async (pipeline, executionId) => {
-      pipelines ??= require('@aws-sdk/client-codepipeline');
-      const client = new pipelines.CodePipelineClient({});
-      const out = await client.send(
-        new pipelines.GetPipelineExecutionCommand({ pipelineName: pipeline, pipelineExecutionId: executionId }),
-      );
-      return out?.pipelineExecution?.artifactRevisions ?? [];
-    },
-  };
+  return { createBacklogTask: (request) => agentClient.send(new agent.CreateBacklogTaskCommand(request)) };
 }
 
 let cached: ForwarderClients | undefined;
 
 export async function handler(event: ActionFailedEvent): Promise<void> {
   const env = process.env;
-  if (!env.AGENT_SPACE_ID || !env.AGENT_SPACE_REGION || !env.INVESTIGATION_PRIORITY || !env.REVIEW_PRIORITY) {
+  if (!env.AGENT_SPACE_ID || !env.AGENT_SPACE_REGION || !env.INVESTIGATION_PRIORITY) {
     throw new Error(
-      'cdk-cicd: the DevOps Agent forwarder needs AGENT_SPACE_ID, AGENT_SPACE_REGION, INVESTIGATION_PRIORITY and REVIEW_PRIORITY.',
+      'cdk-cicd: the DevOps Agent forwarder needs AGENT_SPACE_ID, AGENT_SPACE_REGION and INVESTIGATION_PRIORITY.',
     );
   }
   cached ??= sdkClients(env.AGENT_SPACE_REGION);
   await forward(
     event,
-    {
-      agentSpaceId: env.AGENT_SPACE_ID,
-      // Defaults live in the construct alone (DevOpsAgentIntegration), which always sets both.
-      investigationPriority: env.INVESTIGATION_PRIORITY,
-      reviewPriority: env.REVIEW_PRIORITY,
-      repository: env.REPOSITORY,
-    },
+    // The default priority lives in the construct alone (DevOpsAgentIntegration), which always sets it.
+    { agentSpaceId: env.AGENT_SPACE_ID, investigationPriority: env.INVESTIGATION_PRIORITY },
     cached,
   );
 }

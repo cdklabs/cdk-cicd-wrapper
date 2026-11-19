@@ -42,7 +42,6 @@ export {
   CodePipelineRoleNames,
   DeployModel,
   DeploymentConfig,
-  DevOpsAgentChangeRiskAnalysisConfig,
   DevOpsAgentConfig,
   DevOpsAgentInvestigationsConfig,
   DevOpsAgentKnowledgeConfig,
