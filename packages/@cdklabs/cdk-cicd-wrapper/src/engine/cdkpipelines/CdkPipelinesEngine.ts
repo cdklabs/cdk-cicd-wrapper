@@ -915,27 +915,35 @@ export function ssmWarmingCommands(qualifier?: string): string[] {
     '_warm_tmp="$(mktemp)"',
     `aws ssm get-parameters-by-path --path "/${qualifierExpr}/" --query "Parameters[].[Name, Value]" --output text > "$_warm_tmp"`,
     '_warm_found=0',
+    // The whole `while ... done` loop MUST be a SINGLE array element. CodeBuild's buildspec v0.2 runs
+    // each phase-command array entry as its own shell command line, so a compound `while ... do` split
+    // across separate entries fails with `Syntax error: ... unexpected (expecting "done")` -- the shell
+    // never sees the matching `done`. Keeping it one newline-joined string makes the shell parse it as
+    // one complete command. Env-var `export`s still land in the same shell as the later `cdk synth`
+    // entry (v0.2 shares one process across a phase's entries).
     // `|| [ -n "$_warm_name" ]` processes a final row that has no trailing newline (POSIX `read`
     // returns non-zero on EOF-without-newline but still populates the vars), so the last Account*
     // param is never silently dropped.
-    'while IFS="$(printf \'\\t\')" read -r _warm_name _warm_value || [ -n "$_warm_name" ]; do',
-    '  [ -z "$_warm_name" ] && continue',
-    '  case "$_warm_name" in',
-    '    *Account*)',
-    "      _warm_stage=\"$(printf '%s' \"${_warm_name##*Account}\" | tr '[:lower:]' '[:upper:]' | tr -cd '[:alnum:]_')\"",
-    // Skip a param whose suffix is not a valid shell identifier (empty, or leading digit) instead of
-    // letting `export` fail silently -- warn so a misnamed parameter is visible, not lost.
-    '      case "$_warm_stage" in',
-    "        ''|[0-9]*)",
-    '          echo "cdk-cicd: warmAccountsFromSsm skipping \\"${_warm_name}\\" -- yields no valid ACCOUNT_<STAGE> identifier" >&2',
-    '          continue ;;',
-    '      esac',
-    '      export "ACCOUNT_${_warm_stage}=${_warm_value}"',
-    '      echo "ACCOUNT_${_warm_stage} set"',
-    '      _warm_found=1',
-    '      ;;',
-    '  esac',
-    'done < "$_warm_tmp"',
+    [
+      'while IFS="$(printf \'\\t\')" read -r _warm_name _warm_value || [ -n "$_warm_name" ]; do',
+      '  [ -z "$_warm_name" ] && continue',
+      '  case "$_warm_name" in',
+      '    *Account*)',
+      "      _warm_stage=\"$(printf '%s' \"${_warm_name##*Account}\" | tr '[:lower:]' '[:upper:]' | tr -cd '[:alnum:]_')\"",
+      // Skip a param whose suffix is not a valid shell identifier (empty, or leading digit) instead of
+      // letting `export` fail silently -- warn so a misnamed parameter is visible, not lost.
+      '      case "$_warm_stage" in',
+      "        ''|[0-9]*)",
+      '          echo "cdk-cicd: warmAccountsFromSsm skipping \\"${_warm_name}\\" -- yields no valid ACCOUNT_<STAGE> identifier" >&2',
+      '          continue ;;',
+      '      esac',
+      '      export "ACCOUNT_${_warm_stage}=${_warm_value}"',
+      '      echo "ACCOUNT_${_warm_stage} set"',
+      '      _warm_found=1',
+      '      ;;',
+      '  esac',
+      'done < "$_warm_tmp"',
+    ].join('\n'),
     'rm -f "$_warm_tmp"',
     `if [ "$_warm_found" -eq 0 ]; then echo "cdk-cicd: warmAccountsFromSsm found no *Account* parameters under /${qualifierExpr}/ -- is the qualifier correct and the account bootstrapped?" >&2; exit 1; fi`,
   ];
