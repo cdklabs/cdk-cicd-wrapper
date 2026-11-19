@@ -7,7 +7,8 @@ directory. Nothing in them runs code.
 
 | Skill | For | What it does |
 | --- | --- | --- |
-| [`cdk-cicd-devops-agent`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-devops-agent) | coding agents | Turns on the [DevOps Agent forwarder](../developer_guides/devops_agent.md) for a pipeline, and works with the investigations it opens. |
+| [`cdk-cicd-pipeline`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-pipeline) | coding agents | Sets up a pipeline for a CDK app (also from a fresh `cdk init` app), adds stacks and stages to it, and finds out why a run failed. |
+| [`cdk-cicd-devops-agent`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-devops-agent) | coding agents | Turns on the [DevOps Agent levels](../developer_guides/devops_agent.md) a pipeline needs, and works with the investigations they open. |
 | [`cdk-cicd-pipeline-failure-investigation`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-pipeline-failure-investigation) | AWS DevOps Agent and coding agents | Investigates a failed run: what each stage and action runs, where its log or stack lives (pipeline account vs stage account), and the usual root causes. |
 
 ## Install for a coding agent
@@ -28,7 +29,9 @@ The skills work best next to the [MCP server](../mcp/index.md), which gives the 
 ## Add to AWS DevOps Agent
 
 DevOps Agent [accepts skills](https://docs.aws.amazon.com/devopsagent/latest/userguide/about-aws-devops-agent-devops-agent-skills-index.html)
-in the same format. In the Agent Space's operator web app, open **Knowledge** → **Skills** → **Add skill**:
+in the same format. The pipeline's `devopsAgent.knowledge` level publishes `cdk-cicd-pipeline-failure-investigation`
+for you, next to a map of that pipeline. To add a skill by hand, open **Knowledge** → **Skills** → **Add skill** in
+the Agent Space's operator web app:
 
 - **Import from repository** with the skill's GitHub directory URL, for example
   `https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-pipeline-failure-investigation`.
