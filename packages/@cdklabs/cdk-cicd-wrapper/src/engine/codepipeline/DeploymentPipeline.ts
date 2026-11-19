@@ -787,11 +787,11 @@ export class DeploymentPipeline extends Construct {
     );
 
     this.pipeline = pipeline;
-    if (props.config.devopsAgent !== undefined) {
+    if (config.devopsAgent !== undefined) {
       new DevOpsAgentIntegration(this, 'DevOpsAgent', {
         pipelines: [pipeline, ...autoDeployPipelines],
-        config: props.config.devopsAgent,
-        layout: deploymentLayout(props.config),
+        config: config.devopsAgent,
+        layout: deploymentLayout(config),
       });
     }
   }
