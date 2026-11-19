@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a command-line interface (CLI) tool designed to streamline and automate various tasks related to AWS Cloud Development Kit (CDK) projects. It drives the Autopilot pipeline (`init`, `exec`, `deploy-ci`, `synth`, `deploy`, `check`, `migrate`) and provides a set of utilities to manage compliance, security, licensing, and dependency management, all within a single interface.
+The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a command-line interface (CLI) tool designed to streamline and automate various tasks related to AWS Cloud Development Kit (CDK) projects. It drives the Autopilot pipeline (`init`, `exec`, `deploy-ci`, `synth`, `deploy`, `check`, `migrate`, `mcp`) and provides a set of utilities to manage compliance, security, licensing, and dependency management, all within a single interface.
 
 ## Table of Contents
 
@@ -54,6 +54,7 @@ npx cdk-cicd <command> --help
 | `deploy-ci` | Provision the pipeline itself into the hub account, from `cicd.config.ts` alone — the one command you run by hand; everything after it is the pipeline deploying the application. `--disposable` tears down the pipeline's artifact bucket and key with the stack. |
 | `check`     | Run the default-on CI checks (`validate`, `audit`, `license`, `security`) — the default build step.                                                                                                                                                                |
 | `migrate`   | Generate an Autopilot `cicd.config.ts` from an existing `0.x` `PipelineBlueprint` entry file (`--entry`, `--application`, `--dry-run`).                                                                                                                            |
+| `mcp`       | Serve `check_config` and `describe_pipeline` to a coding agent over the Model Context Protocol (stdio).                                                                                                                                                            |
 
 See the [CLI reference](https://cdklabs.github.io/cdk-cicd-wrapper/cli/) for the full command documentation.
 

@@ -25,6 +25,7 @@ npx cdk-cicd <command> --help
 
 | Command | Description |
 | --- | --- |
+| `init` | Make an existing CDK app (for example a fresh `cdk init app`) an Autopilot app: writes `cicd.config.ts` and points `cdk.json` at `cdk-cicd exec` (`--source`, `--repository`, `--stages`, `--dry-run`). |
 | `exec` | Run a CDK app under the wrapper — the **single** `cdk.json` entry point for all engines. It reads engine/stages from `cicd.config` and renders the application stacks by default, or the pipeline when `CDK_CICD_MODE=pipeline` is set in the environment (no `--app` override). |
 | `synth` | Synthesize the app per stage/region (`--stage`, or `--all` for full CI validation). |
 | `deploy` | Synth, drift-check, and deploy a stage across its regions. |
