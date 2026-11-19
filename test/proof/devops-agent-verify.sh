@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# devops-agent-verify -- prove the `devopsAgent` failure forwarder against real AWS:
+# devops-agent-verify -- prove the `devopsAgent` investigations and knowledge levels against real AWS:
 #
 #   1. an Agent Space (CloudFormation AWS::DevOpsAgent::AgentSpace), tagged and disposable;
 #   2. a versioned S3 source bucket, with source.zip uploaded BEFORE the pipeline exists, so the pipeline's

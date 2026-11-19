@@ -34,7 +34,7 @@ before a gated stage's approval). This skill covers turning levels on and readin
 - **Live pipeline state**: the AWS MCP Server or the AWS CLI (`codepipeline`, `codebuild`, `logs`,
   `cloudformation`).
 
-## Workflow A: turn the forwarder on
+## Workflow A: turn the levels on
 
 1. **Read the pipeline.** Run `check_config` (or read `cicd.config.ts`). Note the engine, the pipeline
    account and Region, and each stage's account and Regions. If the engine is `github-actions`
@@ -84,7 +84,8 @@ before a gated stage's approval). This skill covers turning levels on and readin
    ones: `aws devops-agent list-backlog-tasks --agent-space-id <id> --region <region>`, or ask the DevOps
    Agent MCP server.
    Read its findings and mitigation plan before you look anywhere else.
-2. **No investigation?** The forwarder may be off (`check_config`) or the action may be an approval. If
+2. **No investigation?** The `investigations` level may be off or limited to other `stages` (`check_config`), or
+   the action may be an approval. If
    neither, check the forwarder's dead-letter queue in the pipeline stack: anything there was not handed to
    DevOps Agent, and the message shows why.
 3. **Investigate yourself when needed.** Follow the `cdk-cicd-pipeline-failure-investigation` skill. Go

@@ -47,7 +47,7 @@ export default defineCICD({
 | `express`                 | `boolean`                     | `false`                                | Deploy with CloudFormation express mode. See [Express mode](#express-mode). |
 | `deployerImage`           | `BuildImage`                  | —                                      | Container mode: build & push a deployer image instead of deploying.         |
 | `plugins`                 | `PluginRef[]`                 | the default-on hardening set           | Security plugins (hardening Aspects) applied tree-wide. See [Security plugins](#security-plugins). |
-| `devopsAgent`             | `DevOpsAgentConfig`           | —                                      | Open an AWS DevOps Agent investigation when a pipeline action fails. See [DevOps Agent](#devops-agent). |
+| `devopsAgent`             | `DevOpsAgentConfig`           | —                                      | Connect the pipeline to AWS DevOps Agent, one opt-in level at a time. See [DevOps Agent](#devops-agent). |
 
 `APP_STAGING` is valid for direct/local application deployment (`cdk deploy`, including local
 `cdk-cicd deploy --from-image`) and Repo 1 container-image builds, which deploy no application stacks.

@@ -4023,7 +4023,7 @@ const resolvedCicdConfig: ResolvedCicdConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.createComplianceLogBucket">createComplianceLogBucket</a></code> | <code>boolean</code> | Whether the pipeline stack creates and manages `complianceLogBucketName`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployerImage">deployerImage</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.BuildImage">BuildImage</a></code> | Container mode (Repo 1): when set, the pipeline runs CI then builds & pushes a config-agnostic deployer image to ECR instead of deploying stages. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.deployRoleExternalId">deployRoleExternalId</a></code> | <code>string</code> | Pipeline-level default ExternalId presented when assuming a stage's forced `deployRole`. |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.devopsAgent">devopsAgent</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a></code> | Start a DevOps Agent investigation when a pipeline action fails, if configured. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.devopsAgent">devopsAgent</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a></code> | Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge, changeRiskAnalysis). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.express">express</a></code> | <code>boolean</code> | Deploy with **CloudFormation express mode** (`cdk deploy --express`). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.githubActions">githubActions</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.GitHubActionsConfig">GitHubActionsConfig</a></code> | GitHub Actions engine configuration. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedCicdConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the builds authenticate against with a bearer token, if any. |
@@ -4255,9 +4255,9 @@ public readonly devopsAgent: DevOpsAgentConfig;
 
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a>
 
-Start a DevOps Agent investigation when a pipeline action fails, if configured.
+Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge, changeRiskAnalysis).
 
-See `DevOpsAgentConfig`.
+Off unless set. See `DevOpsAgentConfig`.
 
 ---
 
@@ -4430,7 +4430,7 @@ const resolvedDeploymentConfig: ResolvedDeploymentConfig = { ... }
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.codeArtifact">codeArtifact</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.CodeArtifactConfig">CodeArtifactConfig</a></code> | Private CodeArtifact repo the CD build authenticates against before `npm ci` (to install the wrapper CLI when it is pre-release / not on public npm). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.complianceLogBucketName">complianceLogBucketName</a></code> | <code>string</code> | Default compliance/access-log destination bucket name for targets that do not provide their own. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.crossAccountEcrRepositoryPolicyConfigured">crossAccountEcrRepositoryPolicyConfigured</a></code> | <code>boolean</code> | Confirms that owner-side repository policies permit the generated pipeline role to pull every cross-account ECR image referenced by this deployment config. |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.devopsAgent">devopsAgent</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a></code> | Start a DevOps Agent investigation when an action of the CD pipeline (or of a target's auto-deploy pipeline) fails, if configured. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.devopsAgent">devopsAgent</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a></code> | Connect the CD pipeline and every target's auto-deploy pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.image">image</a></code> | <code>string</code> | The default deployer image to run targets against (an ECR/OCI reference, tag or digest). |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.npmRegistry">npmRegistry</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.NpmRegistryConfig">NpmRegistryConfig</a></code> | Generic private npm registry the CD build authenticates against before `npm ci`. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.ResolvedDeploymentConfig.property.qualifier">qualifier</a></code> | <code>string</code> | Bootstrap qualifier used by the deployer image; |
@@ -4519,9 +4519,9 @@ public readonly devopsAgent: DevOpsAgentConfig;
 
 - *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig">DevOpsAgentConfig</a>
 
-Start a DevOps Agent investigation when an action of the CD pipeline (or of a target's auto-deploy pipeline) fails, if configured.
+Connect the CD pipeline and every target's auto-deploy pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge).
 
-See `DevOpsAgentConfig`.
+Off unless set. See `DevOpsAgentConfig`.
 
 ---
 

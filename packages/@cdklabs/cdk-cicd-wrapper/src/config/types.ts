@@ -634,7 +634,7 @@ export interface ResolvedCicdConfig {
    * in `bin/` via `CdkCicd.addPlugin` -- the config carries only its identity, not the instance.
    */
   readonly plugins?: PluginRef[];
-  /** Start a DevOps Agent investigation when a pipeline action fails, if configured. See `DevOpsAgentConfig`. */
+  /** Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge, changeRiskAnalysis). Off unless set. See `DevOpsAgentConfig`. */
   readonly devopsAgent?: DevOpsAgentConfig;
 }
 
@@ -751,8 +751,8 @@ export interface ResolvedDeploymentConfig {
    */
   readonly crossAccountEcrRepositoryPolicyConfigured?: boolean;
   /**
-   * Start a DevOps Agent investigation when an action of the CD pipeline (or of a target's auto-deploy
-   * pipeline) fails, if configured. See `DevOpsAgentConfig`.
+   * Connect the CD pipeline and every target's auto-deploy pipeline to AWS DevOps Agent, one opt-in level at
+   * a time (investigations, knowledge). Off unless set. See `DevOpsAgentConfig`.
    */
   readonly devopsAgent?: DevOpsAgentConfig;
 }

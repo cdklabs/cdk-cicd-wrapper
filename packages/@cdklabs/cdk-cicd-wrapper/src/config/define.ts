@@ -164,7 +164,7 @@ export interface CicdConfigProps {
    * name is a custom plugin and must be registered in `bin/` via `CdkCicd.addPlugin`.
    */
   readonly plugins?: PluginRef[];
-  /** Start an AWS DevOps Agent investigation when a pipeline action fails. See `DevOpsAgentConfig`. */
+  /** Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge, changeRiskAnalysis). Off unless set. See `DevOpsAgentConfig`. */
   readonly devopsAgent?: DevOpsAgentConfig;
 }
 
@@ -572,7 +572,7 @@ export interface DeploymentProps {
    * an owner-side repository policy granting the generated Repo 2 CodeBuild role pull access.
    */
   readonly crossAccountEcrRepositoryPolicyConfigured?: boolean;
-  /** Start an AWS DevOps Agent investigation when a CD pipeline action fails. See `DevOpsAgentConfig`. */
+  /** Connect the CD pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge). Off unless set. See `DevOpsAgentConfig`. */
   readonly devopsAgent?: DevOpsAgentConfig;
 }
 
