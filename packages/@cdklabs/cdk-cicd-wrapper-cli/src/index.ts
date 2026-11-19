@@ -8,6 +8,7 @@ import check from './cmds/autopilot/CheckCommand';
 import deployCi from './cmds/autopilot/DeployCiCommand';
 import deploy from './cmds/autopilot/DeployCommand';
 import exec from './cmds/autopilot/ExecCommand';
+import init from './cmds/autopilot/InitCommand';
 import listCi from './cmds/autopilot/ListCiCommand';
 import migrate from './cmds/autopilot/MigrateCommand';
 import pipeline from './cmds/autopilot/PipelineCommand';
@@ -54,6 +55,7 @@ async function main() {
   ya.command(synthCi);
   ya.command(listCi);
   ya.command(deployCi);
+  ya.command(init);
   ya.command(migrate);
   ya.command(pipeline);
 
