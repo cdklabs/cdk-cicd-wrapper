@@ -1674,6 +1674,48 @@
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/source.ts",
         "line": 28
       }
+    },
+    {
+      "id": "qa-build-docs-mutates-root-package-json",
+      "component": "infra",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "docs/scripts/build-docs runs `npm install fs-extra` from docs/, which rewrites the repo root package.json and yarn.lock and creates a package-lock.json",
+      "detail": "docs/ has no package.json, so npm walks up to the repo root. One `task docs`/`./scripts/build-docs` run in a clean clone left a modified root package.json (an added fs-extra dependency, 5 lines), a yarn.lock re-resolved by npm (about 1.8k changed lines), and an untracked package-lock.json. The tree is projen-managed and uses yarn, so all three are wrong to commit, and a whole-tree `git add` would sweep them in. This is the likely origin of the stray root fs-extra dependency described in architect-projen-build-dropped-uncommitted-root-fsextra-dep. fs-extra already resolves from the root through workspace hoisting, so the install step looks unnecessary. Fix direction: drop the npm install line, or run it with --no-save --prefix into the build dir. Not fixed here because it is unrelated to the CodeGuru change that surfaced it.",
+      "location": {
+        "path": "docs/scripts/build-docs",
+        "line": 6
+      }
+    },
+    {
+      "id": "planning-overview-diagram-redraw-untracked",
+      "component": "infra",
+      "layer": "static",
+      "producer": "planning",
+      "severity": "low",
+      "status": "open",
+      "title": "docs/content/overview/index.md says redrawing its two Blueprint-era diagrams for Autopilot is 'tracked separately', but no task or finding tracks it",
+      "detail": "Both admonitions under the process-flow and architecture images end with 'Redrawing this diagram for Autopilot is tracked separately.', but task.md and findings.json had no entry for it. CodeGuru has now been removed from both diagrams (diagrams-source.drawio pages 'Infrastructure' and 'Deployment Flow'). They still show the Blueprint shape: a RES account, fixed DEV/INT/PROD accounts, a CodeCommit-only source, and an unconditional per-account compliance bucket and KMS key. This entry is the tracking item the docs refer to. Done when both pages show the Autopilot shape (source choice, configurable stages, opt-in compliance bucket), both PNGs are re-exported and checked by eye, and the two caveat notes are removed.",
+      "location": {
+        "path": "docs/content/overview/index.md",
+        "line": 35
+      }
+    },
+    {
+      "id": "migration-legacy-blueprint-codeguru-end-of-support",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "high",
+      "status": "open",
+      "title": "The legacy-blueprint (0.x) line still creates an Amazon CodeGuru Reviewer repository association by default and offers a CodeGuru Security scan step, and AWS has retired both",
+      "detail": "On the legacy-blueprint branch, the default repository-provider path sets codeGuruReviewer to true (RepositoryProvider.ts:19), and CodeCommitRepositoryConstruct.ts:93-94 then creates an AWS::CodeGuruReviewer::RepositoryAssociation. An explicit RepositorySource.codecommit() defaults enableCodeGuruReviewer to false (RepositoryProvider.ts:166), so only the default path is affected. As of 2025-11-07 no account can create a new CodeGuru Reviewer repository association (https://docs.aws.amazon.com/codeguru/latest/reviewer-ug/codeguru-reviewer-availability-change.html). So, per the docs (not deploy-tested), a fresh default 0.x CodeCommit deployment fails at that resource. That includes the runnable legacy workshop docs/content/legacy/workshops/basics-lvl300 (its repository stack, 03-create-pipeline.md:127). Separately, PipelineBlueprint.codeGuruScanThreshold() adds a CodeGuruSecurityStep against Amazon CodeGuru Security, whose support ended on 2025-11-20 (https://docs.aws.amazon.com/cli/latest/reference/codeguru-security/index.html). Main (Autopilot) is unaffected: the code is gone and MIGRATION.md has a row for it. The fix needs a change and a release on legacy-blueprint (default codeGuruReviewer to false, deprecate codeGuruScanThreshold) plus a note in the legacy workshop. That is out of scope for the session that found it.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/constructs/CodeCommitRepositoryConstruct.ts",
+        "line": 93
+      }
     }
   ]
 }
