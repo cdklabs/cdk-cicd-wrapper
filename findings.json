@@ -1786,6 +1786,34 @@
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/devops-agent/forwarder/handler.ts",
         "line": 151
       }
+    },
+    {
+      "id": "code-review-pipeline-skill-no-handoff-to-failure-investigation",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "skills/cdk-cicd-pipeline triggers on 'why a cdk-cicd pipeline run failed' but never hands off to cdk-cicd-pipeline-failure-investigation",
+      "detail": "Its description claims the failed-run request that skills/cdk-cicd-pipeline-failure-investigation is written for, and its own procedure for it is two lines. An agent that picks it can miss that deployed stacks live in the stage account, not the pipeline account. Done when: the pipeline skill's failure section points to the failure-investigation skill (and to cdk-cicd-devops-agent when devopsAgent.investigations is on), or drops the trigger from its description.",
+      "location": {
+        "path": "skills/cdk-cicd-pipeline/SKILL.md",
+        "line": 3
+      }
+    },
+    {
+      "id": "code-review-changelog-missing-cdk-cicd-init",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CHANGELOG.md has no entry for #370: cdk-cicd init, synth --require-account in the CodePipeline Build, and the deploy.config compliance resolution",
+      "detail": "The Unreleased section lists devopsAgent and cdk-cicd mcp but nothing from #370, which adds a user-facing command and makes Build fail on a stack without an account (previously a warning). Done when: Unreleased has Added (cdk-cicd init) and Changed (Build passes --require-account) entries written by whoever owns that change.",
+      "location": {
+        "path": "CHANGELOG.md",
+        "line": 9
+      }
     }
   ]
 }
