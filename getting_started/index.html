@@ -2680,7 +2680,8 @@ npx<span class="w"> </span>aws-cdk@latest<span class="w"> </span>init<span class
 </code></pre></div>
 <p><strong>Note</strong>: If the <code>@cdklabs</code> scope is not resolvable from the public npm registry (for example while a pre-release version is only published under the <code>next</code> dist-tag, or your organization proxies npm through a private registry), configure a <a href="../developer_guides/private_npm_registry.html">private NPM registry</a> or <a href="../developer_guides/codeartifact.html">AWS CodeArtifact</a> first.</p>
 <h2 id="write-cicdconfigts">Write <code>cicd.config.ts</code></h2>
-<p>Create <code>cicd.config.ts</code> next to your <code>cdk.json</code>:</p>
+<p><code>npx cdk-cicd init</code> writes this file and the <code>cdk.json</code> change below for you (<code>--dry-run</code> to preview,
+<code>--stages dev,prod</code> for the stages). To write it by hand, create <code>cicd.config.ts</code> next to your <code>cdk.json</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">,</span><span class="w"> </span><span class="nx">Repository</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@cdklabs/cdk-cicd-wrapper'</span><span class="p">;</span>
 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
@@ -2692,7 +2693,7 @@ npx<span class="w"> </span>aws-cdk@latest<span class="w"> </span>init<span class
 </code></pre></div>
 <p>See the <a href="../developer_guides/cd.html">CD developer guide</a> for the full stage shape (multi-region stages, per-stage manual approval, forced deploy roles) and <a href="../developer_guides/vcs_codecommit.html">Repository sources</a> for CodeCommit/GitHub/S3 specifics.</p>
 <h2 id="point-cdkjson-at-cdk-cicd-exec">Point <code>cdk.json</code> at <code>cdk-cicd exec</code></h2>
-<p><code>cdk.json</code>'s <code>app</code> command is what turns your plain app into a wrapped one — nothing else in <code>bin/</code> needs to change:</p>
+<p><code>cdk.json</code>'s <code>app</code> command is what turns your plain app into a wrapped one. The one line <code>bin/</code> needs is an <code>env</code> on each stack, so it names its account (a stock <code>cdk init</code> entry ships that line commented out):</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"app"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx cdk-cicd exec bin/my-project.ts"</span>
 <span class="p">}</span>
@@ -2848,7 +2849,7 @@ call there cannot be seen. Built-in selection and opt-out work on both paths.</p
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-11-17
+    2026-11-19
   </span>
 
     
