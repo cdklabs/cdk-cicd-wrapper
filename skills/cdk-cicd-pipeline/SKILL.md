@@ -1,6 +1,6 @@
 ---
 name: cdk-cicd-pipeline
-description: Set up and grow an AWS CodePipeline for a CDK app with cdk-cicd-wrapper (Autopilot). Use when asked to add a CI/CD pipeline to a CDK app, create a new pipeline from a fresh `cdk init` app, add a stack or a deployment stage to an existing cdk-cicd pipeline, or check why a cdk-cicd pipeline run failed.
+description: Use when asked to add an AWS CodePipeline to a CDK app with cdk-cicd-wrapper (Autopilot), set one up from a fresh `cdk init` app, add a stack or a deployment stage to an existing cdk-cicd pipeline, or find out why a cdk-cicd pipeline run failed.
 ---
 
 # cdk-cicd-pipeline
