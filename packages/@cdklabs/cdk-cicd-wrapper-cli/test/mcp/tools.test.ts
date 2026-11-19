@@ -34,7 +34,7 @@ const VALID = `w.defineCICD({
   application: 'shop',
   repository: w.Repository.codecommit('shop'),
   stages: ['dev', { name: 'prod', env: { account: '222222222222', region: 'eu-west-1' }, manualApproval: true }],
-  devopsAgent: { agentSpaceId: 'as-123' },
+  devopsAgent: { agentSpaceId: 'as-123', investigations: {} },
 })`;
 const DEPLOYMENT = `w.defineDeployment({ image: 'repo:1', targets: [{ stage: 'prod', env: { account: '222222222222', region: 'eu-west-1' } }] })`;
 
@@ -58,7 +58,7 @@ describe('check_config', () => {
         { name: 'dev', account: '(pipeline account)', regions: '(pipeline Region)', manualApproval: false },
         { name: 'prod', account: '222222222222', regions: ['eu-west-1'], manualApproval: true },
       ],
-      devopsAgent: { agentSpaceId: 'as-123' },
+      devopsAgent: { agentSpaceId: 'as-123', investigations: {} },
     });
   });
 
@@ -270,6 +270,10 @@ describe('describe_pipeline (template reading)', () => {
         Properties: { Environment: { Variables: { AGENT_SPACE_ID: 'as-123', AGENT_SPACE_REGION: 'eu-west-1' } } },
       },
       Other: { Type: 'AWS::Lambda::Function', Properties: { Environment: { Variables: { X: '1' } } } },
+      Map: {
+        Type: 'AWS::DevOpsAgent::Asset',
+        Properties: { AssetType: 'skill', Metadata: { name: 'cdk-cicd-pipeline-map-shop' } },
+      },
     },
   };
 
@@ -293,6 +297,7 @@ describe('describe_pipeline (template reading)', () => {
         },
       ],
       devopsAgentForwarder: { stack: 'shop-pipeline', agentSpaceId: 'as-123', region: 'eu-west-1' },
+      devopsAgentSkills: ['cdk-cicd-pipeline-map-shop'],
     });
   });
 
@@ -306,6 +311,6 @@ describe('describe_pipeline (template reading)', () => {
   });
 
   test('reports no forwarder and no pipelines for an empty assembly', () => {
-    expect(describeTemplates([])).toEqual({ pipelines: [], devopsAgentForwarder: false });
+    expect(describeTemplates([])).toEqual({ pipelines: [], devopsAgentForwarder: false, devopsAgentSkills: [] });
   });
 });

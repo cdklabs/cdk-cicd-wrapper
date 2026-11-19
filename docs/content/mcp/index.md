@@ -15,8 +15,8 @@ and for root-cause analysis of a failed run use [AWS DevOps Agent](../developer_
 
 | Tool                | What it does |
 | ------------------- | ------------ |
-| `check_config`      | Loads and validates `cicd.config.ts`/`.js` and `deploy.config.ts`/`.js` exactly as the CLI does, and summarizes them: source repository, stages with their accounts and Regions, approval gates, CI steps, deploy model, network, plugins and the DevOps Agent forwarder. Each file is checked on its own; one that does not validate returns its error. No AWS calls. |
-| `describe_pipeline` | Synthesizes the pipeline the way `cdk-cicd list-ci` does (no deploy) and lists each CodePipeline with its stages and actions, and whether failures go to DevOps Agent. It runs your project's `cdk` npm script, so CDK context lookups (for example a VPC lookup) use the server's AWS credentials and may write `cdk.context.json`. Slow: a full `cdk synth`. A client that cancels the call stops the synth. |
+| `check_config`      | Loads and validates `cicd.config.ts`/`.js` and `deploy.config.ts`/`.js` exactly as the CLI does, and summarizes them: source repository, stages with their accounts and Regions, approval gates, CI steps, deploy model, network, plugins and the DevOps Agent levels (`devopsAgent`). Each file is checked on its own; one that does not validate returns its error. No AWS calls. |
+| `describe_pipeline` | Synthesizes the pipeline the way `cdk-cicd list-ci` does (no deploy) and lists each CodePipeline with its stages and actions, and what is connected to DevOps Agent (the forwarder, and the skills of the `knowledge` level). It runs your project's `cdk` npm script, so CDK context lookups (for example a VPC lookup) use the server's AWS credentials and may write `cdk.context.json`. Slow: a full `cdk synth`. A client that cancels the call stops the synth. |
 
 Both take an optional `directory` argument (the project directory holding `cdk.json`). It defaults to the
 directory the server was started in and cannot point outside it, so a model cannot aim the tools at some

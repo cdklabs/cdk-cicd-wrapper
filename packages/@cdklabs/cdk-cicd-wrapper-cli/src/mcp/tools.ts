@@ -211,6 +211,7 @@ function label(value: unknown): string {
 export function describeTemplates(stacks: Array<{ stackName: string; template: any }>): object {
   const pipelines: object[] = [];
   let forwarder: object | false = false;
+  const skills: string[] = [];
   for (const { stackName, template } of stacks) {
     for (const resource of Object.values<any>(template?.Resources ?? {})) {
       if (resource?.Type === 'AWS::CodePipeline::Pipeline') {
@@ -229,13 +230,16 @@ export function describeTemplates(stacks: Array<{ stackName: string; template: a
           })),
         });
       }
+      if (resource?.Type === 'AWS::DevOpsAgent::Asset' && typeof resource.Properties?.Metadata?.name === 'string') {
+        skills.push(resource.Properties.Metadata.name);
+      }
       const env = resource?.Type === 'AWS::Lambda::Function' ? resource.Properties?.Environment?.Variables : undefined;
       if (env?.AGENT_SPACE_ID !== undefined) {
         forwarder = { stack: stackName, agentSpaceId: env.AGENT_SPACE_ID, region: env.AGENT_SPACE_REGION };
       }
     }
   }
-  return { pipelines, devopsAgentForwarder: forwarder };
+  return { pipelines, devopsAgentForwarder: forwarder, devopsAgentSkills: skills };
 }
 
 /** Stop a synth and everything it started: SIGTERM to its process group, then SIGKILL after a grace period. */
@@ -313,7 +317,7 @@ export function tools(cwd: string): McpTool[] {
         'Load and validate the cdk-cicd-wrapper config of a project (cicd.config.ts for the pipeline, ' +
         'deploy.config.ts for a container-mode Repo 2) exactly as the cdk-cicd CLI does, and summarize it: ' +
         'source repository, stages with their accounts and Regions, approval gates, CI steps, deploy model, ' +
-        'network, plugins and the DevOps Agent forwarder. A config that fails validation returns the error. ' +
+        'network, plugins and the DevOps Agent levels. A config that fails validation returns the error. ' +
         'Loading a config runs that file, as the CLI does; it makes no AWS calls.',
       inputSchema: DIRECTORY_SCHEMA,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -323,7 +327,7 @@ export function tools(cwd: string): McpTool[] {
       name: 'describe_pipeline',
       description:
         'Synthesize the pipeline that `cdk-cicd deploy-ci` would provision (no deploy) and list each ' +
-        'CodePipeline with its stages and actions, plus whether failures are forwarded to AWS DevOps Agent. ' +
+        'CodePipeline with its stages and actions, plus what is connected to AWS DevOps Agent (the forwarder, and the skills the knowledge level publishes). ' +
         "It runs the project's `cdk` npm script, so CDK context lookups (for example a VPC lookup) use the " +
         'AWS credentials of the server process and may write cdk.context.json. Slow: a full `cdk synth`. Use ' +
         'the pipeline and action names to look up live executions with the AWS MCP servers.',
