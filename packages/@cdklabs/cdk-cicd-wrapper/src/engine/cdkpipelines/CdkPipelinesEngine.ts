@@ -47,7 +47,8 @@ import { SupportResources } from '../../support/SupportResources';
 import { resolveVpcNetworking } from '../../support/Vpc';
 import { defaultCiCommands, NODE_RUNTIME_VERSION } from '../ci-commands';
 import { resolveCodeCommitRepository } from '../codepipeline/source';
-import { DevOpsAgentForwarder } from '../devops-agent/DevOpsAgentForwarder';
+import { DevOpsAgentIntegration } from '../devops-agent/DevOpsAgentIntegration';
+import { cdkPipelinesLayout } from '../devops-agent/layout';
 
 const PRIVATE_NPM_CONFIG_PATH = '/tmp/cdk-cicd-npmrc';
 
@@ -422,9 +423,11 @@ export class CdkPipelinesEngine extends Construct {
     // roles/buckets exist to annotate below, before the AwsSolutionsChecks aspect visits at synth time.
     this.pipeline.buildPipeline();
     if (config.devopsAgent !== undefined) {
-      new DevOpsAgentForwarder(this, 'DevOpsAgentForwarder', {
+      new DevOpsAgentIntegration(this, 'DevOpsAgent', {
         pipelines: [this.pipeline.pipeline],
         config: config.devopsAgent,
+        layout: cdkPipelinesLayout(config),
+        repository: config.repository,
       });
     }
     this.suppressGeneratedPipelineNag();

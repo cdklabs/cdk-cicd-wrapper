@@ -15,7 +15,7 @@
 import { aws_codebuild as codebuild } from 'aws-cdk-lib';
 import { BuildImage } from './build-image';
 import { normalizeDefaultSynthesizerQualifier } from './default-synthesizer-role-arn';
-import { Repository } from './repository';
+import { Repository, RepositorySourceType } from './repository';
 import {
   CiConfig,
   CodeArtifactConfig,
@@ -24,6 +24,7 @@ import {
   DeployModel,
   DeploymentConfig,
   DevOpsAgentConfig,
+  DevOpsAgentPriority,
   EngineType,
   GitHubActionsConfig,
   NpmRegistryConfig,
@@ -320,16 +321,57 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     express: props.express ?? false,
     deployerImage: props.deployerImage,
     plugins: props.plugins,
-    ...devopsAgentField(props.devopsAgent, engine),
+    ...devopsAgentField(props.devopsAgent, {
+      stages: stages.map((stage) => ({ name: stage.name, manualApproval: stage.manualApproval })),
+      repository: props.repository,
+      engine,
+      ...(props.deployerImage !== undefined ? { containerMode: 'image-build' as const } : {}),
+    }),
   };
 }
 
+/** What the `devopsAgent` levels are validated against: the pipeline's stages, source and engine. */
+export interface DevOpsAgentContext {
+  /** Stage (Repo 1/flat) or target (Repo 2) names, with whether each has a manual approval. */
+  readonly stages: Array<{ readonly name: string; readonly manualApproval: boolean }>;
+  readonly repository?: Repository;
+  readonly engine?: EngineType;
+  /** Set for container mode: Repo 1 builds images (no deploy stages); Repo 2 deploys an image, not a commit. */
+  readonly containerMode?: 'image-build' | 'deployment';
+}
+
+const PRIORITIES = new Set<string>(Object.values(DevOpsAgentPriority));
+
+function checkPriority(level: string, priority: DevOpsAgentPriority | undefined): void {
+  if (priority !== undefined && !PRIORITIES.has(priority)) {
+    throw new Error(
+      `cdk-cicd: devopsAgent.${level}.priority '${priority}' is not one of ${[...PRIORITIES].join(', ')}.`,
+    );
+  }
+}
+
+function checkStageNames(field: string, names: string[], context: DevOpsAgentContext): string[] {
+  const known = new Set(context.stages.map((stage) => stage.name));
+  const trimmed = [...new Set(names.map((name) => name.trim()))];
+  const unknown = trimmed.filter((name) => !known.has(name));
+  if (unknown.length > 0) {
+    throw new Error(
+      `cdk-cicd: devopsAgent.${field} names unknown stage(s) ${unknown.join(', ')}; the stages are ${[...known].join(', ')}.`,
+    );
+  }
+  return trimmed;
+}
+
 /**
- * Trim and validate a `devopsAgent` block; `undefined` passes through (the feature is off). The Agent
- * Space ID has no published pattern -- CreateBacklogTask documents only its length (1-2048) -- so only
- * shapes that are certainly wrong are rejected.
+ * Trim and validate a `devopsAgent` block; `undefined` passes through (the feature is off). Every level is
+ * checked against the pipeline it will be attached to, so a stage typo or a review that can never fire fails
+ * here, at config time, instead of silently doing nothing. The Agent Space ID has no published pattern --
+ * CreateBacklogTask documents only its length (1-2048) -- so only shapes that are certainly wrong are rejected.
  */
-export function normalizeDevOpsAgent(input: DevOpsAgentConfig | undefined): DevOpsAgentConfig | undefined {
+export function normalizeDevOpsAgent(
+  input: DevOpsAgentConfig | undefined,
+  context: DevOpsAgentContext,
+): DevOpsAgentConfig | undefined {
   if (input === undefined) return undefined;
   const agentSpaceId = input.agentSpaceId?.trim() ?? '';
   if (agentSpaceId.length === 0) {
@@ -347,27 +389,99 @@ export function normalizeDevOpsAgent(input: DevOpsAgentConfig | undefined): DevO
   if (region !== undefined && !AWS_REGION.test(region)) {
     throw new Error(`cdk-cicd: devopsAgent.region '${input.region}' is not an AWS Region name (e.g. eu-west-1).`);
   }
-  return { agentSpaceId, ...(region !== undefined ? { region } : {}) };
-}
-
-/**
- * The resolved `devopsAgent` member, present only when configured so existing configs resolve exactly
- * as before. The forwarder listens for CodePipeline events, which a GitHub Actions pipeline does not emit.
- */
-function devopsAgentField(
-  input: DevOpsAgentConfig | undefined,
-  engine?: EngineType,
-): { devopsAgent?: DevOpsAgentConfig } {
-  const devopsAgent = normalizeDevOpsAgent(input);
-  if (devopsAgent === undefined) return {};
-  if (engine === EngineType.GITHUB_ACTIONS) {
+  if (context.engine === EngineType.GITHUB_ACTIONS) {
     throw new Error(
-      'cdk-cicd: devopsAgent forwards CodePipeline failures, and the GitHub Actions engine emits no CodePipeline ' +
-        "events. Remove devopsAgent. DevOps Agent's GitHub integration links deployments to its investigations, " +
-        'but it does not open one per failed workflow run.',
+      'cdk-cicd: devopsAgent connects CodePipeline pipelines, and the GitHub Actions engine renders none. Remove ' +
+        "devopsAgent. DevOps Agent's GitHub integration links deployments to its investigations, but it does not " +
+        'open one per failed workflow run.',
     );
   }
-  return { devopsAgent };
+  const { investigations, knowledge, changeRiskAnalysis } = input;
+  if (investigations === undefined && knowledge === undefined && changeRiskAnalysis === undefined) {
+    throw new Error(
+      'cdk-cicd: devopsAgent enables no level. Add investigations, knowledge and/or changeRiskAnalysis, ' +
+        'for example `investigations: {}`, or remove devopsAgent.',
+    );
+  }
+
+  let resolvedInvestigations = investigations;
+  if (investigations !== undefined) {
+    checkPriority('investigations', investigations.priority);
+    if (investigations.stages !== undefined && investigations.stages.length === 0) {
+      throw new Error('cdk-cicd: devopsAgent.investigations.stages is empty; omit it to investigate every stage.');
+    }
+    if (context.containerMode === 'image-build') {
+      // Repo 1 renders only Source and BuildImage: its config stages are validation stages, not pipeline stages.
+      if (investigations.stages !== undefined) {
+        throw new Error(
+          'cdk-cicd: devopsAgent.investigations.stages has nothing to filter in a container-mode Repo 1 pipeline, ' +
+            'which only builds the image. Omit stages here, and filter stages in Repo 2.',
+        );
+      }
+      if (investigations.includePipelineActions === false) {
+        throw new Error(
+          'cdk-cicd: devopsAgent.investigations.includePipelineActions: false leaves nothing to investigate in a ' +
+            "container-mode Repo 1 pipeline: all of its actions are the pipeline's own.",
+        );
+      }
+    }
+    const stages =
+      investigations.stages === undefined
+        ? undefined
+        : checkStageNames('investigations.stages', investigations.stages, context);
+    resolvedInvestigations = { ...investigations, ...(stages ? { stages } : {}) };
+  }
+
+  if (knowledge !== undefined && knowledge.investigationSkill === false && knowledge.pipelineMap === false) {
+    throw new Error('cdk-cicd: devopsAgent.knowledge turns off both of its skills; remove knowledge instead.');
+  }
+
+  let resolvedReview = changeRiskAnalysis;
+  if (changeRiskAnalysis !== undefined) {
+    checkPriority('changeRiskAnalysis', changeRiskAnalysis.priority);
+    if (context.containerMode !== undefined) {
+      throw new Error(
+        'cdk-cicd: devopsAgent.changeRiskAnalysis reviews the commit a stage is about to deploy, and a container-mode ' +
+          'pipeline has none: Repo 1 only builds images, and Repo 2 promotes an image.',
+      );
+    }
+    const type = context.repository?.repositoryType;
+    if (type !== RepositorySourceType.GITHUB && type !== RepositorySourceType.CODESTAR_CONNECTION) {
+      throw new Error(
+        "cdk-cicd: devopsAgent.changeRiskAnalysis needs a GitHub or CodeStar-connection source: DevOps Agent's " +
+          `Code Change Risk Analysis reads the repository through its GitHub/GitLab integration (source: ${type ?? 'none'}).`,
+      );
+    }
+    if (changeRiskAnalysis.beforeApprovalOf.length === 0) {
+      throw new Error('cdk-cicd: devopsAgent.changeRiskAnalysis.beforeApprovalOf is empty; name at least one stage.');
+    }
+    const names = checkStageNames('changeRiskAnalysis.beforeApprovalOf', changeRiskAnalysis.beforeApprovalOf, context);
+    const ungated = names.filter((name) => !context.stages.find((stage) => stage.name === name)?.manualApproval);
+    if (ungated.length > 0) {
+      throw new Error(
+        `cdk-cicd: devopsAgent.changeRiskAnalysis.beforeApprovalOf names stage(s) without a manual approval: ` +
+          `${ungated.join(', ')}. The review starts when the approval does.`,
+      );
+    }
+    resolvedReview = { ...changeRiskAnalysis, beforeApprovalOf: names };
+  }
+
+  return {
+    agentSpaceId,
+    ...(region !== undefined ? { region } : {}),
+    ...(resolvedInvestigations !== undefined ? { investigations: resolvedInvestigations } : {}),
+    ...(knowledge !== undefined ? { knowledge } : {}),
+    ...(resolvedReview !== undefined ? { changeRiskAnalysis: resolvedReview } : {}),
+  };
+}
+
+/** The resolved `devopsAgent` member, present only when configured so existing configs resolve exactly as before. */
+function devopsAgentField(
+  input: DevOpsAgentConfig | undefined,
+  context: DevOpsAgentContext,
+): { devopsAgent?: DevOpsAgentConfig } {
+  const devopsAgent = normalizeDevOpsAgent(input, context);
+  return devopsAgent === undefined ? {} : { devopsAgent };
 }
 
 /**
@@ -658,6 +772,10 @@ export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConf
     codeArtifact: props.codeArtifact,
     npmRegistry: props.npmRegistry,
     crossAccountEcrRepositoryPolicyConfigured: props.crossAccountEcrRepositoryPolicyConfigured,
-    ...devopsAgentField(props.devopsAgent),
+    ...devopsAgentField(props.devopsAgent, {
+      stages: targets.map((target) => ({ name: target.stage, manualApproval: target.manualApproval })),
+      repository: props.repository,
+      containerMode: 'deployment',
+    }),
   };
 }

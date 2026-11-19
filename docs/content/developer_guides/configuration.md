@@ -406,12 +406,13 @@ separately with `defineDeployment` in a `deploy.config.ts`. See the
 
 ## DevOps Agent
 
-`devopsAgent: { agentSpaceId: '<id>' }` opens an [AWS DevOps Agent](https://docs.aws.amazon.com/devopsagent/latest/userguide/about-aws-devops-agent.html)
-investigation every time an action of the pipeline fails. The pipeline stack gets an EventBridge rule on its
-own failed actions and a small Lambda that calls `CreateBacklogTask` in your Agent Space. You create the
-Agent Space (in the pipeline account) and associate the accounts it may investigate. Optional `region`
-names the Agent Space's Region when it differs from the pipeline's. `defineDeployment` (Repo 2) takes the
-same field. Not available with the GitHub Actions engine. See the [DevOps Agent guide](./devops_agent.md).
+`devopsAgent` connects the pipeline to [AWS DevOps Agent](https://docs.aws.amazon.com/devopsagent/latest/userguide/about-aws-devops-agent.html).
+It is off by default, and each capability is its own level, on only when its block is present:
+`investigations` (an investigation per failed action, optionally only for some `stages`), `knowledge` (skills
+published into the Agent Space) and the experimental `changeRiskAnalysis` (a review of the commit before a gated
+stage's approval). A block with no level is rejected. You create the Agent Space (in the pipeline account) and
+associate the accounts it may investigate. `defineDeployment` (Repo 2) takes the same field. Not available with
+the GitHub Actions engine. See the [DevOps Agent guide](./devops_agent.md) for every option.
 
 ## Pipeline role names
 

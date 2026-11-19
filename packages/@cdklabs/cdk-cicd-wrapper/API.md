@@ -2583,19 +2583,67 @@ Concrete target Regions, in declaration order.
 
 ---
 
+### DevOpsAgentChangeRiskAnalysisConfig <a name="DevOpsAgentChangeRiskAnalysisConfig" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig"></a>
+
+The `changeRiskAnalysis` level of `DevOpsAgentConfig`.
+
+When the manual approval of one of these stages
+starts, the pipeline asks DevOps Agent for a Code Change Risk Analysis of the commit being promoted, so
+the approver can read the agent's verdict before approving. It does not hold the approval.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.Initializer"></a>
+
+```typescript
+import { DevOpsAgentChangeRiskAnalysisConfig } from '@cdklabs/cdk-cicd-wrapper'
+
+const devOpsAgentChangeRiskAnalysisConfig: DevOpsAgentChangeRiskAnalysisConfig = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.property.beforeApprovalOf">beforeApprovalOf</a></code> | <code>string[]</code> | Stages (with a manual approval) whose approval triggers the review. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.property.priority">priority</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority">DevOpsAgentPriority</a></code> | Priority of each review. |
+
+---
+
+##### `beforeApprovalOf`<sup>Required</sup> <a name="beforeApprovalOf" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.property.beforeApprovalOf"></a>
+
+```typescript
+public readonly beforeApprovalOf: string[];
+```
+
+- *Type:* string[]
+
+Stages (with a manual approval) whose approval triggers the review.
+
+---
+
+##### `priority`<sup>Optional</sup> <a name="priority" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig.property.priority"></a>
+
+```typescript
+public readonly priority: DevOpsAgentPriority;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority">DevOpsAgentPriority</a>
+- *Default:* DevOpsAgentPriority.MEDIUM
+
+Priority of each review.
+
+---
+
 ### DevOpsAgentConfig <a name="DevOpsAgentConfig" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig"></a>
 
-Start an AWS DevOps Agent investigation whenever a pipeline action fails.
+Connect the pipeline to AWS DevOps Agent.
 
-The pipeline stack gets an EventBridge rule on its own pipeline's `CodePipeline Action Execution
-State Change` events in state `FAILED`, and a small Lambda that calls DevOps Agent
-`CreateBacklogTask` (task type `INVESTIGATION`) in the configured Agent Space. Calls are signed with
-the Lambda's own IAM role, granted `aidevops:CreateBacklogTask` on this one Agent Space only. There
-is no webhook, no shared secret and nothing reachable from outside the account.
+Off unless configured, and inside the block every capability
+is its own level, on only when its block is present: `investigations`, `knowledge` and
+`changeRiskAnalysis`. A block that enables no level is rejected rather than silently doing nothing.
 
 You create the Agent Space and associate the accounts it may investigate (the pipeline account and
-each stage account) yourself. The wrapper only forwards failures. The Agent Space must be in the
-pipeline's account. Investigations are billed by DevOps Agent per agent-second.
+each stage account) yourself; the wrapper only connects the pipeline to it. The Agent Space must be in
+the pipeline's account. DevOps Agent bills its work per agent-second.
 
 #### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.Initializer"></a>
 
@@ -2609,7 +2657,10 @@ const devOpsAgentConfig: DevOpsAgentConfig = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
-| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.agentSpaceId">agentSpaceId</a></code> | <code>string</code> | The Agent Space ID that receives the investigations (the ID, not the ARN). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.agentSpaceId">agentSpaceId</a></code> | <code>string</code> | The Agent Space ID (the ID, not the ARN). |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.changeRiskAnalysis">changeRiskAnalysis</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig">DevOpsAgentChangeRiskAnalysisConfig</a></code> | Ask for a Code Change Risk Analysis of the commit a stage is about to receive, when that stage's manual approval starts. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.investigations">investigations</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig">DevOpsAgentInvestigationsConfig</a></code> | Open an investigation when a pipeline action fails. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.knowledge">knowledge</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig">DevOpsAgentKnowledgeConfig</a></code> | Publish what the wrapper knows about the pipeline into the Agent Space as skills, so investigations start in the right log or stack. |
 | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.region">region</a></code> | <code>string</code> | The Region the Agent Space lives in, when it differs from the pipeline stack's Region. |
 
 ---
@@ -2622,10 +2673,57 @@ public readonly agentSpaceId: string;
 
 - *Type:* string
 
-The Agent Space ID that receives the investigations (the ID, not the ARN).
+The Agent Space ID (the ID, not the ARN).
 
-Changing it only
-updates the Lambda's environment and IAM policy; nothing is replaced.
+Changing it updates the forwarder in place, but REPLACES
+the `knowledge` assets: an asset's Agent Space cannot be updated.
+
+---
+
+##### `changeRiskAnalysis`<sup>Optional</sup> <a name="changeRiskAnalysis" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.changeRiskAnalysis"></a>
+
+```typescript
+public readonly changeRiskAnalysis: DevOpsAgentChangeRiskAnalysisConfig;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentChangeRiskAnalysisConfig">DevOpsAgentChangeRiskAnalysisConfig</a>
+- *Default:* off
+
+Ask for a Code Change Risk Analysis of the commit a stage is about to receive, when that stage's manual approval starts.
+
+DevOps Agent's Code Change Risk Analysis is in preview and needs the
+repository connected to the Agent Space (GitHub or GitLab). Present = on.
+
+---
+
+##### `investigations`<sup>Optional</sup> <a name="investigations" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.investigations"></a>
+
+```typescript
+public readonly investigations: DevOpsAgentInvestigationsConfig;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig">DevOpsAgentInvestigationsConfig</a>
+- *Default:* off
+
+Open an investigation when a pipeline action fails.
+
+Rejected and timed-out manual approvals are not
+failures. Present = on.
+
+---
+
+##### `knowledge`<sup>Optional</sup> <a name="knowledge" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentConfig.property.knowledge"></a>
+
+```typescript
+public readonly knowledge: DevOpsAgentKnowledgeConfig;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig">DevOpsAgentKnowledgeConfig</a>
+- *Default:* off
+
+Publish what the wrapper knows about the pipeline into the Agent Space as skills, so investigations start in the right log or stack.
+
+Present = on.
 
 ---
 
@@ -2639,6 +2737,117 @@ public readonly region: string;
 - *Default:* the pipeline stack's Region
 
 The Region the Agent Space lives in, when it differs from the pipeline stack's Region.
+
+`knowledge`
+needs the Agent Space in the pipeline stack's own Region.
+
+---
+
+### DevOpsAgentInvestigationsConfig <a name="DevOpsAgentInvestigationsConfig" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig"></a>
+
+The `investigations` level of `DevOpsAgentConfig`: one investigation per failed pipeline action.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig.Initializer"></a>
+
+```typescript
+import { DevOpsAgentInvestigationsConfig } from '@cdklabs/cdk-cicd-wrapper'
+
+const devOpsAgentInvestigationsConfig: DevOpsAgentInvestigationsConfig = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig.property.includePipelineActions">includePipelineActions</a></code> | <code>boolean</code> | Also investigate failures of the pipeline's own actions: source, build/synth, self-update, asset publishing, Repo 2's plan and Repo 1's image build. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig.property.priority">priority</a></code> | <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority">DevOpsAgentPriority</a></code> | Priority of each investigation. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig.property.stages">stages</a></code> | <code>string[]</code> | Investigate failures of these stages only (stage names from the config), for example `['prod']` to spend agent time only where it matters. |
+
+---
+
+##### `includePipelineActions`<sup>Optional</sup> <a name="includePipelineActions" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig.property.includePipelineActions"></a>
+
+```typescript
+public readonly includePipelineActions: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Also investigate failures of the pipeline's own actions: source, build/synth, self-update, asset publishing, Repo 2's plan and Repo 1's image build.
+
+---
+
+##### `priority`<sup>Optional</sup> <a name="priority" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig.property.priority"></a>
+
+```typescript
+public readonly priority: DevOpsAgentPriority;
+```
+
+- *Type:* <a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority">DevOpsAgentPriority</a>
+- *Default:* DevOpsAgentPriority.HIGH
+
+Priority of each investigation.
+
+---
+
+##### `stages`<sup>Optional</sup> <a name="stages" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentInvestigationsConfig.property.stages"></a>
+
+```typescript
+public readonly stages: string[];
+```
+
+- *Type:* string[]
+- *Default:* every stage
+
+Investigate failures of these stages only (stage names from the config), for example `['prod']` to spend agent time only where it matters.
+
+---
+
+### DevOpsAgentKnowledgeConfig <a name="DevOpsAgentKnowledgeConfig" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig"></a>
+
+The `knowledge` level of `DevOpsAgentConfig`: skills the pipeline stack publishes into the Agent Space.
+
+#### Initializer <a name="Initializer" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig.Initializer"></a>
+
+```typescript
+import { DevOpsAgentKnowledgeConfig } from '@cdklabs/cdk-cicd-wrapper'
+
+const devOpsAgentKnowledgeConfig: DevOpsAgentKnowledgeConfig = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig.property.investigationSkill">investigationSkill</a></code> | <code>boolean</code> | Publish the generic cdk-cicd-wrapper failure-investigation skill: what each stage and action runs and where its log or stack lives. |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig.property.pipelineMap">pipelineMap</a></code> | <code>boolean</code> | Publish a skill generated from this config: this pipeline's stages with their accounts, Regions, approvals and action names. |
+
+---
+
+##### `investigationSkill`<sup>Optional</sup> <a name="investigationSkill" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig.property.investigationSkill"></a>
+
+```typescript
+public readonly investigationSkill: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Publish the generic cdk-cicd-wrapper failure-investigation skill: what each stage and action runs and where its log or stack lives.
+
+---
+
+##### `pipelineMap`<sup>Optional</sup> <a name="pipelineMap" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentKnowledgeConfig.property.pipelineMap"></a>
+
+```typescript
+public readonly pipelineMap: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Publish a skill generated from this config: this pipeline's stages with their accounts, Regions, approvals and action names.
 
 ---
 
@@ -6206,6 +6415,47 @@ Each stage synthesizes at deploy time from code + pinned deps, against that stag
 The promoted unit is the code, not a baked assembly; CI synth is validation only. Costs one synth per
 stage, and is the model to pick when a stage's template must be produced with that stage's
 credentials (for example a synth-time lookup that only the target account can resolve).
+
+---
+
+
+### DevOpsAgentPriority <a name="DevOpsAgentPriority" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority"></a>
+
+Priority of the backlog tasks the pipeline opens in DevOps Agent (`CreateBacklogTask` priority values).
+
+#### Members <a name="Members" id="Members"></a>
+
+| **Name** | **Description** |
+| --- | --- |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.CRITICAL">CRITICAL</a></code> | *No description.* |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.HIGH">HIGH</a></code> | *No description.* |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.MEDIUM">MEDIUM</a></code> | *No description.* |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.LOW">LOW</a></code> | *No description.* |
+| <code><a href="#@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.MINIMAL">MINIMAL</a></code> | *No description.* |
+
+---
+
+##### `CRITICAL` <a name="CRITICAL" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.CRITICAL"></a>
+
+---
+
+
+##### `HIGH` <a name="HIGH" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.HIGH"></a>
+
+---
+
+
+##### `MEDIUM` <a name="MEDIUM" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.MEDIUM"></a>
+
+---
+
+
+##### `LOW` <a name="LOW" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.LOW"></a>
+
+---
+
+
+##### `MINIMAL` <a name="MINIMAL" id="@cdklabs/cdk-cicd-wrapper.DevOpsAgentPriority.MINIMAL"></a>
 
 ---
 

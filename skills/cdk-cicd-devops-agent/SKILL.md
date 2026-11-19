@@ -5,9 +5,11 @@ description: Connect a cdk-cicd-wrapper pipeline (a project with cicd.config.ts 
 
 # cdk-cicd-wrapper and AWS DevOps Agent
 
-`devopsAgent: { agentSpaceId }` in `cicd.config.ts` (or Repo 2's `deploy.config.ts`) makes the pipeline open
-one AWS DevOps Agent investigation for every failed action, approvals excluded. This skill covers turning it
-on and reading what comes back. Background: the
+`devopsAgent` in `cicd.config.ts` (or Repo 2's `deploy.config.ts`) connects the pipeline to AWS DevOps Agent.
+It is off by default, and each capability is its own level, on only when its block is present:
+`investigations` (one investigation per failed action, approvals excluded), `knowledge` (skills about this
+pipeline published into the Agent Space) and the experimental `changeRiskAnalysis` (a review of the commit
+before a gated stage's approval). This skill covers turning levels on and reading what comes back. Background: the
 [DevOps Agent guide](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/devops_agent.html).
 
 ## Ground rules
@@ -46,20 +48,34 @@ on and reading what comes back. Background: the
    and every stage account from step 1 (CloudFormation stacks). Without these, investigations run but
    find no evidence. This is an IAM decision for the user; point them to "Connecting multiple AWS
    accounts" in the DevOps Agent guide rather than writing trust policies yourself.
-4. **Edit the config.** Add `devopsAgent: { agentSpaceId: '<id>' }` to `defineCICD({...})`. Add `region`
-   only when the Agent Space is in another Region than the pipeline. For container mode, add it to
-   `deploy.config.ts` as well (Repo 2 deploys; Repo 1 only builds images).
-5. **Check it.** `check_config` must show `devopsAgent`, and `describe_pipeline` must show
-   `devopsAgentForwarder`. Without MCP, `npx cdk-cicd synth-ci` must succeed.
+4. **Choose the levels with the user, then edit the config.** Add a `devopsAgent` block to
+   `defineCICD({...})` with only the levels the user wants. A block with no level is rejected.
+   - `investigations: {}` covers every failed action. `stages: ['prod']` limits agent time and cost to those
+     stages. `includePipelineActions: false` leaves out the pipeline's own build/source/self-update actions.
+     `priority` sets the task priority.
+   - `knowledge: {}` publishes the failure-investigation skill and a generated map of this pipeline into the
+     Agent Space. It needs the Agent Space in the pipeline's own Region.
+   - `changeRiskAnalysis: { beforeApprovalOf: ['prod'] }` is experimental. It needs a GitHub or
+     CodeStar-connection source with the repository connected to the Agent Space, and a stage with a manual
+     approval.
+
+   Add `region` only when the Agent Space is in another Region than the pipeline. For container mode, put
+   the block in `deploy.config.ts` too: Repo 2 deploys, Repo 1 only builds images, and neither supports
+   `changeRiskAnalysis`. With `knowledge` in both repos, set `investigationSkill: false` in one of them.
+5. **Check it.** `check_config` must show the `devopsAgent` block with the chosen levels, and
+   `describe_pipeline` must show `devopsAgentForwarder` when `investigations` or `changeRiskAnalysis` is on, and
+   `devopsAgentSkills` when `knowledge` is.
+   Without MCP, `npx --no cdk-cicd synth-ci` must succeed: every level is validated there.
 6. **Deploy, with the user's yes.** For the `codepipeline` and `cdk-pipelines` engines, pushing the change
    runs the whole pipeline, application stages included, and its `SelfMutate` step adds the forwarder. A
    container-mode pipeline (Repo 1 or Repo 2) has no self-update stage, so there the user re-runs
    `npx --no cdk-cicd deploy-ci`. That also works for the other engines when the user does not want a full
    run.
-7. **Offer the investigation skill to DevOps Agent.** In the Agent Space operator web app, under Knowledge →
-   Skills → Add skill → Import from repository, the user can import
-   `https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-pipeline-failure-investigation`.
-   That needs a GitHub account connected to the Agent Space. Alternatively, zip that directory and upload it.
+7. **Give DevOps Agent the pipeline's layout.** The `knowledge` level does this from the pipeline stack.
+   Without it, the user can import
+   `https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-pipeline-failure-investigation`
+   in the operator web app (Knowledge → Skills → Add skill → Import from repository; this needs a GitHub
+   account connected to the Agent Space), or zip that directory and upload it.
    It teaches DevOps Agent the pipeline's layout, so its investigations start in the right log or stack.
 
 ## Workflow B: a pipeline run failed

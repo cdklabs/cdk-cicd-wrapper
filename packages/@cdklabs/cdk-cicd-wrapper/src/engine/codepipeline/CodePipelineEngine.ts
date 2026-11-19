@@ -64,7 +64,8 @@ import { SupportResources } from '../../support/SupportResources';
 import { VpcNetworking } from '../../support/Vpc';
 import { ssmWarmingCommands, ssmWarmingReadStatements } from '../cdkpipelines/CdkPipelinesEngine';
 import { defaultCiCommands, NODE_RUNTIME_VERSION } from '../ci-commands';
-import { DevOpsAgentForwarder } from '../devops-agent/DevOpsAgentForwarder';
+import { DevOpsAgentIntegration } from '../devops-agent/DevOpsAgentIntegration';
+import { codePipelineLayout } from '../devops-agent/layout';
 import { deployRoleExternalIdSecretArnsForStages } from '../external-id-secrets';
 import { latestNodeRuntime } from '../lambda-runtime';
 // Reuse the SSM account-warming helpers the CdkPipelines engine exports (same wiring GitHubActionsEngine
@@ -303,7 +304,12 @@ export class CodePipelineEngine implements IEngine {
       artifactBucket: support.artifactBucket,
     });
     if (config.devopsAgent !== undefined) {
-      new DevOpsAgentForwarder(scope, 'DevOpsAgentForwarder', { pipelines: [pipeline], config: config.devopsAgent });
+      new DevOpsAgentIntegration(scope, 'DevOpsAgent', {
+        pipelines: [pipeline],
+        config: config.devopsAgent,
+        layout: codePipelineLayout(config),
+        repository: config.repository,
+      });
     }
 
     // Container mode (Repo 1): a SECONDARY pipeline that runs CI and then builds & pushes a deployer image

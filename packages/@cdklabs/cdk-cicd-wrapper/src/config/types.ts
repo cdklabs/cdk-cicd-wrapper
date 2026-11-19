@@ -11,31 +11,120 @@ import { WorkflowTriggers } from 'cdk-pipelines-github';
 import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
+/** Priority of the backlog tasks the pipeline opens in DevOps Agent (`CreateBacklogTask` priority values). */
+export enum DevOpsAgentPriority {
+  CRITICAL = 'CRITICAL',
+  HIGH = 'HIGH',
+  MEDIUM = 'MEDIUM',
+  LOW = 'LOW',
+  MINIMAL = 'MINIMAL',
+}
+
 /**
- * Start an AWS DevOps Agent investigation whenever a pipeline action fails.
- *
- * The pipeline stack gets an EventBridge rule on its own pipeline's `CodePipeline Action Execution
- * State Change` events in state `FAILED`, and a small Lambda that calls DevOps Agent
- * `CreateBacklogTask` (task type `INVESTIGATION`) in the configured Agent Space. Calls are signed with
- * the Lambda's own IAM role, granted `aidevops:CreateBacklogTask` on this one Agent Space only. There
- * is no webhook, no shared secret and nothing reachable from outside the account.
+ * Connect the pipeline to AWS DevOps Agent. Off unless configured, and inside the block every capability
+ * is its own level, on only when its block is present: `investigations`, `knowledge` and
+ * `changeRiskAnalysis`. A block that enables no level is rejected rather than silently doing nothing.
  *
  * You create the Agent Space and associate the accounts it may investigate (the pipeline account and
- * each stage account) yourself. The wrapper only forwards failures. The Agent Space must be in the
- * pipeline's account. Investigations are billed by DevOps Agent per agent-second.
+ * each stage account) yourself; the wrapper only connects the pipeline to it. The Agent Space must be in
+ * the pipeline's account. DevOps Agent bills its work per agent-second.
  */
 export interface DevOpsAgentConfig {
   /**
-   * The Agent Space ID that receives the investigations (the ID, not the ARN). Changing it only
-   * updates the Lambda's environment and IAM policy; nothing is replaced.
+   * The Agent Space ID (the ID, not the ARN). Changing it updates the forwarder in place, but REPLACES
+   * the `knowledge` assets: an asset's Agent Space cannot be updated.
    */
   readonly agentSpaceId: string;
   /**
-   * The Region the Agent Space lives in, when it differs from the pipeline stack's Region.
+   * The Region the Agent Space lives in, when it differs from the pipeline stack's Region. `knowledge`
+   * needs the Agent Space in the pipeline stack's own Region.
    *
    * @default - the pipeline stack's Region
    */
   readonly region?: string;
+  /**
+   * Open an investigation when a pipeline action fails. Rejected and timed-out manual approvals are not
+   * failures. Present = on.
+   *
+   * @default - off
+   */
+  readonly investigations?: DevOpsAgentInvestigationsConfig;
+  /**
+   * Publish what the wrapper knows about the pipeline into the Agent Space as skills, so investigations
+   * start in the right log or stack. Present = on.
+   *
+   * @default - off
+   */
+  readonly knowledge?: DevOpsAgentKnowledgeConfig;
+  /**
+   * Ask for a Code Change Risk Analysis of the commit a stage is about to receive, when that stage's
+   * manual approval starts. DevOps Agent's Code Change Risk Analysis is in preview and needs the
+   * repository connected to the Agent Space (GitHub or GitLab). Present = on.
+   *
+   * @default - off
+   * @experimental
+   */
+  readonly changeRiskAnalysis?: DevOpsAgentChangeRiskAnalysisConfig;
+}
+
+/** The `investigations` level of `DevOpsAgentConfig`: one investigation per failed pipeline action. */
+export interface DevOpsAgentInvestigationsConfig {
+  /**
+   * Investigate failures of these stages only (stage names from the config), for example `['prod']` to
+   * spend agent time only where it matters.
+   *
+   * @default - every stage
+   */
+  readonly stages?: string[];
+  /**
+   * Also investigate failures of the pipeline's own actions: source, build/synth, self-update, asset
+   * publishing, Repo 2's plan and Repo 1's image build.
+   *
+   * @default true
+   */
+  readonly includePipelineActions?: boolean;
+  /**
+   * Priority of each investigation.
+   *
+   * @default DevOpsAgentPriority.HIGH
+   */
+  readonly priority?: DevOpsAgentPriority;
+}
+
+/** The `knowledge` level of `DevOpsAgentConfig`: skills the pipeline stack publishes into the Agent Space. */
+export interface DevOpsAgentKnowledgeConfig {
+  /**
+   * Publish the generic cdk-cicd-wrapper failure-investigation skill: what each stage and action runs and
+   * where its log or stack lives.
+   *
+   * @default true
+   */
+  readonly investigationSkill?: boolean;
+  /**
+   * Publish a skill generated from this config: this pipeline's stages with their accounts, Regions,
+   * approvals and action names.
+   *
+   * @default true
+   */
+  readonly pipelineMap?: boolean;
+}
+
+/**
+ * The `changeRiskAnalysis` level of `DevOpsAgentConfig`. When the manual approval of one of these stages
+ * starts, the pipeline asks DevOps Agent for a Code Change Risk Analysis of the commit being promoted, so
+ * the approver can read the agent's verdict before approving. It does not hold the approval.
+ *
+ * @experimental
+ */
+export interface DevOpsAgentChangeRiskAnalysisConfig {
+  /** Stages (with a manual approval) whose approval triggers the review. */
+  readonly beforeApprovalOf: string[];
+  /**
+   * Priority of each review.
+   *
+   * @default DevOpsAgentPriority.MEDIUM
+   */
+  readonly priority?: DevOpsAgentPriority;
 }
 
 /**

@@ -1772,6 +1772,20 @@
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/ci-commands.ts",
         "line": 30
       }
+    },
+    {
+      "id": "qa-devops-agent-change-risk-analysis-unproven-end-to-end",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "devopsAgent.changeRiskAnalysis (experimental) has not been seen producing a review: the test account has no GitHub/GitLab repository connected to an Agent Space",
+      "detail": "Checked live on 2026-11-19: CreateBacklogTask accepts taskType CODE_CHANGE_RISK_ANALYSIS with the forwarder's title and description (task PENDING_START). Without a connected repository, the task went to FAILED within about 20 s, with no execution and an empty statusReason. So the request shape is accepted, but no review has been observed, and neither has how DevOps Agent resolves the commit and repo named in the description. AWS documents Code Change Risk Analysis via chat and pull requests, not CreateBacklogTask. The investigations and knowledge levels were proven end to end with test/proof/devops-agent-verify.sh. Done when: a pipeline with a GitHub or CodeStar-connection source, its repository connected and indexed in the Agent Space, and changeRiskAnalysis.beforeApprovalOf on a gated stage produces a review report (recommended action plus findings) when that approval starts. Add it to the proof as an opt-in leg once a connected test repository exists.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/devops-agent/forwarder/handler.ts",
+        "line": 151
+      }
     }
   ]
 }
