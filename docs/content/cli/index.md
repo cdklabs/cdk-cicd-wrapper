@@ -33,5 +33,6 @@ npx cdk-cicd <command> --help
 | `deploy-ci` | Provision the pipeline itself into the hub account, from `cicd.config.ts` alone (the one command a user runs by hand; everything after it is the pipeline deploying the application). Runs `npm run cdk -- deploy --all --require-approval never` with `CDK_CICD_MODE=pipeline` — no `--app` override. `--disposable` deletes the pipeline's artifact bucket and key together with the stack. Preview it first with `synth-ci` / `list-ci`. |
 | `check` | Run the default-on CI checks (`validate`, `audit`, `license`, `security`). |
 | `migrate` | Generate an Autopilot `cicd.config.ts` from an existing 0.4.x `PipelineBlueprint` entry file (`--entry`, `--application`, `--dry-run`). |
+| `mcp` | Serve `check_config` and `describe_pipeline` to a coding agent over the Model Context Protocol (stdio). See the [MCP server guide](../mcp/index.md). |
 
 For the authoritative, always-current flag list, prefer `cdk-cicd <command> --help`.

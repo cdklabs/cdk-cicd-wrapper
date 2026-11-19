@@ -1758,6 +1758,20 @@
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts",
         "line": 980
       }
+    },
+    {
+      "id": "code-review-npx-cdk-cicd-resolves-a-third-party-package-outside-a-project",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "`npx cdk-cicd ...` outside a project that installs the CLI fetches an unrelated public npm package named cdk-cicd",
+      "detail": "The docs and READMEs use `npx cdk-cicd <command>` in about 39 places across 19 files. Inside a project that has @cdklabs/cdk-cicd-wrapper-cli installed, npx resolves the local bin. Anywhere else (a fresh shell, a misconfigured MCP client, a CI step before npm ci), npx looks up the registry package `cdk-cicd`. That name belongs to an unrelated third-party construct library (0.1.3). It has no bin today, so the call fails, but npx would run whatever bin a future version adds; without a TTY, npx proceeds without asking. The MCP setup docs now use `npx --no cdk-cicd mcp`. Fix direction: use `npx --no cdk-cicd` (or `npm exec --no -- cdk-cicd`) everywhere the docs tell users to run the CLI, or document `npm run cdk-cicd` via a package.json script.",
+      "location": {
+        "path": "docs/content/mcp/index.md",
+        "line": 33
+      }
     }
   ]
 }

@@ -46,14 +46,6 @@ node_modules
 .env
 .env.*
 .venv
-mcp-servers/debugger-mcp/mcp-server-config.json
-mcp-servers/debugger-mcp/cdk_cicd_wrapper_debugger_mcp.egg-info
-mcp-servers/debugger-mcp/debugger/.venv
-mcp-servers/debugger-mcp/debugger/__pycache__
-mcp-servers/debugger-mcp/debugger/tools/__pycache__
-mcp-servers/debugger-mcp/tests/__pycache__
-mcp-servers/debugger-mcp/.pytest_cache
-mcp-servers/debugger-mcp/.coverage
 .worktrees
 !/.github/workflows/build.yml
 !/.mergify.yml

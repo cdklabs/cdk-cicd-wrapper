@@ -29,7 +29,7 @@ export function resourceCounts(template: { Resources?: { [id: string]: { Type?: 
 }
 
 /** The `*.template.json` files in a cloud assembly directory, as [stackName, template] pairs. */
-function readAssemblyTemplates(outdir: string): Array<{ stackName: string; template: any }> {
+export function readAssemblyTemplates(outdir: string): Array<{ stackName: string; template: any }> {
   if (!existsSync(outdir)) {
     return [];
   }
