@@ -1,6 +1,8 @@
 # Audit project dependencies
 
-`cdk-cicd check` runs the `audit` check by default (alongside `validate`/`license`/`security` — see the [Security guide](./security.md)), so a CI build gets dependency auditing without any `package.json` script setup. `audit` runs `cdk-cicd check-dependencies` with `--npm` when an npm lock file is present and `--python` when a `Pipfile` is present; if neither is present, the check is skipped rather than failed.
+`cdk-cicd check` runs the `audit` check by default (alongside `validate`/`license`/`security` — see the [Security guide](./security.md)). The pipeline's default Build runs your project's `npm run audit` script when it exists; to get dependency auditing without writing that script, set `ci.steps`. It replaces the whole default,
+`npm ci` included, so list every step: `npm ci`, `npx cdk-cicd check`, then your build and test (see the
+[CI guide](./ci.md)). `audit` runs `cdk-cicd check-dependencies` with `--npm` when an npm lock file is present and `--python` when a `Pipfile` is present; if neither is present, the check is skipped rather than failed.
 
 You can also run the underlying commands directly:
 

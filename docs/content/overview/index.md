@@ -26,51 +26,90 @@ Here are some key features provided by the {{ project_name }}:
 - :white_check_mark: Optional centralized compliance/access-log bucket, VPC, and HTTP proxy support for every CodeBuild project the pipeline creates
 - :white_check_mark: Dependency vulnerability scanning in the CI/CD for Node.js and Python dependencies (in case of CVE findings, block the pipeline)
 
+- :white_check_mark: Help for AI agents: an MCP server for coding agents (`cdk-cicd mcp`), agent skills, and an opt-in [AWS DevOps Agent](../developer_guides/devops_agent.md) integration that investigates failed runs
+
 Most of these features can be used independently of the CDK constructs, directly through the {{ project_name }} CLI.
 
-## CI/CD Process Overview
+## Architecture
 
-![Engine shapes and deploy models](../assets/diagrams/autopilot-engine-shapes.png)
+![Architecture: your CDK app and cicd.config.ts, the cdk-cicd CLI, the pipeline in the pipeline account, and the stage accounts it deploys to](../assets/diagrams/autopilot-architecture.png)
 
-The same `cicd.config.ts` is rendered by the engine you select (`engine`): a flat CodePipeline (the
-default), a self-mutating CDK Pipelines pipeline, or a GitHub Actions workflow. `deployModel` is
-orthogonal to that choice — synthesize every stage once and promote `cdk.out` (the default), or
-synthesize each stage at deploy time with that stage's own credentials.
+Three places, three kinds of thing:
 
-The CI/CD process in the {{ project_name }} establishes the following:
+- **Your repository and workstation.** Your CDK app stays unmodified. `npx cdk-cicd init` writes
+  `cicd.config.ts` and points `cdk.json` at `cdk-cicd exec`, which runs the app with the wrapper's hooks.
+  `npx cdk-cicd deploy-ci`, run once by hand, provisions the pipeline.
+- **The pipeline account.** The pipeline stack (`<application>-pipeline`) holds the CodePipeline, its
+  CodeBuild projects, and an artifact bucket encrypted with a KMS key. Both are kept when the stack is
+  deleted, unless you pass `deploy-ci --disposable`. The opt-in build environment lives here too: VPC and
+  proxy, CodeArtifact or a private npm registry, and the compliance access-log bucket.
+- **The stage accounts.** Each `Deploy-<stage>` action assumes the stage account's CDK bootstrap role
+  (`cdk-<qualifier>-deploy-role`), so every stage account is bootstrapped with
+  `cdk bootstrap --trust <pipeline account>` and the same qualifier.
 
-1. Changes are committed to the Git repository in a branch, and a Pull Request (PR) is created for the tracked branch (`main` by default).
-2. The PR is reviewed, approved, and merged.
-3. Once the codebase is merged, the pipeline is triggered to execute the CI/CD process:
-   - **Build**: This is the Continuous Integration step, which runs your configured `ci.steps` or, by default, your project's own npm scripts (`npm run audit`/`build`/`test`, each run-if-present) to ensure code quality and security before deployment to any stage.
-   - **Synthesize**: This step executes `cdk synth` and runs CDK Nag to promote infrastructure best practices.
-   - **Self-update**: The pipeline updates its own definition from the latest `cicd.config.ts`.
-   - **Deploy `<stage>`** (one action per configured stage): Updates the infrastructure elements in that stage's account/region with AWS CloudFormation. Stages other than your inner-loop stages (e.g. `dev`/`res`) are gated by a manual approval by default.
+The numbered callouts on the diagram mark the settings that cannot be changed in place, such as the
+`application` name, which names the pipeline stack (and derives the qualifier when `qualifier` is unset). Its
+open/unverified panel lists what has not been proven on a live deploy yet.
 
-## Infrastructure Elements
+## CI/CD process
 
-The {{ project_name }} architecture is based on using DevOps services provided by AWS to deliver the CI/CD solution.
+1. Changes are committed to the Git repository in a branch, and a pull request is opened for the tracked
+   branch (`main` by default).
+2. The pull request is reviewed, approved and merged.
+3. The merge starts the pipeline. With the default engine:
+    - **Build**: your `ci.steps`, or by default `npm ci` then your project's own npm scripts
+      (`npm run audit`/`build`/`test`, each run only if present). Then the synth with CDK Nag:
+      `cdk-cicd synth --all --require-account` (with `DEPLOY_TIME_SYNTH`, `synth --stage` for validation only).
+      A stack that binds no account fails here.
+    - **UpdatePipeline**: the pipeline updates its own definition from the latest `cicd.config.ts`. The
+      `codepipeline` and `cdk-pipelines` engines do this. GitHub Actions and container-mode pipelines do not:
+      see below.
+    - **One stage per configured stage**, in order: a manual approval for every stage other than `dev` and
+      `res` (unless you set `manualApproval`), then the deploy into that stage's account and Regions.
 
-![Architecture overview — one config, many pipeline shapes](../assets/diagrams/autopilot-architecture.png)
+## Engine shapes
 
-Your CDK app stays unmodified; `cicd.config.ts` (plus optional `config/<STAGE>.json` files) is read by the
-`cdk-cicd` CLI, which renders the pipeline through the selected engine from the selected source
-(CodeCommit, a CodeStar connection such as GitHub or Bitbucket, a versioned S3 object, or GitHub for the
-GitHub Actions engine). The pipeline account hosts the build/synth and self-update projects plus the
-opt-in build environment — VPC and proxy, CodeArtifact or a private npm registry, Secrets Manager–backed
-credentials, and the compliance access-log bucket. Deployments then flow through your ordered stages,
-each in its own account and region(s), gated by manual approval unless the stage is an inner-loop stage,
-optionally assuming a forced deploy role with an ExternalId. The security plugins (cdk-nag and the
-hardening Aspects) are applied tree-wide at synth on every path.
+![Engine shapes: what codepipeline, cdk-pipelines and github-actions render](../assets/diagrams/autopilot-engine-shapes.png)
 
-### Container mode
+The same `cicd.config.ts` is rendered by the engine you select (`engine`): a flat CodePipeline (the default),
+a self-mutating CDK Pipelines pipeline, or a GitHub Actions workflow. The settings that shape the deploy
+step itself apply to the default engine only:
 
-![Container mode — build once, deploy many](../assets/diagrams/autopilot-container-mode.png)
+- `deployModel`: synthesize every stage once and promote that assembly (the default), or synthesize each
+  stage when it deploys.
+- `asyncDeploy`: deploy through change sets that a Lambda action executes.
+- `express`: deploy without waiting for resource stabilization (rollback disabled; not for production).
+- `deployerImage`: container mode.
 
-With the default CodePipeline engine you can split build from deploy: a CI repository builds a
+## Container mode
+
+![Container mode: build the deployer image once, deploy it many times](../assets/diagrams/autopilot-container-mode.png)
+
+With the default CodePipeline engine you can split build from deploy. A CI repository builds a
 config-agnostic deployer image into ECR, and a config-only CD repository (or the local
-`cdk-cicd deploy --from-image` executor) runs that image against as many targets as you like. See the
-[Container mode guide](../developer_guides/container_mode.md).
+`cdk-cicd deploy --from-image` executor) runs that image against as many targets as you like. Neither
+pipeline updates itself: after changing `cicd.config.ts` or `deploy.config.ts`, run `npx cdk-cicd deploy-ci`
+again. See the [Container mode guide](../developer_guides/container_mode.md).
+
+## Agent integrations
+
+![Agent integrations: cdk-cicd mcp and the skills in your editor, the opt-in DevOps Agent integration in the pipeline account](../assets/diagrams/autopilot-agent-integrations.png)
+
+Two separate tools, for two different moments:
+
+- **Before a deploy, in your editor**: `cdk-cicd mcp` is an MCP server (stdio) in the CLI. Its
+  `check_config` tool validates and summarizes `cicd.config.ts`/`deploy.config.ts`, and its
+  `describe_pipeline` tool lists the stages and actions they render. See the [MCP server guide](../mcp/index.md).
+  It replaces the Python MCP debugger this repository used to ship, which read the `0.x` config.
+- **After a failure, in AWS**: the opt-in `devopsAgent` block connects the pipeline to AWS DevOps Agent. The
+  `investigations` level opens a DevOps Agent investigation for each failed action. The `knowledge` level
+  publishes skills into the Agent Space. The experimental `changeRiskAnalysis` level reviews the commit
+  before a gated stage. See [AWS DevOps Agent](../developer_guides/devops_agent.md).
+
+The [agent skills](../skills/index.md) work with both.
+
+All four diagrams are pages of one draw.io file, `docs/content/assets/diagrams/autopilot-diagrams-source.drawio`.
+Change the source and re-export the PNGs in the same change as the behaviour they show.
 
 You can read more about these elements in the [Developer Guide](../developer_guides/index.md).
 

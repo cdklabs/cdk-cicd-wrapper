@@ -11,6 +11,8 @@ It answers the questions only {{ project_name }} can answer: how your `cicd.conf
 and for root-cause analysis of a failed run use [AWS DevOps Agent](../developer_guides/devops_agent.md). The
 [agent skills](../skills/index.md) tell an agent how to combine them.
 
+![Agent integrations: cdk-cicd mcp and the skills on your workstation, before a deploy; the opt-in DevOps Agent integration in the pipeline account, after a failure](../assets/diagrams/autopilot-agent-integrations.png)
+
 ## Tools
 
 | Tool                | What it does |
