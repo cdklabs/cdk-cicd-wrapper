@@ -179,8 +179,8 @@ Two separate integrations, for two different moments:
 | ----------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | When        | Before a deploy, while you or a coding agent change the config       | After a pipeline action fails                                                              |
 | Where       | Your workstation: an MCP server over stdio, started by your MCP client | Your pipeline account: an EventBridge rule and a Lambda that call AWS DevOps Agent       |
-| What it does | `check_config` validates and summarizes `cicd.config.ts` / `deploy.config.ts`; `describe_pipeline` lists the stages and actions the config renders | Opens a DevOps Agent investigation (root cause, mitigation plan) for each failed action, publishes skills into the Agent Space, and (experimental) reviews a commit before a gated stage |
-| Turn it on  | Register the command `npx --no cdk-cicd mcp` in your MCP client, in the project directory | Add a `devopsAgent` block and pick its levels: `investigations`, `knowledge`, `changeRiskAnalysis` |
+| What it does | `check_config` validates and summarizes `cicd.config.ts` / `deploy.config.ts`; `describe_pipeline` lists the stages and actions the config renders | Opens a DevOps Agent investigation (root cause, mitigation plan) for each failed action, and publishes skills into the Agent Space |
+| Turn it on  | Register the command `npx --no cdk-cicd mcp` in your MCP client, in the project directory | Add a `devopsAgent` block and pick its levels: `investigations`, `knowledge` |
 | Cost        | None                                                                 | DevOps Agent bills by the agent-second                                                     |
 
 `cdk-cicd mcp` replaces the Python MCP debugger this repository used to ship, which read the `0.x` config. See

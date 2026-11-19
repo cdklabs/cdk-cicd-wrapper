@@ -107,8 +107,7 @@ Two separate tools, for two different moments:
   It replaces the Python MCP debugger this repository used to ship, which read the `0.x` config.
 - **After a failure, in AWS**: the opt-in `devopsAgent` block connects the pipeline to AWS DevOps Agent. The
   `investigations` level opens a DevOps Agent investigation for each failed action. The `knowledge` level
-  publishes skills into the Agent Space. The experimental `changeRiskAnalysis` level reviews the commit
-  before a gated stage. See [AWS DevOps Agent](../developer_guides/devops_agent.md).
+  publishes skills into the Agent Space. See [AWS DevOps Agent](../developer_guides/devops_agent.md).
 
 The [agent skills](../skills/index.md) work with both.
 

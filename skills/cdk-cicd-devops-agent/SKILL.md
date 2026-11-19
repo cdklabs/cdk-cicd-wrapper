@@ -7,9 +7,8 @@ description: Connect a cdk-cicd-wrapper pipeline (a project with cicd.config.ts 
 
 `devopsAgent` in `cicd.config.ts` (or Repo 2's `deploy.config.ts`) connects the pipeline to AWS DevOps Agent.
 It is off by default, and each capability is its own level, on only when its block is present:
-`investigations` (one investigation per failed action, approvals excluded), `knowledge` (skills about this
-pipeline published into the Agent Space) and the experimental `changeRiskAnalysis` (a review of the commit
-before a gated stage's approval). This skill covers turning levels on and reading what comes back. Background: the
+`investigations` (one investigation per failed action, approvals excluded) and `knowledge` (skills about this
+pipeline published into the Agent Space). This skill covers turning levels on and reading what comes back. Background: the
 [DevOps Agent guide](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/devops_agent.html).
 
 ## Ground rules
@@ -55,15 +54,12 @@ before a gated stage's approval). This skill covers turning levels on and readin
      `priority` sets the task priority.
    - `knowledge: {}` publishes the failure-investigation skill and a generated map of this pipeline into the
      Agent Space. It needs the Agent Space in the pipeline's own Region.
-   - `changeRiskAnalysis: { beforeApprovalOf: ['prod'] }` is experimental. It needs a GitHub or
-     CodeStar-connection source with the repository connected to the Agent Space, and a stage with a manual
-     approval.
 
    Add `region` only when the Agent Space is in another Region than the pipeline. For container mode, put
-   the block in `deploy.config.ts` too: Repo 2 deploys, Repo 1 only builds images, and neither supports
-   `changeRiskAnalysis`. With `knowledge` in both repos, set `investigationSkill: false` in one of them.
+   the block in `deploy.config.ts` too: Repo 2 deploys and Repo 1 only builds images. With `knowledge` in
+   both repos, set `investigationSkill: false` in one of them.
 5. **Check it.** `check_config` must show the `devopsAgent` block with the chosen levels, and
-   `describe_pipeline` must show `devopsAgentForwarder` when `investigations` or `changeRiskAnalysis` is on, and
+   `describe_pipeline` must show `devopsAgentForwarder` when `investigations` is on, and
    `devopsAgentSkills` when `knowledge` is.
    Without MCP, `npx --no cdk-cicd synth-ci` must succeed: every level is validated there.
 6. **Deploy, with the user's yes.** For the `codepipeline` and `cdk-pipelines` engines, pushing the change

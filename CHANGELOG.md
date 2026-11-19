@@ -11,8 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `devopsAgent` in `defineCICD` and `defineDeployment`: connect the pipeline to AWS DevOps Agent, off by
   default and configurable per level. `investigations` opens an investigation per failed action (filter by
   `stages`, set `priority`). `knowledge` publishes the failure-investigation skill and a generated pipeline map
-  into the Agent Space. `changeRiskAnalysis` (experimental) requests a Code Change Risk Analysis of the commit
-  before a gated stage's approval. See the DevOps Agent guide.
+  into the Agent Space. See the DevOps Agent guide.
 - `cdk-cicd mcp`: an MCP server (stdio) in the CLI with `check_config` and `describe_pipeline`, which read
   `cicd.config.ts`/`deploy.config.ts` through the same loader and validation as the CLI.
 

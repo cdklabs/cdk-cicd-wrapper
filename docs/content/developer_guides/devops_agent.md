@@ -8,11 +8,10 @@ connects the two.
 It is **off by default**, and inside it every capability is a separate **level** that is on only when its
 block is present. Pick the ones you need:
 
-| Level                | What you get                                                                                   | Status       |
-| -------------------- | ---------------------------------------------------------------------------------------------- | ------------ |
-| `investigations`     | Every failed pipeline action opens a DevOps Agent investigation (root cause, mitigation plan). | stable       |
-| `knowledge`          | The pipeline publishes skills into the Agent Space, so investigations start in the right log or stack. | stable       |
-| `changeRiskAnalysis` | When a gated stage waits for approval, DevOps Agent reviews the commit being promoted for release risks. | experimental |
+| Level            | What you get                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------- |
+| `investigations` | Every failed pipeline action opens a DevOps Agent investigation (root cause, mitigation plan).          |
+| `knowledge`      | The pipeline publishes skills into the Agent Space, so investigations start in the right log or stack. |
 
 ```typescript
 // cicd.config.ts
@@ -25,9 +24,8 @@ export default defineCICD({
   stages: ['dev', { name: 'prod', manualApproval: true }],
   devopsAgent: {
     agentSpaceId: 'a1b2c3d4-EXAMPLE',
-    investigations: {},                                   // every failed action
-    knowledge: {},                                        // both skills
-    changeRiskAnalysis: { beforeApprovalOf: ['prod'] },   // experimental
+    investigations: {}, // every failed action
+    knowledge: {},      // both skills
   },
 });
 ```
@@ -39,7 +37,7 @@ This is not the [MCP server](../mcp/index.md). `cdk-cicd mcp` helps a coding age
 `cicd.config.ts` before a deploy. `devopsAgent` works in AWS, after a pipeline action has failed. The diagram
 shows both:
 
-![Agent integrations: cdk-cicd mcp and the skills on your workstation; the devopsAgent rules, forwarder, dead-letter queue and skill assets in the pipeline account](../assets/diagrams/autopilot-agent-integrations.png)
+![Agent integrations: cdk-cicd mcp and the skills on your workstation; the devopsAgent rule, forwarder, dead-letter queue and skill assets in the pipeline account](../assets/diagrams/autopilot-agent-integrations.png)
 
 ## What a level deploys
 
@@ -61,20 +59,9 @@ Everything goes into the pipeline stack, in the pipeline's account and Region.
 The forwarder creates it through the `CreateBacklogTask` API, and the web app lists it as triggered by
 "User".*
 
-**`changeRiskAnalysis`**
-
-- An EventBridge rule on the manual approval actions of the stages you name, in state `STARTED`.
-- The same Lambda reads the commit the execution promotes (`codepipeline:GetPipelineExecution`) and requests a
-  [Code Change Risk Analysis](https://docs.aws.amazon.com/devopsagent/latest/userguide/working-with-devops-agent-code-change-risk-analysis-index.html)
-  of it (`CODE_CHANGE_RISK_ANALYSIS`). The review is a task in the Agent Space, with the commit and the stage in
-  its title. Its report gives a recommended action (BLOCK, Deploy with Caution, or Standard Deployment), and the
-  approver reads it there (operator web app) before approving. It informs the approval and does not hold it. The
-  level is experimental: see Limits.
-
-**Both of the above share** one function and one SQS dead-letter queue (SQS-managed encryption, TLS only,
-14 days retention). The function has no inbound endpoint and signs its calls with its own IAM role. That role
-may call `aidevops:CreateBacklogTask` on your one Agent Space and, with `changeRiskAnalysis`,
-`codepipeline:GetPipelineExecution` on these pipelines. Beyond that it can only write its own logs (the Lambda
+The function comes with one SQS dead-letter queue (SQS-managed encryption, TLS only, 14 days retention). It
+has no inbound endpoint and signs its calls with its own IAM role. That role may call
+`aidevops:CreateBacklogTask` on your one Agent Space. Beyond that it can only write its own logs (the Lambda
 basic execution policy) and send to its dead-letter queue. There is no webhook and no shared secret.
 EventBridge retries delivery, and the function retries a failing call twice more within six hours. What
 still fails lands in the dead-letter queue, so a missed task is visible rather than lost. Each request
@@ -110,7 +97,6 @@ Agent Space starts with.*
 | `region`              | `string`                      | the pipeline's Region | The Agent Space's Region. `knowledge` needs it to be the pipeline's. |
 | `investigations`      | `DevOpsAgentInvestigationsConfig` | off               | Open an investigation per failed action.                 |
 | `knowledge`           | `DevOpsAgentKnowledgeConfig`  | off                   | Publish the skills.                                      |
-| `changeRiskAnalysis`  | `DevOpsAgentChangeRiskAnalysisConfig` | off           | Review the commit before a gated stage's approval. Experimental. |
 
 `investigations`:
 
@@ -127,23 +113,14 @@ Agent Space starts with.*
 | `investigationSkill` | `boolean` | `true`  | Publish the generic investigation skill.     |
 | `pipelineMap`        | `boolean` | `true`  | Publish this pipeline's generated map.       |
 
-`changeRiskAnalysis` (experimental):
-
-| Field              | Type                  | Default        | Purpose                                                       |
-| ------------------ | --------------------- | -------------- | ------------------------------------------------------------- |
-| `beforeApprovalOf` | `string[]`            | — (required)   | Stages with a manual approval whose approval starts a review. |
-| `priority`         | `DevOpsAgentPriority` | `MEDIUM`       | Priority of each review.                                      |
-
 The levels are checked when the config loads, so a typo fails there instead of silently doing nothing. That
-covers an unknown stage, an empty stage list, a filter Repo 1's image build cannot apply, a review before a
-stage that has no approval, and a priority DevOps Agent does not know. Only `knowledge`'s Region check waits
-until synth, when the pipeline's Region is known; for an environment-agnostic pipeline, CloudFormation makes
-it at deploy time.
+covers an unknown stage, an empty stage list, a filter Repo 1's image build cannot apply, and a priority
+DevOps Agent does not know. Only `knowledge`'s Region check waits until synth, when the pipeline's Region is
+known; for an environment-agnostic pipeline, CloudFormation makes it at deploy time.
 
 In container mode the same block goes into Repo 2's `deploy.config.ts`, where it covers the CD pipeline and every
 target's auto-deploy pipeline (`stages` are target names). In Repo 1's `cicd.config.ts` it covers the image
-build. `changeRiskAnalysis` is not available in container mode: Repo 1 only builds images, and Repo 2 promotes
-an image, not a commit.
+build.
 
 To deploy a change, push it: the `codepipeline` and `cdk-pipelines` engines run the whole pipeline, and their
 self-update step applies it. A container-mode pipeline has no self-update stage, so run
@@ -160,11 +137,9 @@ self-update step applies it. A container-mode pipeline has no self-update stage,
    state live, and each stage account the pipeline deploys to, where the CloudFormation stacks live. See
    [Connecting multiple AWS accounts](https://docs.aws.amazon.com/devopsagent/latest/userguide/configuring-integrations-and-knowledge-connecting-multiple-aws-accounts.html).
    Without these associations an investigation runs but cannot read the evidence.
-3. **For `changeRiskAnalysis`, connect the repository** (GitHub or GitLab) to the Agent Space. Code Change
-   Risk Analysis reads the code through that integration, and indexing a new repository takes one to two hours.
 
-The wrapper does not create the Agent Space, the account associations or the repository connection. All three
-are long-lived and shared between pipelines, and who may use the operator web app is a decision for people.
+The wrapper does not create the Agent Space or the account associations. Both are long-lived and shared
+between pipelines, and who may use the operator web app is a decision for people.
 
 ## What an investigation finds
 
@@ -203,9 +178,8 @@ repository.
 
 DevOps Agent bills by the agent-second ([pricing](https://aws.amazon.com/devops-agent/pricing/)). With
 `investigations` on, every matching failed action opens one investigation, including failures you would have
-recognised at a glance: use `stages` to limit it. The test above took about four minutes of agent time.
-`changeRiskAnalysis` opens one review per approval of the stages you name. The Lambda, the rules and the skill
-assets cost next to nothing.
+recognised at a glance: use `stages` to limit it. The investigation above took about four minutes of agent
+time. The Lambda, the rule and the skill assets cost next to nothing.
 
 ## Limits
 
@@ -216,7 +190,3 @@ assets cost next to nothing.
 - **The Agent Space must be in the pipeline account**, and for `knowledge` also in the pipeline stack's Region.
 - **Failed actions only.** A stopped or superseded execution is not a failure and opens nothing, and neither
   does a rejected or timed-out manual approval.
-- **`changeRiskAnalysis` is experimental.** DevOps Agent's Code Change Risk Analysis is in preview. Requesting
-  it from a pipeline uses the documented `CreateBacklogTask` API with task type `CODE_CHANGE_RISK_ANALYSIS`.
-  AWS documents chat and pull-request reviews as its entry points. The review needs the repository connected to
-  the Agent Space; without one, the task fails at once.
