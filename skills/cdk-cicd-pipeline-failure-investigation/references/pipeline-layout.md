@@ -10,7 +10,7 @@ account.
 | Stage | Action | Provider | What it runs |
 | --- | --- | --- | --- |
 | `Source` | `Source` | CodeCommit, CodeStarSourceConnection or S3 | fetches the application repository |
-| `Build` | `Build` | CodeBuild | CI, then synth. CI is `npm ci` plus the project's `npm run audit`, `build` and `test` when present; configured `ci.steps` replace all of that, `npm ci` included. The synth step is always appended: `npx cdk-cicd synth --all` (the default `ASSEMBLY_PROMOTION` deploy model), or with `DEPLOY_TIME_SYNTH` `npx cdk-cicd synth --stage <first stage>` as validation only |
+| `Build` | `Build` | CodeBuild | CI, then synth. CI is `npm ci` plus the project's `npm run audit`, `build` and `test` when present; configured `ci.steps` replace all of that, `npm ci` included. The synth step is always appended: `npx cdk-cicd synth --all --require-account` (the default `ASSEMBLY_PROMOTION` deploy model), or with `DEPLOY_TIME_SYNTH` `npx cdk-cicd synth --stage <first stage> --require-account` as validation only. `--require-account` fails Build on a stack that binds no AWS account, which the deploy stages would refuse anyway |
 | `UpdatePipeline` | `SelfMutate` | CodeBuild | `npx cdk-cicd deploy-ci`: updates the pipeline's own stack from `cicd.config.ts` |
 | `<stage>` | `Approve-<stage>` | Manual | manual approval (stages other than `dev`/`res` by default) |
 | `<stage>` | `Deploy-<stage>` | CodeBuild | `npx cdk-cicd deploy --stage <stage> --yes`, with `--from-assembly` under `ASSEMBLY_PROMOTION` (it deploys the assembly `Build` synthesized). Deploys the application stacks into the stage's account and Regions, assuming the stage account's CDK bootstrap roles |
