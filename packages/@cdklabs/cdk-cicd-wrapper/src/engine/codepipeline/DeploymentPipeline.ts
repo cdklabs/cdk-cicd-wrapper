@@ -338,10 +338,18 @@ export class DeploymentPipeline extends Construct {
     // The deployer container gets the CodeBuild role's credentials through the container-credentials
     // endpoint (`deploy --from-image` forwards AWS_CONTAINER_CREDENTIALS_RELATIVE_URI by name), so no
     // access key is ever materialized into this build's shell environment.
+    // This buildspec drives the CLI that the deploy repository's lockfile pins, which can be older than
+    // the wrapper that rendered the buildspec. yargs does not reject unknown options, so an older CLI
+    // would deploy, ignore --fingerprint-out and only then fail to record state. Check it first.
+    const requireDeployCli =
+      `npm run --silent cdk-cicd -- deploy --help | grep -q -- '--fingerprint-out' || ` +
+      `{ echo "cdk-cicd: the cdk-cicd CLI that this deploy repository's lockfile pins is older than this pipeline ` +
+      `(it has no deploy --fingerprint-out). Upgrade @cdklabs/cdk-cicd-wrapper-cli in the lockfile." >&2; exit 1; }`;
     const commands = [
       ...(hasAutoDeploy ? [skipCreationRun] : []),
       ...[
         ...installCommands,
+        requireDeployCli,
         fingerprintCommand,
         'if [ "${#TARGET_FINGERPRINT}" -ne 64 ] || printf "%s" "$TARGET_FINGERPRINT" | grep -q "[^0-9a-f]"; then ' +
           'echo "cdk-cicd: could not compute a valid target fingerprint" >&2; exit 1; fi',
