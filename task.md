@@ -1383,3 +1383,28 @@ not this branch reaching `main`.
     remain tracked in `findings.json` for follow-up: the GitHub Actions engine's `codeArtifact`/
     `proxy` IAM/secrets plumbing, and `samples/cdk-python-example` still referencing the deleted
     `PipelineBlueprint`.
+
+## Wave 9 — Onboarding: a fresh `cdk init` app to a green pipeline
+
+- **`m10-autopilot-onboarding`** — `cdk-cicd init`, and a fresh `cdk init` app that works without workarounds  ·
+  done · wave 9 · shared · feature
+  - **desc:** A pipeline set up end to end from a current `cdk init app --language typescript`
+    (aws-cdk 2.1149.0) needed three workarounds no doc mentions: pin TypeScript to 5.9 (ts-node
+    cannot run on TypeScript 7), scope ts-node to node10 resolution (the CLI's `module: commonjs`
+    override fails NodeNext with TS5110), and uncomment the stack's `env` line (an account-agnostic
+    stack passed Build and failed only at the first deploy). The fix, without changing anything for
+    projects that work today: ts-node uses the project's TypeScript unless it is 7+, and the
+    `module: commonjs` override is skipped only for a node16/nodenext tsconfig, where it was an error;
+    `cdk-cicd synth` warns about a stack that binds no account, and fails with `--require-account`,
+    which the CodePipeline engine's Build passes; and a new `cdk-cicd init` writes `cicd.config.ts` and
+    points `cdk.json` at `cdk-cicd exec`. The same PR closes the three open container-mode findings
+    (`code-review-compliance-logging-ignores-config-file-env`,
+    `code-review-one-stage-file-aws-block-fails-every-target`,
+    `code-review-older-cli-ignores-fingerprint-out`) and ships `skills/cdk-cicd-pipeline/SKILL.md`.
+  - **acceptance:** both packages' jest suites and eslint pass. On real AWS, a fresh `cdk init` app
+    with no pins goes through `cdk-cicd init` → `deploy-ci` → push → a green pipeline, then is torn
+    down. `container-pipeline-verify.sh` passes again. ✅ Both suites and eslint green (wrapper 741, CLI 331);
+    `projen compat` passes. `init-pipeline-verify.sh` run r20261119113508 and `container-pipeline-verify.sh` run
+    r20261119113511 (with the new compliance and invalid-file legs) passed in the test account and left nothing
+    behind. Left open on purpose: `qa-ts-node-commonjs-override-breaks-bundler` (pre-existing) and
+    `code-review-created-codecommit-repo-deleted-with-pipeline-stack` (a template change for every pipeline).
