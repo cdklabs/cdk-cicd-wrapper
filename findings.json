@@ -1716,6 +1716,34 @@
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/constructs/CodeCommitRepositoryConstruct.ts",
         "line": 93
       }
+    },
+    {
+      "id": "qa-main-package-verification-lock-hash-stale",
+      "component": "infra",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "On a clean main, `npm run validate` (and so the husky pre-commit hook) fails because package-verification.json pins an old yarn.lock hash",
+      "detail": "At main a1608ff, `cdk-cicd validate` reports that yarn.lock has a sha256 different from package-verification.json `npm-lock-file`. The lockfile changed in the dependabot bumps #364-#367 after the hash was last set (69e1957), and CI does not run validate, so the bumps merged green. Every local commit through husky now fails pre-commit until someone re-pins the hash. Re-pinning is the gate's explicit approval step ('get the changes approved'), so it was left to whoever lands the next dependency change. Fix direction: re-pin in the next PR that touches dependencies, and either run `validate` in CI or have dependabot PRs update package-verification.json, so the two cannot drift again.",
+      "location": {
+        "path": "package-verification.json",
+        "line": 12
+      }
+    },
+    {
+      "id": "qa-docgen-misses-hoisted-dependency-assemblies",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "In a fresh clone `npx projen docgen` (and so `npm run build`) fails: jsii-docgen cannot find dependency assemblies that yarn hoisted to the root node_modules",
+      "detail": "Fresh clone of main, `yarn install --frozen-lockfile` on node 26 (node 24 behaves the same). `npx projen docgen` in packages/@cdklabs/cdk-cicd-wrapper fails with `CorruptedAssemblyError: Unable to locate assembly for dependency: @aws-cdk/app-staging-synthesizer-alpha@2.195.0-alpha.0`. Symlinking that package into the package-local node_modules moves the error to `cdk-nag@^2.37.55`. jsii-docgen's CLI resolves dependency assemblies only under the package directory, and yarn workspaces hoist them all to the root. The library API with `Documentation.forProject(pkgDir, { assembliesDir: repoRoot })` works, and produced an API.md whose diff against main was only the newly added types. Unverified: how CI's build passes this step. Fix direction: run docgen with the root as the assemblies dir (a projenrc task override), or nohoist the jsii dependencies of the wrapper package.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/.projen/tasks.json",
+        "line": 126
+      }
     }
   ]
 }
