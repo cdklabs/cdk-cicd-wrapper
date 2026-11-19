@@ -4421,8 +4421,10 @@ public readonly complianceLogBucketName: string;
 
 Compliance/access-log destination bucket for this target, after applying the deployment-wide default.
 
-When set, `complianceLogBucketAccount` and `complianceLogBucketRegion` are also set and
-exactly match this target's concrete, single-Region environment.
+When set, `complianceLogBucketAccount` and `complianceLogBucketRegion` exactly match this
+target's concrete, single-Region environment. They are set as soon as that environment is known: by
+`defineDeployment` when it names the account and Region, else once the CLI has applied the target's
+`config/<stage>.json` (`resolveDeploymentCompliance`).
 
 ---
 
