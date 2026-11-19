@@ -7,7 +7,14 @@ import * as path from 'path';
 import { secretArnFromDeployRoleExternalId } from '@cdklabs/cdk-cicd-wrapper';
 import type { EngineType, ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
-import { TS_NODE_COMPILER_OPTIONS, load as loadCicdConfig, loadDeployment, stageByName } from './CicdConfig';
+import {
+  load as loadCicdConfig,
+  loadDeployment,
+  stageByName,
+  tsNodeCompilerOptions,
+  tsNodeRegister,
+  typeScriptCompiler,
+} from './CicdConfig';
 import { logger } from '../../utils/Logging';
 
 /**
@@ -494,11 +501,15 @@ export function injectedStageConfigSource(env: NodeJS.ProcessEnv): string | unde
   return source.length > 0 ? source : undefined;
 }
 
-/** The require-preloads for the entry: the register hook always, ts-node first for a `.ts` entry. */
-export function preloadArgs(entry: string, registerPath: string): string[] {
+/**
+ * The require-preloads for the entry: the register hook always, ts-node first for a `.ts` entry.
+ * `tsNodeRegisterPath` is the project's own ts-node, or the CLI's when the project has none
+ * (see `tsNodeRegister`).
+ */
+export function preloadArgs(entry: string, registerPath: string, tsNodeRegisterPath = 'ts-node/register'): string[] {
   const args: string[] = [];
   if (entry.endsWith('.ts')) {
-    args.push('-r', 'ts-node/register');
+    args.push('-r', tsNodeRegisterPath);
   }
   args.push('-r', registerPath);
   return args;
@@ -519,9 +530,9 @@ export function preloadArgs(entry: string, registerPath: string): string[] {
 export function execInvocation(
   entry: string,
   _engine: EngineType | undefined,
-  paths: { registerPath: string },
+  paths: { registerPath: string; tsNodeRegisterPath?: string },
 ): { nodeArgs: string[]; entryEnv?: string } {
-  return { nodeArgs: [...preloadArgs(entry, paths.registerPath), entry] };
+  return { nodeArgs: [...preloadArgs(entry, paths.registerPath, paths.tsNodeRegisterPath), entry] };
 }
 
 /**
@@ -628,6 +639,7 @@ class Command implements yargs.CommandModule {
     }
 
     const contextConfig = appConfigForTarget(config, target, process.env);
+    const compiler = typeScriptCompiler(cwd);
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
       ...stageEnv(stage, target),
@@ -641,12 +653,15 @@ class Command implements yargs.CommandModule {
       // The `-r ts-node/register` preload takes no options, so the module kind has to come from the
       // environment. Same requirement as the config loader: the entry is `require`d, so it must
       // transpile to CommonJS or Node throws on the first `import` (see TS_NODE_COMPILER_OPTIONS).
-      TS_NODE_COMPILER_OPTIONS: JSON.stringify(TS_NODE_COMPILER_OPTIONS),
+      TS_NODE_COMPILER_OPTIONS: JSON.stringify(tsNodeCompilerOptions(cwd, compiler)),
+      // The same compiler choice as the config loader: the project's TypeScript unless it is 7+.
+      TS_NODE_COMPILER: compiler,
       [EXEC_FLAG]: '1',
     };
 
     const invocation = execInvocation(entry, cicd?.engine, {
       registerPath: require.resolve('@cdklabs/cdk-cicd-wrapper/lib/runtime/register.js'),
+      tsNodeRegisterPath: tsNodeRegister(cwd),
     });
     const nodeArgs = invocation.nodeArgs;
     if (invocation.entryEnv !== undefined) {

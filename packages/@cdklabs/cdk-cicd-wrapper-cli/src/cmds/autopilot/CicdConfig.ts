@@ -50,11 +50,69 @@ let tsNodeRegistered = false;
  * target-derived default, which is ESM) and the config only loads on Node >= 22, where `require()` can
  * detect module syntax. CodeBuild's standard image runs Node 18, so an M4 pipeline failed here.
  *
- * Measured: this override does NOT break `NodeNext` or `moduleResolution: bundler` tsconfigs. A project
- * with `"type": "module"` cannot load a `.ts` config either way -- see finding
- * `qa-esm-project-cannot-load-ts-cicd-config`.
+ * Measured with ts-node loading the file: it works for a commonjs tsconfig (the older `cdk init`). It fails
+ * one whose `module` is node16/nodenext (a current `cdk init` app) with TS5110 on TypeScript 5.9, so
+ * `tsNodeCompilerOptions` leaves such a project's own `module` alone. It also fails a
+ * `moduleResolution: bundler` tsconfig with TS5095, as it always has -- finding
+ * `qa-ts-node-commonjs-override-breaks-bundler`. A project with `"type": "module"` cannot load a `.ts`
+ * config either way -- see finding `qa-esm-project-cannot-load-ts-cicd-config`.
  */
 export const TS_NODE_COMPILER_OPTIONS = { module: 'commonjs' };
+
+/**
+ * The ts-node compiler options for the project in `projectDir`, read with `compiler` (a TypeScript the
+ * CLI can drive, see `typeScriptCompiler`). `TS_NODE_COMPILER_OPTIONS`, unchanged, for every project it
+ * works for. No override for a project whose tsconfig sets `module` to node16/nodenext: those emit
+ * CommonJS in a package without `"type": "module"` already, and `module: commonjs` next to their
+ * NodeNext resolution is an error. An unreadable tsconfig keeps the long-standing override.
+ */
+export function tsNodeCompilerOptions(projectDir: string, compiler: string): { [option: string]: string } {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const ts = require(compiler);
+    const configFile: string | undefined = ts.findConfigFile(projectDir, ts.sys.fileExists, 'tsconfig.json');
+    if (configFile !== undefined) {
+      const read = ts.readConfigFile(configFile, ts.sys.readFile);
+      const parsed = ts.parseJsonConfigFileContent(read.config ?? {}, ts.sys, path.dirname(configFile));
+      const module: number | undefined = parsed.options.module;
+      if (module !== undefined && module >= ts.ModuleKind.Node16 && module <= ts.ModuleKind.NodeNext) return {};
+    }
+  } catch {
+    // Fall through to the long-standing override.
+  }
+  return { ...TS_NODE_COMPILER_OPTIONS };
+}
+
+/**
+ * The ts-node preload for a project's `.ts` app entry: the project's own ts-node, as before, or the
+ * CLI's when the project has none (a current `cdk init` app runs on `tsx` and does not install it).
+ */
+export function tsNodeRegister(projectDir: string): string {
+  try {
+    return require.resolve('ts-node/register', { paths: [projectDir] });
+  } catch {
+    return require.resolve('ts-node/register');
+  }
+}
+
+/**
+ * The TypeScript compiler ts-node uses for a project's `.ts` files: the project's own when ts-node can
+ * drive it, else the CLI's. ts-node needs the classic compiler API, which TypeScript 7 no longer ships
+ * ("Cannot read properties of undefined (reading 'fileExists')"), and a current `cdk init` app installs
+ * TypeScript 7. The project's own stays preferred because the CLI's TypeScript 6 no longer includes
+ * `@types/*` unless a tsconfig lists `types`, which older templates do not.
+ */
+export function typeScriptCompiler(projectDir: string): string {
+  try {
+    const manifest = require.resolve('typescript/package.json', { paths: [projectDir] });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const major = Number(String(require(manifest).version).split('.')[0]);
+    if (major < 7) return require.resolve('typescript', { paths: [projectDir] });
+  } catch {
+    // No TypeScript in the project: use the CLI's.
+  }
+  return require.resolve('typescript');
+}
 
 /**
  * Register ts-node once (for a `.ts` config) and `require` `file`, returning its `default` export. The
@@ -69,15 +127,23 @@ function requireConfigFile<T>(file: string): T {
       // resident while their children run, so on a 3 GB CodeBuild instance the app process was being
       // OOM-killed. defineCICD/defineDeployment validate the values at runtime, and the app entry itself
       // is still type-checked by its own `-r ts-node/register` preload.
+      const compiler = typeScriptCompiler(path.dirname(file));
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('ts-node').register({ compilerOptions: TS_NODE_COMPILER_OPTIONS, transpileOnly: true });
+      require('ts-node').register({
+        compiler,
+        compilerOptions: tsNodeCompilerOptions(path.dirname(file), compiler),
+        transpileOnly: true,
+      });
     } catch (error) {
       // ts-node is resolved from the CLI's location; a global CLI install without ts-node in the
       // user's project would otherwise surface a bare "Cannot find module" here.
+      const missing = (error as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND';
       throw new Error(
-        `cdk-cicd: loading a TypeScript ${path.basename(file)} needs ts-node, which could not be ` +
-          `resolved (${(error as Error).message}). Install ts-node in your project, or compile the ` +
-          'config to JavaScript.',
+        missing
+          ? `cdk-cicd: loading a TypeScript ${path.basename(file)} needs ts-node, which could not be ` +
+              `resolved (${(error as Error).message}). Install ts-node in your project, or compile the ` +
+              'config to JavaScript.'
+          : `cdk-cicd: ts-node could not load ${path.basename(file)}: ${(error as Error).message}`,
       );
     }
     tsNodeRegistered = true;

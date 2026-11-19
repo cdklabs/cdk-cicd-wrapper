@@ -4,7 +4,16 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { discover, load, loadDeployment, stageByName } from '../../src/cmds/autopilot/CicdConfig';
+import {
+  discover,
+  load,
+  loadDeployment,
+  stageByName,
+  TS_NODE_COMPILER_OPTIONS,
+  tsNodeCompilerOptions,
+  tsNodeRegister,
+  typeScriptCompiler,
+} from '../../src/cmds/autopilot/CicdConfig';
 
 function tempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'cicd-config-'));
@@ -209,5 +218,83 @@ describe('account and Region from config/<stage>.json', () => {
       /AWS Region/,
     );
     expect(loadDeployment(repoWith([target('int')], { int: '{' }))?.targets[0].env.account).toBeUndefined();
+  });
+});
+
+describe('the TypeScript compiler ts-node uses', () => {
+  /** A project whose node_modules holds a stub `typescript` of the given version (never loaded). */
+  const projectWithTypeScript = (version: string) => {
+    const dir = tempDir();
+    const pkg = path.join(dir, 'node_modules', 'typescript');
+    fs.mkdirSync(path.join(pkg, 'lib'), { recursive: true });
+    fs.writeFileSync(
+      path.join(pkg, 'package.json'),
+      JSON.stringify({ name: 'typescript', version, main: 'lib/typescript.js' }),
+    );
+    fs.writeFileSync(path.join(pkg, 'lib', 'typescript.js'), 'module.exports = {};\n');
+    return { dir, compiler: fs.realpathSync(path.join(pkg, 'lib', 'typescript.js')) };
+  };
+
+  test("keeps a project's own TypeScript 5 or 6", () => {
+    for (const version of ['5.9.3', '6.0.3']) {
+      const { dir, compiler } = projectWithTypeScript(version);
+      expect(fs.realpathSync(typeScriptCompiler(dir))).toBe(compiler);
+    }
+  });
+
+  test("uses the CLI's own TypeScript for a project on TypeScript 7, which ts-node cannot drive", () => {
+    const { dir, compiler } = projectWithTypeScript('7.0.2');
+    expect(typeScriptCompiler(dir)).not.toBe(compiler);
+    expect(typeScriptCompiler(dir)).toBe(require.resolve('typescript'));
+  });
+
+  test("uses the CLI's own TypeScript when the project has none", () => {
+    expect(typeScriptCompiler(tempDir())).toBe(require.resolve('typescript'));
+  });
+});
+
+describe('the ts-node compiler options', () => {
+  const cliTypeScript = require.resolve('typescript');
+  const projectWithTsconfig = (tsconfig: object, extra: { [file: string]: object } = {}) => {
+    const dir = tempDir();
+    fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify(tsconfig));
+    for (const [file, content] of Object.entries(extra)) {
+      fs.writeFileSync(path.join(dir, file), JSON.stringify(content));
+    }
+    return dir;
+  };
+
+  test('keep the long-standing commonjs override for an older cdk init tsconfig, or none at all', () => {
+    expect(TS_NODE_COMPILER_OPTIONS).toEqual({ module: 'commonjs' });
+    const older = projectWithTsconfig({ compilerOptions: { target: 'ES2020', module: 'commonjs' } });
+    expect(tsNodeCompilerOptions(older, cliTypeScript)).toEqual({ module: 'commonjs' });
+    expect(tsNodeCompilerOptions(tempDir(), cliTypeScript)).toEqual({ module: 'commonjs' });
+  });
+
+  test("leave a NodeNext project's module alone (commonjs next to NodeNext resolution is TS5110)", () => {
+    const current = projectWithTsconfig({ compilerOptions: { module: 'NodeNext', moduleResolution: 'NodeNext' } });
+    expect(tsNodeCompilerOptions(current, cliTypeScript)).toEqual({});
+    const extended = projectWithTsconfig(
+      { extends: './base.json' },
+      { 'base.json': { compilerOptions: { module: 'node16' } } },
+    );
+    expect(tsNodeCompilerOptions(extended, cliTypeScript)).toEqual({});
+  });
+
+  test('fall back to the long-standing override when the tsconfig cannot be read', () => {
+    const current = projectWithTsconfig({ compilerOptions: { module: 'NodeNext' } });
+    expect(tsNodeCompilerOptions(current, path.join(current, 'no-such-typescript.js'))).toEqual({ module: 'commonjs' });
+  });
+});
+
+describe('the ts-node preload for the app entry', () => {
+  test("is the project's own ts-node when it has one, else the CLI's", () => {
+    const dir = tempDir();
+    const register = path.join(dir, 'node_modules', 'ts-node', 'register', 'index.js');
+    fs.mkdirSync(path.dirname(register), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'node_modules', 'ts-node', 'package.json'), JSON.stringify({ name: 'ts-node' }));
+    fs.writeFileSync(register, '');
+    expect(fs.realpathSync(tsNodeRegister(dir))).toBe(fs.realpathSync(register));
+    expect(tsNodeRegister(tempDir())).toBe(require.resolve('ts-node/register'));
   });
 });
