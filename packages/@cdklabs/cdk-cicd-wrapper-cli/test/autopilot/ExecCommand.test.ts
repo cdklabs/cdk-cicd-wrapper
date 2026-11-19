@@ -401,6 +401,15 @@ describe('exec: wrapperRuntimeConfig', () => {
 });
 
 describe('exec: preloadArgs', () => {
+  test('preloads the given ts-node, so a project without its own can use the CLI one', () => {
+    expect(preloadArgs('bin/app.ts', '/reg.js', '/cli/node_modules/ts-node/register/index.js')).toEqual([
+      '-r',
+      '/cli/node_modules/ts-node/register/index.js',
+      '-r',
+      '/reg.js',
+    ]);
+  });
+
   test('a .ts entry gets ts-node before the register hook', () => {
     expect(preloadArgs('bin/app.ts', '/reg.js')).toEqual(['-r', 'ts-node/register', '-r', '/reg.js']);
   });

@@ -9,8 +9,10 @@ The whole Autopilot opt-in is two things: a `cicd.config.ts`, and pointing `cdk.
 
 ## 1. Your app stays plain CDK
 
-`bin/app.ts` is exactly what `cdk init` gave you — a plain `App` with your stacks. No `PipelineBlueprint`,
-no builder, no wrapper import:
+`bin/app.ts` is what `cdk init` gave you — a plain `App` with your stacks. No `PipelineBlueprint`,
+no builder, no wrapper import. One line changes: uncomment the `env` line that `cdk init` ships commented
+out, so each stack names its account. The wrapper deploys only such stacks: the pipeline's Build stage fails
+on one that does not, and a local `cdk-cicd synth` warns about it:
 
 ```ts
 // bin/app.ts
@@ -47,6 +49,13 @@ export default defineCICD({
 `cdk-cicd exec` runs your app under a preload that injects the resolved config (and tags, synthesizer, and
 compliance Aspects) around it — which is how your untouched `bin/` becomes wrapper-aware without importing
 anything.
+
+!!! tip "Let `cdk-cicd init` write steps 2 and 3"
+    `npx cdk-cicd init --stages dev,prod` writes `cicd.config.ts` and points `cdk.json` at
+    `cdk-cicd exec`, reading your entry from the existing `app` command. It refuses to overwrite an
+    existing config, warns about a commented-out `env` line (it does not edit your `bin/`), and prints
+    the remaining commands, including the CodeCommit commit and push. Preview with `--dry-run`. Use `--source codestar` or `--source s3` for the other
+    sources.
 
 ## 4. Provision the pipeline — once
 

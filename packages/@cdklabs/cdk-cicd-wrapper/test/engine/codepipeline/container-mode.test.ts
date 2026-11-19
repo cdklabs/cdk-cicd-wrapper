@@ -63,7 +63,7 @@ describe('m6-container: image-build pipeline', () => {
 
   test('synthesizes the validation stages (cdk-nag + config schema) before building the image', () => {
     const cmds = buildCommands(render(cfg(BuildImage.docker())));
-    const synth = cmds.indexOf('npx cdk-cicd synth --all');
+    const synth = cmds.indexOf('npx cdk-cicd synth --all --require-account');
     expect(synth).toBeGreaterThan(-1);
     expect(synth).toBeLessThan(cmds.indexOf('docker build -f Dockerfile'));
     expect(cmds.indexOf('rm -rf cdk.out')).toBeLessThan(cmds.indexOf('docker build -f Dockerfile'));
@@ -81,7 +81,7 @@ describe('m6-container: image-build pipeline', () => {
         }),
       ),
     );
-    expect(cmds).toContain('npx cdk-cicd synth --stage ci');
+    expect(cmds).toContain('npx cdk-cicd synth --stage ci --require-account');
     expect(cmds).not.toContain('synth --stage smoke');
     expect(cmds).not.toContain('synth --all');
   });

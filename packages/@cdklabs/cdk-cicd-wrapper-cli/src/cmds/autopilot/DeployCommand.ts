@@ -441,9 +441,20 @@ class Command implements yargs.CommandModule {
 
     if (fromImage) {
       // Container mode (Repo 2): the topology comes from deploy.config's targets, not a single stage.
-      const deployment = loadDeployment(cwd);
+      // With --target, another target's invalid config/<stage>.json account or Region does not stop it.
+      const onlyTarget = args.target as string | undefined;
+      const stageFileErrors = new Map<string, Error>();
+      const deployment = loadDeployment(
+        cwd,
+        onlyTarget === undefined ? undefined : (stage, error) => stageFileErrors.set(stage, error),
+      );
       if (deployment === undefined) {
         logger.error('cdk-cicd deploy --from-image: no deploy.config.ts found next to cdk.json');
+        process.exit(1);
+      }
+      const stageFileError = onlyTarget === undefined ? undefined : stageFileErrors.get(onlyTarget);
+      if (stageFileError !== undefined) {
+        logger.error(stageFileError.message);
         process.exit(1);
       }
       const region = args.region as string | undefined;

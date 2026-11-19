@@ -12,6 +12,7 @@ import * as path from 'path';
 import type { RegionOrder, ResolvedCicdConfig, ResolvedStage } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { load as loadCicdConfig, stageByName } from './CicdConfig';
+import { accountAgnosticStacks } from './DriftCheck';
 import { ACCOUNT_OVERRIDE_FLAG, REGION_OVERRIDE_FLAG, stageEnv } from './ExecCommand';
 import { logger } from '../../utils/Logging';
 
@@ -145,6 +146,32 @@ export function configForStage(
   return { config: { ...config, stages: [...config.stages, stage] }, stage, adHoc: true };
 }
 
+/**
+ * Report the stacks of one synthesized stage x region that bind no AWS account; returns true when synth
+ * must fail. A warning unless `requireAccount`: other engines deploy without `cdk-cicd deploy`, and a
+ * local synth of such an app has always passed. The CodePipeline engine's Build passes
+ * `--require-account`, because its deploy stages would refuse the stack anyway.
+ */
+export function reportUnboundStacks(
+  unbound: readonly string[],
+  target: { readonly stage: string; readonly region: string },
+  requireAccount: boolean,
+  log: Pick<typeof logger, 'warn' | 'error'> = logger,
+): boolean {
+  if (unbound.length === 0) return false;
+  const message =
+    `cdk-cicd synth: ${unbound.join(', ')} (${target.stage}/${target.region}) bind no AWS account, and ` +
+    'cdk-cicd deploy refuses to deploy a stack without one. Give each stack an env -- for example ' +
+    'env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION }, ' +
+    'which cdk-cicd sets for every stage.';
+  if (!requireAccount) {
+    log.warn(message);
+    return false;
+  }
+  log.error(message);
+  return true;
+}
+
 class Command implements yargs.CommandModule {
   public command = 'synth';
   public describe = 'Synthesize each stage x region into cdk.out/<stage>/<region> (deploy-time synth)';
@@ -156,6 +183,11 @@ class Command implements yargs.CommandModule {
       .option('region', {
         type: 'string',
         describe: 'With --stage: synthesize only this one region (used by container-mode validation)',
+      })
+      .option('require-account', {
+        type: 'boolean',
+        default: false,
+        describe: 'Fail, instead of warning, on a stack that binds no AWS account (cdk-cicd deploy refuses one)',
       });
   }
 
@@ -211,6 +243,9 @@ class Command implements yargs.CommandModule {
       }
       if (result.status !== 0) {
         process.exit(result.status ?? 1);
+      }
+      if (reportUnboundStacks(accountAgnosticStacks(target.outDir), target, args.requireAccount as boolean)) {
+        process.exit(1);
       }
     }
   }

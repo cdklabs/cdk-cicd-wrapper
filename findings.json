@@ -1569,9 +1569,9 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "medium",
-      "status": "open",
+      "status": "resolved",
       "title": "A Repo 2 target with compliance logging cannot take its account and Region from config/<stage>.json: defineDeployment rejects it before the CLI applies the file",
-      "detail": "defineDeployment's normalizeTarget (packages/@cdklabs/cdk-cicd-wrapper/src/config/define.ts) requires a concrete env.account and exactly one Region whenever complianceLogBucketName is set, and derives complianceLogBucketAccount/Region from them. It runs while the user's deploy.config.ts is evaluated. The CLI fills account and Region from config/<stage>.json only afterwards (withStageFileEnvironments in packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts), so a target that relies on the documented 'Account and Region from the config file' feature and has compliance logging (its own complianceLogBucketName, or the deployment-wide default) throws 'compliance logging requires a concrete 12-digit env.account' at load. It fails loudly, never silently, and the error is the same for every consumer. Not fixed in the review pass that found it: fixing it means either deferring the compliance derivation and its cross-target bucket-coordinate check out of defineDeployment (a published jsii function whose output a user can also hand straight to DeploymentPipeline, which would then need its own check), or teaching defineDeployment to read config/<stage>.json. Both are design changes across the two packages. Until then, container_mode.md says that compliance-logging targets must declare env in deploy.config.ts.",
+      "detail": "defineDeployment's normalizeTarget (packages/@cdklabs/cdk-cicd-wrapper/src/config/define.ts) requires a concrete env.account and exactly one Region whenever complianceLogBucketName is set, and derives complianceLogBucketAccount/Region from them. It runs while the user's deploy.config.ts is evaluated. The CLI fills account and Region from config/<stage>.json only afterwards (withStageFileEnvironments in packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts), so a target that relies on the documented 'Account and Region from the config file' feature and has compliance logging (its own complianceLogBucketName, or the deployment-wide default) throws 'compliance logging requires a concrete 12-digit env.account' at load. It fails loudly, never silently, and the error is the same for every consumer. Not fixed in the review pass that found it: fixing it means either deferring the compliance derivation and its cross-target bucket-coordinate check out of defineDeployment (a published jsii function whose output a user can also hand straight to DeploymentPipeline, which would then need its own check), or teaching defineDeployment to read config/<stage>.json. Both are design changes across the two packages. Until then, container_mode.md says that compliance-logging targets must declare env in deploy.config.ts. RESOLVED on feat/autopilot-onboarding: defineDeployment validates only the account/Region values it is given and defers the bucket coordinates when either is left out; the CLI applies config/<stage>.json and then calls the new exported resolveDeploymentCompliance (same errors, plus the one-bucket-one-location check). DeploymentPipeline calls it too, so a direct construct user with neither anywhere still fails at synth. container_mode.md no longer states the limitation. Proven by container-pipeline-verify run r20261119113511: target RANGE carried a complianceLogBucketName and took its account and Region only from config/RANGE.json; deploy-ci loaded the deployment and RANGE deployed to the secondary Region (the fixture has no S3 bucket, so the logging itself was not exercised).",
       "location": {
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/config/define.ts",
         "line": 439
@@ -1583,9 +1583,9 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "medium",
-      "status": "open",
+      "status": "resolved",
       "title": "One target's invalid aws block in config/<stage>.json fails Plan and every deploy action, not just that target",
-      "detail": "withStageFileEnvironments (packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts) throws on an invalid or disagreeing aws.accountId/aws.region, and every consumer loads the deployment through it. So a typo in config/prod.json stops `pipeline plan` for all stages and every target's `pipeline fingerprint`, including unrelated autoDeploy pipelines. That contradicts the planStages contract that a unit Plan cannot check runs instead of failing every other stage. The error itself is precise. A first fix attempt, setting the target aside and planning it as 'could not be checked', was reverted in review: the pipeline-shape fingerprint (deployment-shape.ts, per-target account/regions) records the file-derived account and Region at deploy-ci time, so a set-aside target trips assertPipelineShape first. Every target then fails with the vaguer 're-run deploy-ci' message. That attempt only worked when the target's env was fully in deploy.config, where the file's aws block is redundant. A real fix has to decide what the shape check compares for a target whose file cannot be read: for example, the shape recorded at synth for that target (CDK_CICD_TARGET_ENVIRONMENTS), or excluding file-derived env from the shape and checking it per target in that target's own action. It also needs a test that runs the plan command wiring with assertPipelineShape, not planStages alone.",
+      "detail": "withStageFileEnvironments (packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts) throws on an invalid or disagreeing aws.accountId/aws.region, and every consumer loads the deployment through it. So a typo in config/prod.json stops `pipeline plan` for all stages and every target's `pipeline fingerprint`, including unrelated autoDeploy pipelines. That contradicts the planStages contract that a unit Plan cannot check runs instead of failing every other stage. The error itself is precise. A first fix attempt, setting the target aside and planning it as 'could not be checked', was reverted in review: the pipeline-shape fingerprint (deployment-shape.ts, per-target account/regions) records the file-derived account and Region at deploy-ci time, so a set-aside target trips assertPipelineShape first. Every target then fails with the vaguer 're-run deploy-ci' message. That attempt only worked when the target's env was fully in deploy.config, where the file's aws block is redundant. A real fix has to decide what the shape check compares for a target whose file cannot be read: for example, the shape recorded at synth for that target (CDK_CICD_TARGET_ENVIRONMENTS), or excluding file-derived env from the shape and checking it per target in that target's own action. It also needs a test that runs the plan command wiring with assertPipelineShape, not planStages alone. RESOLVED on feat/autopilot-onboarding: loadDeployment(cwd, onStageFileError) sets a target with an invalid file aside. `pipeline plan|fingerprint` check the pipeline shape with that target at the account/Regions recorded for it (CDK_CICD_TARGET_ENVIRONMENTS), so the shape check no longer fails first; Plan marks it 'could not be checked (<the file error>)', its own fingerprint/deploy fails with that error, and every other target plans and deploys. Compliance coordinates are resolved for the healthy targets only. Tested through the command code paths (test/autopilot/PipelineCommand.test.ts), including a real shape change that must still fail. Remaining edge: a target that was env-agnostic everywhere at deploy-ci time and later gains a broken aws block still fails Plan with the shape message. Proven by container-pipeline-verify run r20261119113511, leg 8: with an 11-digit aws.accountId committed to config/RANGE.json, Plan Succeeded, the unchanged SBCD stage was skipped, and only Deploy-RANGE failed, its log naming 'config/RANGE.json aws.accountId must be a 12-digit AWS account id'.",
       "location": {
         "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts",
         "line": 130
@@ -1597,12 +1597,82 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "A Repo 2 lockfile pinning a CLI older than the synthesizing wrapper silently ignores --fingerprint-out, so every deploy action fails after a successful deploy",
-      "detail": "The Repo 2 deploy buildspec (DeploymentPipeline.ts deployAndRecord) runs `deploy --from-image ... --fingerprint-out <file>` and then refuses to record state unless that file holds a valid fingerprint. The CLI enables yargs strictCommands but not strict options, so a CLI from before the flag accepts and ignores it. The deploy then succeeds, the action fails with 'the deploy recorded no valid fingerprint', no state is written, and the next run redeploys and fails again. It fails loudly, never silently. It is the same wrapper-vs-pinned-CLI version-skew class as the `pipeline plan|fingerprint` commands added on the same branch: the pipeline shape is synthesized by one wrapper version, and the steps run whatever CLI version Repo 2's lockfile pins. Fix direction: have the pipeline check the CLI version (or a capability) once, early, with a message naming the required version, or enable strict options for the deploy command.",
+      "detail": "The Repo 2 deploy buildspec (DeploymentPipeline.ts deployAndRecord) runs `deploy --from-image ... --fingerprint-out <file>` and then refuses to record state unless that file holds a valid fingerprint. The CLI enables yargs strictCommands but not strict options, so a CLI from before the flag accepts and ignores it. The deploy then succeeds, the action fails with 'the deploy recorded no valid fingerprint', no state is written, and the next run redeploys and fails again. It fails loudly, never silently. It is the same wrapper-vs-pinned-CLI version-skew class as the `pipeline plan|fingerprint` commands added on the same branch: the pipeline shape is synthesized by one wrapper version, and the steps run whatever CLI version Repo 2's lockfile pins. Fix direction: have the pipeline check the CLI version (or a capability) once, early, with a message naming the required version, or enable strict options for the deploy command. RESOLVED on feat/autopilot-onboarding: no published CLI can hit it (1.4.5 has neither `pipeline` nor --fingerprint-out, so Plan fails first on the unknown command; 1.5.0 has both), and the deploy buildspec now checks `cdk-cicd deploy --help` for --fingerprint-out right after npm ci and fails before any deploy with an upgrade message. Every deploy action of container-pipeline-verify run r20261119113511 passed the new check with the current CLI; the stop on an older CLI is unit-tested (deployment-pipeline.test.ts) and was not run on AWS.",
       "location": {
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/DeploymentPipeline.ts",
         "line": 256
+      }
+    },
+    {
+      "id": "qa-cdk-init-typescript-7-breaks-ts-node",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "resolved",
+      "title": "A fresh `cdk init` app installs TypeScript 7, and cdk-cicd's ts-node loading fails on it with a misleading 'could not be resolved' error",
+      "detail": "Found setting up a pipeline from a fresh aws-cdk 2.1149.0 `cdk init app --language typescript`. ts-node resolves `typescript` from the project, and TypeScript 7 no longer ships the classic compiler API (`Cannot read properties of undefined (reading 'fileExists')`). The CLI's catch told the user that ts-node 'could not be resolved'. RESOLVED on feat/autopilot-onboarding: typeScriptCompiler(projectDir) keeps the project's own TypeScript when it is < 7 (TypeScript 6 no longer includes @types/* without a `types` list, so forcing the CLI's 6.0 would break older templates) and otherwise uses the CLI's own; the config loader passes it as ts-node's `compiler`, `exec` as TS_NODE_COMPILER, and `exec` preloads the CLI's own ts-node/register. The 'could not be resolved' message is now only for a missing module. Proven on AWS by init-pipeline-verify run r20261119113508: a fresh cdk init app (TypeScript 7.0.2, NodeNext) with no pin and no tsconfig edit ran `cdk-cicd init`, synth and deploy-ci, and its pipeline ran Source, Build, UpdatePipeline and dev to Succeeded.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts",
+        "line": 74
+      }
+    },
+    {
+      "id": "qa-ts-node-commonjs-override-breaks-nodenext",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "high",
+      "status": "resolved",
+      "title": "The CLI's ts-node override `module: commonjs` fails a current `cdk init` tsconfig (`moduleResolution: NodeNext`) with TS5110 on TypeScript 5.9",
+      "detail": "The comment on TS_NODE_COMPILER_OPTIONS said the override does not break NodeNext; with TypeScript 5.9 it does (TS5110: Option 'module' must be set to 'NodeNext' when option 'moduleResolution' is set to 'NodeNext'). Fixed on feat/autopilot-onboarding without changing anything for projects the override already worked for: tsNodeCompilerOptions keeps `module: commonjs` and leaves no override only for a project whose tsconfig sets `module` to node16/nodenext, which emits CommonJS in a package without \"type\": \"module\" anyway. Verified with ts-node loading the config and running the app entry, through the CLI's compiled functions, against the current cdk init tsconfig on TypeScript 7 (via the CLI's 6.0) and on 5.9, and the older commonjs tsconfig on 5.9. The NodeNext no-override path on the CLI's TypeScript 6.0 is proven on AWS by init-pipeline-verify run r20261119113508; the same path on a project's own TypeScript 5.9 was measured locally only.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts",
+        "line": 65
+      }
+    },
+    {
+      "id": "qa-env-agnostic-stack-fails-only-at-deploy",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "resolved",
+      "title": "A stock `cdk init` stack (env commented out) passes synth and the pipeline Build stage, then fails at the first deploy stage",
+      "detail": "`cdk-cicd deploy` always deploys to a concrete account and its drift check refuses a stack that binds none ('does not bind the configured target account -- refusing to deploy with ambient credentials'), but nothing said so earlier, and the docs called bin/app.ts 'exactly what cdk init gave you'. RESOLVED on feat/autopilot-onboarding: `cdk-cicd synth` warns about account-agnostic stacks (DriftCheck.accountAgnosticStacks) and fails with the new --require-account, which the CodePipeline engine's Build passes (its deploy stages would refuse the stack anyway); plain synth keeps passing for other engines and local use. `cdk-cicd init` warns about cdk init's commented env line, and the docs say the line must be uncommented. Proven by init-pipeline-verify run r20261119113508, leg 3: on the stock stack, plain `cdk-cicd synth --all` passed with the warning and `--require-account` failed with the env-line hint; after the env line, the pipeline Build (which passes --require-account) succeeded. A pipeline Build failing on an unbound stack was not run on AWS (unit-tested in CodePipelineEngine/container-mode tests).",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/SynthCommand.ts",
+        "line": 216
+      }
+    },
+    {
+      "id": "qa-ts-node-commonjs-override-breaks-bundler",
+      "component": "cli",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "A project with `moduleResolution: bundler` cannot load cicd.config.ts or its app entry: the CLI's ts-node `module: commonjs` override fails with TS5095",
+      "detail": "Reproduced with the published CLI 1.5.0's exact call (ts-node register with compilerOptions { module: 'commonjs' }, transpileOnly) against a tsconfig of { module: ESNext, moduleResolution: bundler } on TypeScript 5.9: `error TS5095: Option 'bundler' can only be used when 'module' is set to 'preserve' or to 'es2015' or later.` The comment on TS_NODE_COMPILER_OPTIONS claimed the override 'does NOT break moduleResolution: bundler'; that was measured without loading a file. Not fixed by feat/autopilot-onboarding, which leaves bundler projects exactly as they were: CommonJS output is required (the file is require()d), so a fix has to override moduleResolution too (node10 on TypeScript 5.x; TypeScript 6 deprecates node10 and needs ignoreDeprecations), and that changes how such a project's imports are resolved -- a decision to make deliberately, with the type-check differences tested.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/CicdConfig.ts",
+        "line": 50
+      }
+    },
+    {
+      "id": "code-review-created-codecommit-repo-deleted-with-pipeline-stack",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "high",
+      "status": "open",
+      "title": "A CodeCommit repository that `deploy-ci` creates (Repository.codecommit without existing) has no DeletionPolicy: deleting the pipeline stack deletes the repository and its history",
+      "detail": "engine/codepipeline/source.ts creates `new codecommit.Repository(scope, 'SourceRepo', { repositoryName })` with no removal policy; aws-cdk-lib (checked on 2.195.0) renders no DeletionPolicy, and a live pipeline stack deployed from @cdklabs/cdk-cicd-wrapper 2.5.0 has none either. docs/content/developer_guides/vcs_codecommit.md claimed the opposite ('retained on stack deletion, so your source history is not lost'); feat/autopilot-onboarding corrects that sentence, the `cdk-cicd init` template comment and the shipped skill, and points to `--existing` for a repository that should outlive the pipeline. Not changed there: making the created repository RETAIN changes every existing pipeline's template (a deliberate decision with its own migration note), so it is left for a separate change.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/source.ts",
+        "line": 28
       }
     }
   ]

@@ -324,7 +324,8 @@ export function parseStagePlans(value: string | undefined): StagePlan[] {
 /**
  * Decide, per deployment stage, whether it has anything to deploy. A unit that cannot be fingerprinted
  * (malformed `config/<stage>.json`, ECR or SSM unavailable) counts as changed: the stage then runs and its
- * deploy action reports the real error, instead of Plan hiding it or failing every other stage.
+ * deploy action reports the real error, instead of Plan hiding it or failing every other stage. So does
+ * a target in `stageFileErrors`, whose `config/<stage>.json` account or Region could not be applied.
  */
 export function planStages(
   config: ResolvedDeploymentConfig,
@@ -332,6 +333,7 @@ export function planStages(
   cwd: string,
   readState: StateReader = readStateParameter,
   dependencies: FingerprintDependencies = {},
+  stageFileErrors: ReadonlyMap<string, Error> = new Map(),
 ): StageDecision[] {
   // Resolve each image once per run: every Region of a parallel target, and a gate's guarded targets,
   // would otherwise list the same ECR repository again for each unit.
@@ -345,6 +347,8 @@ export function planStages(
   const decideUnit = memoize((target: string, region: string | undefined, parameter: string) => {
     const label = region === undefined ? target : `${target} (${region})`;
     try {
+      const stageFileError = stageFileErrors.get(target);
+      if (stageFileError !== undefined) throw stageFileError;
       const current = targetFingerprint(config, pipelineTarget(config, target, region), region, cwd, cached);
       const previous = readState(parameter);
       if (previous === current) return { changed: false, reason: `${label}: unchanged` };

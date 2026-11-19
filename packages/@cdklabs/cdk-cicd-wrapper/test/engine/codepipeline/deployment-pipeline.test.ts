@@ -1173,6 +1173,38 @@ describe('Repo 2 autoDeploy targets', () => {
     }
   });
 
+  test('a deploy repository pinning a CLI without --fingerprint-out fails before anything deploys', () => {
+    const commands = JSON.parse(deployProject(render(cfg())).Properties.Source.BuildSpec).phases.build
+      .commands as string[];
+    const check = commands.findIndex((command) => command.includes("grep -q -- '--fingerprint-out'"));
+    expect(check).toBeGreaterThan(commands.findIndex((command) => command.includes('npm ci')));
+    expect(check).toBeLessThan(commands.findIndex((command) => command.includes('pipeline fingerprint')));
+
+    const cwd = mkdtempSync(path.join(tmpdir(), 'deployment-cli-version-'));
+    try {
+      const bin = path.join(cwd, 'bin');
+      mkdirSync(bin);
+      const help = (flags: string) =>
+        writeFileSync(path.join(bin, 'npm'), `#!/bin/sh\necho "Options:"\necho "  --target"${flags}\n`, {
+          mode: 0o755,
+        });
+      const run = () =>
+        spawnSync('/bin/sh', ['-c', commands[check]], {
+          cwd,
+          encoding: 'utf8',
+          env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}` },
+        });
+      help('');
+      const old = run();
+      expect(old.status).not.toBe(0);
+      expect(old.stderr).toContain('Upgrade @cdklabs/cdk-cicd-wrapper-cli in the lockfile');
+      help('\necho "  --fingerprint-out"');
+      expect(run().status).toBe(0);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test('an unchanged target really skips the image pull, deploy and state write', () => {
     const t = render(cfg());
     const project = deployProject(t);
@@ -1421,5 +1453,20 @@ describe('Repo 2 Plan stage skips unchanged targets', () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
+  });
+});
+
+describe('Repo 2 compliance logging with no account or Region anywhere', () => {
+  test('fails at synth, not at the first deploy action', () => {
+    expect(() =>
+      render(
+        defineDeployment({
+          image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.2.3',
+          repository: Repository.codecommit('my-deploy-config'),
+          complianceLogBucketName: 'compliance-logs',
+          targets: [{ stage: 'dev', manualApproval: false }],
+        }),
+      ),
+    ).toThrow(/'dev' compliance logging requires a concrete 12-digit env\.account/);
   });
 });

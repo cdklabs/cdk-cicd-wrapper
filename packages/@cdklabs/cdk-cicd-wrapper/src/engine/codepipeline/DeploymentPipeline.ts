@@ -31,6 +31,7 @@ import {
   resolveDefaultSynthesizerQualifier,
   specializeDefaultSynthesizerRoleArn,
 } from '../../config/default-synthesizer-role-arn';
+import { resolveDeploymentCompliance } from '../../config/define';
 import {
   NpmRegistryConfig,
   RegionOrder,
@@ -119,7 +120,9 @@ export class DeploymentPipeline extends Construct {
 
   constructor(scope: Construct, id: string, props: DeploymentPipelineProps) {
     super(scope, id);
-    const config = props.config;
+    // A target that took its account or Region from config/<stage>.json has its compliance bucket resolved
+    // by the CLI already; one that has neither anywhere fails here, before any deploy action could.
+    const config = resolveDeploymentCompliance(props.config);
     if (config.repository === undefined) {
       throw new Error(
         'cdk-cicd: defineDeployment needs a `repository` to provision a CD pipeline -- set it, or use the ' +
@@ -335,10 +338,18 @@ export class DeploymentPipeline extends Construct {
     // The deployer container gets the CodeBuild role's credentials through the container-credentials
     // endpoint (`deploy --from-image` forwards AWS_CONTAINER_CREDENTIALS_RELATIVE_URI by name), so no
     // access key is ever materialized into this build's shell environment.
+    // This buildspec drives the CLI that the deploy repository's lockfile pins, which can be older than
+    // the wrapper that rendered the buildspec. yargs does not reject unknown options, so an older CLI
+    // would deploy, ignore --fingerprint-out and only then fail to record state. Check it first.
+    const requireDeployCli =
+      `npm run --silent cdk-cicd -- deploy --help | grep -q -- '--fingerprint-out' || ` +
+      `{ echo "cdk-cicd: the cdk-cicd CLI that this deploy repository's lockfile pins is older than this pipeline ` +
+      `(it has no deploy --fingerprint-out). Upgrade @cdklabs/cdk-cicd-wrapper-cli in the lockfile." >&2; exit 1; }`;
     const commands = [
       ...(hasAutoDeploy ? [skipCreationRun] : []),
       ...[
         ...installCommands,
+        requireDeployCli,
         fingerprintCommand,
         'if [ "${#TARGET_FINGERPRINT}" -ne 64 ] || printf "%s" "$TARGET_FINGERPRINT" | grep -q "[^0-9a-f]"; then ' +
           'echo "cdk-cicd: could not compute a valid target fingerprint" >&2; exit 1; fi',

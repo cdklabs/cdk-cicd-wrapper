@@ -99,7 +99,7 @@ export default defineCICD({
 
 ### 3. Point `cdk.json` at `cdk-cicd exec`
 
-**There is no wrapper code in your app.** Your `bin/` entry point stays exactly what `cdk init` produced; `cdk.json`'s `app` command is what wraps it:
+**There is no wrapper code in your app.** Your `bin/` entry point stays what `cdk init` produced, with its `env` line uncommented so each stack names its account; `cdk.json`'s `app` command is what wraps it. `npx cdk-cicd init` writes this `cdk.json` change and `cicd.config.ts`, and warns if the `env` line is still commented out:
 
 ```json
 {

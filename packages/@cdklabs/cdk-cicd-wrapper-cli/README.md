@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a command-line interface (CLI) tool designed to streamline and automate various tasks related to AWS Cloud Development Kit (CDK) projects. It drives the Autopilot pipeline (`exec`, `deploy-ci`, `synth`, `deploy`, `check`, `migrate`) and provides a set of utilities to manage compliance, security, licensing, and dependency management, all within a single interface.
+The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a command-line interface (CLI) tool designed to streamline and automate various tasks related to AWS Cloud Development Kit (CDK) projects. It drives the Autopilot pipeline (`init`, `exec`, `deploy-ci`, `synth`, `deploy`, `check`, `migrate`) and provides a set of utilities to manage compliance, security, licensing, and dependency management, all within a single interface.
 
 ## Table of Contents
 
@@ -47,6 +47,7 @@ npx cdk-cicd <command> --help
 
 | Command     | Description                                                                                                                                                                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `init`      | Make an existing CDK app (for example a fresh `cdk init app`) an Autopilot app: writes `cicd.config.ts` and points `cdk.json` at `cdk-cicd exec` (`--source`, `--repository`, `--stages`, `--dry-run`).                                                            |
 | `exec`      | Run a CDK app under the wrapper — the single entry point that activates the pipeline for every engine, reading the engine and stages from `cicd.config`. Referenced from `cdk.json` as `"app": "npx cdk-cicd exec bin/app.ts"`.                                    |
 | `synth`     | Synthesize the app per stage/region (`--stage`, or `--all` for full CI validation).                                                                                                                                                                                |
 | `deploy`    | Synth, drift-check, and deploy a stage across its regions (`--stage`), or run the container-mode executor (`--from-image`).                                                                                                                                        |

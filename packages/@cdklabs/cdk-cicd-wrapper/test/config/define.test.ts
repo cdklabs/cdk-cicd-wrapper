@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BuildImage } from '../../src/config/build-image';
-import { defineCICD, defineDeployment, resolveCicdConfig } from '../../src/config/define';
+import { defineCICD, defineDeployment, resolveCicdConfig, resolveDeploymentCompliance } from '../../src/config/define';
 import { Repository } from '../../src/config/repository';
 import { EngineType, RegionOrder, SynthesizerType } from '../../src/config/types';
 
@@ -511,17 +511,56 @@ describe('m6-container: defineDeployment target normalization (Repo 2)', () => {
     );
   });
 
+  test('Repo 2 compliance logging waits for an account or Region that config/<stage>.json supplies', () => {
+    // defineDeployment cannot see config/<stage>.json; the CLI applies it, then resolves the coordinates.
+    const cfg = defineDeployment({
+      image: 'img:tag',
+      complianceLogBucketName: 'compliance-logs',
+      targets: [
+        { stage: 'int', env: { region: 'eu-west-1' } },
+        { stage: 'qa', env: { account: '111111111111' } },
+        { stage: 'dev' },
+      ],
+    });
+    expect(cfg.targets.map((target) => target.complianceLogBucketAccount)).toEqual([undefined, undefined, undefined]);
+
+    const fromFiles = {
+      ...cfg,
+      targets: cfg.targets.map((target) => ({
+        ...target,
+        env: { ...target.env, account: '111111111111', regions: ['eu-west-1'] },
+      })),
+    };
+    expect(
+      resolveDeploymentCompliance(fromFiles).targets.map((t) => [
+        t.complianceLogBucketAccount,
+        t.complianceLogBucketRegion,
+      ]),
+    ).toEqual([
+      ['111111111111', 'eu-west-1'],
+      ['111111111111', 'eu-west-1'],
+      ['111111111111', 'eu-west-1'],
+    ]);
+    // Still unknown once the files are applied: the same errors defineDeployment raised before.
+    expect(() => resolveDeploymentCompliance(cfg)).toThrow(
+      /'int' compliance logging requires a concrete 12-digit env\.account/,
+    );
+    expect(() =>
+      resolveDeploymentCompliance({ ...cfg, targets: [{ ...cfg.targets[1], env: { ...cfg.targets[1].env } }] }),
+    ).toThrow(/'qa' compliance logging requires exactly one concrete AWS Region/);
+    // ...and one bucket in two places, which only shows once both coordinates are known.
+    expect(() =>
+      resolveDeploymentCompliance({
+        ...cfg,
+        targets: [
+          { ...cfg.targets[0], env: { ...cfg.targets[0].env, account: '111111111111' } },
+          { ...cfg.targets[1], env: { ...cfg.targets[1].env, regions: ['us-east-1'] } },
+        ],
+      }),
+    ).toThrow(/assigned to both 111111111111\/eu-west-1 and 111111111111\/us-east-1/);
+  });
+
   test.each([
-    {
-      name: 'an account-agnostic target',
-      target: { stage: 'dev', env: { region: 'eu-west-1' } },
-      error: /requires a concrete 12-digit env\.account/,
-    },
-    {
-      name: 'a region-agnostic target',
-      target: { stage: 'dev', env: { account: '111111111111' } },
-      error: /requires exactly one concrete AWS Region/,
-    },
     {
       name: 'a multi-region target',
       target: {

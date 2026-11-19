@@ -12,25 +12,82 @@
 //                one right before deploying and recorded after a successful deploy.
 
 import { writeFileSync } from 'fs';
+import type { ResolvedDeploymentConfig } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { loadDeployment } from './CicdConfig';
 import {
   assertPipelineShape,
+  FingerprintDependencies,
   parseStagePlans,
+  PipelineContext,
   pipelineTarget,
   planOutput,
   planStages,
   readPipelineContext,
+  StageDecision,
+  StateReader,
   targetFingerprint,
 } from './DeploymentFingerprint';
 import { logger } from '../../utils/Logging';
 
+/**
+ * The deployment, plus the targets whose `config/<stage>.json` account or Region is invalid. Those are set
+ * aside instead of failing the command, so one target's file cannot stop every other target.
+ */
 function loadOrFail(cwd: string) {
-  const config = loadDeployment(cwd);
+  const stageFileErrors = new Map<string, Error>();
+  const config = loadDeployment(cwd, (stage, error) => stageFileErrors.set(stage, error));
   if (config === undefined) {
     throw new Error('cdk-cicd pipeline: no deploy.config.ts or deploy.config.js found');
   }
-  return config;
+  return { config, stageFileErrors };
+}
+
+/**
+ * Check the pipeline shape with each set-aside target at the account and Regions the pipeline was built
+ * for. The shape covers the environment that `deploy-ci` resolved from the file; without its valid file,
+ * the target would look reshaped and fail every target with "re-run deploy-ci" instead of its own error.
+ */
+function assertShapeAside(
+  config: ResolvedDeploymentConfig,
+  context: PipelineContext,
+  stageFileErrors: ReadonlyMap<string, Error>,
+): void {
+  const targets = config.targets.map((target) => {
+    const recorded = stageFileErrors.has(target.stage) ? context.targetEnvironments[target.stage] : undefined;
+    return recorded === undefined
+      ? target
+      : { ...target, env: { ...target.env, account: recorded.account, regions: recorded.regions } };
+  });
+  assertPipelineShape({ ...config, targets }, context);
+}
+
+/** `pipeline plan`: the decision for every deployment stage of the checked-out deploy repository. */
+export function planDecisions(
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+  readState?: StateReader,
+  dependencies?: FingerprintDependencies,
+): StageDecision[] {
+  const { config, stageFileErrors } = loadOrFail(cwd);
+  // A stale pipeline fails Plan itself: its stages and permissions no longer match deploy.config.
+  assertShapeAside(config, readPipelineContext(env), stageFileErrors);
+  return planStages(config, parseStagePlans(env.CDK_CICD_PLAN), cwd, readState, dependencies, stageFileErrors);
+}
+
+/** `pipeline fingerprint`: one deployment unit's fingerprint; fails on that target's own invalid file. */
+export function unitFingerprint(
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+  stage: string,
+  region: string | undefined,
+  dependencies?: FingerprintDependencies,
+): string {
+  const { config, stageFileErrors } = loadOrFail(cwd);
+  const stageFileError = stageFileErrors.get(stage);
+  if (stageFileError !== undefined) throw stageFileError;
+  assertShapeAside(config, readPipelineContext(env), stageFileErrors);
+  return targetFingerprint(config, pipelineTarget(config, stage, region), region, cwd, dependencies);
 }
 
 function fail(error: unknown): never {
@@ -45,11 +102,7 @@ const plan: yargs.CommandModule = {
     args.option('out', { type: 'string', demandOption: true, describe: 'File to write the stage decisions to' }),
   handler: (args: yargs.Arguments) => {
     try {
-      const cwd = process.cwd();
-      const config = loadOrFail(cwd);
-      // A stale pipeline fails Plan itself: its stages and permissions no longer match deploy.config.
-      assertPipelineShape(config, readPipelineContext(process.env));
-      const decisions = planStages(config, parseStagePlans(process.env.CDK_CICD_PLAN), cwd);
+      const decisions = planDecisions(process.cwd(), process.env);
       for (const decision of decisions) {
         logger.info(
           `cdk-cicd pipeline plan: ${decision.stage} ${decision.run ? 'runs' : 'is skipped'} -- ` +
@@ -73,12 +126,8 @@ const fingerprint: yargs.CommandModule = {
       .option('out', { type: 'string', demandOption: true, describe: 'File to write the fingerprint to' }),
   handler: (args: yargs.Arguments) => {
     try {
-      const cwd = process.cwd();
-      const config = loadOrFail(cwd);
-      assertPipelineShape(config, readPipelineContext(process.env));
       const region = args.region as string | undefined;
-      const target = pipelineTarget(config, args.target as string, region);
-      writeFileSync(args.out as string, targetFingerprint(config, target, region, cwd));
+      writeFileSync(args.out as string, unitFingerprint(process.cwd(), process.env, args.target as string, region));
     } catch (error) {
       fail(error);
     }

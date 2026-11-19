@@ -64,7 +64,7 @@ export { defineCICD } from './config/define';
 export { secretArnFromDeployRoleExternalId } from './engine/external-id-secrets';
 // Container mode (Repo 2): `defineDeployment` authors the `deploy.config.ts` that drives
 // `cdk-cicd deploy --from-image`. TS-only like `defineCICD`; only the resolved structs are jsii-modeled.
-export { defineDeployment } from './config/define';
+export { defineDeployment, resolveDeploymentCompliance } from './config/define';
 // Stack-name control for `bin/` (TS-authoring, like `defineCICD`): a stage-qualified name, and the option
 // to reproduce Blueprint's `<STAGE>-<base>` so a migration updates the existing stack in place. See naming.ts.
 export { stageStackName, StageStackNameOptions } from './config/naming';

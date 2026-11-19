@@ -423,6 +423,64 @@ function normalizeComplianceBucketName(value: string | undefined, context: strin
   return name;
 }
 
+/** A compliance bucket's account: the target's own, which must be concrete. */
+function complianceAccount(stage: string, account: string | undefined): string {
+  if (account === undefined || !AWS_ACCOUNT_ID.test(account)) {
+    throw new Error(`cdk-cicd: target '${stage}' compliance logging requires a concrete 12-digit env.account.`);
+  }
+  return account;
+}
+
+/** A compliance bucket's Region: the target's only one. S3 server access logs cannot cross Regions. */
+function complianceRegion(stage: string, regions: readonly string[]): string {
+  if (regions.length !== 1 || !AWS_REGION.test(regions[0])) {
+    throw new Error(
+      `cdk-cicd: target '${stage}' compliance logging requires exactly one concrete AWS Region; ` +
+        'S3 server access logs cannot cross Regions.',
+    );
+  }
+  return regions[0];
+}
+
+/** One bucket name has one account and Region. Targets whose coordinates are not known yet are skipped. */
+function assertDistinctComplianceBuckets(targets: readonly ResolvedDeploymentTarget[]): void {
+  const bucketCoordinates = new Map<string, string>();
+  for (const target of targets) {
+    if (target.complianceLogBucketName === undefined || target.complianceLogBucketAccount === undefined) continue;
+    const coordinates = `${target.complianceLogBucketAccount}/${target.complianceLogBucketRegion}`;
+    const previous = bucketCoordinates.get(target.complianceLogBucketName);
+    if (previous !== undefined && previous !== coordinates) {
+      throw new Error(
+        `cdk-cicd: compliance bucket '${target.complianceLogBucketName}' is assigned to both ${previous} ` +
+          `and ${coordinates}. An S3 bucket has one account and Region; use distinct bucket names.`,
+      );
+    }
+    bucketCoordinates.set(target.complianceLogBucketName, coordinates);
+  }
+}
+
+/**
+ * Resolve every compliance-logging target's bucket coordinates from its account and Region, and check
+ * them. `defineDeployment` leaves them unset for a target that takes its account or Region from its
+ * `config/<stage>.json`; the CLI applies that file and then calls this. Throws when such a target still
+ * has no concrete account or not exactly one Region, or when one bucket name lands in two places.
+ * Targets whose coordinates are already set are kept as they are.
+ */
+export function resolveDeploymentCompliance(config: ResolvedDeploymentConfig): ResolvedDeploymentConfig {
+  const targets = config.targets.map((target) => {
+    if (target.complianceLogBucketName === undefined || target.complianceLogBucketAccount !== undefined) {
+      return target;
+    }
+    return {
+      ...target,
+      complianceLogBucketAccount: complianceAccount(target.stage, target.env.account),
+      complianceLogBucketRegion: complianceRegion(target.stage, target.env.regions),
+    };
+  });
+  assertDistinctComplianceBuckets(targets);
+  return { ...config, targets };
+}
+
 function normalizeTarget(
   target: DeploymentTargetInput,
   defaultComplianceLogBucketName?: string,
@@ -437,19 +495,15 @@ function normalizeTarget(
   let complianceLogBucketAccount: string | undefined;
   let complianceLogBucketRegion: string | undefined;
   if (complianceLogBucketName !== undefined) {
-    if (env.account === undefined || !AWS_ACCOUNT_ID.test(env.account)) {
-      throw new Error(
-        `cdk-cicd: target '${target.stage}' compliance logging requires a concrete 12-digit env.account.`,
-      );
+    // An account or Region left out here can still come from the target's config/<stage>.json, which
+    // the CLI applies when it loads the deployment and then calls resolveDeploymentCompliance. Only the
+    // values given are checked now; the coordinates stay unset until both are known.
+    if (env.account !== undefined) complianceLogBucketAccount = complianceAccount(target.stage, env.account);
+    if (regions.length > 0) complianceLogBucketRegion = complianceRegion(target.stage, regions);
+    if (complianceLogBucketAccount === undefined || complianceLogBucketRegion === undefined) {
+      complianceLogBucketAccount = undefined;
+      complianceLogBucketRegion = undefined;
     }
-    if (regions.length !== 1 || !AWS_REGION.test(regions[0])) {
-      throw new Error(
-        `cdk-cicd: target '${target.stage}' compliance logging requires exactly one concrete AWS Region; ` +
-          'S3 server access logs cannot cross Regions.',
-      );
-    }
-    complianceLogBucketAccount = env.account;
-    complianceLogBucketRegion = regions[0];
   }
 
   // Same gate default as stages: inner-loop targets deploy without approval, the rest require it.
@@ -537,19 +591,7 @@ export function defineDeployment(props: DeploymentProps): ResolvedDeploymentConf
     secretArnFromDeployRoleExternalId(target.deployment?.externalId, `target '${target.stage}' deployment.externalId`);
   }
   const targets = props.targets.map((target) => normalizeTarget(target, complianceLogBucketName));
-  const bucketCoordinates = new Map<string, string>();
-  for (const target of targets) {
-    if (target.complianceLogBucketName === undefined) continue;
-    const coordinates = `${target.complianceLogBucketAccount}/${target.complianceLogBucketRegion}`;
-    const previous = bucketCoordinates.get(target.complianceLogBucketName);
-    if (previous !== undefined && previous !== coordinates) {
-      throw new Error(
-        `cdk-cicd: compliance bucket '${target.complianceLogBucketName}' is assigned to both ${previous} ` +
-          `and ${coordinates}. An S3 bucket has one account and Region; use distinct bucket names.`,
-      );
-    }
-    bucketCoordinates.set(target.complianceLogBucketName, coordinates);
-  }
+  assertDistinctComplianceBuckets(targets);
   return {
     application: props.application,
     qualifier,

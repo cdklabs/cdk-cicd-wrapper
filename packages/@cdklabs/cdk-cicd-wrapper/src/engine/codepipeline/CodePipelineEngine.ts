@@ -1497,8 +1497,12 @@ export function imageValidationSynthCommands(config: ResolvedCicdConfig): string
 
 /** The synth command(s) the CI phase runs for `synthed`. */
 function synthCommands(synthed: string[], promote: boolean): string[] {
-  // `--all` when it really is all, so the emitted buildspec keeps saying what it means.
-  return promote ? ['npx cdk-cicd synth --all'] : synthed.map((name) => `npx cdk-cicd synth --stage ${name}`);
+  // `--all` when it really is all, so the emitted buildspec keeps saying what it means. `--require-account`
+  // fails Build on a stack that binds no account: this engine's deploy stages would refuse it anyway.
+  // A CLI older than the flag ignores it (yargs is not strict about options) and checks nothing.
+  return promote
+    ? ['npx cdk-cicd synth --all --require-account']
+    : synthed.map((name) => `npx cdk-cicd synth --stage ${name} --require-account`);
 }
 
 /** The `codeartifact login` that binds npm to the private repo, defaulting to the pipeline's own env. */
