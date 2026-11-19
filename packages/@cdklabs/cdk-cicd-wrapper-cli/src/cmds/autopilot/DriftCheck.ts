@@ -405,6 +405,21 @@ export function analyzeManifest(manifest: any, target: DriftTarget): DriftResult
   return analyzeStacks(stacks, target);
 }
 
+/**
+ * The stacks of a cloud assembly that bind no AWS account. `cdk-cicd deploy` always deploys to a concrete
+ * account (the stage's, or the caller's) and refuses such a stack, so `synth` reports them while the
+ * pipeline is still in its Build stage instead of at the first deploy stage. A stock `cdk init` stack is
+ * one: its `env` line ships commented out.
+ */
+export function accountAgnosticStacks(outDir: string, readManifest: ManifestReader = readManifestFromDisk): string[] {
+  return stacksFromAssembly(outDir, readManifest)
+    .filter(
+      (stack) =>
+        parseEnvironment(stack.environment ?? 'aws://unknown-account/unknown-region').account === 'unknown-account',
+    )
+    .map((stack) => stack.id);
+}
+
 /** Read `<outDir>/manifest.json` and analyze it. Throws (with a drift-check message) if the manifest
  * is missing or not valid JSON. */
 export function checkAssembly(outDir: string, target: DriftTarget): DriftResult {

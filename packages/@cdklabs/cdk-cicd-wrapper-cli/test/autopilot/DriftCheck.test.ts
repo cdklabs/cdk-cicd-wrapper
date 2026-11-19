@@ -4,7 +4,8 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { analyzeManifest, checkAssembly } from '../../src/cmds/autopilot/DriftCheck';
+import { accountAgnosticStacks, analyzeManifest, checkAssembly } from '../../src/cmds/autopilot/DriftCheck';
+import { reportUnboundStacks } from '../../src/cmds/autopilot/SynthCommand';
 
 function manifestWith(
   environment: string,
@@ -509,5 +510,60 @@ describe('m3-drift-check: checkAssembly', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('synth: stacks that bind no account', () => {
+  test('names a stock cdk init stack (no env) and not a stack bound to CDK_DEFAULT_ACCOUNT', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, import/no-extraneous-dependencies
+    const cdk: any = require('aws-cdk-lib');
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'drift-agnostic-'));
+    try {
+      const app = new cdk.App({ outdir: outDir });
+      new cdk.Stack(app, 'StockStack');
+      new cdk.Stack(app, 'BoundStack', { env: { account: TARGET.account, region: TARGET.region } });
+      new cdk.Stack(app, 'RegionOnlyStack', { env: { region: TARGET.region } });
+      const stage = new cdk.Stage(app, 'Dev');
+      new cdk.Stack(stage, 'StagedStockStack');
+      app.synth();
+
+      const unbound = accountAgnosticStacks(outDir);
+      expect(unbound).toEqual(expect.arrayContaining(['StockStack', 'RegionOnlyStack']));
+      expect(unbound.some((id) => id.includes('StagedStockStack'))).toBe(true);
+      expect(unbound).not.toContain('BoundStack');
+      // Exactly what deploy refuses: the same stack fails the deploy-time check.
+      expect(checkAssembly(outDir, TARGET).errors.join('\n')).toContain(
+        'StockStack does not bind the configured target account',
+      );
+    } finally {
+      fs.rmSync(outDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('synth: reporting unbound stacks', () => {
+  const target = { stage: 'dev', region: 'eu-west-1' };
+  const log = () => {
+    const lines: Array<[string, string]> = [];
+    return { lines, warn: (m: string) => lines.push(['warn', m]), error: (m: string) => lines.push(['error', m]) };
+  };
+
+  test('warns and passes by default, as a synth of such an app always has', () => {
+    const l = log();
+    expect(reportUnboundStacks(['StockStack'], target, false, l as any)).toBe(false);
+    expect(l.lines).toEqual([['warn', expect.stringContaining('StockStack (dev/eu-west-1) bind no AWS account')]]);
+  });
+
+  test('fails with --require-account, which the CodePipeline Build passes', () => {
+    const l = log();
+    expect(reportUnboundStacks(['StockStack'], target, true, l as any)).toBe(true);
+    expect(l.lines[0][0]).toBe('error');
+    expect(l.lines[0][1]).toContain('env: { account: process.env.CDK_DEFAULT_ACCOUNT');
+  });
+
+  test('says nothing when every stack binds an account', () => {
+    const l = log();
+    expect(reportUnboundStacks([], target, true, l as any)).toBe(false);
+    expect(l.lines).toEqual([]);
   });
 });
