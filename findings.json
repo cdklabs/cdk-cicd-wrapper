@@ -1690,20 +1690,6 @@
       }
     },
     {
-      "id": "planning-overview-diagram-redraw-untracked",
-      "component": "infra",
-      "layer": "static",
-      "producer": "planning",
-      "severity": "low",
-      "status": "open",
-      "title": "docs/content/overview/index.md says redrawing its two Blueprint-era diagrams for Autopilot is 'tracked separately', but no task or finding tracks it",
-      "detail": "Both admonitions under the process-flow and architecture images end with 'Redrawing this diagram for Autopilot is tracked separately.', but task.md and findings.json had no entry for it. CodeGuru has now been removed from both diagrams (diagrams-source.drawio pages 'Infrastructure' and 'Deployment Flow'). They still show the Blueprint shape: a RES account, fixed DEV/INT/PROD accounts, a CodeCommit-only source, and an unconditional per-account compliance bucket and KMS key. This entry is the tracking item the docs refer to. Done when both pages show the Autopilot shape (source choice, configurable stages, opt-in compliance bucket), both PNGs are re-exported and checked by eye, and the two caveat notes are removed.",
-      "location": {
-        "path": "docs/content/overview/index.md",
-        "line": 35
-      }
-    },
-    {
       "id": "migration-legacy-blueprint-codeguru-end-of-support",
       "component": "wrapper",
       "layer": "static",

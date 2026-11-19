@@ -35,9 +35,9 @@ Most of these features can be used independently of the CDK constructs, directly
 !!! note
 
     This diagram predates Autopilot (1.x) and still shows Blueprint (0.x) specifics — a CodeCommit-only
-    source and fixed `RES`/`DEV`/`INT`/`PROD` accounts. The pipeline shape (source → build/synth →
-    self-update → one deploy action per stage, gated by manual approval) still holds; the account names
-    and the CodeCommit-only source do not — see the stage list below.
+    source, Amazon CodeGuru code review, and fixed `RES`/`DEV`/`INT`/`PROD` accounts. The pipeline shape
+    (source → build/synth → self-update → one deploy action per stage, gated by manual approval) still
+    holds; the account names, the CodeCommit-only source, and CodeGuru do not — see the stage list below.
     Redrawing this diagram for Autopilot is tracked separately.
 
 The CI/CD process in the {{ project_name }} establishes the following:
@@ -59,10 +59,11 @@ The {{ project_name }} architecture is based on using DevOps services provided b
 !!! note
 
     Like the process-flow diagram above, this one predates Autopilot (1.x): it shows a CodeCommit-only
-    source and a per-account compliance bucket/KMS key created unconditionally. In Autopilot the source
-    is a choice (CodeCommit, GitHub, S3, or any CodeStar connection), and the compliance bucket/KMS
-    encryption are opt-in (`complianceLogBucketName` in `cicd.config.ts`). Redrawing this diagram for
-    Autopilot is tracked separately.
+    source with Amazon CodeGuru code review and a per-account compliance bucket/KMS key created
+    unconditionally. In Autopilot the source is a choice (CodeCommit, GitHub, S3, or any CodeStar
+    connection), there is no CodeGuru integration, and the compliance bucket/KMS encryption are opt-in
+    (`complianceLogBucketName` in `cicd.config.ts`). Redrawing this diagram for Autopilot is tracked
+    separately.
 
 You can read more about these elements in the [Developer Guide](../developer_guides/index.md).
 
