@@ -1423,3 +1423,18 @@ describe('Repo 2 Plan stage skips unchanged targets', () => {
     }
   });
 });
+
+describe('Repo 2 compliance logging with no account or Region anywhere', () => {
+  test('fails at synth, not at the first deploy action', () => {
+    expect(() =>
+      render(
+        defineDeployment({
+          image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer:1.2.3',
+          repository: Repository.codecommit('my-deploy-config'),
+          complianceLogBucketName: 'compliance-logs',
+          targets: [{ stage: 'dev', manualApproval: false }],
+        }),
+      ),
+    ).toThrow(/'dev' compliance logging requires a concrete 12-digit env\.account/);
+  });
+});

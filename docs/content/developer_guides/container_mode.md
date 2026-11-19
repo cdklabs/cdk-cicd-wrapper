@@ -215,9 +215,9 @@ A target can leave `env` out of `deploy.config.ts` and take its account and Regi
 - `deploy-ci` reads the file when it builds the pipeline, because the account and Region decide the
   pipeline's IAM grants. Changing them later makes Plan ask you to re-run `deploy-ci`.
 - `aws.region` names one Region. Declare a multi-Region target's Regions in `deploy.config.ts`.
-- A target with compliance logging (`complianceLogBucketName`, set on it or for the whole deployment)
-  must declare its `env` in `deploy.config.ts`. `defineDeployment` checks the bucket's account and Region
-  before the config file is read.
+- A target with compliance logging (`complianceLogBucketName`, set on it or for the whole deployment) can
+  take its account and Region from the file too. Its bucket is placed in that account and Region once the
+  file is applied, and a target still missing either fails when the deployment is loaded.
 
 ### Provision the CD pipeline, or run locally
 

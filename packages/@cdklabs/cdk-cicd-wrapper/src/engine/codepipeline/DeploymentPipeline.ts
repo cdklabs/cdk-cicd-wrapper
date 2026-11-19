@@ -31,6 +31,7 @@ import {
   resolveDefaultSynthesizerQualifier,
   specializeDefaultSynthesizerRoleArn,
 } from '../../config/default-synthesizer-role-arn';
+import { resolveDeploymentCompliance } from '../../config/define';
 import {
   NpmRegistryConfig,
   RegionOrder,
@@ -119,7 +120,9 @@ export class DeploymentPipeline extends Construct {
 
   constructor(scope: Construct, id: string, props: DeploymentPipelineProps) {
     super(scope, id);
-    const config = props.config;
+    // A target that took its account or Region from config/<stage>.json has its compliance bucket resolved
+    // by the CLI already; one that has neither anywhere fails here, before any deploy action could.
+    const config = resolveDeploymentCompliance(props.config);
     if (config.repository === undefined) {
       throw new Error(
         'cdk-cicd: defineDeployment needs a `repository` to provision a CD pipeline -- set it, or use the ' +

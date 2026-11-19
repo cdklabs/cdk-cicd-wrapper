@@ -212,6 +212,18 @@ describe('account and Region from config/<stage>.json', () => {
     ).toThrow(/sets aws.region eu-west-1, but deploy.config target 'int' deploys to eu-west-1, us-east-1/);
   });
 
+  test('a compliance-logging target can take its account and Region from its file', () => {
+    const logged = (stage: string, env: object = {}) => ({ ...target(stage, env), complianceLogBucketName: 'logs' });
+    const [int] = loadDeployment(
+      repoWith([logged('int')], { int: { version: '0.1.0', aws: { accountId: '222222222222', region: 'eu-west-1' } } }),
+    )!.targets;
+    expect([int.complianceLogBucketAccount, int.complianceLogBucketRegion]).toEqual(['222222222222', 'eu-west-1']);
+    // With neither in deploy.config nor in the file, it fails as defineDeployment used to.
+    expect(() => loadDeployment(repoWith([logged('int')], { int: { version: '0.1.0' } }))).toThrow(
+      /'int' compliance logging requires a concrete 12-digit env\.account/,
+    );
+  });
+
   test('rejects malformed values; an unreadable file contributes nothing', () => {
     expect(() => loadDeployment(repoWith([target('int')], { int: { aws: { accountId: '12' } } }))).toThrow(/12-digit/);
     expect(() => loadDeployment(repoWith([target('int')], { int: { aws: { region: 'Ireland' } } }))).toThrow(

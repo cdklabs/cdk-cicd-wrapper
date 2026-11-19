@@ -238,7 +238,13 @@ export function withStageFileEnvironments(config: ResolvedDeploymentConfig, cwd:
     if (account === target.env?.account && regions === target.env?.regions) return target;
     return { ...target, env: { ...target.env, account, regions } };
   });
-  return { ...config, targets };
+  // A compliance-logging target that took its account or Region from its file gets its bucket coordinates
+  // only now; defineDeployment, which never sees the files, left them unset. Required lazily: the CLI boots
+  // without loading the wrapper, and a deploy.config has already loaded it by the time it gets here.
+  const { resolveDeploymentCompliance } =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('@cdklabs/cdk-cicd-wrapper') as typeof import('@cdklabs/cdk-cicd-wrapper');
+  return resolveDeploymentCompliance({ ...config, targets });
 }
 
 /** The stage with the given name, or undefined. */
