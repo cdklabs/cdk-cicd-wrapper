@@ -1779,7 +1779,7 @@
       "layer": "dynamic",
       "producer": "qa",
       "severity": "medium",
-      "status": "open",
+      "status": "resolved",
       "title": "devopsAgent.changeRiskAnalysis (experimental) has not been seen producing a review: the test account has no GitHub/GitLab repository connected to an Agent Space",
       "detail": "Checked live on 2026-11-19: CreateBacklogTask accepts taskType CODE_CHANGE_RISK_ANALYSIS with the forwarder's title and description (task PENDING_START). Without a connected repository, the task went to FAILED within about 20 s, with no execution and an empty statusReason. So the request shape is accepted, but no review has been observed, and neither has how DevOps Agent resolves the commit and repo named in the description. AWS documents Code Change Risk Analysis via chat and pull requests, not CreateBacklogTask. The investigations and knowledge levels were proven end to end with test/proof/devops-agent-verify.sh. Done when: a pipeline with a GitHub or CodeStar-connection source, its repository connected and indexed in the Agent Space, and changeRiskAnalysis.beforeApprovalOf on a gated stage produces a review report (recommended action plus findings) when that approval starts. Add it to the proof as an opt-in leg once a connected test repository exists.",
       "location": {
@@ -1813,6 +1813,20 @@
       "location": {
         "path": "CHANGELOG.md",
         "line": 9
+      }
+    },
+    {
+      "id": "planning-devops-agent-change-risk-analysis-follow-up",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "planning",
+      "severity": "low",
+      "status": "open",
+      "title": "Re-add devopsAgent.changeRiskAnalysis once a live proof shows a review report end to end",
+      "detail": "PR #371 dropped the experimental changeRiskAnalysis level (a CODE_CHANGE_RISK_ANALYSIS backlog task when a gated stage's manual approval starts) because it could not be verified before merge (see qa-devops-agent-change-risk-analysis-unproven-end-to-end). The removed design: a second EventBridge rule on Approve-<stage> STARTED events, the forwarder reading the execution's source revision with codepipeline:GetPipelineExecution, and a task naming the commit and repository; config validation required a GitHub or CodeStar-connection source, a stage with a manual approval, and no container mode. Done when: a test GitHub repository is connected to an Agent Space (a human OAuth step plus indexing), a CodeStar-sourced pipeline with a gated stage starts its approval, and the Agent Space shows a review report with a recommended action; that run becomes an opt-in leg of test/proof/devops-agent-verify.sh before the level is re-added.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/devops-agent/DevOpsAgentIntegration.ts",
+        "line": 1
       }
     }
   ]
