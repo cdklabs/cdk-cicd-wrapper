@@ -32,7 +32,7 @@ If the repository already exists (for example, it is managed elsewhere, or share
 repository: Repository.codecommit('my-repo', 'main', { existing: true }),
 ```
 
-An imported repository must already exist at deploy time; a created one is provisioned with the CDK default removal policy (retained on stack deletion, so your source history is not lost).
+An imported repository must already exist at deploy time. A created one belongs to the pipeline stack and has no `DeletionPolicy`, so **deleting the pipeline stack deletes the repository and its history**. To keep the source independent of the pipeline, create the repository yourself and import it with `{ existing: true }` (`cdk-cicd init --existing`).
 
 `Repository.codecommit(...)` names the CodeCommit repository the pipeline reads from. Unlike Blueprint (0.x)'s `RepositorySource.codecommit(...)`, there is no `enableCodeGuruReviewer`/`enablePullRequestChecks` option: Amazon CodeGuru Reviewer pull-request automation is **not** part of Autopilot. If you relied on that, `cdk-cicd security-scan`/`cdk-cicd check` (Bandit, Semgrep, ShellCheck, dependency audit — see the [Security guide](./security.md)) run in the pipeline's CI build instead, but they are not PR-time checks against a CodeCommit pull request specifically.
 

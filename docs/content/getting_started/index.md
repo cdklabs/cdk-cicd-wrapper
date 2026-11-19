@@ -35,7 +35,8 @@ npm install @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
 
 ## Write `cicd.config.ts`
 
-Create `cicd.config.ts` next to your `cdk.json`:
+`npx cdk-cicd init` writes this file and the `cdk.json` change below for you (`--dry-run` to preview,
+`--stages dev,prod` for the stages). To write it by hand, create `cicd.config.ts` next to your `cdk.json`:
 
 ```typescript
 import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
@@ -52,7 +53,7 @@ See the [CD developer guide](../developer_guides/cd.md) for the full stage shape
 
 ## Point `cdk.json` at `cdk-cicd exec`
 
-`cdk.json`'s `app` command is what turns your plain app into a wrapped one — nothing else in `bin/` needs to change:
+`cdk.json`'s `app` command is what turns your plain app into a wrapped one. The one line `bin/` needs is an `env` on each stack, so it names its account (a stock `cdk init` entry ships that line commented out):
 
 ```json
 {
