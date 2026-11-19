@@ -35,6 +35,12 @@ export default defineCICD({
 A `devopsAgent` block that enables no level is rejected rather than silently doing nothing. Removing a level
 removes what it deployed on the next pipeline deploy.
 
+This is not the [MCP server](../mcp/index.md). `cdk-cicd mcp` helps a coding agent in your editor check
+`cicd.config.ts` before a deploy. `devopsAgent` works in AWS, after a pipeline action has failed. The diagram
+shows both:
+
+![Agent integrations: cdk-cicd mcp and the skills on your workstation; the devopsAgent rules, forwarder, dead-letter queue and skill assets in the pipeline account](../assets/diagrams/autopilot-agent-integrations.png)
+
 ## What a level deploys
 
 Everything goes into the pipeline stack, in the pipeline's account and Region.
@@ -48,6 +54,12 @@ Everything goes into the pipeline stack, in the pipeline's account and Region.
   [`CreateBacklogTask`](https://docs.aws.amazon.com/devopsagent/latest/APIReference/API_CreateBacklogTask.html)
   call of type `INVESTIGATION`. The task names the pipeline, stage, action, execution ID and attempt, the
   action's error code and summary, and links to the action and the execution in the console.
+
+![The Incidents list in the Agent Space's web app, with the investigation the forwarder opened: Pipeline ... failed at Build / Build, Completed](../assets/images/devops-agent/incidents.png)
+
+*The investigation the forwarder opened for a failed Build action, in the Agent Space's operator web app.
+The forwarder creates it through the `CreateBacklogTask` API, and the web app lists it as triggered by
+"User".*
 
 **`changeRiskAnalysis`**
 
@@ -84,6 +96,11 @@ again.
   read them, the same people who can already read the investigations.
 - In container mode, Repo 1 and Repo 2 each publish their own map (named after the stack). Turn
   `investigationSkill` on in only one of them, so the Agent Space holds a single copy of the generic skill.
+
+![Knowledge, Skills in the Agent Space's web app: cdk-cicd-pipeline-failure-investigation and cdk-cicd-pipeline-map-<stack> next to the Agent Space's sample skill](../assets/images/devops-agent/skills.png)
+
+*Both skills, published by the `knowledge` level of a test pipeline. The first entry is a sample skill the
+Agent Space starts with.*
 
 ## Configuration
 
@@ -162,6 +179,19 @@ involved, and reported:
 - **Mitigation plan:** back up the bad source, regenerate the lockfile and run `npm ci && npx cdk-cicd synth --all`
   locally, upload a complete bundle, verify the new run, with rollback steps. It proposes the plan; it does not
   run it.
+
+![The investigation's summary: the incident, the confirmed root cause (no package-lock.json in the source bundle) and the recommended mitigation](../assets/images/devops-agent/investigation-summary.png)
+
+The timeline shows where it started. It read the task the forwarder sent, then the
+`cdk-cicd-pipeline-failure-investigation` skill and its pipeline-layout reference, before it went to the logs:
+
+![The investigation timeline: the task text the forwarder sent, then Read skill cdk-cicd-pipeline-failure-investigation/SKILL.md and its references/pipeline-layout.md](../assets/images/devops-agent/investigation-timeline.png)
+
+The mitigation plan is a sequence of steps with the commands to run, each with its own check and a rollback:
+
+![The mitigation plan: replace the incomplete source bundle, with step 1.1 backing up the failing source object](../assets/images/devops-agent/mitigation-plan.png)
+
+*Screenshots from a test run. Account IDs are replaced with 111111111111.*
 
 It also listed what it could not see. AWS's managed `AIDevOpsAgentAccessPolicy` does not grant
 `codebuild:BatchGetBuilds` or read access to the pipeline's S3 source, so the agent worked from the logs. With no
