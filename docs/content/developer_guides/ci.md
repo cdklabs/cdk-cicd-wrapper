@@ -15,7 +15,7 @@ There is no `PhaseCommand`/`definePhase` model in Autopilot. The CI build's comm
 synth (+ CDK Nag)
 ```
 
-The final synth step is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. It is always `npm run cdk synth`, so it uses the `aws-cdk` version pinned in your project. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
+The final synth step is always appended at the end and is **never** replaced by `ci.steps` — dropping it would render a pipeline with nothing to deploy. On `CODEPIPELINE` it is `npx cdk-cicd synth --all --require-account`, or one `npx cdk-cicd synth --stage <stage> --require-account` per synthesized stage under deploy-time synth; `cdk-cicd synth` runs `npx cdk synth`. On `CDK_PIPELINES` and `GITHUB_ACTIONS` it is `npm run cdk synth`, which uses the `aws-cdk` version pinned in your project. Setting `ci.steps`, however, **replaces** the entire default build phase (including its `npm ci`) rather than adding to it — a project that configures its own steps owns its build phase and is responsible for its own `npm ci`.
 
 !!! note "One `cdk.json` entry point; `CDK_CICD_MODE` decides app-vs-pipeline"
     `cdk.json` has a **single** `app` command — the preferred form is `npm run cdk-cicd exec bin/<your-entry>.ts` (or `npx cdk-cicd exec …`). That one entry renders **either** the application stacks **or** the pipeline, decided by the `CDK_CICD_MODE` environment variable that the invoking command sets — there is no `--app` override and no separate renderer command:
@@ -26,7 +26,7 @@ The final synth step is always appended at the end and is **never** replaced by 
     So you provision the pipeline with `cdk-cicd deploy-ci` (preview it first with `cdk-cicd synth-ci` / `cdk-cicd list-ci`, which run the same entry with the mode set), and a local plain synth/deploy always gives you the app stacks.
 
 !!! important
-    The build (and every wrapper command that synthesizes) runs **`npm run cdk synth`**, so it uses the `aws-cdk` version pinned in your project. This requires your `package.json` to define a `cdk` script (e.g. `"cdk": "cdk"`), the expected shape for a CDK app; a project without a `cdk` script fails at the synth step.
+    `cdk-cicd deploy-ci`, `cdk-cicd synth-ci` and `cdk-cicd list-ci` run **`npm run cdk`**, as does the `CDK_PIPELINES` and `GITHUB_ACTIONS` synth step, so they use the `aws-cdk` version pinned in your project. This requires your `package.json` to define a `cdk` script (e.g. `"cdk": "cdk"`), the expected shape for a CDK app; without one, those commands fail. The flat `CODEPIPELINE` engine's `SelfMutate` step runs `cdk-cicd deploy-ci`, so every engine needs the script. `cdk-cicd synth` and `cdk-cicd deploy` run `npx cdk` instead.
 
 ## Default build phase: your own npm scripts
 
@@ -66,13 +66,14 @@ export default defineCICD({
 });
 ```
 
-Only `cdk synth` is appended after your steps; nothing is prepended. (With **no** `ci.steps` configured, the default build begins with its own `npm ci` — see above.)
+After your steps the engine appends the synth. Before them, the build runs the npm registry setup and login when `npmRegistry` or `codeArtifact` is configured, and the proxy setup when `proxy` is. Where the account-warming scan (`warmAccountsFromSsm`) runs depends on the engine: on `CODEPIPELINE` it runs after your steps, just before the synth; on `CDK_PIPELINES` and `GITHUB_ACTIONS` it runs before the registry login and your steps. Nothing else is added: with `ci.steps` set, `npm ci` runs only if your steps include it. (With **no** `ci.steps` configured, the default build begins with its own `npm ci` — see above.)
 
 ### Controlling which stages CI synthesizes
 
-`ci.synthStages` controls which stages the CI build's `cdk synth` synthesizes for validation, on top of whatever the active [deploy model](../getting_started/index.md) needs — `[]` (the default) defers to the engine's own default (every stage under the default assembly-promotion model, one environment under deploy-time synth); `'all'` synthesizes every configured stage; an explicit list of stage names synthesizes just those.
+`ci.synthStages` controls which stages the CI build synthesizes. Only the `CODEPIPELINE` engine reads it; `CDK_PIPELINES` and `GITHUB_ACTIONS` ignore it. Under `DeployModel.DEPLOY_TIME_SYNTH` (see [deploy model](./configuration.md#deploy-model)) it defaults to the first stage. Under the default `ASSEMBLY_PROMOTION` model the CI build synthesizes every stage, and setting `ci.synthStages`, even to `'all'`, is rejected. A container-mode image build reads it under either model and defaults to every stage. `'all'` synthesizes every configured stage; an explicit list of stage names synthesizes just those.
 
 ```typescript
+deployModel: DeployModel.DEPLOY_TIME_SYNTH,
 ci: {
   synthStages: 'all', // or e.g. ['dev', 'prod']
 },
@@ -125,8 +126,8 @@ ci: {
     `LinuxBuildImage.fromDockerRegistry(..., { secretsManagerCredentials })`; CDK renders the
     CodeBuild registry credential and grants the CI/Synth role secret read. When the secret uses an
     imported customer-managed key, the wrapper also grants that role `kms:Decrypt` on the exact key
-    ARN. `codeBuildImageCredentials` is rejected for managed CodeBuild and private ECR images because
-    those image classes use different pull-credential models.
+    ARN. `codeBuildImageCredentials` is rejected for managed CodeBuild, `public.ecr.aws` and private ECR
+    images because those image classes use different pull-credential models.
 
 - `GITHUB_ACTIONS` uses `ci.image` as the Build-Synth GitHub job container.
   - `aws/codebuild/...` is rejected: it is a CodeBuild image ID, not a pullable OCI job-container

@@ -6,7 +6,7 @@ When you use a construct's `.fromLookup()` method, the result of the call is cac
 ### 1. Remove cdk.context.json from .gitignore
 vi .gitignore ### remove cdk.context.json
 ### 2. Generate the cdk.context.json
-npx dotenv-cli -- npm run cdk synth ### this command generates the cdk.context.json
+npx cdk-cicd synth --all ### synthesizes every stage x region; this generates the cdk.context.json
 ### 3. Add the cdk.context.json to git remote
 git add cdk.context.json ### re-add cdk.context.json
 git commit -am "feat: re-added cdk.context.json"

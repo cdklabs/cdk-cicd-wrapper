@@ -26,8 +26,8 @@ export default defineCICD({
 });
 ```
 
-When set, every build project the pipeline creates runs `aws codeartifact login` before `npm ci` and is granted read access to the repository — this is also how a pipeline installs the wrapper itself before it is published to the public npm registry (e.g. while running against an alpha/`next` build).
+When set, every build project the pipeline creates runs `aws codeartifact login` before `npm ci` and is granted read access to the repository — this is also how a pipeline installs packages that are not on the public npm registry, such as an unreleased build of the wrapper.
 
 **Note**: `codeArtifact` covers npm only. Unlike Blueprint (0.x)'s `CodeArtifactPlugin`, Autopilot has no `repositoryTypes` option for Python/Swift/.NET package formats through CodeArtifact — `CodeArtifactConfig` (`domain`/`repository`/`account`/`region`/`npmScope`) is npm-scoped only.
 
-**Current limitation:** the `GITHUB_ACTIONS` engine does not yet wire `codeArtifact` up with working IAM grants (see the note in the [GitHub Integration guide](./vcs_github.md)) — this option is confirmed to work with the default `CODEPIPELINE` engine and `CDK_PIPELINES`.
+`codeArtifact` is supported by all three engines (`CODEPIPELINE`, `CDK_PIPELINES` and `GITHUB_ACTIONS`). With `GITHUB_ACTIONS`, the generated workflow's synth job runs `aws codeartifact login` after it assumes the OIDC role, and that role is granted the same read access.

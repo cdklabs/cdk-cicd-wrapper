@@ -35,13 +35,13 @@ Switching between `managedVpc` and `vpcId` (or removing `vpc` entirely) changes 
 
 ## Proxy
 
-If your CodeBuild projects need to reach the internet through an HTTP(S) proxy, store the proxy credentials in Secrets Manager (keys `username`, `password`, `http_proxy_port`, `https_proxy_port`, `proxy_domain`) and reference the secret's ARN:
+If your CodeBuild projects need to reach the internet through an HTTP(S) proxy, store the proxy credentials in Secrets Manager (keys `username`, `password`, `http_proxy_port`, `https_proxy_port`, `proxy_domain`) and reference the secret's complete ARN. The read permission is granted on exactly that ARN, so a partial ARN without the 6-character suffix Secrets Manager appends never matches the secret:
 
 ```typescript
 export default defineCICD({
   // ...
   proxy: {
-    proxySecretArn: 'arn:aws:secretsmanager:region:account:secret:my-proxy-secret',
+    proxySecretArn: 'arn:aws:secretsmanager:<region>:<account>:secret:my-proxy-secret-AbCdEf',
     // noProxy defaults to the region's own amazonaws.com endpoint (so AWS API calls skip the proxy);
     // proxyTestUrl defaults to https://aws.amazon.com
   },

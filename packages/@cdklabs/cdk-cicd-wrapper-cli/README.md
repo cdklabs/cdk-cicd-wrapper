@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a command-line interface (CLI) tool designed to streamline and automate various tasks related to AWS Cloud Development Kit (CDK) projects. It drives the Autopilot pipeline (`init`, `exec`, `deploy-ci`, `synth`, `deploy`, `check`, `migrate`) and provides a set of utilities to manage compliance, security, licensing, and dependency management, all within a single interface.
+The [CDK CI/CD Wrapper](https://cdklabs.github.io/cdk-cicd-wrapper) CLI is a command-line interface (CLI) tool designed to streamline and automate various tasks related to AWS Cloud Development Kit (CDK) projects. It drives the Autopilot pipeline (`init`, `exec`, `deploy-ci`, `synth`, `deploy`, `check`, `migrate`, `mcp`) and provides a set of utilities to manage compliance, security, licensing, and dependency management, all within a single interface.
 
 ## Table of Contents
 
@@ -37,13 +37,13 @@ The CDK CI/CD Wrapper CLI provides several commands to help you manage various a
 
 ### Autopilot pipeline commands
 
-These commands drive the Autopilot (`1.x`) config-driven pipeline defined in `cicd.config.ts`. Run any of them with `--help` for the full flag set (`--help` is authoritative and always current):
+These commands drive the Autopilot config-driven pipeline defined in `cicd.config.ts`. Run any of them with `--help` for the full flag set (`--help` is authoritative and always current):
 
 ```bash
 npx cdk-cicd <command> --help
 ```
 
-> **Experimental.** The Autopilot pipeline commands are pre-release and still evolving; flags and behaviour may change before the `1.0` release.
+> The Autopilot pipeline commands are still evolving. A change that breaks a flag or a behaviour ships as a new major version; the [release notes](https://github.com/cdklabs/cdk-cicd-wrapper/releases) list them.
 
 | Command     | Description                                                                                                                                                                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -52,8 +52,9 @@ npx cdk-cicd <command> --help
 | `synth`     | Synthesize the app per stage/region (`--stage`, or `--all` for full CI validation).                                                                                                                                                                                |
 | `deploy`    | Synth, drift-check, and deploy a stage across its regions (`--stage`), or run the container-mode executor (`--from-image`).                                                                                                                                        |
 | `deploy-ci` | Provision the pipeline itself into the hub account, from `cicd.config.ts` alone — the one command you run by hand; everything after it is the pipeline deploying the application. `--disposable` tears down the pipeline's artifact bucket and key with the stack. |
-| `check`     | Run the default-on CI checks (`validate`, `audit`, `license`, `security`) — the default build step.                                                                                                                                                                |
+| `check`     | Run the default-on CI checks (`validate`, `audit`, `license`, `security`), locally or as a `ci.steps` entry.                                                                                                                                                       |
 | `migrate`   | Generate an Autopilot `cicd.config.ts` from an existing `0.x` `PipelineBlueprint` entry file (`--entry`, `--application`, `--dry-run`).                                                                                                                            |
+| `mcp`       | Serve `check_config` and `describe_pipeline` to a coding agent over the Model Context Protocol (stdio).                                                                                                                                                            |
 
 See the [CLI reference](https://cdklabs.github.io/cdk-cicd-wrapper/cli/) for the full command documentation.
 
@@ -67,7 +68,7 @@ The `npx @cdklabs/cdk-cicd-wrapper-cli security-scan` command scans your codebas
 
 ### License Management
 
-The `npx @cdklabs/cdk-cicd-wrapper-cli license` command can validate and generate a NOTICE file for your project. The NOTICE file consistency is tested by this command and is included in the CodePipeline Build step to ensure the file is always up-to-date.
+The `npx @cdklabs/cdk-cicd-wrapper-cli license` command can validate and generate a NOTICE file for your project. The NOTICE file consistency is tested by this command. The pipeline's Build runs it only if a `ci.steps` entry, or one of the npm scripts the default Build runs (`audit`, `build`, `test`), calls it.
 
 To update the NOTICE file, run the following command:
 
@@ -110,7 +111,7 @@ The `npx @cdklabs/cdk-cicd-wrapper-cli validate` command ensures that the `packa
 
 ## Contributing
 
-Contributions to the CDK CI/CD Wrapper are welcome! If you'd like to contribute, please follow the guidelines outlined in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+Contributions to the CDK CI/CD Wrapper are welcome! If you'd like to contribute, please follow the guidelines outlined in the [CONTRIBUTING.md](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/CONTRIBUTING.md) file.
 
 ## License
 

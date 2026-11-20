@@ -9,11 +9,21 @@
 - **An AWS account** you can deploy into, with credentials in your shell (the pipeline is provisioned
   into this "hub" account; stages deploy to the accounts/regions your config names).
 - **Node.js 20+** and the **AWS CDK v2** CLI (`npx cdk --version`).
-- **Python 3** on your `PATH` — the `cdk-cicd` CLI's security checks resolve a Python interpreter when it
-  starts, so any `cdk-cicd` command needs Python 3 available (`python3 --version`).
+- **Python 3** on your `PATH` (`python3 --version`) only if you run the CLI's security checks
+  (`cdk-cicd security-scan`, or the `security` step of `cdk-cicd check`, which is skipped without it).
+  Python is also needed by `cdk-cicd check-dependencies --python` and by `cdk-cicd license` in a project with a
+  `Pipfile`. Every other `cdk-cicd` command runs without it.
 - The hub account/region and every stage account/region **bootstrapped** for CDK:
   `npx cdk bootstrap aws://<account>/<region>`. The engine-owned pipeline stack always uses the standard
   bootstrap qualifier; a target application's custom qualifier applies only to its target stacks.
+  The pipeline's deploy builds run in the hub account and assume each stage account's bootstrap roles,
+  and later chapters deploy to other accounts, so bootstrap every stage account trusting the hub:
+
+    ```bash
+    npx cdk bootstrap aws://<stage-account>/<region> --trust <pipeline-account> \
+      --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+    ```
+
 - A **source** the pipeline reads from — a CodeCommit repo, a GitHub repo via a CodeStar (CodeConnections)
   connection, or a versioned S3 object.
 
@@ -27,9 +37,10 @@ npm install --include=dev --save @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wra
 ```
 
 `@cdklabs/cdk-cicd-wrapper` is the constructs library; `@cdklabs/cdk-cicd-wrapper-cli` provides the
-`cdk-cicd` command you'll run. (See the pre-release note on the overview page while Autopilot is unreleased.)
+`cdk-cicd` command you'll run.
 
-You will **not** import the wrapper in your `bin/` in the basic flow — the next chapter shows why.
+You will **not** add a builder chain to your `bin/` — the next chapter changes only your stack's `env` and
+stack name.
 
 !!! success "Verify"
     Before moving on, confirm your toolchain is ready:
@@ -41,7 +52,7 @@ You will **not** import the wrapper in your `bin/` in the basic flow — the nex
     ```
 
     The `npx cdk-cicd --help` call is the important one: it proves the CLI package installed and is
-    runnable. If it fails, re-check the `npm install` above and your pre-release channel.
+    runnable. If it fails, re-check the `npm install` above.
 
 ## Recap
 

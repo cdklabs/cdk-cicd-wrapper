@@ -12,6 +12,7 @@ Autopilot offers two CodePipeline deploy models. Guiding principle: **efficiency
 ```ts
 export default defineCICD({
   application: 'my-app',
+  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: ['dev', 'prod'],
   // deployModel: DeployModel.ASSEMBLY_PROMOTION   // the default
@@ -28,6 +29,7 @@ import { defineCICD, DeployModel, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
+  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: ['dev', 'prod'],
   deployModel: DeployModel.DEPLOY_TIME_SYNTH,
@@ -35,8 +37,9 @@ export default defineCICD({
 });
 ```
 
-Each stage synthesizes at deploy time. CI synthesizes **one env by default** (set `ci.synthStages` to a
-list or `'all'`), and any stage CI already synthesized is **reused**, not synthesized again.
+Stages synthesize at deploy time, except the ones CI already synthesized. CI synthesizes **one env by
+default** (set `ci.synthStages` to a list or `'all'`), and a stage CI synthesized is **reused**: its deploy
+consumes CI's assembly instead of synthesizing again.
 
 !!! tip "Which model?"
     Stick with the default **assembly promotion** unless you specifically need per-stage synth (for
@@ -51,6 +54,7 @@ Lambda-driven wait instead:
 ```ts
 export default defineCICD({
   application: 'my-app',
+  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: ['dev', 'prod'],
   asyncDeploy: true,
@@ -77,7 +81,7 @@ to the default `CODEPIPELINE` engine:
 |---|---|---|
 | `deployModel` | `defineCICD` | Assembly promotion (default) vs deploy-time synth (above). |
 | `asyncDeploy` | `defineCICD` | Move the CloudFormation wait off build compute (above). |
-| `ci.synthStages` | `defineCICD` | How many stages CI synthesizes as a validation gate. |
+| `ci.synthStages` | `defineCICD` | How many stages CI synthesizes as a validation gate. Only with `DEPLOY_TIME_SYNTH`; under assembly promotion, setting it makes `deploy-ci` fail. |
 | `ci.image` / `ci.steps` | `defineCICD` | Custom CI build image and your own named build steps (chapter 1). |
 | `manualApproval` | a stage | Gate a stage behind a human approval (chapter 2). |
 | `deployment.deployRole` / `cfnExecutionRole` | a stage | Forced deploy / CloudFormation-execution roles (chapter 2). |
@@ -101,7 +105,8 @@ npx cdk-cicd deploy-ci --disposable
 
 !!! success "Verify"
     - **Deploy model:** in an execution's Build logs, assembly promotion synthesizes once and each deploy
-      consumes the artifact; deploy-time synth shows a synth step inside each stage's deploy.
+      consumes the artifact. Under deploy-time synth, a stage CI already synthesized deploys with
+      `--from-assembly`; a stage CI did not synthesize shows a synth step inside its deploy.
     - **Async deploy:** the deploy action returns quickly and a wrapper Lambda drives the CloudFormation
       wait — the CodeBuild project isn't held open for the whole deployment.
     - **Disposable:** a pipeline provisioned with `--disposable` deletes its artifact bucket and key when

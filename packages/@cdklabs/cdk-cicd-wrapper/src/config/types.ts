@@ -11,6 +11,95 @@ import { WorkflowTriggers } from 'cdk-pipelines-github';
 import { BuildImage } from './build-image';
 import { Repository } from './repository';
 
+/** Priority of the backlog tasks the pipeline opens in DevOps Agent (`CreateBacklogTask` priority values). */
+export enum DevOpsAgentPriority {
+  CRITICAL = 'CRITICAL',
+  HIGH = 'HIGH',
+  MEDIUM = 'MEDIUM',
+  LOW = 'LOW',
+  MINIMAL = 'MINIMAL',
+}
+
+/**
+ * Connect the pipeline to AWS DevOps Agent. Off unless configured, and inside the block every capability
+ * is its own level, on only when its block is present: `investigations` and `knowledge`. A block that
+ * enables no level is rejected rather than silently doing nothing.
+ *
+ * You create the Agent Space and associate the accounts it may investigate (the pipeline account and
+ * each stage account) yourself; the wrapper only connects the pipeline to it. The Agent Space must be in
+ * the pipeline's account. DevOps Agent bills its work per agent-second.
+ */
+export interface DevOpsAgentConfig {
+  /**
+   * The Agent Space ID (the ID, not the ARN). Changing it updates the forwarder in place, but REPLACES
+   * the `knowledge` assets: an asset's Agent Space cannot be updated.
+   */
+  readonly agentSpaceId: string;
+  /**
+   * The Region the Agent Space lives in, when it differs from the pipeline stack's Region. `knowledge`
+   * needs the Agent Space in the pipeline stack's own Region.
+   *
+   * @default - the pipeline stack's Region
+   */
+  readonly region?: string;
+  /**
+   * Open an investigation when a pipeline action fails. Rejected and timed-out manual approvals are not
+   * failures. Present = on.
+   *
+   * @default - off
+   */
+  readonly investigations?: DevOpsAgentInvestigationsConfig;
+  /**
+   * Publish what the wrapper knows about the pipeline into the Agent Space as skills, so investigations
+   * start in the right log or stack. Present = on.
+   *
+   * @default - off
+   */
+  readonly knowledge?: DevOpsAgentKnowledgeConfig;
+}
+
+/** The `investigations` level of `DevOpsAgentConfig`: one investigation per failed pipeline action. */
+export interface DevOpsAgentInvestigationsConfig {
+  /**
+   * Investigate failures of these stages only (stage names from the config), for example `['prod']` to
+   * spend agent time only where it matters.
+   *
+   * @default - every stage
+   */
+  readonly stages?: string[];
+  /**
+   * Also investigate failures of the pipeline's own actions: source, build/synth, self-update, asset
+   * publishing, Repo 2's plan and Repo 1's image build.
+   *
+   * @default true
+   */
+  readonly includePipelineActions?: boolean;
+  /**
+   * Priority of each investigation.
+   *
+   * @default DevOpsAgentPriority.HIGH
+   */
+  readonly priority?: DevOpsAgentPriority;
+}
+
+/** The `knowledge` level of `DevOpsAgentConfig`: skills the pipeline stack publishes into the Agent Space. */
+export interface DevOpsAgentKnowledgeConfig {
+  /**
+   * Publish the generic cdk-cicd-wrapper failure-investigation skill: what each stage and action runs and
+   * where its log or stack lives.
+   *
+   * @default true
+   */
+  readonly investigationSkill?: boolean;
+  /**
+   * Publish a skill generated from this config: this pipeline's stages with their accounts, Regions,
+   * approvals and action names.
+   *
+   * @default true
+   */
+  readonly pipelineMap?: boolean;
+}
+
 /**
  * A security plugin's stable identity (issue #241). Serializable, so it is what `cicd.config.ts`
  * carries (through CDK context) to select a built-in plugin or declare a custom one. A custom
@@ -272,8 +361,8 @@ export interface ManagedVpcConfig {
   readonly allowAllOutbound?: boolean;
   /**
    * S3 bucket to send VPC flow logs to. Blueprint always used the RES stage's compliance-log bucket
-   * implicitly; Autopilot has not migrated that bucket yet (`m9-migrate-compliance-bucket`), so this is an
-   * explicit prop instead -- omit to skip flow logs.
+   * implicitly; Autopilot does not route flow logs to the compliance log bucket, so name the bucket here --
+   * omit to skip flow logs.
    */
   readonly flowLogsBucketName?: string;
   /**
@@ -518,6 +607,8 @@ export interface ResolvedCicdConfig {
    * in `bin/` via `CdkCicd.addPlugin` -- the config carries only its identity, not the instance.
    */
   readonly plugins?: PluginRef[];
+  /** Connect the pipeline to AWS DevOps Agent, one opt-in level at a time (investigations, knowledge). Off unless set. See `DevOpsAgentConfig`. */
+  readonly devopsAgent?: DevOpsAgentConfig;
 }
 
 /**
@@ -632,4 +723,9 @@ export interface ResolvedDeploymentConfig {
    * @default false
    */
   readonly crossAccountEcrRepositoryPolicyConfigured?: boolean;
+  /**
+   * Connect the CD pipeline and every target's auto-deploy pipeline to AWS DevOps Agent, one opt-in level at
+   * a time (investigations, knowledge). Off unless set. See `DevOpsAgentConfig`.
+   */
+  readonly devopsAgent?: DevOpsAgentConfig;
 }

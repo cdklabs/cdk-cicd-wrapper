@@ -1674,6 +1674,230 @@
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/source.ts",
         "line": 28
       }
+    },
+    {
+      "id": "qa-build-docs-mutates-root-package-json",
+      "component": "infra",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "docs/scripts/build-docs runs `npm install fs-extra` from docs/, which rewrites the repo root package.json and yarn.lock and creates a package-lock.json",
+      "detail": "docs/ has no package.json, so npm walks up to the repo root. One `task docs`/`./scripts/build-docs` run in a clean clone left a modified root package.json (an added fs-extra dependency, 5 lines), a yarn.lock re-resolved by npm (about 1.8k changed lines), and an untracked package-lock.json. The tree is projen-managed and uses yarn, so all three are wrong to commit, and a whole-tree `git add` would sweep them in. This is the likely origin of the stray root fs-extra dependency described in architect-projen-build-dropped-uncommitted-root-fsextra-dep. fs-extra already resolves from the root through workspace hoisting, so the install step looks unnecessary. Fix direction: drop the npm install line, or run it with --no-save --prefix into the build dir. Not fixed here because it is unrelated to the CodeGuru change that surfaced it.",
+      "location": {
+        "path": "docs/scripts/build-docs",
+        "line": 6
+      }
+    },
+    {
+      "id": "migration-legacy-blueprint-codeguru-end-of-support",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "migration",
+      "severity": "high",
+      "status": "open",
+      "title": "The legacy-blueprint (0.x) line still creates an Amazon CodeGuru Reviewer repository association by default and offers a CodeGuru Security scan step, and AWS has retired both",
+      "detail": "On the legacy-blueprint branch, the default repository-provider path sets codeGuruReviewer to true (RepositoryProvider.ts:19), and CodeCommitRepositoryConstruct.ts:93-94 then creates an AWS::CodeGuruReviewer::RepositoryAssociation. An explicit RepositorySource.codecommit() defaults enableCodeGuruReviewer to false (RepositoryProvider.ts:166), so only the default path is affected. As of 2025-11-07 no account can create a new CodeGuru Reviewer repository association (https://docs.aws.amazon.com/codeguru/latest/reviewer-ug/codeguru-reviewer-availability-change.html). So, per the docs (not deploy-tested), a fresh default 0.x CodeCommit deployment fails at that resource. That includes the runnable legacy workshop docs/content/legacy/workshops/basics-lvl300 (its repository stack, 03-create-pipeline.md:127). Separately, PipelineBlueprint.codeGuruScanThreshold() adds a CodeGuruSecurityStep against Amazon CodeGuru Security, whose support ended on 2025-11-20 (https://docs.aws.amazon.com/cli/latest/reference/codeguru-security/index.html). Main (Autopilot) is unaffected: the code is gone and MIGRATION.md has a row for it. The fix needs a change and a release on legacy-blueprint (default codeGuruReviewer to false, deprecate codeGuruScanThreshold) plus a note in the legacy workshop. That is out of scope for the session that found it.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/constructs/CodeCommitRepositoryConstruct.ts",
+        "line": 93
+      }
+    },
+    {
+      "id": "qa-main-package-verification-lock-hash-stale",
+      "component": "infra",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "On a clean main, `npm run validate` (and so the husky pre-commit hook) fails because package-verification.json pins an old yarn.lock hash",
+      "detail": "At main a1608ff, `cdk-cicd validate` reports that yarn.lock has a sha256 different from package-verification.json `npm-lock-file`. The lockfile changed in the dependabot bumps #364-#367 after the hash was last set (69e1957), and CI does not run validate, so the bumps merged green. Every local commit through husky now fails pre-commit until someone re-pins the hash. Re-pinning is the gate's explicit approval step ('get the changes approved'), so it was left to whoever lands the next dependency change. Fix direction: re-pin in the next PR that touches dependencies, and either run `validate` in CI or have dependabot PRs update package-verification.json, so the two cannot drift again.",
+      "location": {
+        "path": "package-verification.json",
+        "line": 12
+      }
+    },
+    {
+      "id": "qa-docgen-misses-hoisted-dependency-assemblies",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "In a fresh clone `npx projen docgen` (and so `npm run build`) fails: jsii-docgen cannot find dependency assemblies that yarn hoisted to the root node_modules",
+      "detail": "Fresh clone of main, `yarn install --frozen-lockfile` on node 26 (node 24 behaves the same). `npx projen docgen` in packages/@cdklabs/cdk-cicd-wrapper fails with `CorruptedAssemblyError: Unable to locate assembly for dependency: @aws-cdk/app-staging-synthesizer-alpha@2.195.0-alpha.0`. Symlinking that package into the package-local node_modules moves the error to `cdk-nag@^2.37.55`. jsii-docgen's CLI resolves dependency assemblies only under the package directory, and yarn workspaces hoist them all to the root. The library API with `Documentation.forProject(pkgDir, { assembliesDir: repoRoot })` works, and produced an API.md whose diff against main was only the newly added types. Unverified: how CI's build passes this step. Fix direction: run docgen with the root as the assemblies dir (a projenrc task override), or nohoist the jsii dependencies of the wrapper package.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/.projen/tasks.json",
+        "line": 126
+      }
+    },
+    {
+      "id": "code-review-deploy-driver-iam4-reason-overstates-scope",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "The deploy driver's AwsSolutions-IAM4 suppression says AWSLambdaBasicExecutionRole is limited to the function's own log group; it grants logs actions on Resource \"*\"",
+      "detail": "The reason text on the asyncDeploy deploy-driver Lambda's IAM4 suppression claims the managed policy 'grants only CloudWatch Logs writes for this function's own log group'. AWSLambdaBasicExecutionRole grants logs:CreateLogGroup, logs:CreateLogStream and logs:PutLogEvents on Resource \"*\". A suppression reason is the evidence a security reviewer reads, so it should be accurate. The DevOps Agent forwarder copied the same text, and its copy was corrected in the review that found this. Fix direction: correct the reason, or give the function an explicit log group plus a scoped policy instead of the managed one.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 980
+      }
+    },
+    {
+      "id": "code-review-npx-cdk-cicd-resolves-a-third-party-package-outside-a-project",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "`npx cdk-cicd ...` outside a project that installs the CLI fetches an unrelated public npm package named cdk-cicd",
+      "detail": "The docs and READMEs use `npx cdk-cicd <command>` in about 39 places across 19 files. Inside a project that has @cdklabs/cdk-cicd-wrapper-cli installed, npx resolves the local bin. Anywhere else (a fresh shell, a misconfigured MCP client, a CI step before npm ci), npx looks up the registry package `cdk-cicd`. That name belongs to an unrelated third-party construct library (0.1.3). It has no bin today, so the call fails, but npx would run whatever bin a future version adds; without a TTY, npx proceeds without asking. The MCP setup docs now use `npx --no cdk-cicd mcp`. Fix direction: use `npx --no cdk-cicd` (or `npm exec --no -- cdk-cicd`) everywhere the docs tell users to run the CLI, or document `npm run cdk-cicd` via a package.json script.",
+      "location": {
+        "path": "docs/content/mcp/index.md",
+        "line": 33
+      }
+    },
+    {
+      "id": "qa-ci-missing-script-warning-links-a-404",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "low",
+      "status": "resolved",
+      "title": "The default CI's missing-script warning links developer_guides/audit/, which is a 404 on the published docs site",
+      "detail": "CHECKS_DOCS_URL in ci-commands.ts is https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/audit/ (directory style). docs/mkdocs.yml sets use_directory_urls: false, so the page is published as developer_guides/audit.html. Checked live: the audit/ URL returns 404 and audit.html returns 200. Every pipeline whose project lacks an npm audit/build/test script prints the dead link in its build log. Fix: point the constant at audit.html, and check other hard-coded docs URLs for the same directory style.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/ci-commands.ts",
+        "line": 30
+      }
+    },
+    {
+      "id": "qa-devops-agent-change-risk-analysis-unproven-end-to-end",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "resolved",
+      "title": "devopsAgent.changeRiskAnalysis (experimental) has not been seen producing a review: the test account has no GitHub/GitLab repository connected to an Agent Space",
+      "detail": "Checked live on 2026-11-19: CreateBacklogTask accepts taskType CODE_CHANGE_RISK_ANALYSIS with the forwarder's title and description (task PENDING_START). Without a connected repository, the task went to FAILED within about 20 s, with no execution and an empty statusReason. So the request shape is accepted, but no review has been observed, and neither has how DevOps Agent resolves the commit and repo named in the description. AWS documents Code Change Risk Analysis via chat and pull requests, not CreateBacklogTask. The investigations and knowledge levels were proven end to end with test/proof/devops-agent-verify.sh. Done when: a pipeline with a GitHub or CodeStar-connection source, its repository connected and indexed in the Agent Space, and changeRiskAnalysis.beforeApprovalOf on a gated stage produces a review report (recommended action plus findings) when that approval starts. Add it to the proof as an opt-in leg once a connected test repository exists.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/devops-agent/forwarder/handler.ts",
+        "line": 151
+      }
+    },
+    {
+      "id": "code-review-pipeline-skill-no-handoff-to-failure-investigation",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "skills/cdk-cicd-pipeline triggers on 'why a cdk-cicd pipeline run failed' but never hands off to cdk-cicd-pipeline-failure-investigation",
+      "detail": "Its description claims the failed-run request that skills/cdk-cicd-pipeline-failure-investigation is written for, and its own procedure for it is two lines. An agent that picks it can miss that deployed stacks live in the stage account, not the pipeline account. Done when: the pipeline skill's failure section points to the failure-investigation skill (and to cdk-cicd-devops-agent when devopsAgent.investigations is on), or drops the trigger from its description.",
+      "location": {
+        "path": "skills/cdk-cicd-pipeline/SKILL.md",
+        "line": 3
+      }
+    },
+    {
+      "id": "code-review-changelog-missing-cdk-cicd-init",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "CHANGELOG.md has no entry for #370: cdk-cicd init, synth --require-account in the CodePipeline Build, and the deploy.config compliance resolution",
+      "detail": "The Unreleased section lists devopsAgent and cdk-cicd mcp but nothing from #370, which adds a user-facing command and makes Build fail on a stack without an account (previously a warning). Done when: Unreleased has Added (cdk-cicd init) and Changed (Build passes --require-account) entries written by whoever owns that change.",
+      "location": {
+        "path": "CHANGELOG.md",
+        "line": 9
+      }
+    },
+    {
+      "id": "planning-devops-agent-change-risk-analysis-follow-up",
+      "component": "wrapper",
+      "layer": "dynamic",
+      "producer": "planning",
+      "severity": "low",
+      "status": "open",
+      "title": "Re-add devopsAgent.changeRiskAnalysis once a live proof shows a review report end to end",
+      "detail": "PR #371 dropped the experimental changeRiskAnalysis level (a CODE_CHANGE_RISK_ANALYSIS backlog task when a gated stage's manual approval starts) because it could not be verified before merge (see qa-devops-agent-change-risk-analysis-unproven-end-to-end). The removed design: a second EventBridge rule on Approve-<stage> STARTED events, the forwarder reading the execution's source revision with codepipeline:GetPipelineExecution, and a task naming the commit and repository; config validation required a GitHub or CodeStar-connection source, a stage with a manual approval, and no container mode. Done when: a test GitHub repository is connected to an Agent Space (a human OAuth step plus indexing), a CodeStar-sourced pipeline with a gated stage starts its approval, and the Agent Space shows a review report with a recommended action; that run becomes an opt-in leg of test/proof/devops-agent-verify.sh before the level is re-added.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/devops-agent/DevOpsAgentIntegration.ts",
+        "line": 1
+      }
+    },
+    {
+      "id": "code-review-security-plugins-sample-ignores-config-plugins",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "samples/security-plugins-proof selects plugins in cicd.config.ts, but its bare CdkCicd.attach never reads them",
+      "detail": "The sample's cdk.json runs bin/app.ts with plain ts-node, not cdk-cicd exec, so no cicd:config context is injected. CdkCicd.attach(app) (src/runtime/attach.ts:41-50) then falls back to the default plugins, which means the sample's plugins list in cicd.config.ts, including its custom RequireOwnerTag, never applies. A local run showed all six defaults applied and RequireOwnerTag did not. getting_started now documents attach(app, { plugins }) for this path, but it still links the sample as the runnable example. Done when the sample passes its selection to attach (or runs under cdk-cicd exec) and a synth shows RequireOwnerTag applied.",
+      "location": {
+        "path": "samples/security-plugins-proof/bin/app.ts",
+        "line": 39
+      }
+    },
+    {
+      "id": "code-review-container-image-build-ignores-ci-steps",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "Container-mode image build always runs the default CI commands and ignores ci.steps",
+      "detail": "The Repo 1 image-build project assembles its build phase from defaultCiCommands() (CodePipelineEngine.ts:784-788), while the flat build honours ci.steps. A user who sets ci.steps (for example to drop npm run audit or to add a step) gets a different build in container mode with no warning. Either it is intended, in which case container_mode.md should say so, or the image build should use the configured steps. Needs a decision, then a unit test pinning it.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 788
+      }
+    },
+    {
+      "id": "code-review-secret-grants-need-complete-arn",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "secretsmanager:GetSecretValue grants use the configured secret ARN verbatim, so a partial ARN grants nothing",
+      "detail": "The engines grant GetSecretValue on exactly the ARN the config gives (CodePipelineEngine.ts:678,1665,1723; CdkPipelinesEngine.ts:971; GitHubActionsEngine.ts:623; DeploymentPipeline.ts:565,584). A partial ARN, one without Secrets Manager's random six-character suffix, matches no secret, so the build fails at run time with AccessDenied instead of at synth. Either validate that the ARN is complete at synth, or grant on the partial ARN plus '-??????'. Not reproduced on AWS in this session.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 678
+      }
+    },
+    {
+      "id": "code-review-synth-ci-output-doc-after-297",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "Restore the synth-ci --output wording in cli/index.md once #297's separator fix lands",
+      "detail": "synth-ci still runs `npm run cdk synth --all [--output X]` without the `--` separator (SynthCiCommand.ts:39-41), so npm consumes --all and --output and the assembly always lands in cdk.out. The docs audit therefore removed the --output promise from the synth-ci row in docs/content/cli/index.md. Open PR #297 adds the separator but does not edit that row, so after it merges the row will under-describe the command. Done when #297 is in and the row names --output (default cdk.out) again.",
+      "location": {
+        "path": "docs/content/cli/index.md",
+        "line": 33
+      }
+    },
+    {
+      "id": "code-review-workshop-chapters-share-pipeline-stack",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "Workshop chapters 01 and 05 both use application 'my-app', so they deploy the same pipeline stack",
+      "detail": "docs/content/workshops/autopilot-pipeline/01-config-driven-pipeline.md and the Repo 1 config in 05-container-mode.md both set application: 'my-app', so deploy-ci in chapter 05 targets the stack my-app-pipeline that chapter 01 created in the same hub account and turns it into the image-build pipeline. Either give chapter 05 its own application name or say that it replaces chapter 01's pipeline. The two HTML placeholder comments in 05 that still read Source -> Deploy can go in the same edit.",
+      "location": {
+        "path": "docs/content/workshops/autopilot-pipeline/05-container-mode.md",
+        "line": 1
+      }
     }
   ]
 }

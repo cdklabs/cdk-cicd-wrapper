@@ -1,5 +1,5 @@
 cdk.out/
 node_modules/
-# A lockfile generated against a private CodeArtifact repo embeds the account id in its resolved URLs;
-# this repo is public, so it must not be committed. `npm install` regenerates it locally.
-package-lock.json
+# package-lock.json is not ignored: the pipeline's Build runs `npm ci`, which needs it. `npm install` writes it; do
+# that against the public registry, because a lockfile from a private registry embeds that registry's URLs (a CodeArtifact one, the
+# account id).

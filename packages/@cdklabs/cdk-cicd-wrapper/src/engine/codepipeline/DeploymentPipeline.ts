@@ -41,6 +41,8 @@ import {
 } from '../../config/types';
 import { SupportResources } from '../../support/SupportResources';
 import { NODE_RUNTIME_VERSION } from '../ci-commands';
+import { DevOpsAgentIntegration } from '../devops-agent/DevOpsAgentIntegration';
+import { deploymentLayout } from '../devops-agent/layout';
 import { deployRoleExternalIdSecretArnsForStages } from '../external-id-secrets';
 
 /** Kept outside CODEBUILD_SRC_DIR so registry credentials cannot enter or modify the config checkout. */
@@ -785,6 +787,13 @@ export class DeploymentPipeline extends Construct {
     );
 
     this.pipeline = pipeline;
+    if (config.devopsAgent !== undefined) {
+      new DevOpsAgentIntegration(this, 'DevOpsAgent', {
+        pipelines: [pipeline, ...autoDeployPipelines],
+        config: config.devopsAgent,
+        layout: deploymentLayout(config),
+      });
+    }
   }
 }
 

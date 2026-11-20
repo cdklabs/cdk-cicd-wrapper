@@ -42,15 +42,15 @@ new MyStack(app, 'my-app', { stackName: `my-app-${process.env.USER}` });
 
 ## Feature pipelines
 
-A feature pipeline is a **second, independent** pipeline that tracks a feature branch instead of `main`, deployed with its own `cicd.config.ts`. Since `cicd.config.ts` is just a TypeScript file, keep the feature branch's copy **uncommitted to trunk** (the same convention Blueprint's `.workbench()` followed) — for example, a `cicd.config.feature.ts` you swap in locally, or a small branch-name check inside `cicd.config.ts` itself:
+A feature pipeline is a **second, independent** pipeline that tracks a feature branch instead of `main`, deployed with its own `cicd.config.ts`. **Commit** the feature `cicd.config.ts` on the feature branch and never merge it back to trunk. The pipeline's `UpdatePipeline` stage re-runs `cdk-cicd deploy-ci` from the committed source on every run, so a config swapped in only on your machine is replaced by the committed trunk config on the first run, and the feature pipeline redeploys the main pipeline. A branch-name check inside `cicd.config.ts` does not work either: the CodeCommit and CodeStar connection source actions hand the build a zip of the files, without `.git` metadata.
 
 ```typescript
 // cicd.config.ts, on a feature branch only -- not merged back to main
 import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
-  application: 'my-app-feature1', // distinct application/qualifier avoids clashing with the main pipeline
-  qualifier: 'f1app',
+  application: 'my-app-feature1', // distinct application -> its own pipeline stack, my-app-feature1-pipeline
+  qualifier: 'myapp', // the main pipeline's qualifier (derived from 'my-app'), so its bootstrap applies
   repository: Repository.codestarConnection('org/my-app', 'arn:aws:codestar-connections:...', 'feature1'),
   stages: [
     { name: 'feature1dev', env: { account: '222222222222', region: 'eu-west-1' }, manualApproval: false },
@@ -63,8 +63,9 @@ Run `cdk-cicd deploy-ci` from that branch's checkout to provision the feature pi
 
 !!! note
 
-    * `application`/`qualifier` must differ from the main pipeline's to avoid duplicate/clashing resources.
-    * Stage names must be unique across pipelines sharing accounts/regions with the main pipeline.
+    * `application` must differ from the main pipeline's: it names the pipeline stack (`<application>-pipeline`), so reusing it would update the main pipeline.
+    * `qualifier` does not need to differ. It selects the CDK bootstrap roles (`cdk-<qualifier>-deploy-role-…`) the pipeline assumes, so it must match a `cdk bootstrap --qualifier` in every stage's account and Region. Reuse the main pipeline's qualifier, as above. Without an explicit `qualifier`, one is derived from `application` (`my-app-feature1` gives `myappfeatu`), and every target then needs a bootstrap with that qualifier.
+    * Distinct stage names alone do not keep the two pipelines' stacks apart, because CloudFormation identifies a stack by its name in an account and Region. Give the stacks in `bin/` stage-qualified names, for example `stackName: stageStackName('my-app')` (`my-app-feature1dev`). Otherwise the feature pipeline updates the main pipeline's stacks wherever the two share an account and Region.
     * Resources must be cleaned up manually (deleting the CloudFormation stacks in the accounts where they were created) when the feature branch merges or is abandoned.
 
 ## Developer sandbox pipelines
