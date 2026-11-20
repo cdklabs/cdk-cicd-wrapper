@@ -1,0 +1,7 @@
+# aislop (https://github.com/scanaislop/aislop) configuration. Every key not set here keeps its default.
+imports:
+  # Required at run time but deliberately not in package.json: the AWS Lambda Node.js runtime ships it as
+  # part of its AWS SDK v3, and the DevOps Agent forwarder
+  # (packages/@cdklabs/cdk-cicd-wrapper/src/engine/devops-agent/forwarder/handler.ts) loads it from there.
+  provided:
+    - '@aws-sdk/client-devops-agent'
