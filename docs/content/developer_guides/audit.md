@@ -11,13 +11,14 @@ npx cdk-cicd check-dependencies --npm      # better-npm-audit against package-lo
 npx cdk-cicd check-dependencies --python   # pip-audit against Pipfile
 ```
 
-If you set your own `ci.steps` in `cicd.config.ts` (which **replaces** the default `cdk-cicd check` step rather than adding to it — see the [CI guide](./ci.md)), include the commands above explicitly to keep dependency auditing in your CI build:
+If you set your own `ci.steps` in `cicd.config.ts` (which **replaces** the whole default build phase, `npm ci` included, rather than adding to it — see the [CI guide](./ci.md)), list `npm ci` and the commands above explicitly to keep dependency auditing in your CI build:
 
 ```typescript
 export default defineCICD({
   // ...
   ci: {
     steps: {
+      install: 'npm ci',
       audit: 'npx cdk-cicd check-dependencies --npm --python',
       build: 'npm run build',
       test: 'npm run test',

@@ -2,7 +2,7 @@
 
 The project utilizes the [Pipenv](https://pipenv.pypa.io/en/latest/). Pipenv automatically creates and manages a virtual enviornment for your projects, as well as adds/removes packages from your `Pipfile` as you install/uninstall packages. It also generates a project `Pipfile.lock`, which is used to produce deterministic builds.
 
-The Python dependencies are maintained in `Pipfile` instead of the `requirements.txt` file and requirements.txt files should not be committed into Git.
+Committing a `requirements.txt` is fine where no `Pipfile` sits next to it; the repository's own `samples/cdk-python-example` commits one. Next to a `Pipfile`, `cdk-cicd check-dependencies --python` overwrites `requirements.txt` with one generated from the `Pipfile` and deletes it after the audit. What needs a `Pipfile` is the Python dependency audit: `cdk-cicd check-dependencies --python` audits only `Pipfile`s, and `cdk-cicd check` runs that audit only when a `Pipfile` is in the directory it runs from. Keep your Python dependencies in a `Pipfile` if you want them audited.
 
 ## How to install Pipenv
 

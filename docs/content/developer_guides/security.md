@@ -39,12 +39,13 @@ More information about CDK Nag:
 
 #### How to enable / disable
 
-CDK Nag is mandatory — it runs on every `cdk synth`, which is not skippable.
+CDK Nag (`AwsSolutionsChecks`) is one of the default-on [security plugins](./configuration.md#security-plugins). A `plugins` list that leaves it out, or `plugins: []`, drops it from your application stacks. The pipeline stacks that the flat `CODEPIPELINE` engine and container mode render always run it. On `CDK_PIPELINES` and `GITHUB_ACTIONS` the pipeline stack gets the same `plugins` selection as your application stacks.
 
-!!! warning "Known gap: `AwsSolutions-S10` can't be satisfied on any S3 bucket"
+!!! warning "Known gap: the TLS aspect alone does not satisfy `AwsSolutions-S10`"
     The wrapper's own TLS-enforcement aspect denies only `s3:PutObject` over non-TLS, but cdk-nag's
-    `AwsSolutions-S10` rule requires the Deny statement's action to be `s3:*`/`*` — so this rule fails on
-    every bucket regardless of environment, and needs a manual `NagSuppressions` entry per bucket today.
+    `AwsSolutions-S10` rule requires the Deny statement's action to be `s3:*`/`*`. A bucket that relies on
+    the aspect alone therefore fails the rule. Set `enforceSSL: true` on the bucket. CDK then adds a deny
+    on `s3:*` over non-TLS, which satisfies S10.
     Tracked as `migration-encryptbuckettransit-s10-action-scope` in the repo's `findings.json`.
 
 ### Better NPM Audit
@@ -80,7 +81,7 @@ More information about [Semgrep](https://github.com/returntocorp/semgrep).
 
 #### How to enable / disable
 
-Semgrep runs as part of `cdk-cicd security-scan --semgrep` (or `cdk-cicd check`'s `security` check, which always runs it). There is no per-scanner disable flag exposed through `cdk-cicd check` — run `cdk-cicd security-scan` with only the scanners you want as a `ci.steps` entry (see the [CI guide](./ci.md)) if you need to opt out of an individual scanner.
+Semgrep runs as part of `cdk-cicd security-scan --semgrep` (or `cdk-cicd check`'s `security` check, which runs it when `python` (Python 3) or `python3` is on PATH, and skips it otherwise). There is no per-scanner disable flag exposed through `cdk-cicd check` — run `cdk-cicd security-scan` with only the scanners you want as a `ci.steps` entry (see the [CI guide](./ci.md)) if you need to opt out of an individual scanner.
 
 ### Shellcheck
 

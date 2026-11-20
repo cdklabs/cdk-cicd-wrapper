@@ -52,15 +52,15 @@ export default defineCICD({
   repository: Repository.codecommit('my-repo'),
   stages: ['dev', 'prod'],
   npmRegistry: {
-    url: 'https://<your-domain>-<your-aws-account-id>.d.codeartifact.<region>.amazonaws.com/npm/<your-repository>/',
-    basicAuthSecretArn: '<your-secret-arn>',
+    url: 'https://npm.example.com/',
+    basicAuthSecretArn: 'arn:aws:secretsmanager:<region>:<account>:secret:my-npm-token-AbCdEf',
     scope: '<scope>', // e.g. 'cdklabs' for @cdklabs/* — omit to override the default registry instead
   },
 });
 ```
 
-`url`, `basicAuthSecretArn`, and `scope` map directly onto `NpmRegistryConfig`. When set, every build project the pipeline creates writes a `.npmrc` — scoped to `scope` when given, otherwise overriding the default registry — with the auth token read from Secrets Manager at container-start time, before `npm ci` runs.
+`url`, `basicAuthSecretArn`, and `scope` map directly onto `NpmRegistryConfig`. When set, every build project the pipeline creates writes a temporary npm user config outside the checkout (`/tmp/cdk-cicd-npmrc`, selected through `NPM_CONFIG_USERCONFIG`) before `npm ci` runs, and deletes it at the end of the build phase, even when a command in it fails. The registry entry is scoped to `scope` when given, otherwise it overrides the default registry. CodeBuild injects the token from Secrets Manager through the buildspec's `secrets-manager` environment, so it never appears in the synthesized buildspec. On the `GITHUB_ACTIONS` engine the config is `$RUNNER_TEMP/cdk-cicd-npmrc` instead, and the workflow's login step reads the token with `aws secretsmanager get-secret-value`.
 
-Create a Secrets Manager secret holding **only** the token as plaintext, and pass its ARN as `basicAuthSecretArn`. Prefer a technical user's token dedicated to the pipeline over a personal token.
+Create a Secrets Manager secret holding **only** the token as plaintext, and pass its complete ARN, including the 6-character suffix Secrets Manager appends, as `basicAuthSecretArn`. The read permission is granted on exactly that ARN, so a partial ARN never matches the secret. Prefer a technical user's token dedicated to the pipeline over a personal token.
 
 **Note**: this is the generic bearer-token registry path. If your private registry specifically is AWS CodeArtifact, see the [CodeArtifact guide](./codeartifact.md) instead — it authenticates via `aws codeartifact login` and IAM rather than a stored bearer token.
