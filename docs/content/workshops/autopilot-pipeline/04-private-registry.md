@@ -4,8 +4,8 @@
     - A pipeline whose builds authenticate to a private AWS CodeArtifact repository before `npm ci`.
     - The read permissions the build roles need, granted automatically from one config block.
 
-If your dependencies (or the wrapper itself, pre-release) live in a private AWS CodeArtifact repository,
-the pipeline's builds must authenticate before `npm ci`. Declare it once:
+If your dependencies live in a private AWS CodeArtifact repository, the pipeline's builds must authenticate
+before `npm ci`. Declare it once:
 
 ```ts
 export default defineCICD({

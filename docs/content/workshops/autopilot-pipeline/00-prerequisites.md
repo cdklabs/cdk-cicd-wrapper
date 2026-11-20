@@ -27,7 +27,7 @@ npm install --include=dev --save @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wra
 ```
 
 `@cdklabs/cdk-cicd-wrapper` is the constructs library; `@cdklabs/cdk-cicd-wrapper-cli` provides the
-`cdk-cicd` command you'll run. (See the pre-release note on the overview page while Autopilot is unreleased.)
+`cdk-cicd` command you'll run.
 
 You will **not** import the wrapper in your `bin/` in the basic flow — the next chapter shows why.
 
@@ -41,7 +41,7 @@ You will **not** import the wrapper in your `bin/` in the basic flow — the nex
     ```
 
     The `npx cdk-cicd --help` call is the important one: it proves the CLI package installed and is
-    runnable. If it fails, re-check the `npm install` above and your pre-release channel.
+    runnable. If it fails, re-check the `npm install` above.
 
 ## Recap
 

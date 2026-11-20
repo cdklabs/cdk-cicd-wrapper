@@ -17,16 +17,11 @@
   <a href="https://github.com/cdklabs/cdk-cicd-wrapper/commits/main"><img src="https://img.shields.io/github/commit-activity/w/cdklabs/cdk-cicd-wrapper" alt="Commit activity"></a>
 </p>
 
-> [!WARNING]
-> **Experimental — pre-release.** The developer experience documented below is the Autopilot (`1.x`)
-> line, developed on `main`. Version `1.0.0` **is published to npm** but is **not** the `latest`
-> dist-tag: `npm install` still resolves the stable `0.x` (Blueprint) line (currently `0.4.3`; **`0.4.0`
-> is deprecated — do not use it**), whose API is _not_ the one described here. To install the `1.x` line
-> explicitly, pin the version (`npm i @cdklabs/cdk-cicd-wrapper@1.0.0 @cdklabs/cdk-cicd-wrapper-cli@1.0.0`).
-> For the `0.x` API see the
-> [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/), and the
-> [Migration Guide](./MIGRATION.md) for the mapping between the two. `samples/cdk-cicd-wrapper-example/`
-> is a complete `1.x` example. The public API is not frozen and may change.
+> [!NOTE]
+> `npm install` gives you the Autopilot line this README describes. The `0.x` (Blueprint) line has a different
+> API: see the [Blueprint (0.x) documentation](https://cdklabs.github.io/cdk-cicd-wrapper/legacy/), and the
+> [Migration Guide](./MIGRATION.md) to move from it. `samples/cdk-cicd-wrapper-example/` is a complete Autopilot
+> example.
 
 # CDK CI/CD Wrapper
 
@@ -56,7 +51,7 @@ The diagram's draw.io source has three more pages: [what each engine renders](do
 From a CDK app (for example a fresh `cdk init app --language typescript`):
 
 ```bash
-npm i @cdklabs/cdk-cicd-wrapper@1.0.0 @cdklabs/cdk-cicd-wrapper-cli@1.0.0
+npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
 npx cdk-cicd init --stages dev,prod   # writes cicd.config.ts, points cdk.json at cdk-cicd exec
 ```
 

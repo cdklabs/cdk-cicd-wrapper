@@ -43,7 +43,7 @@ These commands drive the Autopilot (`1.x`) config-driven pipeline defined in `ci
 npx cdk-cicd <command> --help
 ```
 
-> **Experimental.** The Autopilot pipeline commands are pre-release and still evolving; flags and behaviour may change before the `1.0` release.
+> The Autopilot pipeline commands are still evolving. A change that breaks a flag or a behaviour ships as a new major version; the [release notes](https://github.com/cdklabs/cdk-cicd-wrapper/releases) list them.
 
 | Command     | Description                                                                                                                                                                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

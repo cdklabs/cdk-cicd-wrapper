@@ -51,8 +51,3 @@ with a **cleanup** you should run to avoid leaving billable resources behind.
 
 Software / DevOps / Cloud engineers comfortable with AWS CDK. **Expected time:** ~1 hour.
 
-!!! note "Autopilot is pre-release"
-    Autopilot develops on a dedicated branch and is **not yet on the public npm `latest` tag**. Where a chapter
-    says `npm install @cdklabs/cdk-cicd-wrapper`, use your pre-release channel (or the private CodeArtifact
-    repo your team publishes to) until Autopilot ships under an alpha tag. The commands and config are otherwise
-    exactly what a released Autopilot uses.

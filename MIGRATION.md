@@ -8,10 +8,8 @@ Each section details the changes introduced between specific version ranges (e.g
 
 ### [0.2.x] → [1.0 / Autopilot] Migration — config-driven pipelines, zero wrapper code in your app
 
-> **Status:** Autopilot is developed on `main` and `1.0.0` **is published to npm**, but the `latest`
-> dist-tag still points at the `0.x` (`PipelineBlueprint`) line (currently `0.4.3`), so a plain
-> `npm install` gives you `0.x` — pin `@1.0.0` to get Autopilot. The 0.x line keeps working and
-> publishing. This chapter is the mapping you follow when you move; it is additive, so you can adopt
+> **Status:** Autopilot is the `latest` line on npm, so a plain `npm install` gives you Autopilot; pin `@0`
+> to stay on the `0.x` (`PipelineBlueprint`) line, which keeps working. This chapter is the mapping you follow when you move; it is additive, so you can adopt
 > Autopilot on a branch while 0.x stays in production. Some Blueprint capabilities are not in Autopilot
 > yet — those rows are marked **(roadmap)** below, and you should not migrate a project that depends on
 > them yet.

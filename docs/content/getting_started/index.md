@@ -31,7 +31,7 @@ Install the wrapper library and its CLI:
 npm install @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
 ```
 
-**Note**: If the `@cdklabs` scope is not resolvable from the public npm registry (for example while a pre-release version is only published under the `next` dist-tag, or your organization proxies npm through a private registry), configure a [private NPM registry](../developer_guides/private_npm_registry.md) or [AWS CodeArtifact](../developer_guides/codeartifact.md) first.
+**Note**: If your organization proxies npm through a private registry, configure a [private NPM registry](../developer_guides/private_npm_registry.md) or [AWS CodeArtifact](../developer_guides/codeartifact.md) first.
 
 ## Write `cicd.config.ts`
 
