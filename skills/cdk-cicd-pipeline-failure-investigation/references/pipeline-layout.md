@@ -10,10 +10,10 @@ account.
 | Stage | Action | Provider | What it runs |
 | --- | --- | --- | --- |
 | `Source` | `Source` | CodeCommit, CodeStarSourceConnection or S3 | fetches the application repository |
-| `Build` | `Build` | CodeBuild | CI, then synth. CI is `npm ci` plus the project's `npm run audit`, `build` and `test` when present; configured `ci.steps` replace all of that, `npm ci` included. The synth step is always appended: `npx cdk-cicd synth --all --require-account` (the default `ASSEMBLY_PROMOTION` deploy model), or with `DEPLOY_TIME_SYNTH` `npx cdk-cicd synth --stage <first stage> --require-account` as validation only. `--require-account` fails Build on a stack that binds no AWS account, which the deploy stages would refuse anyway |
+| `Build` | `Build` | CodeBuild | CI, then synth. CI is `npm ci` plus the project's `npm run audit`, `build` and `test` when present; configured `ci.steps` replace all of that, `npm ci` included. The synth step is always appended: `npx cdk-cicd synth --all --require-account` (the default `ASSEMBLY_PROMOTION` deploy model), or with `DEPLOY_TIME_SYNTH` one `npx cdk-cicd synth --stage <stage> --require-account` per stage in `ci.synthStages` (by default only the first stage). `--require-account` fails Build on a stack that binds no AWS account, which the deploy stages would refuse anyway |
 | `UpdatePipeline` | `SelfMutate` | CodeBuild | `npx cdk-cicd deploy-ci`: updates the pipeline's own stack from `cicd.config.ts` |
 | `<stage>` | `Approve-<stage>` | Manual | manual approval (stages other than `dev`/`res` by default) |
-| `<stage>` | `Deploy-<stage>` | CodeBuild | `npx cdk-cicd deploy --stage <stage> --yes`, with `--from-assembly` under `ASSEMBLY_PROMOTION` (it deploys the assembly `Build` synthesized). Deploys the application stacks into the stage's account and Regions, assuming the stage account's CDK bootstrap roles |
+| `<stage>` | `Deploy-<stage>` | CodeBuild | `npx cdk-cicd deploy --stage <stage> --yes`, with `--from-assembly` for every stage `Build` synthesized (all of them under `ASSEMBLY_PROMOTION`): it deploys that assembly. Under `DEPLOY_TIME_SYNTH` a stage `Build` did not synthesize has no `--from-assembly` and synthesizes at deploy time. Deploys the application stacks into the stage's account and Regions, assuming the stage account's CDK bootstrap roles |
 | `<stage>` | `Await-<stage>` | Lambda | only with `asyncDeploy: true`: executes and waits for the change sets `Deploy-<stage>` prepared |
 
 A stage with several Regions and `regionOrder: PARALLEL` gets one action per Region instead:
@@ -32,8 +32,10 @@ A rejected or timed-out `Approve-<stage>` also ends in `FAILED`. That is a decis
 | `<stage>` | `Approve-<stage>` | Manual | manual approval |
 | `<stage>` | `Prepare` / `Deploy` (or `<Stack>.Prepare` / `<Stack>.Deploy`) | CloudFormation | creates and executes a change set per application stack in the stage account |
 
-A stage with several Regions becomes one pipeline stage per Region, `<stage>-<region>`. The approval sits only
-in the first of them.
+A stage with several sequential Regions becomes one pipeline stage per Region, `<stage>-<region>`. The approval
+sits only in the first of them. With `regionOrder: PARALLEL` the Regions form one wave stage named `<stage>`:
+`Approve-<stage>` first, then every Region's actions, prefixed `<stage>-<region>.` (`<stage>-<region>.<Stack>.Prepare`,
+`<stage>-<region>.<Stack>.Deploy`).
 
 ## Container mode, Repo 1 (`deployerImage` set)
 
