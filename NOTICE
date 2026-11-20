@@ -14306,31 +14306,6 @@ MIT
     SOFTWARE
 
 
-@types/node 26.6.2
-MIT
-    MIT License
-
-    Copyright (c) Microsoft Corporation.
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE
-
-
 @types/node 26.6.6
 MIT
     MIT License
@@ -23783,7 +23758,7 @@ OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHE
  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-fs-extra 11.4.0
+fs-extra 11.4.1
 MIT
 (The MIT License)
 
@@ -32833,31 +32808,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-properties-file 5.0.7
-MIT
-MIT License
-
-Copyright (c) 2022 Nicolas Bouvrette
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
 proxy-addr 2.0.8
 MIT
 (The MIT License)
@@ -38205,4 +38155,74 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+cdk-cicd-wrapper-example 0.0.0
+UNLICENSED
+# cdk-cicd-wrapper-example
+
+The Autopilot shape of the CDK CI/CD Wrapper. The point: **the app is ordinary CDK**, whose one wrapper import
+(`stageStackName`) only names its stacks, and one `cicd.config.ts` turns it into a pipeline.
+
+```
+bin/app.ts        plain `new App()` + your stacks — no PipelineBlueprint, no builder chain
+lib/stack.ts      your application stack (unchanged CDK)
+cicd.config.ts    defineCICD({ application, repository, stages }) — the whole pipeline definition
+cdk.json          "app": "npx cdk-cicd exec bin/app.ts"  — the wrapper injects config/tags around the app
+```
+
+Compare with the Blueprint shape — `PipelineBlueprint.builder()…synth(app)` built inside `src/main.ts`, with
+the projen `CdkCICDWrapper` generating the scaffolding — preserved, untouched, on the `legacy-blueprint`
+branch (its `cdk-ts-example` sample was removed from `main` in `m8-remove-v2`).
+
+## Use it
+
+Copy this directory out of the repository: the pipeline builds the repository it follows from its root. Then,
+with credentials for the account and Region the pipeline is to live in:
+
+```bash
+npm install
+npx cdk-cicd synth --all   # check that dev and prod synthesize
+```
+
+`dev` and `prod` name no account, so both deploy into the pipeline's account and Region. Bootstrap it twice: the
+pipeline stack uses CDK's default qualifier, and the two stages use `cdkcicdwra`, the qualifier `defineCICD`
+derives from `application` when `cicd.config.ts` sets no `qualifier`:
+
+```bash
+npx cdk bootstrap aws://PIPELINE_ACCOUNT/REGION
+npx cdk bootstrap aws://PIPELINE_ACCOUNT/REGION --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra
+```
+
+If you give a stage its own account or Region (`{ name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }`),
+bootstrap that one too, trusting the pipeline account:
+
+```bash
+npx cdk bootstrap aws://STAGE_ACCOUNT/STAGE_REGION --qualifier cdkcicdwra --trust PIPELINE_ACCOUNT \
+  --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+```
+
+Provision the pipeline. It also creates the CodeCommit repository `cdk-cicd-wrapper-example`; push the sample to
+its `main` branch to start the first run:
+
+```bash
+npx cdk-cicd deploy-ci
+git init -b main && git add -A && git commit -m 'Deliver the sample through cdk-cicd-wrapper'
+git remote add origin https://git-codecommit.REGION.amazonaws.com/v1/repos/cdk-cicd-wrapper-example
+git config credential.https://git-codecommit.REGION.amazonaws.com.helper ''
+git config --add credential.https://git-codecommit.REGION.amazonaws.com.helper '!aws codecommit credential-helper $@'
+git config credential.https://git-codecommit.REGION.amazonaws.com.UseHttpPath true
+git push -u origin main
+```
+
+The pipeline then runs Source, Build (`npm ci`, a warning for each of the `audit`, `build` and `test` scripts
+this sample does not define, then `cdk-cicd synth --all --require-account`), UpdatePipeline, `Deploy-dev`, and
+`Approve-prod` before `Deploy-prod`. `dev` deploys the stack `cdk-cicd-wrapper-example-dev` and `prod` deploys
+`cdk-cicd-wrapper-example-prod`: `bin/app.ts` uses `stageStackName` to name them.
+
+## Migrating an existing Blueprint app
+
+`cdk-cicd migrate --entry src/main.ts` scaffolds the `cicd.config.ts`. To keep already-deployed resources
+(update in place instead of recreating), name your stacks to match what Blueprint deployed —
+`stageStackName('app', { stageFirst: true, uppercaseStage: true })` reproduces Blueprint's `DEV-app`. See the
+repo `MIGRATION.md` (*Preserving already-deployed resources*).
 

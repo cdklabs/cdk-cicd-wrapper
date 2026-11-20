@@ -13,6 +13,11 @@
 "CC0-1.0","1"
 "ISC","67"
 "MIT OR Apache-2.0","2"
-"MIT","759"
+"MIT","757"
 "Python-2.0","1"
+"UNLICENSED","1"
+#########################
+# NPM module: samples/cdk-cicd-wrapper-example/package.json
+#########################
+"License","Count"
 "UNLICENSED","1"
