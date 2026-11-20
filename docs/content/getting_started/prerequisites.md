@@ -28,7 +28,7 @@ This documentation provides a step-by-step guide for setting up the necessary pr
 
 ## Node.js and NPM
 
-- Install Node.js version 18.18.* or higher and NPM version 10.2.* or higher.
+- Install Node.js 20.19 or later and NPM version 10.2.* or higher.
 
 ## jq Command-line JSON Processor
 
