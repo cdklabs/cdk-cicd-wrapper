@@ -28,7 +28,8 @@
 The CDK CI/CD Wrapper turns an ordinary AWS CDK app into a multi-account delivery pipeline. You describe the
 source repository and the stages (each with its account and Regions) in one `cicd.config.ts`. The `cdk-cicd`
 CLI provisions the pipeline in your pipeline account, and from then on every push builds, checks and deploys
-the app stage by stage. Your `bin/` stays plain CDK: there is no wrapper code in it.
+the app stage by stage. Your `bin/` stays an ordinary CDK app: the one wrapper import the basic flow needs is the
+`stageStackName` helper, which names a stack per stage.
 
 ## How it works
 
@@ -55,17 +56,27 @@ npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
 npx cdk-cicd init --stages dev,prod   # writes cicd.config.ts, points cdk.json at cdk-cicd exec
 ```
 
-`init` warns when your stack's `env` line is still commented out. Uncomment it, so every stack names its
-account (`cdk-cicd exec` sets both variables for each stage):
+`init` warns when your stack's `env` line is still commented out. In `bin/`, uncomment it, so every stack names
+its account (`cdk-cicd exec` sets both variables for each stage), and give the stack a name per stage:
 
 ```typescript
-env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
+
+new MyProjectStack(app, 'MyProjectStack', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  stackName: stageStackName('my-project'), // my-project-dev, my-project-prod
+});
 ```
 
-Bootstrap every account and Region a stage deploys to, trusting the pipeline account:
+Here `dev` and `prod` deploy into the same account and Region, so they need their own stack names: without
+`stageStackName` both deploy `MyProjectStack`, and `prod` updates `dev`'s stack. Stages in different accounts do
+not need it.
+
+Bootstrap the pipeline account and Region, and every account and Region a stage deploys to, trusting the pipeline
+account:
 
 ```bash
-npx cdk bootstrap aws://STAGE_ACCOUNT/STAGE_REGION --trust PIPELINE_ACCOUNT \
+npx cdk bootstrap aws://ACCOUNT/REGION --trust PIPELINE_ACCOUNT \
   --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
@@ -101,10 +112,10 @@ export default defineCICD({
 `dev` and `res` deploy without approval; every other stage waits for a manual approval by default. A stage
 can also name its own account and Regions: `{ name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }`.
 
-`samples/cdk-cicd-wrapper-example/` is this shape as a working project. Use the `stageStackName` helper to
-name each stage's stack (`my-project-dev`, `my-project-prod`); when you migrate from `0.x`, matching the old
-stack name is what keeps the migration an in-place update (see the [Migration Guide](./MIGRATION.md)). For a
-non-Node app entry, where the preload cannot attach, call `CdkCicd.attach(app)` instead.
+`samples/cdk-cicd-wrapper-example/` is this shape as a working project. When you migrate from `0.x`,
+`stageStackName` can also reproduce the old stack name, which keeps the migration an in-place update (see the
+[Migration Guide](./MIGRATION.md)). For a non-Node app entry, where the preload cannot attach, call
+`CdkCicd.attach(app)` instead.
 
 See the [Getting Started guide](https://cdklabs.github.io/cdk-cicd-wrapper/getting_started/index.html) for the
 full stage shape, the repository sources and the CI options.
@@ -146,8 +157,9 @@ The `engine` field selects how the pipeline is rendered. The default suits most 
   deploys to several Regions in sequence). Choose it to keep a pipeline shaped like a Blueprint (`0.x`) one.
 - **`EngineType.GITHUB_ACTIONS`**: a GitHub Actions workflow instead of an AWS-hosted pipeline, assuming an
   OIDC role in AWS. Requires `repository: Repository.github(...)`; the optional `githubActions` block tunes
-  the workflow, and a gated stage needs its `environmentProtectionConfigured: true` (see Deployment
-  contracts below). It does not update itself: synth checks that the committed workflow is current.
+  the workflow, and if any stage is gated it must set `environmentProtectionConfigured: true`, one flag for the
+  whole pipeline (see Deployment contracts below). It does not update itself: synth checks that the committed
+  workflow is current.
 
 ```typescript
 import { defineCICD, Repository, EngineType } from '@cdklabs/cdk-cicd-wrapper';
@@ -202,6 +214,8 @@ skill into the Agent Space for you. See [Agent skills](https://cdklabs.github.io
 | `compliance-bucket`      | Create the compliance log bucket with its policy and public-access block                          |
 | `mcp`                    | Serve `check_config` and `describe_pipeline` to a coding agent over MCP (stdio)                   |
 | `migrate`                | Generate `cicd.config.ts` from a `0.x` `PipelineBlueprint` entry file                             |
+| `configure`              | The `0.x` (Blueprint) setup prompts: writes RES/DEV/INT accounts and profiles to a `.env`, and project values to `package.json` and `cdk.json` |
+| `completion`             | Print a shell completion script                                                                  |
 
 `npx cdk-cicd <command> --help` lists each command's flags; the
 [CLI reference](https://cdklabs.github.io/cdk-cicd-wrapper/cli/index.html) has the details.
@@ -238,7 +252,7 @@ and covers the same multi-stage use cases:
 - Default-on security hardening (cdk-nag and hardening aspects) applied to every stack.
 - TypeScript and Python CDK apps.
 
-The workbench deployment of `0.x` has no pipeline equivalent in `1.x`; use a direct `cdk deploy` (see the
+The workbench deployment of `0.x` has no pipeline equivalent in Autopilot; use a direct `cdk deploy` (see the
 [Migration Guide](./MIGRATION.md)).
 
 ## Repository layout
@@ -252,7 +266,7 @@ forking it.
   the preload `cdk-cicd exec` uses), the support resources and the DevOps Agent integration.
 - **`packages/@cdklabs/cdk-cicd-wrapper-cli`**: the `cdk-cicd` CLI.
 - **`skills/`**: the agent skills.
-- **`samples/`**: `cdk-cicd-wrapper-example/` (TypeScript, `1.x`) and `cdk-python-example/` (Python, still on
+- **`samples/`**: `cdk-cicd-wrapper-example/` (TypeScript, Autopilot) and `cdk-python-example/` (Python, still on
   the `0.x` API).
 - **`docs/`**: the documentation site.
 

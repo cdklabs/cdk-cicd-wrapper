@@ -37,7 +37,7 @@ The CDK CI/CD Wrapper CLI provides several commands to help you manage various a
 
 ### Autopilot pipeline commands
 
-These commands drive the Autopilot (`1.x`) config-driven pipeline defined in `cicd.config.ts`. Run any of them with `--help` for the full flag set (`--help` is authoritative and always current):
+These commands drive the Autopilot config-driven pipeline defined in `cicd.config.ts`. Run any of them with `--help` for the full flag set (`--help` is authoritative and always current):
 
 ```bash
 npx cdk-cicd <command> --help
@@ -68,7 +68,7 @@ The `npx @cdklabs/cdk-cicd-wrapper-cli security-scan` command scans your codebas
 
 ### License Management
 
-The `npx @cdklabs/cdk-cicd-wrapper-cli license` command can validate and generate a NOTICE file for your project. The NOTICE file consistency is tested by this command and is included in the CodePipeline Build step to ensure the file is always up-to-date.
+The `npx @cdklabs/cdk-cicd-wrapper-cli license` command can validate and generate a NOTICE file for your project. The NOTICE file consistency is tested by this command. The pipeline's Build runs it only if a `ci.steps` entry, or one of the npm scripts the default Build runs (`audit`, `build`, `test`), calls it.
 
 To update the NOTICE file, run the following command:
 
@@ -111,7 +111,7 @@ The `npx @cdklabs/cdk-cicd-wrapper-cli validate` command ensures that the `packa
 
 ## Contributing
 
-Contributions to the CDK CI/CD Wrapper are welcome! If you'd like to contribute, please follow the guidelines outlined in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+Contributions to the CDK CI/CD Wrapper are welcome! If you'd like to contribute, please follow the guidelines outlined in the [CONTRIBUTING.md](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/CONTRIBUTING.md) file.
 
 ## License
 

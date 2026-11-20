@@ -25,15 +25,12 @@ The CDK CI/CD Wrapper builds upon the success of the [aws-cdk-cicd-boot-sample](
 
 ## Features
 
-- **Multi-staged CI/CD Pipeline**: Seamlessly deploy your CDK applications across multiple stages (e.g., DEV, INT, PROD) and AWS accounts.
-- **Security Scanning**: Perform security scanning on dependencies and codebase, blocking the pipeline in case of CVE findings.
-- **License Management**: Manage licenses for NPM and Python dependencies, ensuring compliance with your organization's policies.
-- **Private NPM Registry**: Securely store and utilize private NPM libraries.
-- **Customizable Pipeline**: Tailor the CI/CD pipeline to your project's specific needs with built-in dependency injection.
-- **Workbench Deployment**: Develop and experiment with your solutions in isolation before introducing them to the delivery pipeline.
-- **Pre/Post Deploy Hooks**: Execute custom scripts before and after deployments in each stage (e.g., unit tests, functional tests, load testing).
-- **Centralized Compliance Logs**: Store compliance logs in pre-configured S3 buckets on a per-stage/environment basis.
-- **Lambda Layer Support**: Build and scan dependencies for Python Lambda Layers.
+- CodeBuild in a VPC, in a private VPC with a NAT gateway, or behind an HTTP proxy.
+- Dependency and code security scanning (npm audit, pip-audit, Bandit, Semgrep, ShellCheck) and open-source
+  license checks over npm and Python dependencies.
+- A private npm registry or CodeArtifact for your own packages.
+- Default-on security hardening (cdk-nag and hardening aspects) applied to every stack.
+- TypeScript and Python CDK apps.
 
 ## Getting Started
 
@@ -47,7 +44,7 @@ Before you begin, ensure that you have the following dependencies installed:
 - Docker version >= 24.0.x
 - AWS CLI v2 ([installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html))
 - AWS credentials and profiles for each environment in `~/.aws/config` ([configuration guide](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html))
-- Node.js >= v18.17._ && NPM >= v10.2._
+- Node.js >= 20.19.0
 - jq command-line JSON processor (jq-1.7)
 
 For developing Python Lambdas, you'll also need:
@@ -57,24 +54,22 @@ For developing Python Lambdas, you'll also need:
 
 ### Installation
 
-1. Clone the CDK CI/CD Wrapper repository:
+In your CDK app, install the library and the CLI, then let `init` write `cicd.config.ts` and point `cdk.json` at
+`cdk-cicd exec`:
 
-   ```bash
-   git clone https://github.com/your-repo/cdk-cicd-wrapper.git
-   cd cdk-cicd-wrapper
-   ```
+```bash
+npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
+npx cdk-cicd init
+```
 
-2. Install the required dependencies:
-
-   ```bash
-   npm install
-   ```
+The [Getting Started guide](https://cdklabs.github.io/cdk-cicd-wrapper/getting_started/index.html) covers the
+next steps: bootstrapping, `cdk-cicd deploy-ci` and the first push.
 
 ## Usage
 
 ### Defining Stages
 
-The CDK CI/CD Wrapper comes with a default set of stages (DEV, INT, PROD), but you can easily extend or modify these stages to suit your project's needs. Follow the step-by-step guide in the documentation to define your desired stages.
+List the stages in `cicd.config.ts`, in deployment order: `stages: ['dev', 'prod']`. `dev` and `res` deploy without approval; every other stage waits for a manual approval by default. A stage can also name its own account and Regions: `{ name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }`.
 
 ### Configuring Stacks
 
@@ -82,7 +77,7 @@ Configure the CDK stacks you want to deploy in each stage. The CDK CI/CD Wrapper
 
 ### Customizing CI/CD Steps
 
-Tailor the CI/CD pipeline to meet your project's specific requirements. The CDK CI/CD Wrapper provides built-in dependency injection, allowing you to customize the CI/CD steps seamlessly.
+With no `ci.steps`, the Build runs `npm ci`, then your project's `npm run audit`, `build` and `test`, each only when the script exists. Set `ci.steps` in `cicd.config.ts` to replace those commands; the synth step is always added. See the [CI guide](https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/ci.html).
 
 ## Autopilot Deployment Contracts
 
@@ -96,7 +91,7 @@ Tailor the CI/CD pipeline to meet your project's specific requirements. The CDK 
 
 ## Contributing
 
-Contributions to the CDK CI/CD Wrapper are welcome! If you'd like to contribute, please follow the guidelines outlined in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+Contributions to the CDK CI/CD Wrapper are welcome! If you'd like to contribute, please follow the guidelines outlined in the [CONTRIBUTING.md](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/CONTRIBUTING.md) file.
 
 ## License
 

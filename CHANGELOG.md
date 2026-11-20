@@ -20,9 +20,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The Python MCP debugger server (`mcp-servers/debugger-mcp`). It read the Blueprint (0.x) configuration
   surface and reported valid Autopilot projects as misconfigured, and against current releases of its MCP
   dependency five of its six tools failed at import. It was never published; `cdk-cicd mcp` replaces it.
-
-### Fixed
-
-- Make Repo 2 deployment actions invoke the lockfile-installed `cdk-cicd` CLI through an npm script
-  instead of allowing `npx` to resolve a registry version at deployment time.
-- Use explicit non-secret placeholders for KMS key examples and test fixtures.
