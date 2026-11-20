@@ -100,7 +100,7 @@ describe('DevOps Agent forwarder handler', () => {
     };
     const task = buildBacklogTask(event, 'as-123', 'HIGH');
     expect(task.description).toContain('(unknown category / unknown provider)');
-    expect(task.description).toContain('(attempt 1)');
+    expect(task.description).toContain('Pipeline execution: e\n'); // no attempt is claimed when the event has none
   });
 
   function clients(sent: BacklogTaskRequest[]) {

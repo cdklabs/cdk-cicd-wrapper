@@ -185,7 +185,7 @@ export class McpServer {
   /** Abort every running tool call and wait until all of them have settled. */
   public async shutdown(): Promise<void> {
     for (const controller of this.inFlight.values()) controller.abort();
-    await Promise.all([...this.pending]);
+    await Promise.all(this.pending);
   }
 
   /**

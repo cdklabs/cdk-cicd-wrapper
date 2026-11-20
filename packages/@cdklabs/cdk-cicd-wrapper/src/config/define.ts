@@ -321,14 +321,23 @@ export function resolveCicdConfig(props: CicdConfigProps): ResolvedCicdConfig {
     express: props.express ?? false,
     deployerImage: props.deployerImage,
     plugins: props.plugins,
-    ...devopsAgentField(props.devopsAgent, {
-      stages: stages.map((stage) => stage.name),
-      engine,
-      // Only the flat CODEPIPELINE engine renders Repo 1's image build; CDK Pipelines ignores deployerImage.
-      ...(props.deployerImage !== undefined && engine === EngineType.CODEPIPELINE
-        ? { containerMode: 'image-build' as const }
-        : {}),
-    }),
+    ...devopsAgentField(props.devopsAgent, cicdDevOpsAgentContext(props, stages, engine)),
+  };
+}
+
+/** The context a `cicd.config.ts` pipeline's `devopsAgent` block is validated against. */
+function cicdDevOpsAgentContext(
+  props: CicdConfigProps,
+  stages: ReadonlyArray<{ readonly name: string }>,
+  engine: EngineType,
+): DevOpsAgentContext {
+  return {
+    stages: stages.map((stage) => stage.name),
+    engine,
+    // Only the flat CODEPIPELINE engine renders Repo 1's image build; CDK Pipelines ignores deployerImage.
+    ...(props.deployerImage !== undefined && engine === EngineType.CODEPIPELINE
+      ? { containerMode: 'image-build' as const }
+      : {}),
   };
 }
 
