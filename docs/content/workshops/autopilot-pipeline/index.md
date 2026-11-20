@@ -3,11 +3,11 @@
 This workshop walks through the **Autopilot** usage patterns of the CDK CI/CD Wrapper. Autopilot is a redesign around
 one idea:
 
-> **Your app stays ordinary CDK. One `cicd.config.ts` turns it into a pipeline — no wrapper code in your
-> app, no builder chain.**
+> **Your app stays ordinary CDK. One `cicd.config.ts` turns it into a pipeline — no builder chain in
+> your app.**
 
 Where Blueprint built the pipeline *inside* your app with `PipelineBlueprint.builder()…synth(app)`, Autopilot keeps
-your `bin/` exactly as `cdk init` produced it and reads a separate config file. The pipeline is one flat
+your `bin/` a plain `cdk init` app and reads a separate config file. The pipeline is one flat
 CodePipeline (source → CI → self-update → one deploy action per stage), not the 100+ CodeBuild projects
 Blueprint's CDK-Pipelines footprint grew.
 
@@ -18,7 +18,7 @@ and *your* pipeline, not the wrapper's internals:
 
 | You want to… | Blueprint made you… | Autopilot gives you… |
 |---|---|---|
-| Keep your app portable | Wrap `bin/` in `PipelineBlueprint.builder()…synth(app)` — wrapper code you own forever | An ordinary `cdk init` app. Zero wrapper imports in `bin/` for the basic flow |
+| Keep your app portable | Wrap `bin/` in `PipelineBlueprint.builder()…synth(app)` — wrapper code you own forever | An ordinary `cdk init` app. No builder chain in `bin/`; at most the `stageStackName` helper, when stages share an account and Region |
 | Describe stages & accounts | Encode them in builder calls + `ACCOUNT_*` env vars | Declare them as data in `cicd.config.ts` — read, diff, and review a plain object |
 | Understand the pipeline | Trace 100+ CodeBuild projects (per-asset, per-stage pre/post, self-mutation) | One flat CodePipeline: `Source → Build → UpdatePipeline → deploy per stage` |
 | Run the CI checks | Wire npm scripts, `jq` surgery, `package-verification.json` | Your own `npm run` scripts run by default — a fresh project passes, with the wrapper's checks available to point them at |

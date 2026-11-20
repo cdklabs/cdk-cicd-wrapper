@@ -26,9 +26,18 @@ the remaining manual steps.
 ## Do the rest by hand
 
 1. In your entry, drop the `PipelineBlueprint.builder()…synth(app)` chain and construct your stacks
-   directly on a plain `new App()`.
-2. Point `cdk.json` at `npx cdk-cicd exec <entry>`.
-3. Provision the pipeline once: `npx cdk-cicd deploy-ci`.
+   directly on a plain `new App()`, each with an `env` that names its account: the pipeline's Build stage
+   runs `cdk-cicd synth --require-account` and fails on a stack without one.
+2. `migrate` writes each stage as a bare name, with no `env`. Give every stage the account and Region its
+   Blueprint stage deployed to, for example
+   `{ name: 'dev', env: { account: '111111111111', region: 'eu-west-1' } }`; a stage without `env`
+   deploys into the pipeline's own account and Region. `migrate` writes no `qualifier` either, so the
+   wrapper derives one from `application`; add `qualifier: 'hnb659fds'` if your accounts carry a plain
+   `cdk bootstrap`.
+3. Point `cdk.json` at `npx cdk-cicd exec <entry>`.
+
+Do not provision the pipeline yet: first match the stack names and diff them against the live stacks, as
+below.
 
 ## Keep already-deployed resources (no recreate!)
 
@@ -42,6 +51,7 @@ import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
 
 // Reproduces Blueprint's `DEV-my-app`, so CloudFormation UPDATES the existing stack.
 new MyStack(app, 'my-app', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
   stackName: stageStackName('my-app', { stageFirst: true, uppercaseStage: true }),
 });
 ```
@@ -66,11 +76,15 @@ to your literal Blueprint name.
     **not** switch the pipeline over until the diff is clean.
 
 !!! warning "A wrong stack name recreates production"
-    If the migrated stack name doesn't match the Blueprint name, the first pipeline run deletes the old stack and
-    creates a new one — a full recreate of production resources. The `cdk diff` above is the gate that
-    catches this before it happens.
+    If the migrated stack name doesn't match the Blueprint name, the first pipeline run does not update the
+    Blueprint stack: it creates a second stack with a new copy of every resource, and the old stack is left
+    orphaned beside it. The `cdk diff` above is the gate that catches this before it happens.
 
 The full detail (and the RETAIN + `cdk import` fallback) is in the repo's `MIGRATION.md`.
+
+## Provision the pipeline
+
+Once the diff is clean for every stage, provision the pipeline once: `npx cdk-cicd deploy-ci`.
 
 ## Recap
 

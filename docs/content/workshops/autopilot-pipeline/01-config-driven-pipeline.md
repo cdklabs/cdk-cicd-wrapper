@@ -10,18 +10,23 @@ The whole Autopilot opt-in is two things: a `cicd.config.ts`, and pointing `cdk.
 ## 1. Your app stays plain CDK
 
 `bin/app.ts` is what `cdk init` gave you — a plain `App` with your stacks. No `PipelineBlueprint`,
-no builder, no wrapper import. One line changes: uncomment the `env` line that `cdk init` ships commented
+no builder. Two things change. First, uncomment the `env` line that `cdk init` ships commented
 out, so each stack names its account. The wrapper deploys only such stacks: the pipeline's Build stage fails
-on one that does not, and a local `cdk-cicd synth` warns about it:
+on one that does not, and a local `cdk-cicd synth` warns about it. Second, give the stack a name per stage
+with the `stageStackName` helper. The `dev` and `prod` stages below name no `env`, so both deploy into the
+pipeline's account and Region, and two stages that deploy the same stack name into one account and Region
+share one stack: `prod` would update `dev`'s. Stages in different accounts or Regions do not need it.
 
 ```ts
 // bin/app.ts
 import * as cdk from 'aws-cdk-lib';
+import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
 import { MyStack } from '../lib/my-stack';
 
 const app = new cdk.App();
 new MyStack(app, 'my-app', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  stackName: stageStackName('my-app'), // my-app-dev, my-app-prod
 });
 ```
 
@@ -33,10 +38,15 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
+  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'), // or .s3('bucket/app.zip')
   stages: ['dev', 'prod'],
 });
 ```
+
+Without `qualifier`, the wrapper derives one from `application` (`myapp` here), and deploys look for a
+bootstrap made with `cdk bootstrap --qualifier myapp`. The chapter 0 bootstrap used the default, so the
+config pins it.
 
 ## 3. Point `cdk.json` at the wrapper's exec hook
 
@@ -47,8 +57,8 @@ export default defineCICD({
 ```
 
 `cdk-cicd exec` runs your app under a preload that injects the resolved config (and tags, synthesizer, and
-compliance Aspects) around it — which is how your untouched `bin/` becomes wrapper-aware without importing
-anything.
+compliance Aspects) around it — which is how your plain `bin/` becomes wrapper-aware without a builder
+chain. The `stageStackName` import only names the stack.
 
 !!! tip "Let `cdk-cicd init` write steps 2 and 3"
     `npx cdk-cicd init --stages dev,prod` writes `cicd.config.ts` and points `cdk.json` at
@@ -63,15 +73,29 @@ anything.
 npx cdk-cicd deploy-ci
 ```
 
-This deploys **one** pipeline into your hub account from `cicd.config.ts` alone. On every run it:
+This deploys **one** pipeline into your hub account from `cicd.config.ts` alone. With
+`Repository.codecommit('my-app')` (no `existing: true`), it also creates the CodeCommit repository, and
+that repository starts empty: the run CodePipeline starts on creation fails at Source. Push your app to start the real one. These are the
+commands `cdk-cicd init` prints (replace `<region>` with the pipeline's Region):
+
+```bash
+git remote add origin https://git-codecommit.<region>.amazonaws.com/v1/repos/my-app
+git config credential.https://git-codecommit.<region>.amazonaws.com.helper ''
+git config --add credential.https://git-codecommit.<region>.amazonaws.com.helper '!aws codecommit credential-helper $@'
+git config credential.https://git-codecommit.<region>.amazonaws.com.UseHttpPath true
+git add -A && git commit -m 'Deliver the app through cdk-cicd-wrapper'
+git push -u origin HEAD:main   # starts the first pipeline run
+```
+
+On every run the pipeline does:
 
 ```
 Source → Build (checks + synth) → UpdatePipeline (re-deploys itself from config) → deploy dev → deploy prod
 ```
 
-![The flat Autopilot pipeline in the CodePipeline console: Source → Build → UpdatePipeline → deploy](images/flat-pipeline.png)
+![Engine shapes: what codepipeline, cdk-pipelines and github-actions render](../../assets/diagrams/autopilot-engine-shapes.png)
 
-*The flat Autopilot pipeline in the CodePipeline console — one linear pipeline, not Blueprint's 100+ CodeBuild projects.*
+*The top row, `engine: codepipeline`, is this flat pipeline; the other two rows are the alternate engines.*
 
 The **UpdatePipeline** stage means you never run `deploy-ci` again by hand: change `cicd.config.ts`, push,
 and the pipeline re-synthesizes its own definition on the next run and applies the change before the
@@ -84,8 +108,8 @@ only ever write the few you need, because the wrapper resolves sensible defaults
 
 | Field | What it does | Why it matters |
 |---|---|---|
-| `application` | Logical name for the app and its resources. Defaults from `package.json#name`. | The prefix on pipeline and support-stack names — set it once so resources are recognizable. |
-| `qualifier` | Short (≤10 char) sanitized bootstrap id. Derived from `application`; both synthesizers honor an explicit value. | Set it when the target accounts use a non-default bootstrap qualifier. |
+| `application` | Logical name for the app and its resources. Without it the pipeline stack is named `cdk-cicd-pipeline` (unless `pipelineStackName` overrides it); only `cdk-cicd init` reads `package.json#name`, to fill this field in. | The prefix on the pipeline stack name (`<application>-pipeline`) — set it once so resources are recognizable. |
+| `qualifier` | Short (≤10 char) sanitized bootstrap id. Derived from `application` when unset; both synthesizers honor an explicit value. | Set `'hnb659fds'` to deploy into accounts a plain `cdk bootstrap` prepared. Left unset, the derived value needs `cdk bootstrap --qualifier <it>` in every target account and Region. |
 | `repository` | The pipeline's source: `Repository.codestarConnection('org/repo', connectionArn, branch?)` for GitHub with the AWS-hosted engines, `Repository.codecommit(...)`, or `Repository.s3(...)`. `Repository.github(...)` is reserved for `GITHUB_ACTIONS`. | This is *where* the pipeline reads code and *what* triggers it — the one field you almost always set explicitly. |
 | `stages` | Ordered list of deployment stages — bare names or objects with `env`, `manualApproval`, `deployment`. | Your promotion path (dev → prod). Config-as-data, not pipeline code. Covered in the next chapter. |
 | `ci` | Customizes the CI phase: `steps`, `synthStages`, `image`. | Add your own build/test steps or a custom image. See [Customizing CI](#customizing-ci) below. |
@@ -98,9 +122,9 @@ only ever write the few you need, because the wrapper resolves sensible defaults
 | `deployerImage` | Turns the pipeline into a config-agnostic image builder (`BuildImage.docker({...})`). | The container-mode entry point. See chapter 5. |
 
 !!! tip "Start small"
-    The minimum config is `repository` + `stages`. `application` defaults from `package.json#name`, the
-    engine defaults to CodePipeline, and the synthesizer defaults to `DefaultStackSynthesizer`. Add fields
-    only when a default doesn't fit.
+    The minimum config is `repository` + `stages`. Without `application` the pipeline stack is named
+    `cdk-cicd-pipeline`, the engine defaults to CodePipeline, and the synthesizer defaults to
+    `DefaultStackSynthesizer`. Add fields only when a default doesn't fit.
 
 !!! warning "`APP_STAGING` is not a generated-pipeline synthesizer"
     The installed alpha supports a custom bootstrap qualifier for direct/local `cdk deploy`, and Repo 1
@@ -115,14 +139,17 @@ The `ci` block shapes the Build phase. All three sub-fields are optional; with n
 your project's own npm scripts (`npm run audit`/`build`/`test`, each run-if-present, warn-if-absent)
 plus the synth step.
 
-**Named build steps (`ci.steps`)** — a map of `{ name: shell-command }`. Each entry becomes a named step
-in the CI build, so you add project-specific gates without editing pipeline code:
+**Named build steps (`ci.steps`)** — a map of `{ name: shell-command }`. The commands run in the Build
+phase in the order you list them, so you add project-specific gates without editing pipeline code. They
+**replace** the whole default CI, `npm ci` included, so make `install: 'npm ci'` the first step. The
+synth step is still appended after them:
 
 ```ts
 import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
+  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codestarConnection(
     'my-org/my-app',
     'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
@@ -130,6 +157,7 @@ export default defineCICD({
   stages: ['dev', 'prod'],
   ci: {
     steps: {
+      install: 'npm ci', // ci.steps replace the default CI, npm ci included
       lint: 'npm run lint',
       test: 'npm test',
       audit: 'npx cdk-cicd check-dependencies',
@@ -144,7 +172,7 @@ you need tools the default image doesn't ship:
 ```ts
   ci: {
     image: 'public.ecr.aws/my-org/ci-node:20',   // custom CodeBuild image for CI steps
-    steps: { test: 'npm test' },
+    steps: { install: 'npm ci', test: 'npm test' },
   },
 ```
 
@@ -156,9 +184,11 @@ add `ci.codeBuildImageCredentials` with the complete ARN of a Secrets Manager se
 GitHub secret names under `githubActions.buildContainerCredentials` instead; it rejects CodeBuild image
 IDs and private ECR job containers because those credentials cannot be established before the pull.
 
-**Synth scope (`ci.synthStages`)** — `'all'` synthesizes every stage as a validation gate; a list narrows
-it to specific stages when synth cost matters. This interacts with the deploy model, so it's covered in
-chapter 3.
+**Synth scope (`ci.synthStages`)** — only with `deployModel: DeployModel.DEPLOY_TIME_SYNTH`: `'all'`
+synthesizes every stage as a validation gate; a list narrows it to specific stages when synth cost
+matters. Under the default `ASSEMBLY_PROMOTION` the Build already synthesizes every stage, and setting
+`ci.synthStages` at all, `'all'` included, makes rendering the pipeline (`deploy-ci`) fail. Chapter 3
+covers the deploy models.
 
 !!! info "The build image needs the AWS CLI"
     Steps like the CodeArtifact login and asset publishing shell out to the AWS CLI, which the default
@@ -170,10 +200,11 @@ chapter 3.
     Confirm the pipeline exists and runs end to end:
 
     - In the **CodePipeline** console, your pipeline shows the flat
-      `Source → Build → UpdatePipeline → deploy dev → deploy prod` shape.
-    - The most recent execution reaches **Succeeded** on every stage.
-    - Compare the CodeBuild project count to a Blueprint pipeline: Autopilot provisions a small, constant set — not one
-      per asset or per stage.
+      `Source → Build → UpdatePipeline → dev → prod` shape.
+    - The execution your push started deploys `dev`, then waits at `Approve-prod`: stages other than
+      `dev` and `res` are gated by default (chapter 2). Approve it and the execution reaches **Succeeded**.
+    - Compare the CodeBuild project count to a Blueprint pipeline: Autopilot provisions one `Deploy-<stage>`
+      project per stage plus the `Build` and `UpdatePipeline` projects — four here, not one per asset.
 
     You can also validate the config locally before pushing:
 
@@ -184,6 +215,6 @@ chapter 3.
 ## Recap
 
 You turned a stock CDK app into one flat CodePipeline with a single config file and a one-line `cdk.json`
-change — no wrapper code in `bin/`. You know every `defineCICD` field, and you can add your own CI steps
-and image. The next chapters go deep on the fields you'll reach for most: stages and approvals, deploy
+change — and in `bin/` only an `env` line and a per-stage stack name. You know every `defineCICD` field,
+and you can add your own CI steps and image. The next chapters go deep on the fields you'll reach for most: stages and approvals, deploy
 models and tuning, private registries, and container mode.

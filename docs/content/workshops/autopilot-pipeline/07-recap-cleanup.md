@@ -6,7 +6,7 @@
 
 ## What you built
 
-Across the workshop you took a stock `cdk init` app and, with no wrapper code in `bin/`:
+Across the workshop you took a stock `cdk init` app and, with no builder chain in `bin/`:
 
 - **Turned it into one flat CodePipeline** from a single `cicd.config.ts` — `Source → Build →
   UpdatePipeline → deploy per stage` — and learned every `defineCICD` field.
@@ -39,11 +39,21 @@ stage's account and region — for example `my-app-dev`, `my-app-prod` if you us
 aws cloudformation delete-stack --stack-name my-app-dev --region <region>
 ```
 
-### 2. Delete the pipeline and support stacks
+### 2. Delete the pipeline stacks
 
-In the hub account, delete the pipeline stack and the support stacks the wrapper provisioned (encryption,
-compliance/log bucket, SSM parameters). Empty the artifact and log S3 buckets first if deletion is blocked
-by non-empty buckets.
+In the hub account, delete the pipeline stack, `<application>-pipeline` (here `my-app-pipeline`). There
+are no separate support stacks: the artifact bucket and its KMS key are in the pipeline stack, and unless
+you provisioned with `deploy-ci --disposable` they are **retained** when the stack is deleted. Empty and
+delete the retained bucket and schedule the key for deletion yourself. If you ran chapter 5, also delete
+Repo 2's CD pipeline stack, `<repo>-cd-pipeline`, named after its source repository (here
+`my-app-deploy-config-cd-pipeline`); its artifact bucket and key are retained the same way, and so is Repo 1's
+ECR repository `my-app-deployer`. Delete its images and the repository yourself.
+
+Some things the pipelines leave behind belong to no stack, so delete them by hand:
+
+- the `/cdk-cicd/…` SSM parameters the deploy actions write (async deploy plans, and Repo 2's
+  per-target deployment state under `/cdk-cicd/deployment-state/<cd pipeline stack>/`);
+- the CodeBuild log groups, `/aws/codebuild/<project-name>`, one per build project.
 
 !!! tip "Disposable pipelines self-clean"
     If you provisioned with `npx cdk-cicd deploy-ci --disposable`, teardown empties and deletes the
