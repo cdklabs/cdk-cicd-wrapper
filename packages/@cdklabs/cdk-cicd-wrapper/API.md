@@ -3461,8 +3461,8 @@ public readonly flowLogsBucketName: string;
 S3 bucket to send VPC flow logs to.
 
 Blueprint always used the RES stage's compliance-log bucket
-implicitly; Autopilot has not migrated that bucket yet (`m9-migrate-compliance-bucket`), so this is an
-explicit prop instead -- omit to skip flow logs.
+implicitly; Autopilot does not route flow logs to the compliance log bucket, so name the bucket here --
+omit to skip flow logs.
 
 ---
 
