@@ -1,9 +1,11 @@
 # AWS DevOps Agent
 
+**When a pipeline action fails, the pipeline opens an
 [AWS DevOps Agent](https://docs.aws.amazon.com/devopsagent/latest/userguide/about-aws-devops-agent.html)
-investigates operational problems in your AWS accounts and reports a root cause and a mitigation plan.
-DevOps Agent has no CodePipeline connector, so it does not see your pipeline on its own. `devopsAgent`
-connects the two.
+investigation for it.** Nobody has to notice the red stage first: DevOps Agent receives the failure (pipeline,
+stage, action, error, links to the build log), reads the logs and stacks, and reports a root cause and a
+mitigation plan in the Agent Space. DevOps Agent has no CodePipeline connector of its own; `devopsAgent` is
+that connection.
 
 It is **off by default**, and inside it every capability is a separate **level** that is on only when its
 block is present. Pick the ones you need:
@@ -17,18 +19,27 @@ block is present. Pick the ones you need:
 // cicd.config.ts
 export default defineCICD({
   application: 'my-app',
-  repository: Repository.codestarConnection(
-    'my-org/my-app',
-    'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
-  ),
-  stages: ['dev', { name: 'prod', manualApproval: true }],
+  repository: Repository.codecommit('my-app'),
+  stages: ['dev', 'prod'],
   devopsAgent: {
-    agentSpaceId: 'a1b2c3d4-EXAMPLE',
-    investigations: {}, // every failed action
-    knowledge: {},      // both skills
+    agentSpaceId: 'a1b2c3d4-EXAMPLE', // an Agent Space in the pipeline account
+    investigations: {},               // one investigation per failed action; `stages: ['prod']` to limit it
+    knowledge: {},                    // publish the failure-investigation skill and a map of this pipeline
   },
 });
 ```
+
+At a glance:
+
+- **Off by default.** Without a `devopsAgent` block nothing is rendered: no rule, no function, no asset.
+- **Small footprint.** One EventBridge rule, one Lambda function that may call `aidevops:CreateBacklogTask` on
+  your one Agent Space and nothing else, one SQS dead-letter queue, and the skill assets. All of it lives in the
+  pipeline stack.
+- **No new dependency.** The function uses the AWS SDK that the Lambda Node.js runtime ships.
+- **Every CodePipeline shape.** The `codepipeline` and `cdk-pipelines` engines, and container mode (Repo 2's
+  `deploy.config.ts` and Repo 1's image build). Not the `github-actions` engine, which renders no CodePipeline.
+- **You set up the Agent Space.** Create it in the pipeline account and associate the accounts it may
+  investigate (see [Before you start](#before-you-start)); the wrapper connects the pipeline to it.
 
 A `devopsAgent` block that enables no level is rejected rather than silently doing nothing. Removing a level
 removes what it deployed on the next pipeline deploy.
