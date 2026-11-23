@@ -25,12 +25,12 @@
   resolved "https://registry.npmjs.org/@aws-cdk/asset-node-proxy-agent-v6/-/asset-node-proxy-agent-v6-2.1.0.tgz"
   integrity sha512-7bY3J8GCVxLupn/kNmpPc5VJz8grx+4RKfnnJiO1LG+uxkZfANZG3RMHhE+qQxxwkyQ9/MfPtTpf748UhR425A==
 
-"@aws-cdk/aws-service-spec@0.1.223":
-  version "0.1.223"
-  resolved "https://registry.yarnpkg.com/@aws-cdk/aws-service-spec/-/aws-service-spec-0.1.223.tgz#383c33ef01bf6b5451a30e815a5d7431bebc4ce5"
-  integrity sha512-cf4GM4ERZ3W8dIp6e+pmmfBqWOh6gWHlOXkqkRKjUPn8hiPpWaQyQJFa1DP1sa8Iqtd6ZbENt2Y7ky2qN/zeSQ==
+"@aws-cdk/aws-service-spec@0.1.232":
+  version "0.1.232"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/aws-service-spec/-/aws-service-spec-0.1.232.tgz#aecfe01e1a057781ded5024522aa39843d9dd688"
+  integrity sha512-9w2NplLl3/EdlUl6Cf/bu2m1aXbnITMaHVmNmiX6yrvtPcSk/DYOnbRJiJvV6BxcgjDPiCuzxW8JD+9x1voJIg==
   dependencies:
-    "@aws-cdk/service-spec-types" "^0.0.289"
+    "@aws-cdk/service-spec-types" "^0.0.298"
     "@cdklabs/tskb" "^0.0.4"
 
 "@aws-cdk/cloud-assembly-schema@^41.2.0":
@@ -49,22 +49,22 @@
     jsonschema "^1.5.0"
     semver "^7.8.5"
 
-"@aws-cdk/integ-runner@^2.205.8":
-  version "2.206.0"
-  resolved "https://registry.yarnpkg.com/@aws-cdk/integ-runner/-/integ-runner-2.206.0.tgz#73b1c66f10108fe12a28782a7168b6100ee577ce"
-  integrity sha512-3AjCjBbiHYRSnnP7hebWyoI/F9kmjCb56Ye1bZBD9/qc4BzHdLxyTaM+dtjhzcHbASD743Muyeu1O1dM/LFPBw==
+"@aws-cdk/integ-runner@^2.208.0":
+  version "2.208.0"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/integ-runner/-/integ-runner-2.208.0.tgz#ffd9ec78cee51165101a1e7f33ee20987c560848"
+  integrity sha512-OhJE1CCJzp3+jSVMIeR7hPLnZoJvpOxm6dWuo3XD3HygBZigMHNh+d+cbZTHX45Yt9oyXy0y4/qgk3oovO6Mmg==
   dependencies:
-    "@aws-cdk/aws-service-spec" "0.1.223"
+    "@aws-cdk/aws-service-spec" "0.1.232"
 
 "@aws-cdk/integ-tests-alpha@^2.186.0-alpha.0":
   version "2.186.0-alpha.0"
   resolved "https://registry.npmjs.org/@aws-cdk/integ-tests-alpha/-/integ-tests-alpha-2.186.0-alpha.0.tgz"
   integrity sha512-K1OIiz9vMI53hxVaaw+bmjRWRqaOtxoF8WBrNdrbewA1kPYuC7w2QFYvQG4efusZvHO4YeQmlOhnAj2erxrkaA==
 
-"@aws-cdk/service-spec-types@^0.0.289":
-  version "0.0.289"
-  resolved "https://registry.yarnpkg.com/@aws-cdk/service-spec-types/-/service-spec-types-0.0.289.tgz#35d4322708fb801eebc7b334b5f25d3d43347525"
-  integrity sha512-ZKnkzfN6kMdpw2wl60EK+Igm/cY5RaDDOGRAfGjy/Kj1+38SA9lFhSoT612iKldRMiInXZ8NSeKSDU7e1xFAAA==
+"@aws-cdk/service-spec-types@^0.0.298":
+  version "0.0.298"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/service-spec-types/-/service-spec-types-0.0.298.tgz#6d2ee5a8042f23e612c343b9a3cac705ad52660b"
+  integrity sha512-3rpbDT47s7gROWjbnBjRvT1J2yNYOWRAW0mD/KujVvFBXDBUUMLbC5g/6kcjAUQb7K6CeJ0q475SxtsOIJoXVQ==
   dependencies:
     "@cdklabs/tskb" "^0.0.4"
 
@@ -6724,12 +6724,7 @@ prettier-linter-helpers@^1.0.1:
   dependencies:
     fast-diff "^1.1.2"
 
-prettier@^3:
-  version "3.10.1"
-  resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.10.1.tgz#00b1c1872f9650ec22093d5bdafdca0fe6760f77"
-  integrity sha512-70vp3ZUYoPlFbF9uiTdXHUUCGEIp7d4+6p+8DYbkm2jP7x/3i/paXVF6dopSI3zd/CEitrZN1rc4i85xWmmXlg==
-
-prettier@^3.10.1:
+prettier@^3, prettier@^3.10.1:
   version "3.10.1"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.10.1.tgz#00b1c1872f9650ec22093d5bdafdca0fe6760f77"
   integrity sha512-70vp3ZUYoPlFbF9uiTdXHUUCGEIp7d4+6p+8DYbkm2jP7x/3i/paXVF6dopSI3zd/CEitrZN1rc4i85xWmmXlg==
