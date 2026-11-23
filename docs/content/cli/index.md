@@ -7,8 +7,7 @@ dependency (or run it via `npx`) and run any command with `--help` to see its fu
 npx cdk-cicd <command> --help
 ```
 
-> The Autopilot pipeline commands below are still evolving. A change that breaks a flag or a behaviour ships
-> as a new major version; the [release notes](https://github.com/cdklabs/cdk-cicd-wrapper/releases) list them.
+> **Experimental.** The Autopilot pipeline commands below are still evolving; flags and behaviour may change.
 
 ## Project setup & checks
 

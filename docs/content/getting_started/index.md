@@ -4,7 +4,7 @@ This guide walks through turning a plain AWS CDK app into a CI/CD pipeline with 
 
 ## Overview
 
-Your app does not call the wrapper — for a TypeScript/JavaScript CDK app. Your `bin/` entry point stays an ordinary CDK app — a plain `App` with your stacks; the one wrapper import the basic flow needs is the `stageStackName` helper, which names a stack per stage. A separate `cicd.config.ts` file, next to `cdk.json`, describes the pipeline (source repository, stages, CI steps, …). The wrapper is injected at synth time through `cdk.json`'s `app` command (a Node `require` preload); with no `cicd.config.ts` present your app deploys as stock CDK, unmodified. This walkthrough is TS/JS-specific: the preload mechanism can't attach to a non-Node app entry (e.g. Python), so those apps use the explicit `CdkCicd.attach(app)` call in `bin/` instead of the zero-touch `cdk-cicd exec` path — see the package's jsii-published bindings for the equivalent in your language. `CdkCicd.attach` applies the security plugins only: provisioning the pipeline needs `cdk-cicd exec` as `cdk.json`'s `app` command (see [Security plugins](#security-plugins)).
+There is **no wrapper code in your app** — for a TypeScript/JavaScript CDK app. Your `bin/` entry point stays a plain CDK app — a plain `App` with your stacks. A separate `cicd.config.ts` file, next to `cdk.json`, describes the pipeline (source repository, stages, CI steps, …). The wrapper is injected at synth time through `cdk.json`'s `app` command (a Node `require` preload); with no `cicd.config.ts` present your app deploys as stock CDK, unmodified. This walkthrough is TS/JS-specific: the preload mechanism can't attach to a non-Node app entry (e.g. Python), so those apps use the explicit `CdkCicd.attach(app)` call in `bin/` instead of the zero-touch `cdk-cicd exec` path — see the package's jsii-published bindings for the equivalent in your language. `CdkCicd.attach` applies the security plugins only: provisioning the pipeline needs `cdk-cicd exec` as `cdk.json`'s `app` command (see [Security plugins](#security-plugins)).
 
 ## Prerequisites
 
@@ -77,26 +77,29 @@ and region in `config/<STAGE>.json` and you declare them once — nothing to rep
 stage, so this inner-loop order does not apply there.)
 
 `cdk-cicd exec` also runs your entry file under a preload that applies the wrapper's runtime hooks
-(tagging, default security aspects, etc.), so nothing in `bin/` applies the wrapper. The one wrapper
-import below, the `stageStackName` helper, gives each stage its own CloudFormation stack name
-(`my-project-dev`/`my-project-prod`):
+(tagging, default security aspects, etc.) — with zero references to the wrapper in your own code:
 
 ```typescript
-// bin/my-project.ts — ordinary CDK; stageStackName is the only wrapper import
+// bin/my-project.ts — ordinary CDK, no wrapper imports required
 import * as cdk from 'aws-cdk-lib';
-import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
 import { MyStack } from '../lib/my-stack';
 
 const app = new cdk.App();
+new MyStack(app, 'my-project', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+});
+```
+
+**Optional** — unless two stages deploy into the same account and Region, where stages with the same stack name share one stack (a stage with no `env` and no account in its `config/<STAGE>.json` deploys into the pipeline's own account and Region). To control the CloudFormation stack name per stage (for example `my-project-dev`/`my-project-prod`), use the `stageStackName` helper:
+
+```typescript
+import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
+
 new MyStack(app, 'my-project', {
   stackName: stageStackName('my-project'),
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });
 ```
-
-Keep the `stackName` line. Without it, every stage deploys the stack as `my-project`, so two stages in the
-same account and Region (in the pipeline, a stage with no `env` deploys to the pipeline's own account and
-Region) share one CloudFormation stack, and the later stage updates the stack the earlier one deployed.
 
 ## Bootstrap your stages
 
