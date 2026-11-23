@@ -31,7 +31,7 @@ the remaining manual steps.
 2. `migrate` writes each stage as a bare name, with no `env`. Give every stage the account and Region its
    Blueprint stage deployed to, for example
    `{ name: 'dev', env: { account: '111111111111', region: 'eu-west-1' } }`; a stage without `env`
-   deploys into the pipeline's own account and Region. `migrate` writes no `qualifier` either, so the
+   (and no account in its `config/<stage>.json`) deploys into the pipeline's own account and Region. `migrate` writes no `qualifier` either, so the
    wrapper derives one from `application`; add `qualifier: 'hnb659fds'` if your accounts carry a plain
    `cdk bootstrap`.
 3. Point `cdk.json` at `npx cdk-cicd exec <entry>`.

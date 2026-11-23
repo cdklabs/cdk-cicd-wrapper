@@ -9,10 +9,9 @@
 - **An AWS account** you can deploy into, with credentials in your shell (the pipeline is provisioned
   into this "hub" account; stages deploy to the accounts/regions your config names).
 - **Node.js 20+** and the **AWS CDK v2** CLI (`npx cdk --version`).
-- **Python 3** on your `PATH` (`python3 --version`) only if you run the CLI's security checks
-  (`cdk-cicd security-scan`, or the `security` step of `cdk-cicd check`, which is skipped without it).
-  Python is also needed by `cdk-cicd check-dependencies --python` and by `cdk-cicd license` in a project with a
-  `Pipfile`. Every other `cdk-cicd` command runs without it.
+- **Python 3** on your `PATH` (`python3 --version`) for the `cdk-cicd` commands that run Python tools:
+  `security-scan`, `check-dependencies --python`, `license` in a project with a `Pipfile`, and the
+  `security` step of `cdk-cicd check` (skipped without it).
 - The hub account/region and every stage account/region **bootstrapped** for CDK:
   `npx cdk bootstrap aws://<account>/<region>`. The engine-owned pipeline stack always uses the standard
   bootstrap qualifier; a target application's custom qualifier applies only to its target stacks.
@@ -39,8 +38,8 @@ npm install --include=dev --save @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wra
 `@cdklabs/cdk-cicd-wrapper` is the constructs library; `@cdklabs/cdk-cicd-wrapper-cli` provides the
 `cdk-cicd` command you'll run.
 
-You will **not** add a builder chain to your `bin/` — the next chapter changes only your stack's `env` and
-stack name.
+You will **not** import the wrapper in your `bin/` in the basic flow beyond the opt-in `stageStackName`
+helper — the next chapter shows why.
 
 !!! success "Verify"
     Before moving on, confirm your toolchain is ready:
