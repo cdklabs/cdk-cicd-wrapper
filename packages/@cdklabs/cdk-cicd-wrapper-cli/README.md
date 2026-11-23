@@ -68,7 +68,7 @@ The `npx @cdklabs/cdk-cicd-wrapper-cli security-scan` command scans your codebas
 
 ### License Management
 
-The `npx @cdklabs/cdk-cicd-wrapper-cli license` command can validate and generate a NOTICE file for your project. The NOTICE file consistency is tested by this command. Call it from one of the npm scripts the pipeline's Build step runs, such as `audit`, to ensure the file is always up-to-date.
+The `npx @cdklabs/cdk-cicd-wrapper-cli license` command can validate and generate a NOTICE file for your project. The NOTICE file consistency is tested by this command. Call it from one of the npm scripts the pipeline's Build step runs, such as `audit`, or from `ci.steps`, to ensure the file is always up-to-date.
 
 To update the NOTICE file, run the following command:
 

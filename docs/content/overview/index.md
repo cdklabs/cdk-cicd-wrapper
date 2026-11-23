@@ -16,7 +16,7 @@ The {{ project_name }} can address these issues and drastically reduce the effor
 
 Here are some key features provided by the {{ project_name }}:
 
-- :white_check_mark: **Zero wrapper code in your app** (TypeScript/JavaScript apps) — your `bin/` stays a plain CDK app; the pipeline lives in a separate `cicd.config.ts`. Non-Node apps (e.g. Python) use the explicit `CdkCicd.attach(app)` opt-in for the security plugins instead — see [Getting Started](../getting_started/index.md)
+- :white_check_mark: **No wrapper code in your app** (TypeScript/JavaScript apps) beyond the `stageStackName` helper, needed only when stages share an account and Region or to keep a 0.x stack name when migrating — your `bin/` stays a plain CDK app; the pipeline lives in a separate `cicd.config.ts`. Non-Node apps (e.g. Python) can apply the security plugins through the explicit `CdkCicd.attach(app)` opt-in; the Autopilot pipeline itself runs only through `cdk-cicd exec`, which needs a Node entry — see [Getting Started](../getting_started/index.md)
 - :white_check_mark: [Customizable CI](../developer_guides/ci.md) steps that default to your project's own npm scripts (`npm run audit`/`build`/`test`)
 - :white_check_mark: Integration of various [security scanning tools](../developer_guides/security.md) (cdk-nag, Bandit, Semgrep, ShellCheck, dependency-vulnerability scanning)
 - :white_check_mark: Multi-staged Continuous Deployment process with manual-approval gating on by default for anything past your inner development loop

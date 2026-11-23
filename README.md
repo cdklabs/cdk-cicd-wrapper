@@ -29,7 +29,7 @@ The CDK CI/CD Wrapper turns an ordinary AWS CDK app into a multi-account deliver
 source repository and the stages (each with its account and Regions) in one `cicd.config.ts`. The `cdk-cicd`
 CLI provisions the pipeline in your pipeline account, and from then on every push builds, checks and deploys
 the app stage by stage. Your `bin/` stays plain CDK: the only wrapper code in it is the `stageStackName` helper,
-and only when stages share an account and Region.
+and only when stages share an account and Region or you keep a 0.x stack name when migrating.
 
 ## How it works
 
@@ -250,7 +250,8 @@ and covers the same multi-stage use cases:
   license checks over npm and Python dependencies.
 - A private npm registry or CodeArtifact for your own packages.
 - Default-on security hardening (cdk-nag and hardening aspects) applied to every stack.
-- TypeScript and Python CDK apps.
+- TypeScript and JavaScript CDK apps run the pipeline through `cdk-cicd exec`; Python, Java and .NET apps can apply the
+  security plugins with `CdkCicd.attach`.
 
 The workbench deployment of `0.x` has no pipeline equivalent in Autopilot; use a direct `cdk deploy` (see the
 [Migration Guide](./MIGRATION.md)).
