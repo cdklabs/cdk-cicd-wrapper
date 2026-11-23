@@ -1060,6 +1060,25 @@
   dependencies:
     "@jridgewell/trace-mapping" "0.3.9"
 
+"@dsherret/path@^0.3.4":
+  version "0.3.4"
+  resolved "https://registry.yarnpkg.com/@dsherret/path/-/path-0.3.4.tgz#aa351b24bd9850b6bbc43ca05847f6a7b4468d04"
+  integrity sha512-eQ4QXKedvwYFUeLhGSjDzJVuwaTlGNQzZ5S0n9YdRRc9TSRbx5BSNNPzVz+sJUKlm/69zpg7XfckukJz4JiKEQ==
+
+"@dsherret/shell@^0.7.2":
+  version "0.7.3"
+  resolved "https://registry.yarnpkg.com/@dsherret/shell/-/shell-0.7.3.tgz#667ab5b796c55fd2402979802b8c61c992cb1424"
+  integrity sha512-hcNlFuxR6hmKbS3fH3Wjgqtcynrt2wz04Di4QcVVkfegEnx3I+yzMQDXjwP08isowTq+3EWjWK/YBhbkX/1HFw==
+  dependencies:
+    "@dsherret/path" "^0.3.4"
+    "@dsherret/which" "^0.8.0"
+    console-static-text "^0.3.5"
+
+"@dsherret/which@^0.8.0":
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/@dsherret/which/-/which-0.8.0.tgz#6bffd64528afbdf4e947a60deff5b6414716a32d"
+  integrity sha512-Fsb8WeKBVvgMcMb2AlDe8EUpCwtB9eXySFHFteo4nvusV23NHpuwtbYDFx/xoJBxSqkoHq8Wn3C1DX2vJR7hRQ==
+
 "@dual-bundle/import-meta-resolve@^4.2.1":
   version "4.2.1"
   resolved "https://registry.yarnpkg.com/@dual-bundle/import-meta-resolve/-/import-meta-resolve-4.2.1.tgz#cd0b25b3808cd9e684cd6cd549bbf8e1dcf05ee7"
@@ -3530,6 +3549,11 @@ concat-map@0.0.1:
   resolved "https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz"
   integrity sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==
 
+console-static-text@^0.3.5:
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/console-static-text/-/console-static-text-0.3.5.tgz#a786e82c1b05607fa631582b7850d839517ec9a6"
+  integrity sha512-/iyYUmmAGDUQXbDA3drgIUmOEi0FB2TxfmcFt24YhWQaEsaWh3Cf+30vdS4lhQTX2713EdxQljRqoETLkzPk3w==
+
 constructs@10.8.1, constructs@^10.0.0, constructs@^10.5.0:
   version "10.8.1"
   resolved "https://registry.yarnpkg.com/constructs/-/constructs-10.8.1.tgz#83877700caa85fdfee9eacd16fd4be16393a7aa6"
@@ -3756,11 +3780,13 @@ date-format@^4.0.14:
   resolved "https://registry.npmjs.org/date-format/-/date-format-4.0.14.tgz"
   integrity sha512-39BOQLs9ZjKh0/patS9nrT8wc3ioX3/eA/zgbKNopnF2wCqJEoxywwwElATYvRsXdnOxA/OQeQoFZ3rFjVajhg==
 
-dax@^0.49.0:
-  version "0.49.0"
-  resolved "https://registry.yarnpkg.com/dax/-/dax-0.49.0.tgz#047872ddd9be94b8416c272c0e8181168b354260"
-  integrity sha512-KbODyOV8mRQiW7syK1mjlpNqTqliTMAzTZA1VA3VDdw7Q/ivlCzWXtMihXVo2Joxqjx9qkAvuCxYy2l4RrH1/Q==
+dax@^0.50.2:
+  version "0.50.2"
+  resolved "https://registry.yarnpkg.com/dax/-/dax-0.50.2.tgz#8cc47372f0d58f26bbd523ae9ba8fc127f23d4c8"
+  integrity sha512-I8dkTGtFAds0KLugSbI34CwBcrAfs0uchcm/RF/lC/T4Mg9W5/ceETZmxECfXoxyJostJSIhGsJ2vBB35zQJlw==
   dependencies:
+    "@dsherret/path" "^0.3.4"
+    "@dsherret/shell" "^0.7.2"
     undici-types "^5.26"
 
 debug@^3.2.7:
@@ -6724,12 +6750,7 @@ prettier-linter-helpers@^1.0.1:
   dependencies:
     fast-diff "^1.1.2"
 
-prettier@^3:
-  version "3.10.1"
-  resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.10.1.tgz#00b1c1872f9650ec22093d5bdafdca0fe6760f77"
-  integrity sha512-70vp3ZUYoPlFbF9uiTdXHUUCGEIp7d4+6p+8DYbkm2jP7x/3i/paXVF6dopSI3zd/CEitrZN1rc4i85xWmmXlg==
-
-prettier@^3.10.1:
+prettier@^3, prettier@^3.10.1:
   version "3.10.1"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.10.1.tgz#00b1c1872f9650ec22093d5bdafdca0fe6760f77"
   integrity sha512-70vp3ZUYoPlFbF9uiTdXHUUCGEIp7d4+6p+8DYbkm2jP7x/3i/paXVF6dopSI3zd/CEitrZN1rc4i85xWmmXlg==
@@ -6753,10 +6774,10 @@ pretty-format@30.5.1:
     "@jest/schemas" "30.5.0"
     ansi-styles "^5.2.0"
 
-projen@^0.104.12:
-  version "0.104.25"
-  resolved "https://registry.yarnpkg.com/projen/-/projen-0.104.25.tgz#9ec1f63a9e00c2d057d6e7b96f309fc19ba91686"
-  integrity sha512-HmeK997sqh95aVSFNJR6WShSlZ2yzRrzL8D8EsXsmF5TKO3Zk84glesW2ntgPnznaI0bXuNAEZteQ1tl/Nptjw==
+projen@^0.105.6:
+  version "0.105.6"
+  resolved "https://registry.yarnpkg.com/projen/-/projen-0.105.6.tgz#456ef6146f21b239411282f121a455ea829848ce"
+  integrity sha512-GChhH8h8xxNNfPKXlKJMhRiPpsJ9AyW4KYvQ21Z9R7VIKkvSU7SjaOz4X/qjq449sgwuXHWZoDAEQf0TgA9HNA==
   dependencies:
     "@iarna/toml" "^2.2.5"
     case "^1.6.3"
@@ -6764,18 +6785,18 @@ projen@^0.104.12:
     comment-json "4.2.2"
     constructs "^10.5.0"
     conventional-changelog-config-spec "^2.1.0"
-    dax "^0.49.0"
+    dax "^0.50.2"
     fast-glob "^3.3.3"
     fast-json-patch "^3.1.1"
     ini "^2.0.0"
     parse-conflict-json "^4.0.0"
-    properties-file "^5.0.6"
-    semver "^7.8.5"
+    properties-file "^5.0.7"
+    semver "^7.8.6"
     xmlbuilder2 "^4.0.3"
     yaml "^2.2.2"
     yargs "^17.7.3"
 
-properties-file@^5.0.6:
+properties-file@^5.0.7:
   version "5.0.7"
   resolved "https://registry.yarnpkg.com/properties-file/-/properties-file-5.0.7.tgz#9e3ea91e9acc013120a477de76e92f9a948f7f28"
   integrity sha512-Hoae9SnNTJebHujv5gdOtb7stArj27GcKzWxerrQgjuHasE+VT7G10Q6rR2wRWTjaACkT4zRigAtqnkMOz9BIA==
@@ -7048,7 +7069,7 @@ semver@^6.3.0, semver@^6.3.1:
   resolved "https://registry.npmjs.org/semver/-/semver-6.3.1.tgz"
   integrity sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==
 
-semver@^7.5.2, semver@^7.5.3, semver@^7.5.4, semver@^7.6.0, semver@^7.7.1, semver@^7.7.2, semver@^7.7.3, semver@^7.8.5:
+semver@^7.5.2, semver@^7.5.3, semver@^7.5.4, semver@^7.6.0, semver@^7.7.1, semver@^7.7.2, semver@^7.7.3, semver@^7.8.5, semver@^7.8.6:
   version "7.8.6"
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.8.6.tgz#67c0cda133a3ceb6f70b803e67625bf969000424"
   integrity sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==
