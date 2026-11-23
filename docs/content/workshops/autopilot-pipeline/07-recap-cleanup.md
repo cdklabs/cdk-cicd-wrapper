@@ -6,8 +6,7 @@
 
 ## What you built
 
-Across the workshop you took a stock `cdk init` app and, with no wrapper code in `bin/` beyond the opt-in
-`stageStackName` helper:
+Across the workshop you took a stock `cdk init` app and, with no builder chain in `bin/`:
 
 - **Turned it into one flat CodePipeline** from a single `cicd.config.ts` — `Source → Build →
   UpdatePipeline → deploy per stage` — and learned every `defineCICD` field.

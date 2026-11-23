@@ -232,10 +232,11 @@ ci: {
 },
 ```
 
-- **`steps`** — named shell commands. Empty (the default) runs `npm ci`, then your project's `audit`,
-  `build` and `test` npm scripts when they exist (see the [CI guide](./ci.md)). Setting `steps` _replaces_
-  that default, `npm ci` included, so list your install step, and a `check` step (`npx cdk-cicd check`) if
-  you still want those checks. A container-mode image build ignores `steps`.
+- **`steps`** — named shell commands, run in order. Empty (the default) runs `npm ci`, then
+  `npm run audit`, `npm run build` and `npm run test`, each only when `package.json` defines that
+  script. A missing script prints a warning and the build goes on. Setting `steps` _replaces_ all of
+  that, `npm ci` included, so list your own install step. A container-mode image build ignores `steps`
+  and always runs the default. See the [CI guide](./ci.md).
 - **`synthStages`** — only the `CODEPIPELINE` engine reads it. Under `DeployModel.DEPLOY_TIME_SYNTH` it
   picks the stages the CI build synthesizes (default: the first stage). Under `ASSEMBLY_PROMOTION` the
   CI build synthesizes every stage, and setting `synthStages`, even to `'all'`, is rejected. A

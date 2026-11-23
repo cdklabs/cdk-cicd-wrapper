@@ -1,7 +1,7 @@
 # cdk-cicd-wrapper-example
 
-The Autopilot shape of the CDK CI/CD Wrapper. The point: **the app is ordinary CDK with no wrapper code** beyond the
-opt-in `stageStackName` helper, and one `cicd.config.ts` turns it into a pipeline.
+The Autopilot shape of the CDK CI/CD Wrapper. The point: **the app is ordinary CDK**, whose one wrapper import
+(`stageStackName`) only names its stacks, and one `cicd.config.ts` turns it into a pipeline.
 
 ```
 bin/app.ts        plain `new App()` + your stacks — no PipelineBlueprint, no builder chain
@@ -16,20 +16,49 @@ branch (its `cdk-ts-example` sample was removed from `main` in `m8-remove-v2`).
 
 ## Use it
 
+Copy this directory out of the repository: the pipeline builds the repository it follows from its root. Then,
+with credentials for the account and Region the pipeline is to live in:
+
 ```bash
-npm install                       # resolves @cdklabs/* from your registry
-npx cdk bootstrap aws://PIPELINE_ACCOUNT/REGION --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra
-npx cdk-cicd deploy-ci            # provisions the pipeline into the hub account, from cicd.config.ts alone
+npm install
+npx cdk-cicd synth --all   # check that dev and prod synthesize
 ```
 
-The stages use `cdkcicdwra`, the qualifier `defineCICD` derives from `application` when `cicd.config.ts` sets
-none, so the account needs that bootstrap next to its plain `cdk bootstrap`. Then push the sample, copied out of
-this repository, to the `main` branch of the CodeCommit repository `deploy-ci` created.
+`dev` and `prod` name no account, so both deploy into the pipeline's account and Region. Bootstrap it twice: the
+pipeline stack uses CDK's default qualifier, and the two stages use `cdkcicdwra`, the qualifier `defineCICD`
+derives from `application` when `cicd.config.ts` sets no `qualifier`:
 
-The pipeline then runs Source → Build (`npm ci` + synth; the sample defines no `audit`/`build`/`test`
-scripts, so those only warn) → self-update → deploy per stage, with `prod`
-gated on a manual approval. `dev` deploys `cdk-cicd-wrapper-example-dev`, `prod` deploys `cdk-cicd-wrapper-example-prod` —
-`bin/app.ts` uses `stageStackName` to name them.
+```bash
+npx cdk bootstrap aws://PIPELINE_ACCOUNT/REGION
+npx cdk bootstrap aws://PIPELINE_ACCOUNT/REGION --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra
+```
+
+If you give a stage its own account or Region (`{ name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }`),
+bootstrap that one too, trusting the pipeline account:
+
+```bash
+npx cdk bootstrap aws://STAGE_ACCOUNT/STAGE_REGION --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra \
+  --trust PIPELINE_ACCOUNT \
+  --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+```
+
+Provision the pipeline. It also creates the CodeCommit repository `cdk-cicd-wrapper-example`; push the sample to
+its `main` branch to start the first run:
+
+```bash
+npx cdk-cicd deploy-ci
+git init -b main && git add -A && git commit -m 'Deliver the sample through cdk-cicd-wrapper'
+git remote add origin https://git-codecommit.REGION.amazonaws.com/v1/repos/cdk-cicd-wrapper-example
+git config credential.https://git-codecommit.REGION.amazonaws.com.helper ''
+git config --add credential.https://git-codecommit.REGION.amazonaws.com.helper '!aws codecommit credential-helper $@'
+git config credential.https://git-codecommit.REGION.amazonaws.com.UseHttpPath true
+git push -u origin main
+```
+
+The pipeline then runs Source, Build (`npm ci`, a warning for each of the `audit`, `build` and `test` scripts
+this sample does not define, then `cdk-cicd synth --all --require-account`), UpdatePipeline, `Deploy-dev`, and
+`Approve-prod` before `Deploy-prod`. `dev` deploys the stack `cdk-cicd-wrapper-example-dev` and `prod` deploys
+`cdk-cicd-wrapper-example-prod`: `bin/app.ts` uses `stageStackName` to name them.
 
 ## Migrating an existing Blueprint app
 

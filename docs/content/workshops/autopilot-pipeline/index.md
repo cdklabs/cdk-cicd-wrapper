@@ -3,8 +3,8 @@
 This workshop walks through the **Autopilot** usage patterns of the CDK CI/CD Wrapper. Autopilot is a redesign around
 one idea:
 
-> **Your app stays ordinary CDK. One `cicd.config.ts` turns it into a pipeline — no wrapper code in your
-> app beyond the opt-in `stageStackName` helper, no builder chain.**
+> **Your app stays ordinary CDK. One `cicd.config.ts` turns it into a pipeline — no builder chain in
+> your app.**
 
 Where Blueprint built the pipeline *inside* your app with `PipelineBlueprint.builder()…synth(app)`, Autopilot keeps
 your `bin/` a plain `cdk init` app and reads a separate config file. The pipeline is one flat

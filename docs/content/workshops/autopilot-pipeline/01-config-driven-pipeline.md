@@ -44,6 +44,10 @@ export default defineCICD({
 });
 ```
 
+Without `qualifier`, the wrapper derives one from `application` (`myapp` here), and deploys look for a
+bootstrap made with `cdk bootstrap --qualifier myapp`. The chapter 0 bootstrap used the default, so the
+config pins it.
+
 ## 3. Point `cdk.json` at the wrapper's exec hook
 
 ```json
