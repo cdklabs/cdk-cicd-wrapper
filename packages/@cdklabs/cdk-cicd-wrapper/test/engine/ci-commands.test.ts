@@ -47,7 +47,7 @@ describe('defaultCiCommands', () => {
   });
 
   test('the missing-script warning points at the checks documentation', () => {
-    expect(commands[1]).toContain('https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/audit/');
+    expect(commands[1]).toContain('https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/audit.html');
   });
 
   test('no longer invokes the bespoke cdk-cicd check umbrella', () => {

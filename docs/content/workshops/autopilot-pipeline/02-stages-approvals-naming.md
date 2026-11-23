@@ -13,6 +13,7 @@ A stage is either a bare name or an object with its own environment:
 ```ts
 export default defineCICD({
   application: 'my-app',
+  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: [
     'dev',                                                        // inner loop, auto-approved
@@ -67,7 +68,7 @@ execution role. The CodeBuild project role does not need that direct grant.
 ## Controlling the CloudFormation stack name
 
 Autopilot synthesizes the same `bin/` once per stage, so a bare `new MyStack(app, 'my-app')` deploys the same
-name in every stage. Use the opt-in `stageStackName` helper to qualify it by stage:
+name in every stage. Use the opt-in `stageStackName` helper to qualify it by stage, as chapter 1 does:
 
 ```ts
 import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
@@ -88,7 +89,9 @@ stackName: stageStackName('my-app', { stageFirst: true, uppercaseStage: true }),
 ```
 
 `stageFirst` puts the stage before the base; `uppercaseStage` matches Blueprint's default uppercase stage
-ids (drop it if your Blueprint stages were lowercase/custom-case). See the migration chapter.
+ids. Drop it if your Blueprint stages were lowercase; for custom-case stages such as `Gamma`, set
+`preserveStageCase: true` instead, since the helper lowercases the stage by default. See the migration
+chapter.
 
 ## Verify
 

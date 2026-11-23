@@ -10,6 +10,7 @@ import deploy from './cmds/autopilot/DeployCommand';
 import exec from './cmds/autopilot/ExecCommand';
 import init from './cmds/autopilot/InitCommand';
 import listCi from './cmds/autopilot/ListCiCommand';
+import mcp from './cmds/autopilot/McpCommand';
 import migrate from './cmds/autopilot/MigrateCommand';
 import pipeline from './cmds/autopilot/PipelineCommand';
 import synthCi from './cmds/autopilot/SynthCiCommand';
@@ -58,6 +59,7 @@ async function main() {
   ya.command(init);
   ya.command(migrate);
   ya.command(pipeline);
+  ya.command(mcp);
 
   // Enable command recommendations and strict command handling
   ya.recommendCommands();

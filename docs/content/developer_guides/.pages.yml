@@ -5,10 +5,11 @@ nav:
   - 'Continuous Integration': 'ci.md'
   - 'Continuous Deployment': 'cd.md'
   - 'Container Mode': 'container_mode.md'
+  - 'DevOps Agent': 'devops_agent.md'
   - 'CDK Context': 'cdk_context.md'
   - 'Security': 'security.md'
+  - 'Audit': 'audit.md'
   - 'Python Dependencies':
-      - 'AWS CodeArtifact': 'codeartifact.md'
       - 'python_dependencies.md'
   - 'NPM Dependencies':
       - 'AWS CodeArtifact': 'codeartifact.md'

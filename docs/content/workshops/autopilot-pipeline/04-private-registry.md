@@ -4,12 +4,13 @@
     - A pipeline whose builds authenticate to a private AWS CodeArtifact repository before `npm ci`.
     - The read permissions the build roles need, granted automatically from one config block.
 
-If your dependencies (or the wrapper itself, pre-release) live in a private AWS CodeArtifact repository,
-the pipeline's builds must authenticate before `npm ci`. Declare it once:
+If your dependencies live in a private AWS CodeArtifact repository, the pipeline's builds must authenticate
+before `npm ci`. Declare it once:
 
 ```ts
 export default defineCICD({
   application: 'my-app',
+  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: ['dev', 'prod'],
   codeArtifact: {
@@ -22,7 +23,7 @@ export default defineCICD({
 ```
 
 With this set, **every** build project the pipeline creates — the CI build, the self-update, and each
-deploy — runs `aws codeartifact login --tool npm …` in a `pre_build` step before `npm ci`, and its role is
+deploy — runs `aws codeartifact login --tool npm …` in its `build` phase ahead of `npm ci`, and its role is
 granted the read permissions CodeArtifact needs (`GetAuthorizationToken`, `GetRepositoryEndpoint`,
 `ReadFromRepository`, and a service-scoped `sts:GetServiceBearerToken`).
 
@@ -35,7 +36,7 @@ With no `codeArtifact` set, the pipeline renders exactly as before — this is p
 ## Verify
 
 !!! success "Verify"
-    - In a CI build's logs, a `pre_build` step runs `aws codeartifact login --tool npm …` and the
+    - In a CI build's logs, the `BUILD` phase runs `aws codeartifact login --tool npm …` and the
       subsequent `npm ci` resolves your private packages.
     - The build fails fast with an auth error if the domain/repository names are wrong or the role lacks
       access — a clear signal the block is misconfigured rather than a silent public-registry fallback.

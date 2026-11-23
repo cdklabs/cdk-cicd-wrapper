@@ -27,7 +27,7 @@ const DEFAULT_SCRIPTS = ['audit', 'build', 'test'] as const;
 export const NODE_RUNTIME_VERSION = 22;
 
 /** Where the recommended-checks guidance lives, cited by the missing-script warning. */
-const CHECKS_DOCS_URL = 'https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/audit/';
+const CHECKS_DOCS_URL = 'https://cdklabs.github.io/cdk-cicd-wrapper/developer_guides/audit.html';
 
 /**
  * A single shell command that runs `npm run <script>` when the project defines it, and otherwise

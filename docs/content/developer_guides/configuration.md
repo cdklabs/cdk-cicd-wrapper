@@ -24,7 +24,7 @@ export default defineCICD({
 | ------------------------- | ----------------------------- | -------------------------------------- | --------------------------------------------------------------------------- |
 | `application`             | `string`                      | —                                      | Application name; drives asset naming and the default-synthesizer qualifier. |
 | `qualifier`               | `string`                      | derived from `application` (≤10 chars) | Target-stack CDK bootstrap qualifier.                                       |
-| `pipelineStackName`       | `string`                      | `${application}-pipeline`              | CloudFormation stack name for the self-mutating pipeline stack (`CDK_PIPELINES`/`GITHUB_ACTIONS`). See [Pipeline stack name](#pipeline-stack-name). |
+| `pipelineStackName`       | `string`                      | `${application}-pipeline`              | CloudFormation stack name of the pipeline stack, on every engine. See [Pipeline stack name](#pipeline-stack-name). |
 | `repository`              | `Repository`                  | — (required)                           | The pipeline's source. See [Repository](#repository).                       |
 | `stages`                  | `Array<string \| StageInput>` | — (required)                           | Deployment stages, in order. See [Stages](#stages).                         |
 | `engine`                  | `EngineType`                  | `CODEPIPELINE`                         | Which engine renders the pipeline. See [Engine](#engine).                   |
@@ -35,18 +35,19 @@ export default defineCICD({
 | `codeArtifact`            | `CodeArtifactConfig`          | —                                      | Private CodeArtifact npm repo the builds authenticate against.              |
 | `npmRegistry`             | `NpmRegistryConfig`           | —                                      | Generic private npm registry (bearer token).                                |
 | `proxy`                   | `ProxyConfigInput`            | —                                      | HTTP(S) proxy every build project routes through.                           |
-| `warmAccountsFromSsm`     | `boolean`                     | `false`                                | Export `ACCOUNT_<STAGE>` env vars in a self-mutating engine's synth step by scanning SSM. See [Warming accounts from SSM](#warming-accounts-from-ssm). |
+| `warmAccountsFromSsm`     | `boolean`                     | `false`                                | Export `ACCOUNT_<STAGE>` env vars in the pipeline's synth step by scanning SSM. See [Warming accounts from SSM](#warming-accounts-from-ssm). |
 | `vpc`                     | `VpcConfig`                   | no VPC                                 | VPC the pipeline's CodeBuild projects run in. See [VPC](#vpc).              |
 | `complianceLogBucketName` | `string`                      | —                                      | Compliance/access-log destination bucket name; all logged buckets must share its account and Region. |
 | `createComplianceLogBucket` | `boolean`                   | `true`                                 | Create/manage the compliance bucket; set `false` to reference a pre-existing owner-managed Blueprint bucket. |
-| `pipelineRoleNames`       | `PipelineRoleNames`           | CDK-generated names                    | Force IAM role names on the `CDK_PIPELINES` engine's roles. See [Pipeline role names](#pipeline-role-names). |
+| `pipelineRoleNames`       | `PipelineRoleNames`           | CDK-generated names                    | Force IAM role names on the `CDK_PIPELINES` engine's roles. `pipeline` also names the flat engine's pipeline role when `codePipelineRoleNames.pipeline` is unset. See [Pipeline role names](#pipeline-role-names). |
 | `codePipelineRoleNames`   | `CodePipelineRoleNames`       | CDK-generated names                    | Force IAM role names on the flat `CODEPIPELINE` engine's roles. See [Pipeline role names](#pipeline-role-names). |
 | `deployRoleExternalId`    | `string`                      | —                                      | Pipeline-level default ExternalId for the forced deploy-role assumption. See [Cross-account externalId](#cross-account-externalid). |
 | `codeBuildEnvSettings`    | `codebuild.BuildEnvironment`  | —                                      | CodeBuild overrides (privileged mode, compute, env vars).                   |
-| `asyncDeploy`             | `boolean`                     | `false`                                | Let a Lambda own the CloudFormation wait instead of build compute.          |
-| `express`                 | `boolean`                     | `false`                                | Deploy with CloudFormation express mode. See [Express mode](#express-mode). |
+| `asyncDeploy`             | `boolean`                     | `false`                                | Let a Lambda own the CloudFormation wait instead of build compute. `CODEPIPELINE` engine only. |
+| `express`                 | `boolean`                     | `false`                                | Deploy with CloudFormation express mode. `CODEPIPELINE` engine only. See [Express mode](#express-mode). |
 | `deployerImage`           | `BuildImage`                  | —                                      | Container mode: build & push a deployer image instead of deploying.         |
 | `plugins`                 | `PluginRef[]`                 | the default-on hardening set           | Security plugins (hardening Aspects) applied tree-wide. See [Security plugins](#security-plugins). |
+| `devopsAgent`             | `DevOpsAgentConfig`           | —                                      | Connect the pipeline to AWS DevOps Agent, one opt-in level at a time. See [DevOps Agent](#devops-agent). |
 
 `APP_STAGING` is valid for direct/local application deployment (`cdk deploy`, including local
 `cdk-cicd deploy --from-image`) and Repo 1 container-image builds, which deploy no application stacks.
@@ -71,9 +72,9 @@ target application's custom qualifier does not require a second custom bootstrap
 
 ## Pipeline stack name
 
-The `CDK_PIPELINES` and `GITHUB_ACTIONS` engines assemble their own self-mutating pipeline stack, named
-`${application}-pipeline` by default. `pipelineStackName` overrides the CloudFormation stack name of
-that stack:
+Every engine renders the pipeline into one stack, named `${application}-pipeline` by default.
+`pipelineStackName` overrides the CloudFormation stack name of that stack. On the flat `CODEPIPELINE`
+engine the same value is also the name of the CodePipeline pipeline:
 
 ```typescript
 export default defineCICD({
@@ -93,10 +94,11 @@ the name back to the deployed value lets the existing pipeline update in place, 
 rename cutover (pipeline outage plus, where the pipeline pins cross-account role names, a manual
 role-name resequencing).
 
-The override changes **only** the CloudFormation `stackName`. The construct id stays
+Apart from that flat-engine pipeline name, the override changes **only** the CloudFormation
+`stackName`. The construct id stays
 `${application}-pipeline`, so the pipeline's child resource logical IDs (roles, CodeBuild projects,
 artifact buckets) — which derive from the construct node path — are unchanged from the default. It does
-not restore pre-1.x child logical IDs; it is scoped to the pipeline stack name only. Omitting the field
+not restore pre-1.x child logical IDs. Omitting the field
 keeps the `${application}-pipeline` default, so existing consumers are unaffected.
 
 ## Repository
@@ -198,9 +200,9 @@ githubActions: {
 - **`openIdConnectProviderArn`** — an existing OIDC provider ARN; omit to have one created.
 - **`thumbprints`** — GitHub certificate thumbprints; defaults to the built-in, currently-valid set.
 - **`workflowPath`** / **`workflowName`** — file path and name of the generated workflow (default
-  `.github/workflows/deploy.yml`, `deploy`).
-- **`workflowTriggers`** — the workflow's triggers (default: push to the tracked branch plus manual
-  dispatch).
+  `.github/workflows/deploy.yml`, `<application>-pipeline`).
+- **`workflowTriggers`** — the workflow's triggers (default: push to `main` plus manual dispatch, even
+  when `repository` tracks another branch; set this to trigger on that branch).
 - **`publishAssetsAuthRegion`** — the region the OIDC role is assumed in when publishing assets (not the
   region assets publish to). Defaults to the pipeline stack Region.
 - **`buildContainerCredentials`** — GitHub Actions secret names used to authenticate an external
@@ -217,9 +219,10 @@ githubActions: {
 `ci` controls the build steps and which stages CI synthesizes for validation.
 
 ```typescript
+deployModel: DeployModel.DEPLOY_TIME_SYNTH, // required for ci.synthStages outside container mode
 ci: {
-  steps: { lint: 'npx cdk-cicd validate', test: 'npx jest' }, // empty => the engine's default check set
-  synthStages: 'all', // 'all' (every stage), an explicit list, or omit for the engine default
+  steps: { install: 'npm ci', lint: 'npx cdk-cicd validate', test: 'npx jest' }, // replaces the default build phase, npm ci included
+  synthStages: 'all', // 'all' (every stage), an explicit list, or omit for the default
   image: 'registry.example.com/platform/ci:stable',
   codeBuildImageCredentials: {
     secretArn: 'arn:aws:secretsmanager:eu-west-1:111111111111:secret:registry-AbCdEf',
@@ -229,11 +232,17 @@ ci: {
 },
 ```
 
-- **`steps`** — named shell commands. Empty (the default) applies the engine's built-in check set
-  (`npx cdk-cicd check`). Setting `steps` _replaces_ that default, so include a `check` step if you still
-  want those checks.
-- **`synthStages`** — `'all'` synthesizes every stage; an explicit list names stages; omitting it uses
-  the engine default (every stage under `ASSEMBLY_PROMOTION`, one env under `DEPLOY_TIME_SYNTH`).
+- **`steps`** — named shell commands, run in order. Empty (the default) runs `npm ci`, then
+  `npm run audit`, `npm run build` and `npm run test`, each only when `package.json` defines that
+  script. A missing script prints a warning and the build goes on. Setting `steps` _replaces_ all of
+  that, `npm ci` included, so list your own install step. A container-mode image build ignores `steps`
+  and always runs the default. See the [CI guide](./ci.md).
+- **`synthStages`** — only the `CODEPIPELINE` engine reads it. Under `DeployModel.DEPLOY_TIME_SYNTH` it
+  picks the stages the CI build synthesizes (default: the first stage). Under `ASSEMBLY_PROMOTION` the
+  CI build synthesizes every stage, and setting `synthStages`, even to `'all'`, is rejected. A
+  container-mode image build reads it under either deploy model to pick its validation stages (default:
+  every stage). `'all'` means every stage; an explicit list names stages. `CDK_PIPELINES` and
+  `GITHUB_ACTIONS` ignore it.
 - **`image`** — an optional image override for the CI build. On CodeBuild-backed engines,
   `aws/codebuild/...` IDs use CodeBuild-managed pull credentials. A private ECR build image must be in
   the pipeline account and the same Region as the CodeBuild project; the generated role receives the
@@ -245,8 +254,8 @@ ci: {
   containing `username` and `password` fields for an authenticated external registry, plus
   `encryptionKeyArn` when that secret uses a customer-managed KMS key. CDK renders the CodeBuild
   registry credential and grants the project role secret/decrypt access. It is rejected for
-  `aws/codebuild/...` and private ECR images, which use their own credential models. Public external
-  images remain anonymous when this field is omitted. GitHub Actions uses
+  `aws/codebuild/...`, `public.ecr.aws` and private ECR images, which use their own credential models.
+  Public external images remain anonymous when this field is omitted. GitHub Actions uses
   `githubActions.buildContainerCredentials` instead.
 - **`partialBuildSpec`** — a CodeBuild spec fragment deep-merged into the CI build project's generated
   buildspec (the CI project only — not self-update or per-stage deploy projects).
@@ -257,8 +266,9 @@ ci: {
 
 - **`DeployModel.ASSEMBLY_PROMOTION`** (default) — CI synthesizes every stage once and promotes `cdk.out`
   as the pipeline artifact; each deploy stage consumes that assembly (one synth per pipeline run).
-- **`DeployModel.DEPLOY_TIME_SYNTH`** — each stage synthesizes at deploy time from code + pinned deps
-  against that stage's injected config. Pick it when a stage's template must be produced with that
+- **`DeployModel.DEPLOY_TIME_SYNTH`** — CI synthesizes only the stages in `ci.synthStages` (default: the first
+  stage), and those deploy from CI's assembly; every other stage synthesizes when it deploys, from code + pinned
+  deps against that stage's injected config. Pick it when a stage's template must be produced with that
   stage's own credentials (for example a synth-time lookup only the target account can resolve).
 
 ## Private dependencies
@@ -280,16 +290,17 @@ Three independent, optional blocks let the pipeline's builds install private pac
 
 ## Warming accounts from SSM
 
-`warmAccountsFromSsm` (default `false`) exports per-stage account env vars on a **self-mutating engine's**
-synth step (`CDK_PIPELINES` and `GITHUB_ACTIONS` — the engines that re-run `cdk synth` under the pipeline).
-When on, before `cdk synth` the build scans SSM Parameter Store under the pipeline's qualifier
+`warmAccountsFromSsm` (default `false`) exports per-stage account env vars on the pipeline's synth step,
+on every engine; the step each engine uses is listed below.
+When on, before `cdk synth` the build scans SSM Parameter Store under the config's qualifier
 (`/<qualifier>/`) and exports an `ACCOUNT_<STAGE>` environment variable for **every** parameter whose name
 contains `Account` — `/<qualifier>/AccountDev` becomes `ACCOUNT_DEV`, `/<qualifier>/AccountProd` becomes
 `ACCOUNT_PROD`, and so on. It is dynamic: whatever `Account*` parameters your bootstrap wrote become env
 vars, with no hardcoded stage list. A `cdk.config.ts` that reads `process.env.ACCOUNT_<STAGE>` then
 resolves its target accounts at synth time from those values.
 
-The qualifier comes from the config's `qualifier` when set, otherwise the build's own `$CDK_QUALIFIER`.
+The qualifier is the config's `qualifier` when set, otherwise the one derived from `application`.
+`defineCICD` rejects `warmAccountsFromSsm` when it can resolve neither.
 The synth step is granted `ssm:GetParametersByPath` scoped to `/<qualifier>/*` in the pipeline's account
 and region. If the scan finds **no** `Account*` parameter it fails the build (`exit 1`) rather than
 proceeding with an empty warm — a misconfigured qualifier or an un-bootstrapped account is surfaced loudly.
@@ -297,7 +308,7 @@ proceeding with an empty warm — a misconfigured qualifier or an un-bootstrappe
 All three engines honor the flag on the CodeBuild/workflow step that runs `cdk synth`: `CDK_PIPELINES`
 and `GITHUB_ACTIONS` warm their self-mutating synth step, and the flat `CODEPIPELINE` engine warms its
 `Build` synth project. The scan runs ahead of `cdk synth` in the same shell, so the exported
-`ACCOUNT_<STAGE>` vars are visible to the app.
+`ACCOUNT_<STAGE>` vars are visible to the app. A container-mode image build does not run the scan.
 
 ## Compliance access logging
 
@@ -396,12 +407,25 @@ stabilize — materially faster for slow-to-stabilize stacks. Express runs with 
 failed deploy is left in a failed state for inspection). AWS does **not** recommend express mode for
 production; it targets fast iterative deployments. Off by default.
 
+Only the `CODEPIPELINE` engine reads `express`. Its deploy actions run `cdk-cicd deploy`, which passes
+`--express` to `cdk deploy`. With `asyncDeploy` those actions only prepare change sets, so `--express`
+is not passed. `CDK_PIPELINES` and `GITHUB_ACTIONS` ignore `express` and `asyncDeploy`.
+
 ## Container mode
 
 `deployerImage: BuildImage.docker({ ... })` switches the pipeline to build and push a config-agnostic
 deployer image instead of deploying stages (CodePipeline engine only). The deploy side is authored
 separately with `defineDeployment` in a `deploy.config.ts`. See the
 [Container mode guide](./container_mode.md) for the full two-repository flow.
+
+## DevOps Agent
+
+`devopsAgent` connects the pipeline to [AWS DevOps Agent](https://docs.aws.amazon.com/devopsagent/latest/userguide/about-aws-devops-agent.html).
+It is off by default, and each capability is its own level, on only when its block is present:
+`investigations` (an investigation per failed action, optionally only for some `stages`) and `knowledge`
+(skills published into the Agent Space). A block with no level is rejected. You create the Agent Space (in the
+pipeline account) and associate the accounts it may investigate. `defineDeployment` (Repo 2) takes the same
+field. Not available with the GitHub Actions engine. See the [DevOps Agent guide](./devops_agent.md) for every option.
 
 ## Pipeline role names
 
@@ -420,6 +444,10 @@ pipelineRoleNames: {
   assetsDocker: 'my-app-codepipeline-assets-docker-role', // CDK Pipelines docker-publishing role
 },
 ```
+
+`pipelineRoleNames.pipeline` also names the flat engine's pipeline role when
+`codePipelineRoleNames.pipeline` is unset, so one value pins the pipeline role on both engines. The flat
+engine ignores `assetsFile` and `assetsDocker`.
 
 For the flat `EngineType.CODEPIPELINE`, use `codePipelineRoleNames`:
 
@@ -482,7 +510,7 @@ list **completely overrides** the defaults (list only what you want). A name tha
 custom plugin and must be registered in `bin/` via `CdkCicd.addPlugin`.
 
 ```typescript
-plugins: [{ name: 'EncryptBucketOnTransit', version: '1.0.0' }], // only this one; defaults dropped
+plugins: [{ name: 'EncryptBucketOnTransit', version: '1' }], // only this one; defaults dropped
 // plugins: [],                                                   // opt out of all default hardening
 ```
 

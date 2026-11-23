@@ -2,9 +2,9 @@
 
 The `npx {{npm_cli}} license` can validate and generate a NOTICE file for the project.
 
-The NOTICE file consistency is tested by the `npx {{npm_cli}} license`, this script is included into the CodePipeline Build step to ensure the NOTICE file is always up-to-date.
+The NOTICE file consistency is tested by the `npx {{npm_cli}} license`. The pipeline's Build step runs it only where you call it: from an npm script the default build runs (such as `audit`), from `ci.steps`, or through `npx {{npm_cli}} check`, which runs it once a `package-verification.json` exists.
 
-The script checks dependencies in `package.json` for NPM, `Pipfile.lock`, and `requirements.txt` for Python projects. In case, you are using other package managers, you need to manage those dependencies by **yourself** as long as that is not supported by {{ project_name }}.
+The script checks the dependencies of the `**/package.json` files for NPM and, by default, the `**/Pipfile` files for Python projects; add `"requirements.txt"` to `python.allowedTypes` in `licensecheck.json` to scan `**/requirements.txt` as well. In case, you are using other package managers, you need to manage those dependencies by **yourself** as long as that is not supported by {{ project_name }}.
 
 The used dependencies can be dependent on the Operating System and the runtime environment so for this reason the generated NOTICE file could be different based on which environment is generated. Our tool persists the state of the project files which hold information about 3rd party dependencies in the `package-verification.json` file. If those files are not modified or a new file hasn't been added or previously existing files haven't been removed the tool considers the NOTICE file as up to date. In this situation you want to forcefully regenerate the NOTICE file you can do that with the `--force` parameter.
 

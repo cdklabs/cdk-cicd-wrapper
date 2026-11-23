@@ -4,9 +4,12 @@
   "private": true,
   "license": "Apache-2.0",
   "description": "Autopilot sample: a plain CDK app turned into a pipeline by one cicd.config.ts (no wrapper code in the app)",
+  "scripts": {
+    "cdk": "cdk"
+  },
   "dependencies": {
-    "@cdklabs/cdk-cicd-wrapper": "0.0.0",
-    "@cdklabs/cdk-cicd-wrapper-cli": "0.0.0",
+    "@cdklabs/cdk-cicd-wrapper": "^2.6.0",
+    "@cdklabs/cdk-cicd-wrapper-cli": "^1.6.0",
     "aws-cdk-lib": "^2.195.0",
     "cdk-nag": "^2.28.0",
     "constructs": "^10.3.0"

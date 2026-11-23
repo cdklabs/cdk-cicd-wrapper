@@ -2,7 +2,7 @@ site_name: CDK CI/CD Wrapper
 site_description: CDK CI/CD Wrapper
 repo_name: cdklabs/cdk-cicd-wrapper
 repo_url: https://github.com/cdklabs/cdk-cicd-wrapper
-site_url: https://github.com/cdklabs/cdk-cicd-wrapper
+site_url: https://cdklabs.github.io/cdk-cicd-wrapper/
 copyright: Copyright &copy; 2024 Amazon Web Services, Inc. or its affiliates.
 use_directory_urls: false
 docs_dir: content
@@ -68,6 +68,7 @@ plugins:
   - macros
   - redirects:
       redirect_maps:
+        'mcp/debugger.md': 'mcp/index.md'
         'getting_started/projen.md': 'legacy/projen.md'
         'getting_started/projen_with_taskfile.md': 'legacy/projen_with_taskfile.md'
         'workshops/basics-lvl300/index.md': 'legacy/workshops/basics-lvl300/index.md'

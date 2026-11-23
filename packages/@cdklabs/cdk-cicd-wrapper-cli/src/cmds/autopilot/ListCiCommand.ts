@@ -29,7 +29,7 @@ export function resourceCounts(template: { Resources?: { [id: string]: { Type?: 
 }
 
 /** The `*.template.json` files in a cloud assembly directory, as [stackName, template] pairs. */
-function readAssemblyTemplates(outdir: string): Array<{ stackName: string; template: any }> {
+export function readAssemblyTemplates(outdir: string): Array<{ stackName: string; template: any }> {
   if (!existsSync(outdir)) {
     return [];
   }
@@ -39,6 +39,15 @@ function readAssemblyTemplates(outdir: string): Array<{ stackName: string; templ
       stackName: f.replace(/\.template\.json$/, ''),
       template: JSON.parse(readFileSync(path.join(outdir, f), 'utf-8')),
     }));
+}
+
+/**
+ * The `npm` argv that synthesizes the pipeline into `outdir`: `npm run cdk -- synth --all --output <dir>`.
+ * Without the `--`, npm swallows `--all` and `--output`, so cdk saw the directory as a stack name and wrote
+ * the assembly to the project's `cdk.out` instead.
+ */
+export function listCiArgs(outdir: string): string[] {
+  return ['run', 'cdk', '--', 'synth', '--all', '--output', outdir];
 }
 
 class Command implements yargs.CommandModule {
@@ -59,7 +68,7 @@ class Command implements yargs.CommandModule {
     // entry point + mode signal as deploy-ci; `npm run cdk`, never npx.
     const outdir = mkdtempSync(path.join(tmpdir(), 'cdk-cicd-list-ci-'));
     try {
-      const result = spawnSync('npm', ['run', 'cdk', 'synth', '--all', '--output', outdir], {
+      const result = spawnSync('npm', listCiArgs(outdir), {
         stdio: ['inherit', 'ignore', 'inherit'],
         cwd,
         env: { ...process.env, CDK_CICD_MODE: 'pipeline' },

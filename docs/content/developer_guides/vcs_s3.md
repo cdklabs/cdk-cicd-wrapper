@@ -10,6 +10,8 @@ Install the git-remote-s3 Python package:
 pip install git-remote-s3
 ```
 
+Create the bucket with versioning enabled: the pipeline's S3 source action requires a versioned object, and `Repository.s3(...)` imports the bucket rather than creating it.
+
 ## Configuration
 
 `Repository.s3(name, branch?)` takes a versioned S3 object as `bucket/key` (a bucket-only name defaults the key to `source.zip`). The pipeline's source action watches that **exact** object key — `git-remote-s3` itself writes each branch's zip under `refs/heads/<branch>/repo.zip` (see below), so point `name` at that literal path for the branch you want to trigger the pipeline:
@@ -81,6 +83,6 @@ s3://my-git-bucket/my-repo/refs/heads/<branch>/repo.zip
 
 - No built-in pull request functionality.
 - Concurrent writes need to be managed carefully.
-- Branch deletion must be done using the `git-remote-s3` CLI.
+- Branch deletion must be done using the `git-remote-s3` CLI: `git-s3 delete-branch <s3uri> -b <branch>`.
 
 For more information about git-remote-s3, visit the [official repository](https://github.com/awslabs/git-remote-s3).

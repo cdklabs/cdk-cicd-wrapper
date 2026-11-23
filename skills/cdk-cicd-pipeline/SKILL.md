@@ -34,6 +34,10 @@ setup, `cicd.config.ts` and the `app` line in `cdk.json`. The app's own code sta
    `cdk init` app, uncomment the line `init` warns about:
    `env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION }`.
    cdk-cicd sets both for every stage.
+   **Stages sharing an account and Region need distinct stack names.** `--stages dev,prod` writes stages
+   without `env`, so both deploy into the pipeline's account and Region, and a fixed stack name makes them
+   share one stack. Give each stage its own `env`, or add
+   `stackName: stageStackName('<name>')` (imported from `@cdklabs/cdk-cicd-wrapper`; it appends the stage).
 4. Check it: `npx cdk-cicd synth --all --require-account`. It fails on a stack without an account, as the
    pipeline's Build stage does. Plain `synth` only warns.
 5. Provision it once, after the account check above: `npx cdk-cicd deploy-ci`.
@@ -43,15 +47,16 @@ setup, `cicd.config.ts` and the `app` line in `cdk.json`. The app's own code sta
 
 ## Add a stack
 
-Add it to the app's entry (`bin/<app>.ts`) as plain CDK, with the same `env` line, then
-`npx cdk-cicd synth --all --require-account`, commit and push. Every stage deploys every stack of the app. There is no wrapper code
-to add.
+Add it to the app's entry (`bin/<app>.ts`) as plain CDK, with the same `env` line (and a `stageStackName`
+stack name when stages share an account and Region), then `npx cdk-cicd synth --all --require-account`,
+commit and push. Every stage deploys every stack of the app. There is no other wrapper code to add.
 
 ## Add a stage
 
 Add its name, or `{ name, env, manualApproval }`, to `stages` in `cicd.config.ts` and push. The
-UpdatePipeline stage applies the change; you never need `deploy-ci` again. Every stage except `dev` and
-`res` asks for manual approval by default.
+UpdatePipeline stage applies the change; you never need `deploy-ci` again. If the new stage shares an
+account and Region with another stage, it needs distinct stack names: its own `env`, or `stageStackName`.
+Every stage except `dev` and `res` asks for manual approval by default.
 
 ## Check a run
 

@@ -4,7 +4,7 @@ This guide walks through turning a plain AWS CDK app into a CI/CD pipeline with 
 
 ## Overview
 
-There is **no wrapper code in your app** — for a TypeScript/JavaScript CDK app. Your `bin/` entry point stays exactly what `cdk init` produced — a plain `App` with your stacks. A separate `cicd.config.ts` file, next to `cdk.json`, describes the pipeline (source repository, stages, CI steps, …). The wrapper is injected at synth time through `cdk.json`'s `app` command (a Node `require` preload); with no `cicd.config.ts` present your app deploys as stock CDK, unmodified. This walkthrough is TS/JS-specific: the preload mechanism can't attach to a non-Node app entry (e.g. Python), so those apps use the explicit `CdkCicd.attach(app)` call in `bin/` instead of the zero-touch `cdk-cicd exec` path — see the package's jsii-published bindings for the equivalent in your language.
+Your app does not call the wrapper — for a TypeScript/JavaScript CDK app. Your `bin/` entry point stays an ordinary CDK app — a plain `App` with your stacks; the one wrapper import the basic flow needs is the `stageStackName` helper, which names a stack per stage. A separate `cicd.config.ts` file, next to `cdk.json`, describes the pipeline (source repository, stages, CI steps, …). The wrapper is injected at synth time through `cdk.json`'s `app` command (a Node `require` preload); with no `cicd.config.ts` present your app deploys as stock CDK, unmodified. This walkthrough is TS/JS-specific: the preload mechanism can't attach to a non-Node app entry (e.g. Python), so those apps use the explicit `CdkCicd.attach(app)` call in `bin/` instead of the zero-touch `cdk-cicd exec` path — see the package's jsii-published bindings for the equivalent in your language. `CdkCicd.attach` applies the security plugins only: provisioning the pipeline needs `cdk-cicd exec` as `cdk.json`'s `app` command (see [Security plugins](#security-plugins)).
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ Install the wrapper library and its CLI:
 npm install @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
 ```
 
-**Note**: If the `@cdklabs` scope is not resolvable from the public npm registry (for example while a pre-release version is only published under the `next` dist-tag, or your organization proxies npm through a private registry), configure a [private NPM registry](../developer_guides/private_npm_registry.md) or [AWS CodeArtifact](../developer_guides/codeartifact.md) first.
+**Note**: If your organization proxies npm through a private registry, configure a [private NPM registry](../developer_guides/private_npm_registry.md) or [AWS CodeArtifact](../developer_guides/codeartifact.md) first.
 
 ## Write `cicd.config.ts`
 
@@ -43,6 +43,7 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-project',
+  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-project'), // or Repository.s3('bucket/key'), or Repository.codestarConnection('org/my-project', connectionArn) for GitHub
   // 'dev' auto-approves (inner loop); 'prod' is gated by a manual approval by default.
   stages: ['dev', { name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }],
@@ -76,38 +77,41 @@ and region in `config/<STAGE>.json` and you declare them once — nothing to rep
 stage, so this inner-loop order does not apply there.)
 
 `cdk-cicd exec` also runs your entry file under a preload that applies the wrapper's runtime hooks
-(tagging, default security aspects, etc.) — with zero references to the wrapper in your own code:
+(tagging, default security aspects, etc.), so nothing in `bin/` applies the wrapper. The one wrapper
+import below, the `stageStackName` helper, gives each stage its own CloudFormation stack name
+(`my-project-dev`/`my-project-prod`):
 
 ```typescript
-// bin/my-project.ts — ordinary CDK, no wrapper imports required
+// bin/my-project.ts — ordinary CDK; stageStackName is the only wrapper import
 import * as cdk from 'aws-cdk-lib';
+import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
 import { MyStack } from '../lib/my-stack';
 
 const app = new cdk.App();
-new MyStack(app, 'my-project', {
-  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
-});
-```
-
-**Optional**: to control the CloudFormation stack name per stage (for example `my-project-dev`/`my-project-prod`), use the `stageStackName` helper:
-
-```typescript
-import { stageStackName } from '@cdklabs/cdk-cicd-wrapper';
-
 new MyStack(app, 'my-project', {
   stackName: stageStackName('my-project'),
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });
 ```
 
+Keep the `stackName` line. Without it, every stage deploys the stack as `my-project`, so two stages in the
+same account and Region (in the pipeline, a stage with no `env` deploys to the pipeline's own account and
+Region) share one CloudFormation stack, and the later stage updates the stack the earlier one deployed.
+
 ## Bootstrap your stages
 
-The {{ project_name }} uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. Bootstrap every account/region a stage in `cicd.config.ts` targets, trusting the account the pipeline itself runs in (the account your ambient credentials point at when you run `cdk-cicd deploy-ci` below):
+The {{ project_name }} uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. Bootstrap the pipeline's own account/region and every account/region a stage in `cicd.config.ts` targets, trusting the account the pipeline itself runs in (the account your ambient credentials point at when you run `cdk-cicd deploy-ci` below):
 
 ```bash
+npx cdk bootstrap aws://<PIPELINE_ACCOUNT>/<PIPELINE_REGION> --trust <PIPELINE_ACCOUNT> \
+  --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 npx cdk bootstrap aws://<STAGE_ACCOUNT>/<STAGE_REGION> --trust <PIPELINE_ACCOUNT> \
   --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 ```
+
+Without `--qualifier`, `cdk bootstrap` uses the default qualifier, `hnb659fds`, which is why the
+`cicd.config.ts` above sets `qualifier: 'hnb659fds'`. Without that line the stages use a qualifier derived
+from `application`, and every stage account/region then needs `cdk bootstrap --qualifier <that qualifier>`.
 
 If you are reusing an existing CDK bootstrap setup that already trusts the pipeline account, you can skip this step.
 
@@ -121,19 +125,20 @@ npx cdk-cicd deploy-ci
 
 This provisions the pipeline from `cicd.config.ts` alone — nothing else needs to exist yet. From here, the pipeline self-updates from `cicd.config.ts` on every run, so you only run `deploy-ci` by hand once (and again if you ever need to recover a deleted pipeline stack).
 
-Once deployed, the pipeline runs: **Source** → **Build** (`npm ci`, then either your configured `ci.steps` or, if you set none, the default scripts `npm run audit`/`build`/`test`, then `cdk synth` with CDK Nag) → **self-update** → one **deploy** action per configured stage, in order, gated by a manual approval on every stage except your inner-loop ones (`dev`/`res`) unless you set `manualApproval` explicitly.
+Once deployed, the pipeline runs: **Source** → **Build** (your `ci.steps` verbatim, or by default `npm ci` then `npm run audit`/`build`/`test`; then, with the default deploy model, `cdk-cicd synth --all --require-account`) → **UpdatePipeline** → one **deploy** action per configured stage, in order, gated by a manual approval on every stage except your inner-loop ones (`dev`/`res`) unless you set `manualApproval` explicitly.
 
 ## Configuring Continuous Integration
 
 Leave `ci.steps` unset and the build runs your project's own npm scripts by default — `npm run audit`, `npm run build`, then `npm run test`. Each runs only when your `package.json` defines it; a missing script prints a warning pointing at the recommended checks and continues, so it never fails the build. This keeps CI identical to what you run locally and treats the checks as encouraged guidance. See the [Audit guide](../developer_guides/audit.md) for the recommended `audit` command to point your script at.
 
-Setting `ci.steps` **replaces** those default scripts rather than adding to them, so list everything you want the build to run:
+Setting `ci.steps` **replaces** the whole default build, `npm ci` included, rather than adding to it, so list everything you want the build to run, starting with the install:
 
 ```typescript
 export default defineCICD({
   // ...
   ci: {
     steps: {
+      install: 'npm ci',
       audit: 'npm run audit',
       build: 'npm run build',
       test: 'npm run test',
@@ -151,7 +156,7 @@ After the pipeline is deployed, push to the tracked branch to trigger it. For a 
 ```bash
 sudo pip3 install git-remote-codecommit  # once per machine
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-git remote add origin "codecommit::${AWS_REGION}://${GIT_REPOSITORY}"
+git remote add origin "codecommit::<pipeline-region>://my-project"
 git push -u origin "${CURRENT_BRANCH}:main"
 ```
 
@@ -165,7 +170,7 @@ If you have an existing `PipelineBlueprint.builder()…synth(app)` project, `cdk
 npx cdk-cicd migrate --entry src/main.ts --application my-project   # add --dry-run to preview
 ```
 
-It extracts your stage list (falling back to Blueprint's default `RES`/`DEV`/`INT` when no `.defineStages(...)` call is found), flags anything it can't safely determine — the repository is always flagged as unresolved today (set `repository: Repository.*(...)` yourself), plus hooks/phases, `workbench`, … — and prints the remaining manual steps. It deliberately does not rewrite your entry file's stack construction. Read the full mapping table and the **Preserving already-deployed resources** section in the repository's [`MIGRATION.md`](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/MIGRATION.md) before switching a production pipeline over — getting the CloudFormation stack name right is what decides whether your existing resources are updated in place or recreated.
+It extracts your stage list (falling back to Blueprint's default stages, written as `res`/`dev`/`int`, when no `.defineStages(...)` call is found), flags anything it can't safely determine — the repository is always flagged as unresolved today (set `repository: Repository.*(...)` yourself), plus hooks/phases, `workbench`, … — and prints the remaining manual steps. It deliberately does not rewrite your entry file's stack construction. Read the full mapping table and the **Preserving already-deployed resources** section in the repository's [`MIGRATION.md`](https://github.com/cdklabs/cdk-cicd-wrapper/blob/main/MIGRATION.md) before switching a production pipeline over — getting the CloudFormation stack name right is what decides whether your existing resources are updated in place or recreated.
 
 ## Security plugins
 
@@ -195,9 +200,14 @@ new MyStack(app, 'my-stack', { /* … */ });
 CdkCicd.attach(app); // applies the security plugins tree-wide
 ```
 
+`CdkCicd.attach` applies the security plugins only. `deploy-ci`, `synth-ci` and `list-ci` render the
+pipeline by running `cdk.json`'s `app` with `CDK_CICD_MODE=pipeline`, and only `cdk-cicd exec` acts on
+that, so on this path they do not render the pipeline. Provisioning the pipeline needs `cdk-cicd exec` as
+the `cdk.json` app.
+
 ### Choosing which plugins apply
 
-Each plugin has a `{ name, version }`. Configure the set in `cicd.config.ts`:
+Each plugin has a `{ name, version }`. Under `cdk-cicd exec`, configure the set in `cicd.config.ts`:
 
 ```ts
 export default defineCICD({
@@ -214,7 +224,8 @@ export default defineCICD({
 });
 ```
 
-From code, the same selection is available on `attach`:
+`cicd.config.ts`'s `plugins` applies only under `cdk-cicd exec`, which passes it to the app. On the
+explicit `CdkCicd.attach` path it is not read; select the plugins with `CdkCicd.attach(app, { plugins: [...] })`:
 
 ```ts
 CdkCicd.attach(app, { plugins: [{ name: 'EncryptSNSTopicOnTransit', version: '1' }] });
@@ -223,18 +234,24 @@ CdkCicd.attach(app, { skipDefaults: true }); // opt out of all
 
 ### Adding a custom plugin
 
-A custom plugin is any `IAspect`. Because a live Aspect cannot travel through config, declare its
-`{ name, version }` in `cicd.config.ts`'s `plugins` list **and** register the instance in `bin/`:
+A custom plugin is any `IAspect`. Because a live Aspect cannot travel through config, name its
+`{ name, version }` in the `plugins` you pass to `CdkCicd.attach` **and** register the instance in `bin/`
+(the list replaces the defaults, so keep the built-ins you want in it):
 
 ```ts
 class RequireOwnerTagAspect implements IAspect { /* … */ }
 
 CdkCicd.addPlugin(app, new RequireOwnerTagAspect(), { name: 'RequireOwnerTag', version: '1.0.0' });
-CdkCicd.attach(app);
+CdkCicd.attach(app, {
+  plugins: [
+    { name: 'AwsSolutionsChecks', version: '1' },
+    { name: 'RequireOwnerTag', version: '1.0.0' },
+  ],
+});
 ```
 
-Naming a custom plugin in the config without a matching `addPlugin` in `bin/` fails synth with an
-actionable error. A complete, runnable example is in
+Naming a custom plugin without a matching `addPlugin` in `bin/` fails synth with an actionable error.
+A complete, runnable example is in
 [`samples/security-plugins-proof`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/samples/security-plugins-proof).
 
 > **Note:** custom plugins (`addPlugin`) require the explicit `CdkCicd.attach(app)` path — the
