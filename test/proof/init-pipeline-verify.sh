@@ -44,6 +44,9 @@ readonly POLL_INTERVAL=20
 readonly POLL_MAX=90             # 30 min ceiling per wait
 readonly PACKAGES="${CDK_CICD_INIT_PROOF_PACKAGES:-codeartifact}"
 readonly STAGES="${CDK_CICD_INIT_PROOF_STAGES:-dev}"
+# CDK_CICD_INIT_PROOF_AUDIT=check points the app's `audit` script at `cdk-cicd check` and approves a license and
+# lock baseline first (license --fix, validate --fix), as the Audit guide recommends, so the Build runs every check.
+readonly AUDIT="${CDK_CICD_INIT_PROOF_AUDIT:-}"
 case "$PACKAGES" in codeartifact|npm) ;; *) die "CDK_CICD_INIT_PROOF_PACKAGES must be codeartifact or npm, not '$PACKAGES'" ;; esac
 
 app_name()       { printf 'cdkcicdtest-%s-init\n' "$CDK_CICD_TEST_RUN_ID"; }
@@ -101,6 +104,23 @@ dump_failed_logs() {
     aws_masked logs get-log-events --log-group-name "$grp" --log-stream-name "$stream" --region "$REGION" \
       --limit 60 --query 'events[].message' --output text 2>/dev/null | redact | sed 's/^/    | /' || true
   done
+}
+
+# Print the Build action's log lines that match $2, for the execution of commit $1.
+build_log_lines() {
+  local id build grp stream
+  read -r id < <(aws_masked codepipeline list-pipeline-executions --pipeline-name "$(pipeline_stack)" --region "$REGION" \
+    --query "pipelineExecutionSummaries[?sourceRevisions[0].revisionId=='$1'] | [0].pipelineExecutionId" --output text 2>/dev/null) || true
+  read -r build < <(aws_masked codepipeline list-action-executions --pipeline-name "$(pipeline_stack)" --region "$REGION" \
+    --filter "pipelineExecutionId=${id:-none}" \
+    --query "actionExecutionDetails[?actionName=='Build'] | [0].output.executionResult.externalExecutionId" --output text 2>/dev/null) || true
+  read -r grp stream < <(aws_masked codebuild batch-get-builds --ids "${build:-none}" --region "$REGION" \
+    --query 'builds[0].logs.[groupName,streamName]' --output text 2>/dev/null) || true
+  [ -n "${grp:-}" ] && [ "$grp" != None ] || { log 'no Build log found'; return 0; }
+  info "Build log lines matching the checks:"
+  aws_masked logs get-log-events --log-group-name "$grp" --log-stream-name "$stream" --region "$REGION" \
+    --start-from-head --query 'events[].message' --output text 2>/dev/null | tr '\t' '\n' | grep -i "$2" | redact \
+    | head -40 | sed 's/^/    | /' || true
 }
 
 # Approve every gated stage that is waiting (Approve-<stage> in progress), as a person would.
@@ -215,6 +235,14 @@ main() {
   out="$(in_app npx cdk-cicd synth --all --require-account)" && info 'synth --all --require-account passed' \
     || { printf '%s\n' "$out" | tail -20; die 'synth failed after binding the env'; }
 
+  if [ "$AUDIT" = check ]; then
+    log 'leg 4b: "audit": "cdk-cicd check", with an approved license and lock baseline'
+    in_app npm pkg set scripts.audit='cdk-cicd check' || die 'could not set the audit script'
+    in_app npx cdk-cicd license --fix >/dev/null || die 'license --fix failed'
+    in_app npx cdk-cicd validate --fix >/dev/null || die 'validate --fix failed'
+    out="$(in_app npm run audit 2>&1)" && info 'npm run audit passes locally' || { printf '%s\n' "$out" | tail -20; die 'npm run audit failed locally'; }
+  fi
+
   log 'leg 5: deploy-ci, push, and a green pipeline'
   # codeartifact mode imports a repository the proof creates; npm mode lets deploy-ci create it, as the README does.
   [ "$PACKAGES" = npm ] || ensure_cc_repo "$(app_name)" "$REGION"
@@ -228,6 +256,7 @@ main() {
   else
     rc=1
   fi
+  [ "$AUDIT" = check ] && build_log_lines "$sha" 'cdk-cicd check\|validate\|licen\|audit\|security\|skip'
   local stage stack
   for stage in $(stage_list); do
     stack="$(stage_stack "$stage")"
