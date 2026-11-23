@@ -28,8 +28,8 @@
 The CDK CI/CD Wrapper turns an ordinary AWS CDK app into a multi-account delivery pipeline. You describe the
 source repository and the stages (each with its account and Regions) in one `cicd.config.ts`. The `cdk-cicd`
 CLI provisions the pipeline in your pipeline account, and from then on every push builds, checks and deploys
-the app stage by stage. Your `bin/` stays an ordinary CDK app: the one wrapper import the basic flow needs is the
-`stageStackName` helper, which names a stack per stage.
+the app stage by stage. Your `bin/` stays plain CDK: the only wrapper code in it is the `stageStackName` helper,
+and only when stages share an account and Region.
 
 ## How it works
 

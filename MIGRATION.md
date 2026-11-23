@@ -22,7 +22,7 @@ deployer-image build.
 example `"audit": "cdk-cicd check-dependencies --npm"`). The audit gate itself now runs only when an `audit`
 script exists.
 
-Also in 2.0:
+Two requirements to check while you are at it (they are not new in 2.0):
 
 - Setting `ci.steps` replaces the whole build phase: the engine no longer runs `npm ci` before your steps, so
   include it in them.

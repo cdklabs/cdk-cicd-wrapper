@@ -25,12 +25,12 @@ The CDK CI/CD Wrapper builds upon the success of the [aws-cdk-cicd-boot-sample](
 
 ## Features
 
-- CodeBuild in a VPC, in a private VPC with a NAT gateway, or behind an HTTP proxy.
-- Dependency and code security scanning (npm audit, pip-audit, Bandit, Semgrep, ShellCheck) and open-source
-  license checks over npm and Python dependencies.
-- A private npm registry or CodeArtifact for your own packages.
-- Default-on security hardening (cdk-nag and hardening aspects) applied to every stack.
-- TypeScript and Python CDK apps.
+- **Multi-staged CI/CD Pipeline**: Seamlessly deploy your CDK applications across multiple stages (e.g., DEV, INT, PROD) and AWS accounts.
+- **Security Scanning**: Perform security scanning on dependencies and codebase, blocking the pipeline in case of CVE findings when your Build runs it.
+- **License Management**: Manage licenses for NPM and Python dependencies, ensuring compliance with your organization's policies.
+- **Private NPM Registry**: Securely store and utilize private NPM libraries.
+- **Customizable Pipeline**: Tailor the CI/CD pipeline to your project's specific needs with `ci.steps` in `cicd.config.ts`.
+- **Centralized Compliance Logs**: Store compliance logs in a pre-configured S3 bucket.
 
 ## Getting Started
 

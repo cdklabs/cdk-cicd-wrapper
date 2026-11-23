@@ -43,7 +43,7 @@ These commands drive the Autopilot config-driven pipeline defined in `cicd.confi
 npx cdk-cicd <command> --help
 ```
 
-> The Autopilot pipeline commands are still evolving. A change that breaks a flag or a behaviour ships as a new major version; the [release notes](https://github.com/cdklabs/cdk-cicd-wrapper/releases) list them.
+> **Experimental.** The Autopilot pipeline commands are still evolving; flags and behaviour may change.
 
 | Command     | Description                                                                                                                                                                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -68,7 +68,7 @@ The `npx @cdklabs/cdk-cicd-wrapper-cli security-scan` command scans your codebas
 
 ### License Management
 
-The `npx @cdklabs/cdk-cicd-wrapper-cli license` command can validate and generate a NOTICE file for your project. The NOTICE file consistency is tested by this command. The pipeline's Build runs it only if a `ci.steps` entry, or one of the npm scripts the default Build runs (`audit`, `build`, `test`), calls it.
+The `npx @cdklabs/cdk-cicd-wrapper-cli license` command can validate and generate a NOTICE file for your project. The NOTICE file consistency is tested by this command. Call it from one of the npm scripts the pipeline's Build step runs, such as `audit`, to ensure the file is always up-to-date.
 
 To update the NOTICE file, run the following command:
 
