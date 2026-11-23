@@ -1898,6 +1898,20 @@
         "path": "docs/content/workshops/autopilot-pipeline/05-container-mode.md",
         "line": 1
       }
+    },
+    {
+      "id": "code-review-example-sample-derives-its-qualifier",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "samples/cdk-cicd-wrapper-example sets no qualifier, so it needs a second bootstrap that cdk-cicd init projects do not",
+      "detail": "cdk-cicd init writes qualifier 'hnb659fds' and the README quick start relies on a plain cdk bootstrap, but the example's cicd.config.ts sets none, so its stages use the derived 'cdkcicdwra' and the account needs cdk bootstrap --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra as well. The README calls the sample 'this shape'. Pinning qualifier: 'hnb659fds' in the sample would make one bootstrap enough; it changes the sample's stacks, so it needs a maintainer decision and a synth of the sample afterwards.",
+      "location": {
+        "path": "samples/cdk-cicd-wrapper-example/cicd.config.ts",
+        "line": 9
+      }
     }
   ]
 }
