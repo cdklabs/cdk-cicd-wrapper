@@ -59,7 +59,7 @@ export default defineCICD({
 });
 ```
 
-`url`, `basicAuthSecretArn`, and `scope` map directly onto `NpmRegistryConfig`. When set, every build project the pipeline creates writes a temporary npm user config outside the checkout (`/tmp/cdk-cicd-npmrc`, selected through `NPM_CONFIG_USERCONFIG`) before `npm ci` runs, and deletes it at the end of the build phase, even when a command in it fails. The registry entry is scoped to `scope` when given, otherwise it overrides the default registry. CodeBuild injects the token from Secrets Manager through the buildspec's `secrets-manager` environment, so it never appears in the synthesized buildspec. On the `GITHUB_ACTIONS` engine the config is `$RUNNER_TEMP/cdk-cicd-npmrc` instead, and the workflow's login step reads the token with `aws secretsmanager get-secret-value`.
+`url`, `basicAuthSecretArn`, and `scope` map directly onto `NpmRegistryConfig`. When set, every build project the pipeline creates writes a temporary npm user config outside the checkout (`/tmp/cdk-cicd-npmrc`) — scoped to `scope` when given, otherwise overriding the default registry — with the auth token read from Secrets Manager at container-start time, before `npm ci` runs, and deletes it when the build phase ends. On the `GITHUB_ACTIONS` engine the workflow's login step writes it to `$RUNNER_TEMP/cdk-cicd-npmrc` and reads the token with `aws secretsmanager get-secret-value`.
 
 Create a Secrets Manager secret holding **only** the token as plaintext, and pass its complete ARN, including the 6-character suffix Secrets Manager appends, as `basicAuthSecretArn`. The read permission is granted on exactly that ARN, so a partial ARN never matches the secret. Prefer a technical user's token dedicated to the pipeline over a personal token.
 

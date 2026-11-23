@@ -57,7 +57,7 @@ export default defineCICD({
 });
 ```
 
-`cdk-cicd deploy-ci` deploys the OIDC role (`GitHubActionRole`) the generated workflow assumes and, unless you pass an existing provider's ARN as `githubActions.openIdConnectProviderArn`, the account's GitHub OIDC identity provider — the workflow itself is what runs the pipeline once you push it. An account can hold only one provider for the GitHub token URL, so pass the ARN when the account already has one. See the [`Autopilot pipelines` workshop](../workshops/autopilot-pipeline/index.md) for a walkthrough.
+`cdk-cicd deploy-ci` only deploys the OIDC role (`GitHubActionRole`) the generated workflow assumes, plus the account's GitHub OIDC provider unless you pass an existing one as `githubActions.openIdConnectProviderArn` (an account holds only one) — the workflow itself is what runs the pipeline once you push it. See the [`Autopilot pipelines` workshop](../workshops/autopilot-pipeline/index.md) for a walkthrough.
 
 GitHub workflow YAML can name an Environment but cannot create its required-reviewer protection rule.
 When any stage resolves to `manualApproval: true`, rendering fails unless

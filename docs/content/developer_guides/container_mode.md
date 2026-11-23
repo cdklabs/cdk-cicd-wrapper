@@ -158,10 +158,10 @@ unsupported by the alpha deployment-identity API.
 
 Repo 2 can preserve application-bucket access logging by naming an existing destination with
 `complianceLogBucketName`. Set it on a target, as above, or once at the top level as the default for
-co-located targets. A logged target needs a concrete 12-digit account and exactly one Region.
-`defineDeployment` checks the values set in `deploy.config.ts` immediately. A target that leaves its
-account or Region out takes it from `config/<stage>.json` (see
-[Account and Region from the config file](#account-and-region-from-the-config-file)), and is checked
+co-located targets. `defineDeployment` resolves each logged target to a complete bucket/account/Region
+triple and fails closed unless the target has a concrete 12-digit account and exactly one matching
+Region; a target that leaves its account or Region out takes it from `config/<stage>.json` (see
+[Account and Region from the config file](#account-and-region-from-the-config-file)) and is checked
 when the CLI loads the deployment. Reusing one bucket name across different account/Region coordinates
 is also rejected.
 

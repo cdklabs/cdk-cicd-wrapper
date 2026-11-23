@@ -83,6 +83,6 @@ s3://my-git-bucket/my-repo/refs/heads/<branch>/repo.zip
 
 - No built-in pull request functionality.
 - Concurrent writes need to be managed carefully.
-- Branch deletion must be done using the `git-remote-s3` CLI: `git-s3 delete-branch <s3uri> -b <branch>`.
+- Branch deletion must be done using the `git-remote-s3` CLI.
 
 For more information about git-remote-s3, visit the [official repository](https://github.com/awslabs/git-remote-s3).
