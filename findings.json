@@ -1933,9 +1933,9 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "vcs_codecommit.md and vcs_s3.md still say CodeCommit is deemphasized for new customers since July 2024",
-      "detail": "AWS reopened CodeCommit to new customers on 2025-11-25 (CodeCommit User Guide document history: 'AWS CodeCommit is now available to new customers'). docs/content/developer_guides/vcs_codecommit.md line 3 and vcs_s3.md line 3 still steer new customers away from it. Found while reviewing the cdk-cicd-pipeline skill, which carried the same claim and now drops it. Done when: both pages state current availability (or drop the note) and vcs_s3.md no longer motivates S3 by CodeCommit being unavailable.",
+      "detail": "AWS reopened CodeCommit to new customers on 2025-11-25 (CodeCommit User Guide document history: 'AWS CodeCommit is now available to new customers'). docs/content/developer_guides/vcs_codecommit.md line 3 and vcs_s3.md line 3 still steer new customers away from it. Found while reviewing the cdk-cicd-pipeline skill, which carried the same claim and now drops it. Done when: both pages state current availability (or drop the note) and vcs_s3.md no longer motivates S3 by CodeCommit being unavailable. Resolved 2026-11-24: vcs_codecommit.md states both dates with the document-history link, vcs_s3.md motivates the S3 source without the claim, and the FAQ entry on the CreateRepository error explains the 2024-07-25 to 2025-11-25 closure. The pipeline skill no longer presents list-repositories as proof that a repository can be created.",
       "location": {
         "path": "docs/content/developer_guides/vcs_codecommit.md",
         "line": 3
@@ -1947,9 +1947,9 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "README and getting_started give a `cdk bootstrap --trust <PIPELINE_ACCOUNT>` command without saying that --trust replaces the trusted-account list",
-      "detail": "Per the CDK `cdk bootstrap` reference, re-bootstrapping with only new --trust accounts removes the previously trusted ones. A reader who runs the README / getting_started bootstrap command on an account whose bootstrap stack already trusts other pipeline accounts cuts those pipelines off. skills/cdk-cicd-pipeline/SKILL.md now tells the agent to repeat every trusted account and keep the execution policies; the user-facing docs do not. Found while bringing those pages back to the derived qualifier (qualifier lines only were in scope). Done when: both pages say to check TrustedAccounts first and repeat each one with its own --trust.",
+      "detail": "Per the CDK `cdk bootstrap` reference, re-bootstrapping with only new --trust accounts removes the previously trusted ones. A reader who runs the README / getting_started bootstrap command on an account whose bootstrap stack already trusts other pipeline accounts cuts those pipelines off. skills/cdk-cicd-pipeline/SKILL.md now tells the agent to repeat every trusted account and keep the execution policies; the user-facing docs do not. Found while bringing those pages back to the derived qualifier (qualifier lines only were in scope). Done when: both pages say to check TrustedAccounts first and repeat each one with its own --trust. Resolved 2026-11-24: README, getting_started, the workshop prerequisites and the example sample's README carry one note after their bootstrap commands. It says re-bootstrapping replaces the trusted accounts (CDK cdk bootstrap reference) and the CloudFormation execution policies (aws-cdk CLI: a passed value replaces the stored parameter), and gives the describe-stacks command to read both first.",
       "location": {
         "path": "docs/content/getting_started/index.md",
         "line": 100
@@ -1981,6 +1981,20 @@
       "location": {
         "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts",
         "line": 628
+      }
+    },
+    {
+      "id": "code-review-python-sample-taskfile-trust",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "samples/cdk-python-example/Taskfile.yml bootstraps with --trust and default execution policies, without saying that re-bootstrapping replaces both",
+      "detail": "The Python sample's Taskfile bootstraps the stage accounts with `--trust ${ACCOUNT_RES}`. Run against an account whose bootstrap already trusts other accounts, it removes them, and a passed --cloudformation-execution-policies replaces narrowed policies. The user-facing docs now warn about this; this legacy-style Taskfile does not. Done when: the task reads the existing TrustedAccounts/CloudFormationExecutionPolicies and passes them through, or documents the effect next to the task.",
+      "location": {
+        "path": "samples/cdk-python-example/Taskfile.yml",
+        "line": 159
       }
     }
   ]
