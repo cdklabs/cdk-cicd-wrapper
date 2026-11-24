@@ -23,7 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Agent skills in `skills/`, installed with `npx skills add cdklabs/cdk-cicd-wrapper`. `cdk-cicd-pipeline`
   launches a pipeline into one or more accounts and Regions, with the source, qualifier, bootstrap and trust
   checks each needs, and adds stacks and stages. `cdk-cicd-pipeline-failure-investigation` investigates a
-  failed run, and `cdk-cicd-devops-agent` connects a pipeline to DevOps Agent.
+  failed run, including a CDK bootstrap qualifier that does not match the configuration and context lookups
+  that run in the pipeline because `cdk.context.json` was not committed. `cdk-cicd-devops-agent` connects a
+  pipeline to DevOps Agent.
 
 ### Changed
 
