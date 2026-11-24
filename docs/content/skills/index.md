@@ -7,7 +7,7 @@ directory. Nothing in them runs code.
 
 | Skill | For | What it does |
 | --- | --- | --- |
-| [`cdk-cicd-pipeline`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-pipeline) | coding agents | Sets up a pipeline for a CDK app (also from a fresh `cdk init` app), adds stacks and stages to it, and finds out why a run failed. |
+| [`cdk-cicd-pipeline`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-pipeline) | coding agents | Launches a pipeline for a CDK app (also from a fresh `cdk init` app) into one or more accounts and Regions, and adds stacks and stages to it. Hands a failed run to the failure-investigation or DevOps Agent skill. |
 | [`cdk-cicd-devops-agent`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-devops-agent) | coding agents | Turns on the [DevOps Agent levels](../developer_guides/devops_agent.md) a pipeline needs, and works with the investigations they open. |
 | [`cdk-cicd-pipeline-failure-investigation`](https://github.com/cdklabs/cdk-cicd-wrapper/tree/main/skills/cdk-cicd-pipeline-failure-investigation) | AWS DevOps Agent and coding agents | Investigates a failed run: what each stage and action runs, where its log or stack lives (pipeline account vs stage account), and the usual root causes. |
 
