@@ -1961,9 +1961,9 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "With a derived qualifier, cdk-cicd init writes the value into cdk.json but not into cicd.config.ts, so renaming `application` later splits the stages from the pipeline stack",
-      "detail": "Without --qualifier, init leaves `qualifier` out of cicd.config.ts (defineCICD derives it from `application`) and writes the derived value into cdk.json's @aws-cdk/core:bootstrapQualifier for the pipeline stack. If the user later renames `application`, the stages re-derive a new qualifier while the cdk.json context keeps the old one, so the stages and the pipeline stack need different bootstraps. Writing no qualifier line was the maintainer's choice for this change. Possible follow-up: also write `qualifier: '<derived>'` (with the existing 'change both together' comment), or have `cdk-cicd synth` warn when config.qualifier and the context differ.",
+      "detail": "Without --qualifier, init leaves `qualifier` out of cicd.config.ts (defineCICD derives it from `application`) and writes the derived value into cdk.json's @aws-cdk/core:bootstrapQualifier for the pipeline stack. If the user later renames `application`, the stages re-derive a new qualifier while the cdk.json context keeps the old one, so the stages and the pipeline stack need different bootstraps. Writing no qualifier line was the maintainer's choice for this change. Possible follow-up: also write `qualifier: '<derived>'` (with the existing 'change both together' comment), or have `cdk-cicd synth` warn when config.qualifier and the context differ. Resolved 2026-11-24: cdk-cicd synth (and so the CodePipeline Build) warns when the repository sets @aws-cdk/core:bootstrapQualifier to a value different from the stages' qualifier, names both, and suggests pinning `qualifier` to the context's value; it only warns. Proven by test/proof/init-pipeline-verify.sh on AWS, run r20261124173558: silent with matching qualifiers, a warning with both values and a passing synth with cdk.json on another qualifier, then a green pipeline.",
       "location": {
         "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/InitCommand.ts",
         "line": 122
@@ -1995,6 +1995,20 @@
       "location": {
         "path": "samples/cdk-python-example/Taskfile.yml",
         "line": 159
+      }
+    },
+    {
+      "id": "code-review-buildcontextjson-context-precedence-reversed",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "medium",
+      "status": "open",
+      "title": "buildContextJson's fallback merges cdk.context.json over cdk.json, the reverse of the CDK CLI, and DeployCommand.effectiveBootstrapQualifier inherits it",
+      "detail": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/ExecCommand.ts buildContextJson, when CDK_CONTEXT_JSON is unset, builds `{ ...cdk.json context, ...cdk.context.json }`, so cdk.context.json wins. The aws-cdk CLI (2.1149.0, lib/cli/user-configuration.js contextSources and lib/index.js Context.get) orders the sources command line, cdk.json context, cdk.context.json, ~/.cdk.json, and returns the first match, so cdk.json wins. The comment 'Replicate the CLI's merge order' and the tests ExecCommand.test.ts (cdk.context.json override) and DeployCommand.test.ts (effectiveBootstrapQualifier) pin the reversed order. The effect is visible only when both files set the same key to different values, e.g. @aws-cdk/core:bootstrapQualifier, where effectiveBootstrapQualifier (promoted-assembly check included) would pick a value the CDK does not use. Under `cdk-cicd exec` run by the CDK CLI, CDK_CONTEXT_JSON is set and the fallback is not used. Found while reviewing the synth qualifier-mismatch warning, which reads the context in the CDK's order on its own. Done when: the fallback takes cdk.json over cdk.context.json, with the two tests corrected, after checking no working setup relies on the reversed order.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/ExecCommand.ts",
+        "line": 387
       }
     }
   ]
