@@ -125,6 +125,12 @@ only, at most 10 characters). The pipeline stack does not read `cicd.config.ts` 
 To deploy into accounts bootstrapped with a qualifier you already have, set `qualifier` in `cicd.config.ts`, the
 `cdk.json` context and `toolkitStackName` to match it (`cdk-cicd init --qualifier <it>` does all three).
 
+Re-bootstrapping replaces what the bootstrap stack holds. An account the stack trusts that the command does not pass
+with its own `--trust` loses its access ([`cdk bootstrap` reference](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-bootstrap.html)),
+and `--cloudformation-execution-policies` replaces the stored policies, so narrowed ones become what you pass. Before you
+re-bootstrap an account and Region, read the stack's `TrustedAccounts` and `CloudFormationExecutionPolicies`:
+`aws cloudformation describe-stacks --stack-name CDKToolkit-<QUALIFIER> --region <REGION> --query "Stacks[0].Parameters"`.
+
 If you are reusing an existing CDK bootstrap with this qualifier that already trusts the pipeline account, you can
 skip this step.
 

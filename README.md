@@ -80,6 +80,12 @@ npx cdk bootstrap aws://ACCOUNT/REGION --qualifier QUALIFIER --toolkit-stack-nam
   --trust PIPELINE_ACCOUNT --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
+Re-bootstrapping replaces what the bootstrap stack holds. An account the stack trusts that the command does not pass
+with its own `--trust` loses its access ([`cdk bootstrap` reference](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-bootstrap.html)),
+and `--cloudformation-execution-policies` replaces the stored policies, so narrowed ones become what you pass. Before you
+re-bootstrap an account and Region, read the stack's `TrustedAccounts` and `CloudFormationExecutionPolicies`:
+`aws cloudformation describe-stacks --stack-name CDKToolkit-QUALIFIER --region REGION --query "Stacks[0].Parameters"`.
+
 Then, with credentials for the pipeline account and Region, run the steps `init` printed:
 
 ```bash
