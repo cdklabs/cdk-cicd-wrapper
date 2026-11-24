@@ -1793,9 +1793,9 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "skills/cdk-cicd-pipeline triggers on 'why a cdk-cicd pipeline run failed' but never hands off to cdk-cicd-pipeline-failure-investigation",
-      "detail": "Its description claims the failed-run request that skills/cdk-cicd-pipeline-failure-investigation is written for, and its own procedure for it is two lines. An agent that picks it can miss that deployed stacks live in the stage account, not the pipeline account. Done when: the pipeline skill's failure section points to the failure-investigation skill (and to cdk-cicd-devops-agent when devopsAgent.investigations is on), or drops the trigger from its description.",
+      "detail": "Its description claims the failed-run request that skills/cdk-cicd-pipeline-failure-investigation is written for, and its own procedure for it is two lines. An agent that picks it can miss that deployed stacks live in the stage account, not the pipeline account. Done when: the pipeline skill's failure section points to the failure-investigation skill (and to cdk-cicd-devops-agent when devopsAgent.investigations is on), or drops the trigger from its description. Resolved 2026-11-24: the skill's failure section hands off to cdk-cicd-pipeline-failure-investigation, or to cdk-cicd-devops-agent when devopsAgent is set. The skill's launch path (prerequisite checks, prod in a second Region via env, the approval, per-Region stack checks) was walked on AWS by test/proof/init-pipeline-verify.sh with CDK_CICD_INIT_PROOF_ENVS=explicit, run r20261124162057.",
       "location": {
         "path": "skills/cdk-cicd-pipeline/SKILL.md",
         "line": 3
@@ -1807,9 +1807,9 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "CHANGELOG.md has no entry for #370: cdk-cicd init, synth --require-account in the CodePipeline Build, and the deploy.config compliance resolution",
-      "detail": "The Unreleased section lists devopsAgent and cdk-cicd mcp but nothing from #370, which adds a user-facing command and makes Build fail on a stack without an account (previously a warning). Done when: Unreleased has Added (cdk-cicd init) and Changed (Build passes --require-account) entries written by whoever owns that change.",
+      "detail": "The Unreleased section lists devopsAgent and cdk-cicd mcp but nothing from #370, which adds a user-facing command and makes Build fail on a stack without an account (previously a warning). Done when: Unreleased has Added (cdk-cicd init) and Changed (Build passes --require-account) entries written by whoever owns that change. Resolved 2026-11-24: Unreleased now has Added (cdk-cicd init, the synth account warning and --require-account, resolveDeploymentCompliance), Changed (the Build passes --require-account, the TypeScript 7 loader) and Fixed (the two container-mode fixes) entries.",
       "location": {
         "path": "CHANGELOG.md",
         "line": 9
@@ -1905,9 +1905,9 @@
       "layer": "static",
       "producer": "code-review",
       "severity": "low",
-      "status": "open",
+      "status": "resolved",
       "title": "samples/cdk-cicd-wrapper-example sets no qualifier, so it needs a second bootstrap that cdk-cicd init projects do not",
-      "detail": "cdk-cicd init writes qualifier 'hnb659fds' and the README quick start relies on a plain cdk bootstrap, but the example's cicd.config.ts sets none, so its stages use the derived 'cdkcicdwra' and the account needs cdk bootstrap --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra as well. The README calls the sample 'this shape'. Pinning qualifier: 'hnb659fds' in the sample would make one bootstrap enough; it changes the sample's stacks, so it needs a maintainer decision and a synth of the sample afterwards.",
+      "detail": "cdk-cicd init writes qualifier 'hnb659fds' and the README quick start relies on a plain cdk bootstrap, but the example's cicd.config.ts sets none, so its stages use the derived 'cdkcicdwra' and the account needs cdk bootstrap --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra as well. The README calls the sample 'this shape'. Pinning qualifier: 'hnb659fds' in the sample would make one bootstrap enough; it changes the sample's stacks, so it needs a maintainer decision and a synth of the sample afterwards. Resolved 2026-11-24 without pinning hnb659fds: the wrapper does not target the CDK default qualifier. The sample keeps its derived cdkcicdwra and sets @aws-cdk/core:bootstrapQualifier (and toolkitStackName) to it in cdk.json, so the pipeline stack and the stages share one bootstrap; a local synth-ci and synth --all of the sample ask for /cdk-bootstrap/cdkcicdwra/version only. The same derived-qualifier-plus-context shape, written by cdk-cicd init, deployed on AWS in runs r20261124162057 and r20261124162110; the sample itself was synthesized, not deployed.",
       "location": {
         "path": "samples/cdk-cicd-wrapper-example/cicd.config.ts",
         "line": 9
@@ -1925,6 +1925,62 @@
       "location": {
         "path": "package-verification.json",
         "line": 1
+      }
+    },
+    {
+      "id": "code-review-docs-codecommit-new-customer-claim-stale",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "vcs_codecommit.md and vcs_s3.md still say CodeCommit is deemphasized for new customers since July 2024",
+      "detail": "AWS reopened CodeCommit to new customers on 2025-11-25 (CodeCommit User Guide document history: 'AWS CodeCommit is now available to new customers'). docs/content/developer_guides/vcs_codecommit.md line 3 and vcs_s3.md line 3 still steer new customers away from it. Found while reviewing the cdk-cicd-pipeline skill, which carried the same claim and now drops it. Done when: both pages state current availability (or drop the note) and vcs_s3.md no longer motivates S3 by CodeCommit being unavailable.",
+      "location": {
+        "path": "docs/content/developer_guides/vcs_codecommit.md",
+        "line": 3
+      }
+    },
+    {
+      "id": "code-review-docs-bootstrap-trust-replaces-list",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "README and getting_started give a `cdk bootstrap --trust <PIPELINE_ACCOUNT>` command without saying that --trust replaces the trusted-account list",
+      "detail": "Per the CDK `cdk bootstrap` reference, re-bootstrapping with only new --trust accounts removes the previously trusted ones. A reader who runs the README / getting_started bootstrap command on an account whose bootstrap stack already trusts other pipeline accounts cuts those pipelines off. skills/cdk-cicd-pipeline/SKILL.md now tells the agent to repeat every trusted account and keep the execution policies; the user-facing docs do not. Found while bringing those pages back to the derived qualifier (qualifier lines only were in scope). Done when: both pages say to check TrustedAccounts first and repeat each one with its own --trust.",
+      "location": {
+        "path": "docs/content/getting_started/index.md",
+        "line": 100
+      }
+    },
+    {
+      "id": "code-review-init-derived-qualifier-splits-on-rename",
+      "component": "cli",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "With a derived qualifier, cdk-cicd init writes the value into cdk.json but not into cicd.config.ts, so renaming `application` later splits the stages from the pipeline stack",
+      "detail": "Without --qualifier, init leaves `qualifier` out of cicd.config.ts (defineCICD derives it from `application`) and writes the derived value into cdk.json's @aws-cdk/core:bootstrapQualifier for the pipeline stack. If the user later renames `application`, the stages re-derive a new qualifier while the cdk.json context keeps the old one, so the stages and the pipeline stack need different bootstraps. Writing no qualifier line was the maintainer's choice for this change. Possible follow-up: also write `qualifier: '<derived>'` (with the existing 'change both together' comment), or have `cdk-cicd synth` warn when config.qualifier and the context differ.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper-cli/src/cmds/autopilot/InitCommand.ts",
+        "line": 122
+      }
+    },
+    {
+      "id": "code-review-lookup-grant-jsdoc-version-param-order",
+      "component": "wrapper",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "grantLookupPermissions' JSDoc says the CLI reads the bootstrap version parameter before assuming the lookup role, which the CDK CLI's context-provider path does not do",
+      "detail": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts, the JSDoc of grantLookupPermissions, says 'the bootstrap version parameter is read by the CLI before it assumes that role'. In aws-cdk 2.1149.0 the context-provider path assumes the lookup role without reading the version parameter, and accessStackForLookup reads it only after a successful assume. The ssm:GetParameter grant itself is harmless; only the comment's reasoning is wrong. Found while reviewing the failure-investigation skill's context-lookup section. Done when: the comment states when the CLI reads the parameter, or the grant is justified another way.",
+      "location": {
+        "path": "packages/@cdklabs/cdk-cicd-wrapper/src/engine/codepipeline/CodePipelineEngine.ts",
+        "line": 628
       }
     }
   ]
