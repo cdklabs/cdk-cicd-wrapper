@@ -63,6 +63,11 @@ of the values below, and never assume one:
 3. **The qualifier in the error.** It is the segment after `cdk-` in the role ARN, or after `/cdk-bootstrap/`
    in the parameter name.
 
+When the repository sets the context and it differs from the stages' qualifier, the Build's `cdk-cicd synth`
+warns `the stages use bootstrap qualifier '<a>', but cdk.json sets @aws-cdk/core:bootstrapQualifier to '<b>'`,
+naming both values. Its absence proves nothing. It is silent when no context is set, in the `cdk-pipelines`
+and GitHub Actions engines, in a `DEPLOY_TIME_SYNTH` deploy-time synth, and with a CLI older than the warning.
+
 Then read what the target account and Region actually have. The bootstrap stack's name varies
 (`CDKToolkit`, `CDKToolkit-<qualifier>`), so find it by its `Qualifier` parameter:
 
