@@ -302,8 +302,12 @@ main() {
     if(!s.includes("stageStackName }")) { console.error("import not added"); process.exit(1); }
     fs.writeFileSync(f,s);' \
     "$APP_DIR/bin/$(app_name).ts" "$(app_stack)" || die 'could not edit bin/'
-  out="$(in_app npx cdk-cicd synth --all --require-account)" && info 'synth --all --require-account passed' \
+  out="$(in_app npx cdk-cicd synth --all --require-account 2>&1)" && info 'synth --all --require-account passed' \
     || { printf '%s\n' "$out" | tail -20 | redact; die 'synth failed after binding the env'; }
+  # The stages' qualifier and the cdk.json context agree, so synth must not warn about a mismatch.
+  printf '%s\n' "$out" | grep -q 'the stages use bootstrap qualifier' \
+    && { log 'synth warned about a qualifier mismatch on a matching cdk.json'; rc=1; } \
+    || info 'synth raised no qualifier-mismatch warning (stages and cdk.json agree)'
   # Each stage synthesizes into cdk.out/<stage>/<region>/, the layout the skill describes, and asks only for the
   # configured qualifier's bootstrap.
   local dir asked
@@ -315,6 +319,18 @@ main() {
     [ "$asked" = "$QUALIFIER" ] && info "stage $stage templates ask for the $QUALIFIER bootstrap only" \
       || { log "stage $stage templates ask for: '${asked}'"; rc=1; }
   done
+  # A cdk.json context that differs from the stages' qualifier (a renamed application, a hand edit): synth warns,
+  # names both values, and still passes. cdk.json is restored before anything else reads it.
+  cp "$APP_DIR/cdk.json" "$WORK/cdk.json.bak"
+  node -e 'const f=process.argv[1];const j=require(f);j.context["@aws-cdk/core:bootstrapQualifier"]="mismatchq";require("fs").writeFileSync(f,JSON.stringify(j,null,2))' "$APP_DIR/cdk.json"
+  if out="$(in_app npx cdk-cicd synth --all 2>&1)"; then
+    printf '%s\n' "$out" | grep -q "the stages use bootstrap qualifier '$QUALIFIER', but cdk.json sets @aws-cdk/core:bootstrapQualifier to 'mismatchq'" \
+      && info 'with cdk.json on another qualifier, synth warned with both values and still passed' \
+      || { log 'synth gave no qualifier-mismatch warning on a mismatching cdk.json'; rc=1; }
+  else
+    printf '%s\n' "$out" | tail -20 | redact; log 'synth failed on a qualifier mismatch; it must only warn'; rc=1
+  fi
+  cp "$WORK/cdk.json.bak" "$APP_DIR/cdk.json"
   # The pipeline stack reads its qualifier only from the cdk.json context: synth it as deploy-ci would.
   rm -rf "$APP_DIR/cdk.out"
   out="$(in_app npx cdk-cicd synth-ci 2>&1)" || { printf '%s\n' "$out" | tail -20 | redact; die 'synth-ci failed'; }
