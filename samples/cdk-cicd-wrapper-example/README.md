@@ -7,7 +7,8 @@ The Autopilot shape of the CDK CI/CD Wrapper. The point: **the app is ordinary C
 bin/app.ts        plain `new App()` + your stacks — no PipelineBlueprint, no builder chain
 lib/stack.ts      your application stack (unchanged CDK)
 cicd.config.ts    defineCICD({ application, repository, stages }) — the whole pipeline definition
-cdk.json          "app": "npx cdk-cicd exec bin/app.ts"  — the wrapper injects config/tags around the app
+cdk.json          "app": "npx cdk-cicd exec bin/app.ts"  — the wrapper injects config/tags around the app;
+                  plus the bootstrap qualifier for the pipeline stack and its bootstrap stack name
 ```
 
 Compare with the Blueprint shape — `PipelineBlueprint.builder()…synth(app)` built inside `src/main.ts`, with
@@ -24,14 +25,17 @@ npm install
 npx cdk-cicd synth --all   # check that dev and prod synthesize
 ```
 
-`dev` and `prod` name no account, so both deploy into the pipeline's account and Region. Bootstrap it twice: the
-pipeline stack uses CDK's default qualifier, and the two stages use `cdkcicdwra`, the qualifier `defineCICD`
-derives from `application` when `cicd.config.ts` sets no `qualifier`:
+`dev` and `prod` name no account, so both deploy into the pipeline's account and Region. Bootstrap it with
+`cdkcicdwra`, the qualifier `defineCICD` derives from `application` when `cicd.config.ts` sets no `qualifier`.
+The pipeline stack uses the same one, from `@aws-cdk/core:bootstrapQualifier` in `cdk.json`:
 
 ```bash
-npx cdk bootstrap aws://PIPELINE_ACCOUNT/REGION
 npx cdk bootstrap aws://PIPELINE_ACCOUNT/REGION --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra
 ```
+
+A pipeline deployed from this sample before its `cdk.json` set that context runs on the CDK's own qualifier.
+After you pull this change, bootstrap `cdkcicdwra` as above and run `npx cdk-cicd deploy-ci` once, so the pipeline
+moves to it instead of trying to update itself on roles it was never granted.
 
 If you give a stage its own account or Region (`{ name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }`),
 bootstrap that one too, trusting the pipeline account:

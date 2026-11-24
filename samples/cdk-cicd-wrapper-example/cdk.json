@@ -1,4 +1,8 @@
 {
   "app": "npx cdk-cicd exec bin/app.ts",
-  "output": "cdk.out"
+  "output": "cdk.out",
+  "toolkitStackName": "CDKToolkit-cdkcicdwra",
+  "context": {
+    "@aws-cdk/core:bootstrapQualifier": "cdkcicdwra"
+  }
 }

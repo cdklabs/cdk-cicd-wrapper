@@ -43,7 +43,6 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-project',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-project'), // or Repository.s3('bucket/key'), or Repository.codestarConnection('org/my-project', connectionArn) for GitHub
   // 'dev' auto-approves (inner loop); 'prod' is gated by a manual approval by default.
   stages: ['dev', { name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }],
@@ -58,9 +57,15 @@ See the [CD developer guide](../developer_guides/cd.md) for the full stage shape
 
 ```json
 {
-  "app": "npx cdk-cicd exec bin/my-project.ts"
+  "app": "npx cdk-cicd exec bin/my-project.ts",
+  "toolkitStackName": "CDKToolkit-myproject",
+  "context": { "@aws-cdk/core:bootstrapQualifier": "myproject" }
 }
 ```
+
+Keep the keys `cdk init` already wrote under `context`, and add the qualifier next to them. The pipeline stack
+takes its bootstrap qualifier from that context, and `toolkitStackName` makes a `cdk bootstrap` run in this
+project create or update the project's own bootstrap stack. See [Bootstrap your stages](#bootstrap-your-stages).
 
 **How the account/region are resolved.** When you run a plain `cdk synth`/`cdk deploy` for one stage
 (the inner loop), `cdk-cicd exec` resolves the target account and region in this order, first match wins:
@@ -103,17 +108,25 @@ Region) share one CloudFormation stack, and the later stage updates the stack th
 The {{ project_name }} uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. Bootstrap the pipeline's own account/region and every account/region a stage in `cicd.config.ts` targets, trusting the account the pipeline itself runs in (the account your ambient credentials point at when you run `cdk-cicd deploy-ci` below):
 
 ```bash
-npx cdk bootstrap aws://<PIPELINE_ACCOUNT>/<PIPELINE_REGION> --trust <PIPELINE_ACCOUNT> \
+npx cdk bootstrap aws://<PIPELINE_ACCOUNT>/<PIPELINE_REGION> --qualifier <QUALIFIER> \
+  --toolkit-stack-name CDKToolkit-<QUALIFIER> --trust <PIPELINE_ACCOUNT> \
   --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
-npx cdk bootstrap aws://<STAGE_ACCOUNT>/<STAGE_REGION> --trust <PIPELINE_ACCOUNT> \
+npx cdk bootstrap aws://<STAGE_ACCOUNT>/<STAGE_REGION> --qualifier <QUALIFIER> \
+  --toolkit-stack-name CDKToolkit-<QUALIFIER> --trust <PIPELINE_ACCOUNT> \
   --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
-Without `--qualifier`, `cdk bootstrap` uses the default qualifier, `hnb659fds`, which is why the
-`cicd.config.ts` above sets `qualifier: 'hnb659fds'`. Without that line the stages use a qualifier derived
-from `application`, and every stage account/region then needs `cdk bootstrap --qualifier <that qualifier>`.
+`<QUALIFIER>` is the project's bootstrap qualifier. The `cicd.config.ts` above sets no `qualifier`, so the
+stages use the one `defineCICD` derives from `application`: `myproject` here (lowercased, letters and digits
+only, at most 10 characters). The pipeline stack does not read `cicd.config.ts` for it; it reads
+`@aws-cdk/core:bootstrapQualifier` in `cdk.json`, which `cdk-cicd init` sets to the same value (see the
+`cdk.json` above).
 
-If you are reusing an existing CDK bootstrap setup that already trusts the pipeline account, you can skip this step.
+To deploy into accounts bootstrapped with a qualifier you already have, set `qualifier` in `cicd.config.ts`, the
+`cdk.json` context and `toolkitStackName` to match it (`cdk-cicd init --qualifier <it>` does all three).
+
+If you are reusing an existing CDK bootstrap with this qualifier that already trusts the pipeline account, you can
+skip this step.
 
 ## Deploy the pipeline
 

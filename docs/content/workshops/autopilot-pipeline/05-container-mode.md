@@ -25,7 +25,6 @@ import { defineCICD, Repository, BuildImage } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codestarConnection(
     'my-org/my-app',
     'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',
@@ -95,7 +94,7 @@ the lockfile pins them, add the two scripts the wrapper runs, and point `cdk.jso
 npm init -y
 npm install @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli aws-cdk aws-cdk-lib constructs ts-node typescript
 npm pkg set scripts.cdk=cdk scripts.cdk-cicd=cdk-cicd
-echo '{ "app": "npx cdk-cicd exec deploy.config.ts" }' > cdk.json
+echo '{ "app": "npx cdk-cicd exec deploy.config.ts", "toolkitStackName": "CDKToolkit-myapp", "context": { "@aws-cdk/core:bootstrapQualifier": "myapp" } }' > cdk.json
 ```
 
 `deploy-ci` provisions through `npm run cdk -- deploy`, and the generated pipeline uses
@@ -111,7 +110,7 @@ import { defineDeployment, Repository } from '@cdklabs/cdk-cicd-wrapper';
 export default defineDeployment({
   // Match the application/qualifier baked into the deployer image.
   application: 'my-app',
-  qualifier: 'hnb659fds',
+  qualifier: 'myapp',
 
   // The BASE deployer image repo (no tag). The per-stage version is appended at deploy time.
   image: '111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer',

@@ -10,7 +10,6 @@ before `npm ci`. Declare it once:
 ```ts
 export default defineCICD({
   application: 'my-app',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: ['dev', 'prod'],
   codeArtifact: {

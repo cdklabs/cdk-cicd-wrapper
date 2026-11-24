@@ -32,8 +32,9 @@ the remaining manual steps.
    Blueprint stage deployed to, for example
    `{ name: 'dev', env: { account: '111111111111', region: 'eu-west-1' } }`; a stage without `env`
    deploys into the pipeline's own account and Region. `migrate` writes no `qualifier` either, so the
-   wrapper derives one from `application`; add `qualifier: 'hnb659fds'` if your accounts carry a plain
-   `cdk bootstrap`.
+   wrapper derives one from `application`. To keep deploying into the bootstrap your Blueprint project
+   used, set `qualifier` to its `CDK_QUALIFIER`, and `@aws-cdk/core:bootstrapQualifier` in `cdk.json` to the
+   same value for the pipeline stack.
 3. Point `cdk.json` at `npx cdk-cicd exec <entry>`.
 
 Do not provision the pipeline yet: first match the stack names and diff them against the live stacks, as

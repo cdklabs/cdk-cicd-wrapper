@@ -31,6 +31,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `configure` did, so a `cdk bootstrap` run in the project never rewrites the stock `CDKToolkit` stack. It
   prints the bootstrap command. Pass `--qualifier <q>` for a qualifier your accounts already have. Projects
   already set up with `init` keep the `qualifier` they have.
+- The `cdk-cicd-wrapper-example` sample sets `@aws-cdk/core:bootstrapQualifier` to its stages' `cdkcicdwra` (and
+  `toolkitStackName` to match), so its pipeline account needs that bootstrap only. A pipeline already deployed
+  from the sample needs that bootstrap and one `cdk-cicd deploy-ci` by hand after pulling the change.
 - The CodePipeline engine's Build passes `--require-account`, so a stack without an account fails in Build
   rather than at its first deploy stage. Only pipelines whose deploy would have failed are affected.
 - The CLI loads a project on TypeScript 7 (the current `cdk init` default) or with a NodeNext tsconfig,
