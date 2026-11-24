@@ -71,6 +71,7 @@ The engine-owned pipeline stack does not read `qualifier`. It takes its bootstra
 `@aws-cdk/core:bootstrapQualifier` context in `cdk.json`, which `cdk-cicd init` sets to the stages' qualifier,
 so the pipeline account needs only the project's bootstrap. Without that context the pipeline stack falls back
 to the CDK's built-in qualifier, and the pipeline account then needs a bootstrap with that one as well.
+When the context is set and differs from the stages' qualifier, `cdk-cicd synth` warns and names both.
 
 ## Pipeline stack name
 

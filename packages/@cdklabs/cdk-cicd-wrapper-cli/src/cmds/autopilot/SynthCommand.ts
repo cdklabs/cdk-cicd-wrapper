@@ -8,6 +8,7 @@
 // what makes multi-region-from-one-invocation work.
 
 import { spawnSync } from 'child_process';
+import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import type { RegionOrder, ResolvedCicdConfig, ResolvedStage } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
@@ -172,6 +173,65 @@ export function reportUnboundStacks(
   return true;
 }
 
+/** The CDK context key the pipeline stack takes its bootstrap qualifier from. */
+const BOOTSTRAP_QUALIFIER_CONTEXT = '@aws-cdk/core:bootstrapQualifier';
+
+/** Where the pipeline stack's bootstrap qualifier comes from in the repository, if anywhere. */
+export interface ContextQualifier {
+  readonly value: unknown;
+  readonly file: 'cdk.json' | 'cdk.context.json';
+}
+
+/**
+ * The bootstrap qualifier the repository gives the pipeline stack. The CDK CLI looks context up in the command
+ * line, then cdk.json's `context`, then cdk.context.json, then ~/.cdk.json, and takes the first match, so
+ * cdk.json wins over cdk.context.json. The command line and ~/.cdk.json are not the repository's and are left out.
+ */
+export function contextBootstrapQualifier(cwd: string): ContextQualifier | undefined {
+  const read = (name: string): { [key: string]: unknown } => {
+    const file = path.join(cwd, name);
+    if (!existsSync(file)) return {};
+    try {
+      const parsed = JSON.parse(readFileSync(file, 'utf-8'));
+      return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+  const projectContext = read('cdk.json').context;
+  const fromCdkJson =
+    typeof projectContext === 'object' && projectContext !== null
+      ? (projectContext as { [key: string]: unknown })[BOOTSTRAP_QUALIFIER_CONTEXT]
+      : undefined;
+  if (fromCdkJson !== undefined) return { value: fromCdkJson, file: 'cdk.json' };
+  const fromContextFile = read('cdk.context.json')[BOOTSTRAP_QUALIFIER_CONTEXT];
+  return fromContextFile === undefined ? undefined : { value: fromContextFile, file: 'cdk.context.json' };
+}
+
+/**
+ * A warning when the stages and the pipeline stack would use different bootstrap qualifiers, else undefined.
+ * The stages take `qualifier` from the config (or the one derived from `application`); the pipeline stack takes
+ * only the CDK context. Only a context that is set is compared: without one the pipeline stack is on the CDK's
+ * own qualifier, which is how every pipeline set up before `init` wrote the context works.
+ */
+export function qualifierMismatchWarning(
+  stagesQualifier: string | undefined,
+  context: ContextQualifier | undefined,
+): string | undefined {
+  if (stagesQualifier === undefined || context === undefined || context.value === stagesQualifier) {
+    return undefined;
+  }
+  const other = String(context.value);
+  return (
+    `cdk-cicd synth: the stages use bootstrap qualifier '${stagesQualifier}', but ${context.file} sets ` +
+    `${BOOTSTRAP_QUALIFIER_CONTEXT} to '${other}', and the pipeline stack uses that one. The pipeline's account ` +
+    `and Region then need the '${other}' bootstrap, and each stage's account and Region the '${stagesQualifier}' ` +
+    `one. If that is not intended, set \`qualifier: '${other}'\` in cicd.config.ts to put the stages on the ` +
+    "pipeline's qualifier; changing the context instead moves the deployed pipeline stack, which then needs one " +
+    '`cdk-cicd deploy-ci` by hand. Renaming `application` changes a qualifier derived from it.'
+  );
+}
+
 class Command implements yargs.CommandModule {
   public command = 'synth';
   public describe = 'Synthesize each stage x region into cdk.out/<stage>/<region> (deploy-time synth)';
@@ -221,6 +281,9 @@ class Command implements yargs.CommandModule {
       }
       config = selected.config;
     }
+
+    const mismatch = qualifierMismatchWarning(config.qualifier, contextBootstrapQualifier(cwd));
+    if (mismatch !== undefined) logger.warn(mismatch);
 
     const targets = synthTargets(config, stageName, regionOverride, process.env);
     if (targets.length === 0) {

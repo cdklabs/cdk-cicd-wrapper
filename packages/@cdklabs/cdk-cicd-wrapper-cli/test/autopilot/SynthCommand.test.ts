@@ -1,10 +1,17 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { ResolvedCicdConfig } from '@cdklabs/cdk-cicd-wrapper';
 import { ACCOUNT_OVERRIDE_FLAG, REGION_OVERRIDE_FLAG, resolveEnvTarget } from '../../src/cmds/autopilot/ExecCommand';
-import { configForStage, synthTargets } from '../../src/cmds/autopilot/SynthCommand';
+import {
+  configForStage,
+  contextBootstrapQualifier,
+  qualifierMismatchWarning,
+  synthTargets,
+} from '../../src/cmds/autopilot/SynthCommand';
 
 // A minimal resolved config: one single-region stage, one multi-region stage.
 const CONFIG = {
@@ -204,5 +211,48 @@ describe('container mode: configForStage', () => {
     const env = { [ACCOUNT_OVERRIDE_FLAG]: '', [REGION_OVERRIDE_FLAG]: '', AWS_REGION: 'eu-central-1' };
     const selected = configForStage(CONFIG, 'SBCD', env)!;
     expect(synthTargets(selected.config, 'SBCD', undefined, env).map((t) => t.region)).toEqual(['eu-central-1']);
+  });
+});
+
+describe('cdk-cicd synth: stages and pipeline stack on different bootstrap qualifiers', () => {
+  test("warns only when the repository sets a context that differs from the stages' qualifier", () => {
+    const fromCdkJson = (value: unknown) => ({ value, file: 'cdk.json' as const });
+    expect(qualifierMismatchWarning('myapp', fromCdkJson('myapp'))).toBeUndefined();
+    // No context: the pipeline stack is on the CDK's own qualifier, as every pre-context pipeline is. No warning.
+    expect(qualifierMismatchWarning('myapp', undefined)).toBeUndefined();
+    // No stages' qualifier (no `qualifier`, no `application`): the stages fall back to the context themselves.
+    expect(qualifierMismatchWarning(undefined, fromCdkJson('acme'))).toBeUndefined();
+    const warning = qualifierMismatchWarning('renamedap', fromCdkJson('myapp'));
+    expect(warning).toMatch(
+      /stages use bootstrap qualifier 'renamedap', but cdk\.json sets @aws-cdk\/core:bootstrapQualifier to 'myapp'/,
+    );
+    // Each side names the bootstrap it needs, and the low-risk fix pins the stages to the pipeline's qualifier.
+    expect(warning).toMatch(/need the 'myapp' bootstrap, and each stage's account and Region the 'renamedap' one/);
+    expect(warning).toMatch(/set `qualifier: 'myapp'` in cicd\.config\.ts/);
+    expect(warning).toMatch(/Renaming `application` changes a qualifier derived from it/);
+    expect(qualifierMismatchWarning('a', { value: 'b', file: 'cdk.context.json' })).toMatch(
+      /but cdk\.context\.json sets/,
+    );
+  });
+
+  test('reads the context as the CDK CLI looks it up: cdk.json before cdk.context.json', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cdk-cicd-synth-qualifier-'));
+    try {
+      expect(contextBootstrapQualifier(dir)).toBeUndefined();
+      fs.writeFileSync(
+        path.join(dir, 'cdk.context.json'),
+        JSON.stringify({ '@aws-cdk/core:bootstrapQualifier': 'other' }),
+      );
+      expect(contextBootstrapQualifier(dir)).toEqual({ value: 'other', file: 'cdk.context.json' });
+      fs.writeFileSync(
+        path.join(dir, 'cdk.json'),
+        JSON.stringify({ app: 'x', context: { '@aws-cdk/core:bootstrapQualifier': 'myapp' } }),
+      );
+      expect(contextBootstrapQualifier(dir)).toEqual({ value: 'myapp', file: 'cdk.json' });
+      fs.writeFileSync(path.join(dir, 'cdk.json'), '{ not json');
+      expect(contextBootstrapQualifier(dir)).toEqual({ value: 'other', file: 'cdk.context.json' });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `cdk-cicd synth` now warns about a stack that binds no AWS account, and `--require-account` makes it fail.
 - `resolveDeploymentCompliance`: compliance logging in container mode can take its account and Region from
   `config/<stage>.json`.
+- `cdk-cicd synth` warns when the repository sets `@aws-cdk/core:bootstrapQualifier` to a value different
+  from the stages' qualifier, for example after renaming `application` with a derived qualifier. The pipeline
+  stack uses the context and the stages their own qualifier, so the pipeline's account and Region need one
+  bootstrap and each stage's the other. It only warns.
 - Agent skills in `skills/`, installed with `npx skills add cdklabs/cdk-cicd-wrapper`. `cdk-cicd-pipeline`
   launches a pipeline into one or more accounts and Regions, with the source, qualifier, bootstrap and trust
   checks each needs, and adds stacks and stages. `cdk-cicd-pipeline-failure-investigation` investigates a
