@@ -1,6 +1,6 @@
 # Amazon S3 based Git Repository Integration
 
-As AWS CodeCommit is deemphasized for new customers, you can use S3 as a Git repository with {{ project_name }}. This approach uses the [git-remote-s3](https://github.com/awslabs/git-remote-s3) tool to enable S3 as a git remote and LFS server.
+To keep your source in Amazon S3 rather than in a Git hosting service, you can use S3 as a Git repository with {{ project_name }}. This approach uses the [git-remote-s3](https://github.com/awslabs/git-remote-s3) tool to enable S3 as a git remote and LFS server.
 
 ## Prerequisites
 
