@@ -627,7 +627,10 @@ export class CodePipelineEngine implements IEngine {
   /**
    * Let the CI synth project perform context lookups in every target environment it resolves. The
    * synthesizer's lookup role is the least-privilege path for VPC, hosted-zone, AMI and other context
-   * providers; the bootstrap version parameter is read by the CLI before it assumes that role.
+   * providers. During `cdk synth` those providers assume that role and never read the bootstrap version
+   * parameter; the CLI reads it on diff and deploy paths, through roles it has assumed (aws-cdk 2.1149.0).
+   * The ssm:GetParameter grant below is not exercised by synth; it is kept for parity with the
+   * cdk-pipelines engine's Synth grant.
    */
   private grantLookupPermissions(
     project: codebuild.PipelineProject,
