@@ -1898,6 +1898,34 @@
         "path": "docs/content/workshops/autopilot-pipeline/05-container-mode.md",
         "line": 1
       }
+    },
+    {
+      "id": "code-review-example-sample-derives-its-qualifier",
+      "component": "shared",
+      "layer": "static",
+      "producer": "code-review",
+      "severity": "low",
+      "status": "open",
+      "title": "samples/cdk-cicd-wrapper-example sets no qualifier, so it needs a second bootstrap that cdk-cicd init projects do not",
+      "detail": "cdk-cicd init writes qualifier 'hnb659fds' and the README quick start relies on a plain cdk bootstrap, but the example's cicd.config.ts sets none, so its stages use the derived 'cdkcicdwra' and the account needs cdk bootstrap --qualifier cdkcicdwra --toolkit-stack-name CDKToolkit-cdkcicdwra as well. The README calls the sample 'this shape'. Pinning qualifier: 'hnb659fds' in the sample would make one bootstrap enough; it changes the sample's stacks, so it needs a maintainer decision and a synth of the sample afterwards.",
+      "location": {
+        "path": "samples/cdk-cicd-wrapper-example/cicd.config.ts",
+        "line": 9
+      }
+    },
+    {
+      "id": "qa-main-lock-and-license-baseline-stale-after-dependabot",
+      "component": "shared",
+      "layer": "static",
+      "producer": "qa",
+      "severity": "medium",
+      "status": "open",
+      "title": "main fails cdk-cicd validate and license: Dependabot bumps changed yarn.lock and the CLI package.json without re-pinning the baseline",
+      "detail": "After #372 and #376 merged, npm run validate reports that yarn.lock does not match its checksum in package-verification.json, and npm run license reports that packages/@cdklabs/cdk-cicd-wrapper-cli/package.json changed since the last scan (licenses out of sync). No workflow runs either check, so CI stays green while the baseline drifts with every dependency PR. Done when a chore PR re-pins with validate --fix and license --fix (NOTICE, OSS_License_Summary.csv, package-verification.json), and either CI runs both checks or the dependency-update flow re-pins them.",
+      "location": {
+        "path": "package-verification.json",
+        "line": 1
+      }
     }
   ]
 }

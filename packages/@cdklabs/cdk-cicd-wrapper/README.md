@@ -30,7 +30,8 @@ The CDK CI/CD Wrapper builds upon the success of the [aws-cdk-cicd-boot-sample](
   license checks over npm and Python dependencies.
 - A private npm registry or CodeArtifact for your own packages.
 - Default-on security hardening (cdk-nag and hardening aspects) applied to every stack.
-- TypeScript and Python CDK apps.
+- TypeScript and JavaScript CDK apps run the pipeline through `cdk-cicd exec`; Python, Java and .NET apps can apply the
+  security plugins with `CdkCicd.attach`.
 
 ## Getting Started
 

@@ -2,7 +2,7 @@
 
 The `npx {{npm_cli}} license` can validate and generate a NOTICE file for the project.
 
-The NOTICE file consistency is tested by the `npx {{npm_cli}} license`. The pipeline's Build step runs it only where you call it: from an npm script the default build runs (such as `audit`), from `ci.steps`, or through `npx {{npm_cli}} check`, which runs it once a `package-verification.json` exists.
+The NOTICE file consistency is tested by the `npx {{npm_cli}} license`. Call it from one of the npm scripts the pipeline's Build step runs, such as `audit`, or from `ci.steps` (see the [CI guide](../developer_guides/ci.md)), to ensure the NOTICE file is always up-to-date.
 
 The script checks the dependencies of the `**/package.json` files for NPM and, by default, the `**/Pipfile` files for Python projects; add `"requirements.txt"` to `python.allowedTypes` in `licensecheck.json` to scan `**/requirements.txt` as well. In case, you are using other package managers, you need to manage those dependencies by **yourself** as long as that is not supported by {{ project_name }}.
 
