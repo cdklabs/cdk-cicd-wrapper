@@ -23,6 +23,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `cdk-cicd init` no longer defaults `--qualifier` to the CDK's `hnb659fds`. Without `--qualifier` it keeps a
+  qualifier `cdk.json` already sets as `@aws-cdk/core:bootstrapQualifier`, and otherwise uses the one
+  `defineCICD` derives from `application`. It writes the qualifier into that `cdk.json` context, which is the
+  only place the pipeline stack reads one, so the stages and the pipeline stack share one bootstrap, and for a
+  qualifier other than `hnb659fds` it sets `toolkitStackName` to `CDKToolkit-<qualifier>`, as the 0.x
+  `configure` did, so a `cdk bootstrap` run in the project never rewrites the stock `CDKToolkit` stack. It
+  prints the bootstrap command. Pass `--qualifier <q>` for a qualifier your accounts already have. Projects
+  already set up with `init` keep the `qualifier` they have.
 - The CodePipeline engine's Build passes `--require-account`, so a stack without an account fails in Build
   rather than at its first deploy stage. Only pipelines whose deploy would have failed are affected.
 - The CLI loads a project on TypeScript 7 (the current `cdk init` default) or with a NodeNext tsconfig,

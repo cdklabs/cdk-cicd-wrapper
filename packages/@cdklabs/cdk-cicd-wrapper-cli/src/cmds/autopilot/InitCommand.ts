@@ -8,6 +8,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
+import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 import * as yargs from 'yargs';
 import { logger } from '../../utils/Logging';
 
@@ -39,11 +40,23 @@ export interface InitPlan {
   /** The new cdk.json content, or undefined when its `app` already runs `cdk-cicd exec`. */
   readonly cdkJson?: string;
   readonly entry: string;
+  /** The bootstrap qualifier the stages and the pipeline stack both use. */
+  readonly qualifier: string;
+  /** The bootstrap stack `cdk bootstrap` uses from this project, or undefined for the stock `CDKToolkit`. */
+  readonly toolkitStackName?: string;
   readonly notes: string[];
 }
 
 /** The CDK default bootstrap qualifier: what `cdk bootstrap` creates unless told otherwise. */
 export const DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds';
+
+/** The cdk.json context key the pipeline stack takes its bootstrap qualifier from. */
+export const BOOTSTRAP_QUALIFIER_CONTEXT = '@aws-cdk/core:bootstrapQualifier';
+
+// What a bootstrap stack can be named after (`CDKToolkit-<qualifier>`) and `literal` writes: a CDK qualifier
+// (`[A-Za-z0-9_-]{1,10}`) that starts with a letter or digit and has no underscore.
+const SAFE_QUALIFIER = /^[A-Za-z0-9][A-Za-z0-9-]{0,9}$/;
+const QUALIFIER_RULE = 'up to 10 letters, digits and -, starting with a letter or digit';
 
 // Values are written into TypeScript string literals, so anything outside these sets is refused rather
 // than escaped: a quote or newline in a repository name is a typo, not something to preserve.
@@ -112,13 +125,10 @@ export function renderInitConfig(options: InitOptions): string {
     `  application: ${literal(options.application, 'application')},`,
   ];
   if (options.qualifier !== undefined) {
-    if (options.qualifier === DEFAULT_BOOTSTRAP_QUALIFIER) {
-      lines.push(
-        '  // The qualifier a plain `cdk bootstrap` creates. Remove this line to use one derived from',
-        '  // `application` instead; that one needs `cdk bootstrap --qualifier <it>` in every target account.',
-      );
-    }
-    lines.push(`  qualifier: ${literal(options.qualifier, 'qualifier')},`);
+    lines.push(
+      `  // Matches ${BOOTSTRAP_QUALIFIER_CONTEXT} in cdk.json, which the pipeline stack uses. Change both together.`,
+      `  qualifier: ${literal(options.qualifier, 'qualifier')},`,
+    );
   }
   if (options.source.kind === 'codecommit' && options.source.existing !== true) {
     lines.push(
@@ -133,6 +143,21 @@ export function renderInitConfig(options: InitOptions): string {
     '',
   );
   return lines.join('\n');
+}
+
+/** The bootstrap qualifier a config from `options` resolves to: the pinned one, or the one defineCICD derives. */
+export function initQualifier(options: InitOptions): string {
+  const qualifier =
+    options.qualifier ??
+    defineCICD({
+      application: options.application,
+      repository: Repository.codecommit(options.application),
+      stages: [...options.stages],
+    }).qualifier;
+  if (qualifier === undefined || !SAFE_QUALIFIER.test(qualifier)) {
+    throw new Error(`cdk-cicd init: bootstrap qualifier '${qualifier}' must be ${QUALIFIER_RULE}`);
+  }
+  return qualifier;
 }
 
 /** Read cdk.json, find the app entry, and work out both edits. Throws on anything it cannot do safely. */
@@ -156,6 +181,33 @@ export function initPlan(cwd: string, options: InitOptions, entryOverride?: stri
   }
   const app = typeof cdkJson.app === 'string' ? cdkJson.app : '';
   const alreadyExec = /\bcdk-cicd exec\b/.test(app);
+  if (cdkJson.context !== undefined && (typeof cdkJson.context !== 'object' || Array.isArray(cdkJson.context))) {
+    throw new Error(`cdk-cicd init: ${cdkJsonPath} has a "context" that is not an object`);
+  }
+  const context = (cdkJson.context ?? {}) as { [key: string]: unknown };
+  // A qualifier cdk.json already configures is the one to keep: pin it in cicd.config.ts as well, so the stages
+  // and the pipeline stack agree. One that contradicts --qualifier is refused rather than silently split.
+  const configured = context[BOOTSTRAP_QUALIFIER_CONTEXT];
+  if (configured !== undefined) {
+    if (typeof configured !== 'string' || !SAFE_QUALIFIER.test(configured)) {
+      throw new Error(`cdk-cicd init: cdk.json's ${BOOTSTRAP_QUALIFIER_CONTEXT} must be ${QUALIFIER_RULE}`);
+    }
+    if (options.qualifier !== undefined && options.qualifier !== configured) {
+      throw new Error(
+        `cdk-cicd init: --qualifier ${options.qualifier} contradicts cdk.json's ${BOOTSTRAP_QUALIFIER_CONTEXT} ` +
+          `(${configured}); the pipeline stack would use one and the stages the other`,
+      );
+    }
+  }
+  const effective: InitOptions = configured === undefined ? options : { ...options, qualifier: configured };
+  const qualifier = initQualifier(effective);
+  // With the context set, a plain `cdk bootstrap` in this project takes the project's qualifier, and without a
+  // `toolkitStackName` it would rewrite the stock `CDKToolkit` stack to it. Name the project's own bootstrap
+  // stack, as the 0.x `configure` did; the stock qualifier keeps the stock stack.
+  const existingToolkit = typeof cdkJson.toolkitStackName === 'string' ? cdkJson.toolkitStackName : undefined;
+  const toolkitStackName =
+    existingToolkit ?? (qualifier === DEFAULT_BOOTSTRAP_QUALIFIER ? undefined : `CDKToolkit-${qualifier}`);
+  const cdkJsonUnchanged = alreadyExec && configured !== undefined && toolkitStackName === existingToolkit;
   const entry = entryOverride ?? entryFromAppCommand(app);
   if (entry === undefined) {
     throw new Error(
@@ -174,19 +226,40 @@ export function initPlan(cwd: string, options: InitOptions, entryOverride?: stri
   }
   return {
     configPath,
-    config: renderInitConfig(options),
+    config: renderInitConfig(effective),
     cdkJsonPath,
-    cdkJson: alreadyExec
+    cdkJson: cdkJsonUnchanged
       ? undefined
-      : `${JSON.stringify({ ...cdkJson, app: `npx cdk-cicd exec ${entry}` }, null, 2)}\n`,
+      : `${JSON.stringify(
+          {
+            ...cdkJson,
+            app: alreadyExec ? app : `npx cdk-cicd exec ${entry}`,
+            ...(toolkitStackName === undefined ? {} : { toolkitStackName }),
+            context: { ...context, [BOOTSTRAP_QUALIFIER_CONTEXT]: qualifier },
+          },
+          null,
+          2,
+        )}\n`,
     entry,
+    qualifier,
+    toolkitStackName,
     notes,
   };
 }
 
 /** The commands that follow `init`, in order. */
-export function nextSteps(options: InitOptions, region: string | undefined): string[] {
+export function nextSteps(
+  options: InitOptions,
+  region: string | undefined,
+  bootstrap: { readonly qualifier: string; readonly toolkitStackName?: string },
+): string[] {
+  const { qualifier, toolkitStackName } = bootstrap;
+  const where = region ?? '<region>';
+  const toolkit = toolkitStackName === undefined ? '' : ` --toolkit-stack-name ${toolkitStackName}`;
   const steps = [
+    `aws ssm get-parameter --name /cdk-bootstrap/${qualifier}/version --region ${where}   # bootstrapped with ${qualifier}?`,
+    `npx cdk bootstrap aws://<ACCOUNT>/${where} --qualifier ${qualifier}${toolkit}   # if not, in the pipeline's and each stage's account and Region;`,
+    '#   a stage in another account adds --trust <PIPELINE_ACCOUNT> --cloudformation-execution-policies <POLICIES>',
     'npx cdk-cicd synth --all     # check every stage synthesizes',
     'npx cdk-cicd deploy-ci       # provision the pipeline (once; it updates itself from then on)',
   ];
@@ -251,8 +324,9 @@ class Command implements yargs.CommandModule {
       .option('stages', { type: 'string', default: 'dev', describe: 'Comma-separated stages, in deployment order' })
       .option('qualifier', {
         type: 'string',
-        default: DEFAULT_BOOTSTRAP_QUALIFIER,
-        describe: "Bootstrap qualifier ('derived' to let defineCICD derive one from the application)",
+        describe:
+          'Bootstrap qualifier to pin (default: the one cdk.json configures, else the one defineCICD derives ' +
+          'from the application)',
       })
       .option('entry', { type: 'string', describe: "The app entry (default: read from cdk.json's app)" })
       .option('dry-run', { type: 'boolean', default: false, describe: 'Print the changes instead of writing them' });
@@ -284,34 +358,42 @@ class Command implements yargs.CommandModule {
           existing: args.existing as boolean,
         };
       }
-      const qualifier = args.qualifier as string;
-      const options: InitOptions = {
+      const qualifier = args.qualifier as string | undefined;
+      const base: InitOptions = {
         application,
         source,
         stages: (args.stages as string)
           .split(',')
           .map((stage) => stage.trim())
           .filter((stage) => stage.length > 0),
-        qualifier: qualifier === 'derived' ? undefined : qualifier,
+      };
+      // `derived` pins the application-derived qualifier, so a cdk.json context that differs is refused.
+      const options: InitOptions = {
+        ...base,
+        qualifier: qualifier === 'derived' ? initQualifier(base) : qualifier,
       };
       const plan = initPlan(cwd, options, args.entry as string | undefined);
 
       if (args.dryRun) {
         logger.info(`cdk-cicd init: would write ${plan.configPath}:\n${plan.config}`);
         if (plan.cdkJson !== undefined) {
-          logger.info(`cdk-cicd init: would set cdk.json "app" to: npx cdk-cicd exec ${plan.entry}`);
+          logger.info(`cdk-cicd init: would write ${plan.cdkJsonPath}:\n${plan.cdkJson}`);
         }
       } else {
         writeFileSync(plan.configPath, plan.config);
         logger.info(`cdk-cicd init: wrote ${plan.configPath}`);
         if (plan.cdkJson !== undefined) {
           writeFileSync(plan.cdkJsonPath, plan.cdkJson);
-          logger.info(`cdk-cicd init: cdk.json "app" now runs: npx cdk-cicd exec ${plan.entry}`);
+          logger.info(
+            `cdk-cicd init: cdk.json "app" runs: npx cdk-cicd exec ${plan.entry}; ` +
+              `${BOOTSTRAP_QUALIFIER_CONTEXT}: ${plan.qualifier}`,
+          );
         }
       }
       plan.notes.forEach((note) => logger.warn(`cdk-cicd init: ${note}`));
+      logger.info(`cdk-cicd init: bootstrap qualifier ${plan.qualifier}, for the stages and the pipeline stack`);
       logger.info('cdk-cicd init: next steps:');
-      nextSteps(options, process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION).forEach((step) =>
+      nextSteps(options, process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION, plan).forEach((step) =>
         logger.info(`  ${step}`),
       );
     } catch (error) {
