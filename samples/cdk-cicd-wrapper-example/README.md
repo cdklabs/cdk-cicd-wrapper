@@ -46,6 +46,12 @@ npx cdk bootstrap aws://STAGE_ACCOUNT/STAGE_REGION --qualifier cdkcicdwra --tool
   --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
+Re-bootstrapping replaces what the bootstrap stack holds. An account the stack trusts that the command does not pass
+with its own `--trust` loses its access ([`cdk bootstrap` reference](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-bootstrap.html)),
+and `--cloudformation-execution-policies` replaces the stored policies, so narrowed ones become what you pass. Before you
+re-bootstrap an account and Region, read the stack's `TrustedAccounts` and `CloudFormationExecutionPolicies`:
+`aws cloudformation describe-stacks --stack-name CDKToolkit-cdkcicdwra --region STAGE_REGION --query "Stacks[0].Parameters"`.
+
 Provision the pipeline. It also creates the CodeCommit repository `cdk-cicd-wrapper-example`; push the sample to
 its `main` branch to start the first run:
 

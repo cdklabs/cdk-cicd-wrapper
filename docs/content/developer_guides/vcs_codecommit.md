@@ -1,6 +1,9 @@
 # AWS CodeCommit Integration
 
-> **Note:** AWS CodeCommit is deemphasized for new customers after July 25, 2024. Consider using S3-based or GitHub repositories instead for new projects.
+> **Note:** AWS CodeCommit stopped accepting new customers on July 25, 2024, and became available to new
+> customers again on November 25, 2025 (see the
+> [CodeCommit User Guide document history](https://docs.aws.amazon.com/codecommit/latest/userguide/history.html)).
+> GitHub (through a CodeStar connection) and S3 are the alternative sources.
 
 ## Configuration
 

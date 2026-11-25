@@ -41,7 +41,9 @@ another one.
 1. **Tools:** Node.js with npm, the AWS CLI v2, and git.
 2. **Credentials for the pipeline account**, checked as above.
 3. **A source in the pipeline account:**
-   - **CodeCommit:** check access with `aws codecommit list-repositories`.
+   - **CodeCommit:** `deploy-ci` creates the repository unless you pass `--existing`. A successful
+     `aws codecommit list-repositories` shows only that these credentials can read CodeCommit in that Region,
+     not that a create will work. If `CreateRepository` is refused, use GitHub or S3.
    - **GitHub:** a CodeStar connection (AWS CodeConnections). A new connection stays `Pending` until a
      person completes the handshake in the console; the pipeline cannot read GitHub before that.
    - **S3:** cdk-cicd imports the bucket, it does not create it. The bucket must exist, with versioning
