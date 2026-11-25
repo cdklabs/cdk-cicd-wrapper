@@ -745,8 +745,9 @@ function codeBuildImageCredentialKeyDecryptStatements(
 
 /**
  * Let Synth resolve uncached CDK context in every target environment. The lookup role performs the
- * actual read; the bootstrap version parameter is also listed explicitly to match the CLI's bootstrap
- * validation contract.
+ * actual read. `cdk synth` never reads the bootstrap version parameter: the CLI validates the bootstrap
+ * version on diff and deploy paths, through roles it has assumed (aws-cdk 2.1149.0). The ssm:GetParameter
+ * grant on it is not exercised by synth and is kept unchanged.
  */
 export function targetLookupStatements(
   stack: Stack,
