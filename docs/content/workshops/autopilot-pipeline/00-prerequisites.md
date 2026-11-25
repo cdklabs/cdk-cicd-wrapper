@@ -13,15 +13,17 @@
   (`cdk-cicd security-scan`, or the `security` step of `cdk-cicd check`, which is skipped without it).
   Python is also needed by `cdk-cicd check-dependencies --python` and by `cdk-cicd license` in a project with a
   `Pipfile`. Every other `cdk-cicd` command runs without it.
-- The hub account/region and every stage account/region **bootstrapped** for CDK:
-  `npx cdk bootstrap aws://<account>/<region>`. The engine-owned pipeline stack always uses the standard
-  bootstrap qualifier; a target application's custom qualifier applies only to its target stacks.
+- The hub account/region and every stage account/region **bootstrapped** for CDK with the workshop app's
+  qualifier, `myapp`: the one `defineCICD` derives from `application: 'my-app'` in chapter 1. The stages
+  take it from `cicd.config.ts`; the pipeline stack takes it from `@aws-cdk/core:bootstrapQualifier` in
+  `cdk.json`, which chapter 1 sets to the same value:
+  `npx cdk bootstrap aws://<account>/<region> --qualifier myapp --toolkit-stack-name CDKToolkit-myapp`.
   The pipeline's deploy builds run in the hub account and assume each stage account's bootstrap roles,
   and later chapters deploy to other accounts, so bootstrap every stage account trusting the hub:
 
     ```bash
-    npx cdk bootstrap aws://<stage-account>/<region> --trust <pipeline-account> \
-      --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+    npx cdk bootstrap aws://<stage-account>/<region> --qualifier myapp --toolkit-stack-name CDKToolkit-myapp \
+      --trust <pipeline-account> --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
     ```
 
 - A **source** the pipeline reads from — a CodeCommit repo, a GitHub repo via a CodeStar (CodeConnections)

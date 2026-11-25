@@ -86,6 +86,10 @@ pipeline published into the Agent Space). This skill covers turning levels on an
    DevOps Agent, and the message shows why.
 3. **Investigate yourself when needed.** Follow the `cdk-cicd-pipeline-failure-investigation` skill. Go
    from the failed action to its CodeBuild log (pipeline account), or to the stack events (stage account),
-   using the live-state tools above.
-4. **Propose the fix in the project.** Most fixes land in the application code, its `cicd.config.ts`, or the
-   stage account's bootstrap. Show the change and let the user decide whether to retry the stage or push a fix.
+   using the live-state tools above. Before you accept a root cause that blames the commit, run that skill's
+   Step 3. A bootstrap qualifier that differs from the one configured, or context lookups that run in the
+   pipeline because `cdk.context.json` was not committed, fail far from where they start. The latter can
+   also change resources the commit did not touch. Check them whether or not the investigation names them.
+4. **Propose the fix in the project.** Most fixes land in the application code, its `cicd.config.ts` or
+   `cdk.json`, a committed `cdk.context.json`, or the bootstrap of a stage account or of the pipeline
+   account. Show the change and let the user decide whether to retry the stage or push a fix.

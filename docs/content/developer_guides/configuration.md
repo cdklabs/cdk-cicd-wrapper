@@ -67,8 +67,10 @@ blank, invalid, or overlong values are rejected. `APP_STAGING` additionally uses
 staging resources and threads the configured qualifier into its bootstrap-role contract on direct/local
 deployments and into the configuration baked by a Repo 1 image build.
 
-The engine-owned pipeline stack itself always uses the standard hub-account bootstrap qualifier. A
-target application's custom qualifier does not require a second custom bootstrap for the pipeline stack.
+The engine-owned pipeline stack does not read `qualifier`. It takes its bootstrap qualifier from the
+`@aws-cdk/core:bootstrapQualifier` context in `cdk.json`, which `cdk-cicd init` sets to the stages' qualifier,
+so the pipeline account needs only the project's bootstrap. Without that context the pipeline stack falls back
+to the CDK's built-in qualifier, and the pipeline account then needs a bootstrap with that one as well.
 
 ## Pipeline stack name
 

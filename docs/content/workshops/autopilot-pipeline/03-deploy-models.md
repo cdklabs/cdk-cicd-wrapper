@@ -12,7 +12,6 @@ Autopilot offers two CodePipeline deploy models. Guiding principle: **efficiency
 ```ts
 export default defineCICD({
   application: 'my-app',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: ['dev', 'prod'],
   // deployModel: DeployModel.ASSEMBLY_PROMOTION   // the default
@@ -29,7 +28,6 @@ import { defineCICD, DeployModel, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: ['dev', 'prod'],
   deployModel: DeployModel.DEPLOY_TIME_SYNTH,
@@ -54,7 +52,6 @@ Lambda-driven wait instead:
 ```ts
 export default defineCICD({
   application: 'my-app',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: ['dev', 'prod'],
   asyncDeploy: true,

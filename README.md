@@ -53,7 +53,7 @@ From a CDK app (for example a fresh `cdk init app --language typescript`):
 
 ```bash
 npm i @cdklabs/cdk-cicd-wrapper @cdklabs/cdk-cicd-wrapper-cli
-npx cdk-cicd init --stages dev,prod   # writes cicd.config.ts, points cdk.json at cdk-cicd exec
+npx cdk-cicd init --stages dev,prod   # writes cicd.config.ts; sets cdk.json's app and bootstrap qualifier
 ```
 
 `init` warns when your stack's `env` line is still commented out. In `bin/`, uncomment it, so every stack names
@@ -72,12 +72,12 @@ Here `dev` and `prod` deploy into the same account and Region, so they need thei
 `stageStackName` both deploy `MyProjectStack`, and `prod` updates `dev`'s stack. Stages in different accounts do
 not need it.
 
-Bootstrap the pipeline account and Region, and every account and Region a stage deploys to, trusting the pipeline
-account:
+Bootstrap the pipeline account and Region, and every account and Region a stage deploys to, with the project's
+bootstrap qualifier and trusting the pipeline account. `init` prints the qualifier (`myproject` for `my-project`):
 
 ```bash
-npx cdk bootstrap aws://ACCOUNT/REGION --trust PIPELINE_ACCOUNT \
-  --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+npx cdk bootstrap aws://ACCOUNT/REGION --qualifier QUALIFIER --toolkit-stack-name CDKToolkit-QUALIFIER \
+  --trust PIPELINE_ACCOUNT --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
 Then, with credentials for the pipeline account and Region, run the steps `init` printed:
@@ -99,15 +99,16 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-project',
-  // The qualifier a plain `cdk bootstrap` creates. Remove this line to use one derived from
-  // `application` instead; that one needs `cdk bootstrap --qualifier <it>` in every target account.
-  qualifier: 'hnb659fds',
   // Created by `cdk-cicd deploy-ci` as part of the pipeline stack: deleting that stack deletes the
   // repository too. Create it yourself and use `--existing` to keep it independent of the pipeline.
   repository: Repository.codecommit('my-project'),
   stages: ['dev', 'prod'],
 });
 ```
+
+With no `qualifier`, the stages use the bootstrap qualifier `defineCICD` derives from `application`, and `init`
+sets the same one as `@aws-cdk/core:bootstrapQualifier` in `cdk.json`, which the pipeline stack reads. For a
+qualifier your accounts are already bootstrapped with, run `init --qualifier <it>`.
 
 `dev` and `res` deploy without approval; every other stage waits for a manual approval by default. A stage
 can also name its own account and Regions: `{ name: 'prod', env: { account: '111111111111', region: 'eu-west-1' } }`.

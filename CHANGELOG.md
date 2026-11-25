@@ -14,6 +14,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   into the Agent Space. See the DevOps Agent guide.
 - `cdk-cicd mcp`: an MCP server (stdio) in the CLI with `check_config` and `describe_pipeline`, which read
   `cicd.config.ts`/`deploy.config.ts` through the same loader and validation as the CLI.
+- `cdk-cicd init`: writes `cicd.config.ts`, points `cdk.json` at `cdk-cicd exec`, warns about a stack `env`
+  line left commented out, and prints the remaining commands. `--existing` imports a CodeCommit repository
+  you created; `--dry-run` previews.
+- `cdk-cicd synth` now warns about a stack that binds no AWS account, and `--require-account` makes it fail.
+- `resolveDeploymentCompliance`: compliance logging in container mode can take its account and Region from
+  `config/<stage>.json`.
+- Agent skills in `skills/`, installed with `npx skills add cdklabs/cdk-cicd-wrapper`. `cdk-cicd-pipeline`
+  launches a pipeline into one or more accounts and Regions, with the source, qualifier, bootstrap and trust
+  checks each needs, and adds stacks and stages. `cdk-cicd-pipeline-failure-investigation` investigates a
+  failed run, including a CDK bootstrap qualifier that does not match the configuration and context lookups
+  that run in the pipeline because `cdk.context.json` was not committed. `cdk-cicd-devops-agent` connects a
+  pipeline to DevOps Agent.
+
+### Changed
+
+- `cdk-cicd init` no longer defaults `--qualifier` to the CDK's `hnb659fds`. Without `--qualifier` it keeps a
+  qualifier `cdk.json` already sets as `@aws-cdk/core:bootstrapQualifier`, and otherwise uses the one
+  `defineCICD` derives from `application`. It writes the qualifier into that `cdk.json` context, which is the
+  only place the pipeline stack reads one, so the stages and the pipeline stack share one bootstrap, and for a
+  qualifier other than `hnb659fds` it sets `toolkitStackName` to `CDKToolkit-<qualifier>`, as the 0.x
+  `configure` did, so a `cdk bootstrap` run in the project never rewrites the stock `CDKToolkit` stack. It
+  prints the bootstrap command. Pass `--qualifier <q>` for a qualifier your accounts already have. Projects
+  already set up with `init` keep the `qualifier` they have.
+- The `cdk-cicd-wrapper-example` sample sets `@aws-cdk/core:bootstrapQualifier` to its stages' `cdkcicdwra` (and
+  `toolkitStackName` to match), so its pipeline account needs that bootstrap only. A pipeline already deployed
+  from the sample needs that bootstrap and one `cdk-cicd deploy-ci` by hand after pulling the change.
+- The CodePipeline engine's Build passes `--require-account`, so a stack without an account fails in Build
+  rather than at its first deploy stage. Only pipelines whose deploy would have failed are affected.
+- The CLI loads a project on TypeScript 7 (the current `cdk init` default) or with a NodeNext tsconfig,
+  with no TypeScript pin and no tsconfig change. It uses its own TypeScript only when the project's is 7 or
+  later, and leaves out its `module: commonjs` override only for a `node16`/`nodenext` `module`.
+
+### Fixed
+
+- Container mode: one target with an invalid `aws` block fails only its own deploy. Plan and the other
+  targets carry on.
+- Container mode: the deploy step checks that the pinned CLI supports `deploy --fingerprint-out` before
+  it deploys.
 
 ### Removed
 

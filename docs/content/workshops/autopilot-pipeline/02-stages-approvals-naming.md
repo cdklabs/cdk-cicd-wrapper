@@ -13,7 +13,6 @@ A stage is either a bare name or an object with its own environment:
 ```ts
 export default defineCICD({
   application: 'my-app',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'),
   stages: [
     'dev',                                                        // inner loop, auto-approved

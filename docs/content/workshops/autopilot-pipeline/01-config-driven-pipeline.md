@@ -38,23 +38,27 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codecommit('my-app'), // or .s3('bucket/app.zip')
   stages: ['dev', 'prod'],
 });
 ```
 
 Without `qualifier`, the wrapper derives one from `application` (`myapp` here), and deploys look for a
-bootstrap made with `cdk bootstrap --qualifier myapp`. The chapter 0 bootstrap used the default, so the
-config pins it.
+bootstrap made with `cdk bootstrap --qualifier myapp`, which is the one chapter 0 made.
 
 ## 3. Point `cdk.json` at the wrapper's exec hook
 
 ```json
 {
-  "app": "npx cdk-cicd exec bin/app.ts"
+  "app": "npx cdk-cicd exec bin/app.ts",
+  "toolkitStackName": "CDKToolkit-myapp",
+  "context": { "@aws-cdk/core:bootstrapQualifier": "myapp" }
 }
 ```
+
+Keep the keys `cdk init` already wrote under `context`. The pipeline stack does not read `cicd.config.ts` for its
+qualifier; this context gives it the stages' one, and `toolkitStackName` keeps a `cdk bootstrap` run here on the
+`CDKToolkit-myapp` stack chapter 0 made. `cdk-cicd init` writes all three for you.
 
 `cdk-cicd exec` runs your app under a preload that injects the resolved config (and tags, synthesizer, and
 compliance Aspects) around it — which is how your plain `bin/` becomes wrapper-aware without a builder
@@ -109,7 +113,7 @@ only ever write the few you need, because the wrapper resolves sensible defaults
 | Field | What it does | Why it matters |
 |---|---|---|
 | `application` | Logical name for the app and its resources. Without it the pipeline stack is named `cdk-cicd-pipeline` (unless `pipelineStackName` overrides it); only `cdk-cicd init` reads `package.json#name`, to fill this field in. | The prefix on the pipeline stack name (`<application>-pipeline`) — set it once so resources are recognizable. |
-| `qualifier` | Short (≤10 char) sanitized bootstrap id. Derived from `application` when unset; both synthesizers honor an explicit value. | Set `'hnb659fds'` to deploy into accounts a plain `cdk bootstrap` prepared. Left unset, the derived value needs `cdk bootstrap --qualifier <it>` in every target account and Region. |
+| `qualifier` | Short (≤10 char) sanitized bootstrap id. Derived from `application` when unset; both synthesizers honor an explicit value. | Set it to deploy into accounts already bootstrapped with another qualifier, and set `@aws-cdk/core:bootstrapQualifier` in `cdk.json` to the same value for the pipeline stack. Left unset, the derived value needs `cdk bootstrap --qualifier <it> --toolkit-stack-name CDKToolkit-<it>` in every target account and Region. |
 | `repository` | The pipeline's source: `Repository.codestarConnection('org/repo', connectionArn, branch?)` for GitHub with the AWS-hosted engines, `Repository.codecommit(...)`, or `Repository.s3(...)`. `Repository.github(...)` is reserved for `GITHUB_ACTIONS`. | This is *where* the pipeline reads code and *what* triggers it — the one field you almost always set explicitly. |
 | `stages` | Ordered list of deployment stages — bare names or objects with `env`, `manualApproval`, `deployment`. | Your promotion path (dev → prod). Config-as-data, not pipeline code. Covered in the next chapter. |
 | `ci` | Customizes the CI phase: `steps`, `synthStages`, `image`. | Add your own build/test steps or a custom image. See [Customizing CI](#customizing-ci) below. |
@@ -149,7 +153,6 @@ import { defineCICD, Repository } from '@cdklabs/cdk-cicd-wrapper';
 
 export default defineCICD({
   application: 'my-app',
-  qualifier: 'hnb659fds', // the qualifier a plain cdk bootstrap creates
   repository: Repository.codestarConnection(
     'my-org/my-app',
     'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef',

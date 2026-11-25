@@ -7,10 +7,12 @@ import * as path from 'path';
 import * as ts from 'typescript';
 import {
   applicationFromPackageName,
+  BOOTSTRAP_QUALIFIER_CONTEXT,
   DEFAULT_BOOTSTRAP_QUALIFIER,
   entryFromAppCommand,
   InitOptions,
   initPlan,
+  initQualifier,
   nextSteps,
   renderInitConfig,
 } from '../../src/cmds/autopilot/InitCommand';
@@ -19,7 +21,6 @@ const codecommit = (overrides: Partial<InitOptions> = {}): InitOptions => ({
   application: 'my-app',
   source: { kind: 'codecommit', repository: 'my-app', branch: 'main' },
   stages: ['dev'],
-  qualifier: DEFAULT_BOOTSTRAP_QUALIFIER,
   ...overrides,
 });
 
@@ -68,15 +69,15 @@ describe('cdk-cicd init: the app entry in cdk.json', () => {
 });
 
 describe('cdk-cicd init: the generated cicd.config.ts', () => {
-  test('is a valid defineCICD config for a CodeCommit source on the default bootstrap', () => {
+  test('is a valid defineCICD config for a CodeCommit source, with the qualifier derived from application', () => {
     const config = renderInitConfig(codecommit({ stages: ['dev', 'prod'] }));
     const resolved = evaluate(config);
     expect(resolved.application).toBe('my-app');
-    expect(resolved.qualifier).toBe(DEFAULT_BOOTSTRAP_QUALIFIER);
+    expect(resolved.qualifier).toBe('myapp');
+    expect(config).not.toContain('qualifier');
     expect(resolved.stages.map((stage: any) => stage.name)).toEqual(['dev', 'prod']);
     expect(JSON.stringify(resolved.repository)).toContain('my-app');
     expect(config).toContain("Repository.codecommit('my-app')");
-    expect(config).toContain('`cdk bootstrap` creates');
     // The truth about a created repository: it goes with the pipeline stack.
     expect(config).toContain('deleting that stack deletes the');
   });
@@ -113,10 +114,20 @@ describe('cdk-cicd init: the generated cicd.config.ts', () => {
     expect(JSON.stringify(evaluate(config).repository)).toContain('my-app');
   });
 
-  test("'derived' leaves the qualifier to defineCICD", () => {
-    const config = renderInitConfig(codecommit({ qualifier: undefined }));
-    expect(config).not.toContain('qualifier');
-    expect(evaluate(config).qualifier).not.toBe(DEFAULT_BOOTSTRAP_QUALIFIER);
+  test('without --qualifier, init resolves the same qualifier defineCICD derives, never the CDK default', () => {
+    const config = renderInitConfig(codecommit());
+    expect(evaluate(config).qualifier).toBe(initQualifier(codecommit()));
+    expect(initQualifier(codecommit())).not.toBe(DEFAULT_BOOTSTRAP_QUALIFIER);
+  });
+
+  test('a pinned qualifier is written, with a reminder that cdk.json carries it for the pipeline stack', () => {
+    const config = renderInitConfig(codecommit({ qualifier: 'acme' }));
+    expect(config).toContain("qualifier: 'acme',");
+    expect(config).toContain(BOOTSTRAP_QUALIFIER_CONTEXT);
+    expect(evaluate(config).qualifier).toBe('acme');
+    expect(() => initQualifier(codecommit({ qualifier: 'far-too-long-q' }))).toThrow(/must be up to 10/);
+    expect(() => initQualifier(codecommit({ qualifier: '-acme' }))).toThrow(/starting with a letter or digit/);
+    expect(() => initQualifier(codecommit({ qualifier: 'ac_me' }))).toThrow(/must be/);
   });
 
   test.each([
@@ -137,18 +148,83 @@ describe('cdk-cicd init: the plan for a project', () => {
     expect(plan.entry).toBe('bin/cicd.ts');
     const cdkJson = JSON.parse(plan.cdkJson!);
     expect(cdkJson.app).toBe('npx cdk-cicd exec bin/cicd.ts');
-    expect(cdkJson.context).toEqual({ someFlag: true });
+    // The pipeline stack takes its qualifier only from this context, so it gets the stages' qualifier.
+    expect(cdkJson.context).toEqual({ someFlag: true, [BOOTSTRAP_QUALIFIER_CONTEXT]: 'myapp' });
+    // ...and a plain `cdk bootstrap` here then targets the project's own stack, never the stock CDKToolkit.
+    expect(cdkJson.toolkitStackName).toBe('CDKToolkit-myapp');
+    expect(Object.keys(cdkJson)).toEqual(['app', 'context', 'toolkitStackName']);
+    expect(plan.qualifier).toBe('myapp');
     expect(plan.notes.join('\n')).toMatch(/bin\/cicd\.ts has cdk init's env line commented out/);
   });
 
-  test('leaves a cdk.json that already runs cdk-cicd exec alone, and needs no note for a bound stack', () => {
+  test('keeps the app of a cdk.json that already runs cdk-cicd exec, adds the qualifier, needs no note', () => {
     const dir = app({
       'cdk.json': JSON.stringify({ app: 'npx cdk-cicd exec bin/app.ts' }),
       'bin/app.ts': 'new Stack(app, "S", { env: { account: process.env.CDK_DEFAULT_ACCOUNT } });\n',
     });
     const plan = initPlan(dir, codecommit());
-    expect(plan.cdkJson).toBeUndefined();
+    expect(JSON.parse(plan.cdkJson!)).toEqual({
+      app: 'npx cdk-cicd exec bin/app.ts',
+      toolkitStackName: 'CDKToolkit-myapp',
+      context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: 'myapp' },
+    });
     expect(plan.notes).toEqual([]);
+  });
+
+  test('keeps the qualifier cdk.json already configures, pins it in cicd.config.ts, and refuses a contradiction', () => {
+    const files = {
+      'cdk.json': JSON.stringify({
+        app: 'npx cdk-cicd exec bin/app.ts',
+        context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: 'acme' },
+      }),
+      'bin/app.ts': '',
+    };
+    const plan = initPlan(app(files), codecommit());
+    expect(plan.qualifier).toBe('acme');
+    expect(plan.config).toContain("qualifier: 'acme',");
+    expect(JSON.parse(plan.cdkJson!).toolkitStackName).toBe('CDKToolkit-acme');
+    expect(initPlan(app(files), codecommit({ qualifier: 'acme' })).qualifier).toBe('acme');
+    expect(() => initPlan(app(files), codecommit({ qualifier: 'other' }))).toThrow(/contradicts/);
+    const invalid = {
+      ...files,
+      'cdk.json': JSON.stringify({ app: 'x bin/app.ts', context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: 1 } }),
+    };
+    expect(() => initPlan(app(invalid), codecommit())).toThrow(/must be/);
+    const notAnObject = { ...files, 'cdk.json': JSON.stringify({ app: 'x bin/app.ts', context: ['acme'] }) };
+    expect(() => initPlan(app(notAnObject), codecommit())).toThrow(/not an object/);
+  });
+
+  test('a cdk.json that sets the context and its own toolkitStackName is left as it is', () => {
+    const cdkJson = {
+      app: 'npx cdk-cicd exec bin/app.ts',
+      toolkitStackName: 'Bootstrap-acme',
+      context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: 'acme' },
+    };
+    const plan = initPlan(app({ 'cdk.json': JSON.stringify(cdkJson), 'bin/app.ts': '' }), codecommit());
+    expect(plan.cdkJson).toBeUndefined();
+    expect(plan.toolkitStackName).toBe('Bootstrap-acme');
+  });
+
+  test('a stock cdk.json that already sets the context: exec is wired in and the context kept', () => {
+    const cdkJson = { app: 'npx tsc && npx tsx bin/cicd.ts', context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: 'acme' } };
+    const plan = initPlan(app({ 'cdk.json': JSON.stringify(cdkJson), 'bin/cicd.ts': STOCK_BIN }), codecommit());
+    expect(JSON.parse(plan.cdkJson!)).toEqual({
+      app: 'npx cdk-cicd exec bin/cicd.ts',
+      toolkitStackName: 'CDKToolkit-acme',
+      context: { [BOOTSTRAP_QUALIFIER_CONTEXT]: 'acme' },
+    });
+    expect(plan.config).toContain("qualifier: 'acme',");
+  });
+
+  test('an explicit --qualifier hnb659fds pins it and keeps the stock CDKToolkit stack name', () => {
+    const plan = initPlan(
+      app({ 'cdk.json': STOCK_CDK_JSON, 'bin/cicd.ts': STOCK_BIN }),
+      codecommit({ qualifier: DEFAULT_BOOTSTRAP_QUALIFIER }),
+    );
+    const cdkJson = JSON.parse(plan.cdkJson!);
+    expect(cdkJson.context[BOOTSTRAP_QUALIFIER_CONTEXT]).toBe(DEFAULT_BOOTSTRAP_QUALIFIER);
+    expect(cdkJson.toolkitStackName).toBeUndefined();
+    expect(plan.toolkitStackName).toBeUndefined();
   });
 
   test('refuses a directory with no cdk.json, an existing config, or an entry it cannot find', () => {
@@ -181,7 +257,14 @@ describe('cdk-cicd init: the default application name', () => {
 
 describe('cdk-cicd init: next steps', () => {
   test('a CodeCommit source ends with the push that starts the first run, through a repo-local helper', () => {
-    const steps = nextSteps(codecommit(), 'eu-west-1').join('\n');
+    const steps = nextSteps(codecommit(), 'eu-west-1', {
+      qualifier: 'myapp',
+      toolkitStackName: 'CDKToolkit-myapp',
+    }).join('\n');
+    expect(steps).toContain('aws ssm get-parameter --name /cdk-bootstrap/myapp/version --region eu-west-1');
+    expect(steps).toContain(
+      'npx cdk bootstrap aws://<ACCOUNT>/eu-west-1 --qualifier myapp --toolkit-stack-name CDKToolkit-myapp',
+    );
     expect(steps).toContain('npx cdk-cicd synth --all');
     expect(steps).toContain('npx cdk-cicd deploy-ci');
     expect(steps).toContain('git remote add origin https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/my-app');
@@ -193,8 +276,16 @@ describe('cdk-cicd init: next steps', () => {
   });
 
   test('an S3 source has no git steps', () => {
-    expect(nextSteps(codecommit({ source: { kind: 's3', object: 'b/k.zip' } }), undefined).join('\n')).not.toContain(
-      'git',
-    );
+    expect(
+      nextSteps(codecommit({ source: { kind: 's3', object: 'b/k.zip' } }), undefined, { qualifier: 'myapp' }).join(
+        '\n',
+      ),
+    ).not.toContain('git');
+  });
+
+  test('an explicitly pinned CDK default qualifier bootstraps the stock CDKToolkit, not a second stack', () => {
+    const steps = nextSteps(codecommit(), undefined, { qualifier: DEFAULT_BOOTSTRAP_QUALIFIER }).join('\n');
+    expect(steps).toContain(`--qualifier ${DEFAULT_BOOTSTRAP_QUALIFIER} `);
+    expect(steps).not.toContain('--toolkit-stack-name');
   });
 });
