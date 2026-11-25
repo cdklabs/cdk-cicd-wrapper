@@ -3001,7 +3001,6 @@ stages:</p>
 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">qualifier</span><span class="o">:</span><span class="w"> </span><span class="s1">'hnb659fds'</span><span class="p">,</span><span class="w"> </span><span class="c1">// the qualifier a plain cdk bootstrap creates</span>
 <span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codestarConnection</span><span class="p">(</span>
 <span class="w">    </span><span class="s1">'my-org/my-app'</span><span class="p">,</span>
 <span class="w">    </span><span class="s1">'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef'</span><span class="p">,</span>
@@ -3058,7 +3057,7 @@ the lockfile pins them, add the two scripts the wrapper runs, and point <code>cd
 <div class="highlight"><pre><span></span><code>npm<span class="w"> </span>init<span class="w"> </span>-y
 npm<span class="w"> </span>install<span class="w"> </span>@cdklabs/cdk-cicd-wrapper<span class="w"> </span>@cdklabs/cdk-cicd-wrapper-cli<span class="w"> </span>aws-cdk<span class="w"> </span>aws-cdk-lib<span class="w"> </span>constructs<span class="w"> </span>ts-node<span class="w"> </span>typescript
 npm<span class="w"> </span>pkg<span class="w"> </span><span class="nb">set</span><span class="w"> </span>scripts.cdk<span class="o">=</span>cdk<span class="w"> </span>scripts.cdk-cicd<span class="o">=</span>cdk-cicd
-<span class="nb">echo</span><span class="w"> </span><span class="s1">'{ "app": "npx cdk-cicd exec deploy.config.ts" }'</span><span class="w"> </span>&gt;<span class="w"> </span>cdk.json
+<span class="nb">echo</span><span class="w"> </span><span class="s1">'{ "app": "npx cdk-cicd exec deploy.config.ts", "toolkitStackName": "CDKToolkit-myapp", "context": { "@aws-cdk/core:bootstrapQualifier": "myapp" } }'</span><span class="w"> </span>&gt;<span class="w"> </span>cdk.json
 </code></pre></div>
 <p><code>deploy-ci</code> provisions through <code>npm run cdk -- deploy</code>, and the generated pipeline uses
 <code>npm run cdk-cicd -- ...</code>, so it fails if the pinned CLI is missing instead of allowing <code>npx</code> to fetch a
@@ -3070,7 +3069,7 @@ different version during deployment. Commit <code>package-lock.json</code> with 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineDeployment</span><span class="p">({</span>
 <span class="w">  </span><span class="c1">// Match the application/qualifier baked into the deployer image.</span>
 <span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">qualifier</span><span class="o">:</span><span class="w"> </span><span class="s1">'hnb659fds'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">qualifier</span><span class="o">:</span><span class="w"> </span><span class="s1">'myapp'</span><span class="p">,</span>
 
 <span class="w">  </span><span class="c1">// The BASE deployer image repo (no tag). The per-stage version is appended at deploy time.</span>
 <span class="w">  </span><span class="nx">image</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111.dkr.ecr.eu-west-1.amazonaws.com/my-app-deployer'</span><span class="p">,</span>
@@ -3213,7 +3212,7 @@ these Autopilot patterns.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-11-24
+    2026-11-25
   </span>
 
     

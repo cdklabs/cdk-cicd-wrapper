@@ -2927,14 +2927,21 @@
   Python is also needed by <code>cdk-cicd check-dependencies --python</code> and by <code>cdk-cicd license</code> in a project with a
   <code>Pipfile</code>. Every other <code>cdk-cicd</code> command runs without it.</li>
 <li>
-<p>The hub account/region and every stage account/region <strong>bootstrapped</strong> for CDK:
-  <code>npx cdk bootstrap aws://&lt;account&gt;/&lt;region&gt;</code>. The engine-owned pipeline stack always uses the standard
-  bootstrap qualifier; a target application's custom qualifier applies only to its target stacks.
+<p>The hub account/region and every stage account/region <strong>bootstrapped</strong> for CDK with the workshop app's
+  qualifier, <code>myapp</code>: the one <code>defineCICD</code> derives from <code>application: 'my-app'</code> in chapter 1. The stages
+  take it from <code>cicd.config.ts</code>; the pipeline stack takes it from <code>@aws-cdk/core:bootstrapQualifier</code> in
+  <code>cdk.json</code>, which chapter 1 sets to the same value:
+  <code>npx cdk bootstrap aws://&lt;account&gt;/&lt;region&gt; --qualifier myapp --toolkit-stack-name CDKToolkit-myapp</code>.
   The pipeline's deploy builds run in the hub account and assume each stage account's bootstrap roles,
   and later chapters deploy to other accounts, so bootstrap every stage account trusting the hub:</p>
-<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk<span class="w"> </span>bootstrap<span class="w"> </span>aws://&lt;stage-account&gt;/&lt;region&gt;<span class="w"> </span>--trust<span class="w"> </span>&lt;pipeline-account&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--cloudformation-execution-policies<span class="w"> </span>arn:aws:iam::aws:policy/AdministratorAccess
+<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk<span class="w"> </span>bootstrap<span class="w"> </span>aws://&lt;stage-account&gt;/&lt;region&gt;<span class="w"> </span>--qualifier<span class="w"> </span>myapp<span class="w"> </span>--toolkit-stack-name<span class="w"> </span>CDKToolkit-myapp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--trust<span class="w"> </span>&lt;pipeline-account&gt;<span class="w"> </span>--cloudformation-execution-policies<span class="w"> </span>arn:aws:iam::aws:policy/AdministratorAccess
 </code></pre></div>
+<p>Re-bootstrapping replaces what the bootstrap stack holds. An account the stack trusts that the command does not pass
+with its own <code>--trust</code> loses its access (<a href="https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-bootstrap.html"><code>cdk bootstrap</code> reference</a>),
+and <code>--cloudformation-execution-policies</code> replaces the stored policies, so narrowed ones become what you pass. Before you
+re-bootstrap an account and Region, read the stack's <code>TrustedAccounts</code> and <code>CloudFormationExecutionPolicies</code>:
+<code>aws cloudformation describe-stacks --stack-name CDKToolkit-myapp --region &lt;REGION&gt; --query "Stacks[0].Parameters"</code>.</p>
 </li>
 <li>
 <p>A <strong>source</strong> the pipeline reads from — a CodeCommit repo, a GitHub repo via a CodeStar (CodeConnections)
@@ -2983,7 +2990,7 @@ and you changed nothing in <code>bin/</code>. Next, you'll turn this app into a 
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-11-24
+    2026-11-25
   </span>
 
     

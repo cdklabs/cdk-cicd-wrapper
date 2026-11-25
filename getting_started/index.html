@@ -2982,7 +2982,6 @@ npx<span class="w"> </span>aws-cdk@latest<span class="w"> </span>init<span class
 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-project'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">qualifier</span><span class="o">:</span><span class="w"> </span><span class="s1">'hnb659fds'</span><span class="p">,</span><span class="w"> </span><span class="c1">// the qualifier a plain cdk bootstrap creates</span>
 <span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-project'</span><span class="p">),</span><span class="w"> </span><span class="c1">// or Repository.s3('bucket/key'), or Repository.codestarConnection('org/my-project', connectionArn) for GitHub</span>
 <span class="w">  </span><span class="c1">// 'dev' auto-approves (inner loop); 'prod' is gated by a manual approval by default.</span>
 <span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'dev'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">,</span><span class="w"> </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">account</span><span class="o">:</span><span class="w"> </span><span class="s1">'111111111111'</span><span class="p">,</span><span class="w"> </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="s1">'eu-west-1'</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}],</span>
@@ -2992,9 +2991,14 @@ npx<span class="w"> </span>aws-cdk@latest<span class="w"> </span>init<span class
 <h2 id="point-cdkjson-at-cdk-cicd-exec">Point <code>cdk.json</code> at <code>cdk-cicd exec</code></h2>
 <p><code>cdk.json</code>'s <code>app</code> command is what turns your plain app into a wrapped one. The one line <code>bin/</code> needs is an <code>env</code> on each stack, so it names its account (a stock <code>cdk init</code> entry ships that line commented out):</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">"app"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx cdk-cicd exec bin/my-project.ts"</span>
+<span class="w">  </span><span class="nt">"app"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx cdk-cicd exec bin/my-project.ts"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"toolkitStackName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"CDKToolkit-myproject"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"context"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"@aws-cdk/core:bootstrapQualifier"</span><span class="p">:</span><span class="w"> </span><span class="s2">"myproject"</span><span class="w"> </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>Keep the keys <code>cdk init</code> already wrote under <code>context</code>, and add the qualifier next to them. The pipeline stack
+takes its bootstrap qualifier from that context, and <code>toolkitStackName</code> makes a <code>cdk bootstrap</code> run in this
+project create or update the project's own bootstrap stack. See <a href="#bootstrap-your-stages">Bootstrap your stages</a>.</p>
 <p><strong>How the account/region are resolved.</strong> When you run a plain <code>cdk synth</code>/<code>cdk deploy</code> for one stage
 (the inner loop), <code>cdk-cicd exec</code> resolves the target account and region in this order, first match wins:</p>
 <ol>
@@ -3028,15 +3032,27 @@ same account and Region (in the pipeline, a stage with no <code>env</code> deplo
 Region) share one CloudFormation stack, and the later stage updates the stack the earlier one deployed.</p>
 <h2 id="bootstrap-your-stages">Bootstrap your stages</h2>
 <p>The CDK CI/CD Wrapper uses the AWS CDK Toolkit with a cross-account trust relationship to deploy to multiple AWS accounts. Bootstrap the pipeline's own account/region and every account/region a stage in <code>cicd.config.ts</code> targets, trusting the account the pipeline itself runs in (the account your ambient credentials point at when you run <code>cdk-cicd deploy-ci</code> below):</p>
-<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk<span class="w"> </span>bootstrap<span class="w"> </span>aws://&lt;PIPELINE_ACCOUNT&gt;/&lt;PIPELINE_REGION&gt;<span class="w"> </span>--trust<span class="w"> </span>&lt;PIPELINE_ACCOUNT&gt;<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk<span class="w"> </span>bootstrap<span class="w"> </span>aws://&lt;PIPELINE_ACCOUNT&gt;/&lt;PIPELINE_REGION&gt;<span class="w"> </span>--qualifier<span class="w"> </span>&lt;QUALIFIER&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit-stack-name<span class="w"> </span>CDKToolkit-&lt;QUALIFIER&gt;<span class="w"> </span>--trust<span class="w"> </span>&lt;PIPELINE_ACCOUNT&gt;<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cloudformation-execution-policies<span class="w"> </span>arn:aws:iam::aws:policy/AdministratorAccess
-npx<span class="w"> </span>cdk<span class="w"> </span>bootstrap<span class="w"> </span>aws://&lt;STAGE_ACCOUNT&gt;/&lt;STAGE_REGION&gt;<span class="w"> </span>--trust<span class="w"> </span>&lt;PIPELINE_ACCOUNT&gt;<span class="w"> </span><span class="se">\</span>
+npx<span class="w"> </span>cdk<span class="w"> </span>bootstrap<span class="w"> </span>aws://&lt;STAGE_ACCOUNT&gt;/&lt;STAGE_REGION&gt;<span class="w"> </span>--qualifier<span class="w"> </span>&lt;QUALIFIER&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit-stack-name<span class="w"> </span>CDKToolkit-&lt;QUALIFIER&gt;<span class="w"> </span>--trust<span class="w"> </span>&lt;PIPELINE_ACCOUNT&gt;<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cloudformation-execution-policies<span class="w"> </span>arn:aws:iam::aws:policy/AdministratorAccess
 </code></pre></div>
-<p>Without <code>--qualifier</code>, <code>cdk bootstrap</code> uses the default qualifier, <code>hnb659fds</code>, which is why the
-<code>cicd.config.ts</code> above sets <code>qualifier: 'hnb659fds'</code>. Without that line the stages use a qualifier derived
-from <code>application</code>, and every stage account/region then needs <code>cdk bootstrap --qualifier &lt;that qualifier&gt;</code>.</p>
-<p>If you are reusing an existing CDK bootstrap setup that already trusts the pipeline account, you can skip this step.</p>
+<p><code>&lt;QUALIFIER&gt;</code> is the project's bootstrap qualifier. The <code>cicd.config.ts</code> above sets no <code>qualifier</code>, so the
+stages use the one <code>defineCICD</code> derives from <code>application</code>: <code>myproject</code> here (lowercased, letters and digits
+only, at most 10 characters). The pipeline stack does not read <code>cicd.config.ts</code> for it; it reads
+<code>@aws-cdk/core:bootstrapQualifier</code> in <code>cdk.json</code>, which <code>cdk-cicd init</code> sets to the same value (see the
+<code>cdk.json</code> above).</p>
+<p>To deploy into accounts bootstrapped with a qualifier you already have, set <code>qualifier</code> in <code>cicd.config.ts</code>, the
+<code>cdk.json</code> context and <code>toolkitStackName</code> to match it (<code>cdk-cicd init --qualifier &lt;it&gt;</code> does all three).</p>
+<p>Re-bootstrapping replaces what the bootstrap stack holds. An account the stack trusts that the command does not pass
+with its own <code>--trust</code> loses its access (<a href="https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-bootstrap.html"><code>cdk bootstrap</code> reference</a>),
+and <code>--cloudformation-execution-policies</code> replaces the stored policies, so narrowed ones become what you pass. Before you
+re-bootstrap an account and Region, read the stack's <code>TrustedAccounts</code> and <code>CloudFormationExecutionPolicies</code>:
+<code>aws cloudformation describe-stacks --stack-name CDKToolkit-&lt;QUALIFIER&gt; --region &lt;REGION&gt; --query "Stacks[0].Parameters"</code>.</p>
+<p>If you are reusing an existing CDK bootstrap with this qualifier that already trusts the pipeline account, you can
+skip this step.</p>
 <h2 id="deploy-the-pipeline">Deploy the pipeline</h2>
 <p>From the account/region the pipeline itself should run in:</p>
 <div class="highlight"><pre><span></span><code>npx<span class="w"> </span>cdk-cicd<span class="w"> </span>deploy-ci
@@ -3162,7 +3178,7 @@ call there cannot be seen. Built-in selection and opt-out work on both paths.</p
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-11-24
+    2026-11-25
   </span>
 
     

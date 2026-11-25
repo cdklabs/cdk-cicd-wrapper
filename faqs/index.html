@@ -2840,7 +2840,7 @@
 <li>If you have already deployed a stage and want to remove it, delete it from the <code>stages</code> array in <code>cicd.config.ts</code>
   and let <code>deploy-ci</code> re-provision the pipeline — the removed stage's own CloudFormation resources are not deleted
   automatically, so destroy them yourself in that stage's account afterward.</li>
-<li>If you see an error <code>CreateRepository request is not allowed because there is no existing repository in this AWS account or AWS Organization</code> when performing the initial deploy step it means that your AWS Organization is not able to create new CodeCommit repositories, so you will need to choose the CodeStar option to connect to an external repository.  CodeCommit repositories can only be created in AWS Organizations that already had at least 1 CodeCommit repository in a child account on July 25, 2024.</li>
+<li>If you see an error <code>CreateRepository request is not allowed because there is no existing repository in this AWS account or AWS Organization</code> when performing the initial deploy step it means that CodeCommit refused to create a repository in your account. AWS closed CodeCommit to new customers from July 25, 2024 until November 25, 2025 (see the <a href="https://docs.aws.amazon.com/codecommit/latest/userguide/history.html">CodeCommit User Guide document history</a>); in that period only an AWS Organization that already had a CodeCommit repository could create new ones. If you still see the error, use the CodeStar option to connect to an external repository, or the S3 source.</li>
 </ul>
 
 
@@ -2862,7 +2862,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-11-24
+    2026-11-25
   </span>
 
     

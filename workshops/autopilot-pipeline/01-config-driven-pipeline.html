@@ -3034,19 +3034,22 @@ share one stack: <code>prod</code> would update <code>dev</code>'s. Stages in di
 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">qualifier</span><span class="o">:</span><span class="w"> </span><span class="s1">'hnb659fds'</span><span class="p">,</span><span class="w"> </span><span class="c1">// the qualifier a plain cdk bootstrap creates</span>
 <span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codecommit</span><span class="p">(</span><span class="s1">'my-app'</span><span class="p">),</span><span class="w"> </span><span class="c1">// or .s3('bucket/app.zip')</span>
 <span class="w">  </span><span class="nx">stages</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'dev'</span><span class="p">,</span><span class="w"> </span><span class="s1">'prod'</span><span class="p">],</span>
 <span class="p">});</span>
 </code></pre></div>
 <p>Without <code>qualifier</code>, the wrapper derives one from <code>application</code> (<code>myapp</code> here), and deploys look for a
-bootstrap made with <code>cdk bootstrap --qualifier myapp</code>. The chapter 0 bootstrap used the default, so the
-config pins it.</p>
+bootstrap made with <code>cdk bootstrap --qualifier myapp</code>, which is the one chapter 0 made.</p>
 <h2 id="3-point-cdkjson-at-the-wrappers-exec-hook">3. Point <code>cdk.json</code> at the wrapper's exec hook</h2>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">"app"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx cdk-cicd exec bin/app.ts"</span>
+<span class="w">  </span><span class="nt">"app"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx cdk-cicd exec bin/app.ts"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"toolkitStackName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"CDKToolkit-myapp"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"context"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"@aws-cdk/core:bootstrapQualifier"</span><span class="p">:</span><span class="w"> </span><span class="s2">"myapp"</span><span class="w"> </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>Keep the keys <code>cdk init</code> already wrote under <code>context</code>. The pipeline stack does not read <code>cicd.config.ts</code> for its
+qualifier; this context gives it the stages' one, and <code>toolkitStackName</code> keeps a <code>cdk bootstrap</code> run here on the
+<code>CDKToolkit-myapp</code> stack chapter 0 made. <code>cdk-cicd init</code> writes all three for you.</p>
 <p><code>cdk-cicd exec</code> runs your app under a preload that injects the resolved config (and tags, synthesizer, and
 compliance Aspects) around it — which is how your plain <code>bin/</code> becomes wrapper-aware without a builder
 chain. The <code>stageStackName</code> import only names the stack.</p>
@@ -3100,7 +3103,7 @@ only ever write the few you need, because the wrapper resolves sensible defaults
 <tr>
 <td><code>qualifier</code></td>
 <td>Short (≤10 char) sanitized bootstrap id. Derived from <code>application</code> when unset; both synthesizers honor an explicit value.</td>
-<td>Set <code>'hnb659fds'</code> to deploy into accounts a plain <code>cdk bootstrap</code> prepared. Left unset, the derived value needs <code>cdk bootstrap --qualifier &lt;it&gt;</code> in every target account and Region.</td>
+<td>Set it to deploy into accounts already bootstrapped with another qualifier, and set <code>@aws-cdk/core:bootstrapQualifier</code> in <code>cdk.json</code> to the same value for the pipeline stack. Left unset, the derived value needs <code>cdk bootstrap --qualifier &lt;it&gt; --toolkit-stack-name CDKToolkit-&lt;it&gt;</code> in every target account and Region.</td>
 </tr>
 <tr>
 <td><code>repository</code></td>
@@ -3180,7 +3183,6 @@ synth step is still appended after them:</p>
 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">defineCICD</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">application</span><span class="o">:</span><span class="w"> </span><span class="s1">'my-app'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">qualifier</span><span class="o">:</span><span class="w"> </span><span class="s1">'hnb659fds'</span><span class="p">,</span><span class="w"> </span><span class="c1">// the qualifier a plain cdk bootstrap creates</span>
 <span class="w">  </span><span class="nx">repository</span><span class="o">:</span><span class="w"> </span><span class="kt">Repository.codestarConnection</span><span class="p">(</span>
 <span class="w">    </span><span class="s1">'my-org/my-app'</span><span class="p">,</span>
 <span class="w">    </span><span class="s1">'arn:aws:codestar-connections:eu-west-1:111111111111:connection/01234567-89ab-cdef-0123-456789abcdef'</span><span class="p">,</span>
@@ -3261,7 +3263,7 @@ models and tuning, private registries, and container mode.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    2026-11-24
+    2026-11-25
   </span>
 
     
