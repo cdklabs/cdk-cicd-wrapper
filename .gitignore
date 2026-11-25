@@ -62,6 +62,7 @@ node_modules
 !/.eslintrc.json
 !/.github/workflows/aislop.yml
 !/.github/workflows/docs.yml
+!/.github/workflows/sample-harness.yml
 docs/proof/
 packages/@cdklabs/cdk-cicd-wrapper/tsconfig.json
 !/.projenrc.ts
