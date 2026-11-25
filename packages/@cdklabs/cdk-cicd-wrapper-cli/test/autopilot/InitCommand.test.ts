@@ -265,6 +265,8 @@ describe('cdk-cicd init: next steps', () => {
     expect(steps).toContain(
       'npx cdk bootstrap aws://<ACCOUNT>/eu-west-1 --qualifier myapp --toolkit-stack-name CDKToolkit-myapp',
     );
+    // Re-bootstrapping replaces the trusted accounts and the execution policies, so the hint says to repeat them.
+    expect(steps).toMatch(/passing them again replaces each list, so repeat every account and the policies/);
     expect(steps).toContain('npx cdk-cicd synth --all');
     expect(steps).toContain('npx cdk-cicd deploy-ci');
     expect(steps).toContain('git remote add origin https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/my-app');

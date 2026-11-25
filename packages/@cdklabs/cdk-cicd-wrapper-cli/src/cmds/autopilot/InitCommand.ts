@@ -259,7 +259,8 @@ export function nextSteps(
   const steps = [
     `aws ssm get-parameter --name /cdk-bootstrap/${qualifier}/version --region ${where}   # bootstrapped with ${qualifier}?`,
     `npx cdk bootstrap aws://<ACCOUNT>/${where} --qualifier ${qualifier}${toolkit}   # if not, in the pipeline's and each stage's account and Region;`,
-    '#   a stage in another account adds --trust <PIPELINE_ACCOUNT> --cloudformation-execution-policies <POLICIES>',
+    '#   a stage in another account adds --trust <PIPELINE_ACCOUNT> --cloudformation-execution-policies <POLICIES>;',
+    '#   passing them again replaces each list, so repeat every account and the policies its bootstrap stack has',
     'npx cdk-cicd synth --all     # check every stage synthesizes',
     'npx cdk-cicd deploy-ci       # provision the pipeline (once; it updates itself from then on)',
   ];
