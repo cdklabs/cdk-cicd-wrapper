@@ -4,6 +4,7 @@
 // The Blueprint-compatible CDK Pipelines engine: reproduces the Blueprint pipeline shape (Source -> Build/Synth ->
 // UpdatePipeline self-mutation -> Assets -> one wave per stage, with a manual-approval gate on gated stages).
 
+import { execFileSync } from 'child_process';
 import * as path from 'path';
 import { App, Aspects, BOOTSTRAP_QUALIFIER_CONTEXT, Stack, Stage } from 'aws-cdk-lib';
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
@@ -19,6 +20,7 @@ import {
   CdkPipelinesEngine,
   CdkPipelinesStageContext,
   IStageProvider,
+  ssmWarmingCommands,
 } from '../../../src/engine/cdkpipelines/CdkPipelinesEngine';
 
 // A stand-in app-stack provider: puts one trivial stack (a bucket) into each stage so CDK Pipelines has
@@ -447,6 +449,21 @@ describe('Blueprint-compat: CdkPipelinesEngine (aws-cdk-lib/pipelines)', () => {
     expect(synthSpec).toContain('*Account*');
     // Fails loud when the scan finds nothing.
     expect(synthSpec).toContain('exit 1');
+  });
+
+  // Regression for a real CodeBuild failure: buildspec v0.2 runs EACH phase-command array entry as its
+  // own `/bin/sh` command line, so a `while ... do` whose `done` lives in a SEPARATE array entry dies
+  // with `Syntax error: end of file unexpected (expecting "done")`. Every element must therefore parse
+  // standalone. `sh -n` is parse-only -- exactly what CodeBuild's shell does to each entry.
+  test('every ssmWarmingCommands element is independently shell-parseable (buildspec v0.2 runs each as its own command)', () => {
+    const commands = ssmWarmingCommands('shop');
+    // Sanity: the loop and its `done` must live in the SAME element, not split across entries.
+    const loopElements = commands.filter((c) => /\bwhile\b/.test(c));
+    expect(loopElements).toHaveLength(1);
+    expect(loopElements[0]).toMatch(/\bdone\b/);
+    for (const cmd of commands) {
+      expect(() => execFileSync('sh', ['-n', '-c', cmd], { stdio: 'pipe' })).not.toThrow();
+    }
   });
 
   test('warmAccountsFromSsm grants the synth build ssm:GetParametersByPath scoped to the qualifier path', () => {
