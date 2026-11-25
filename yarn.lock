@@ -41,13 +41,13 @@
     jsonschema "~1.4.1"
     semver "^7.7.1"
 
-"@aws-cdk/cloud-assembly-schema@^55.2.0":
-  version "55.4.0"
-  resolved "https://registry.yarnpkg.com/@aws-cdk/cloud-assembly-schema/-/cloud-assembly-schema-55.4.0.tgz#d75c4c3199cb5f9803e1bb928efe6082fca5f388"
-  integrity sha512-u+vZLR1ZkmUZdbNRjrHPxpcNLhBHdJwG0bFx5IvEhN1J7AOhx+olWm/7K4e953YnPHr0y3CF2UxQlARqR9/FQg==
+"@aws-cdk/cloud-assembly-schema@^55.7.0":
+  version "55.7.0"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/cloud-assembly-schema/-/cloud-assembly-schema-55.7.0.tgz#332ffc3ab935f9b094fca463d39cbf9ac410d8c0"
+  integrity sha512-sgGkFDggs9mKQgUrpnMgCDq/suZ6mVpT1925rpemR1M8wempVtVtbT6WeEWsS15jZoxKY9a9xqSQbyG+BdT5aA==
   dependencies:
     jsonschema "^1.5.0"
-    semver "^7.8.5"
+    semver "^7.8.6"
 
 "@aws-cdk/integ-runner@^2.205.8":
   version "2.206.0"
@@ -7063,7 +7063,7 @@ semver@^6.3.0, semver@^6.3.1:
   resolved "https://registry.npmjs.org/semver/-/semver-6.3.1.tgz"
   integrity sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==
 
-semver@^7.5.2, semver@^7.5.3, semver@^7.5.4, semver@^7.6.0, semver@^7.7.1, semver@^7.7.2, semver@^7.7.3, semver@^7.8.5:
+semver@^7.5.2, semver@^7.5.3, semver@^7.5.4, semver@^7.6.0, semver@^7.7.1, semver@^7.7.2, semver@^7.7.3, semver@^7.8.5, semver@^7.8.6:
   version "7.8.6"
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.8.6.tgz#67c0cda133a3ceb6f70b803e67625bf969000424"
   integrity sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==
