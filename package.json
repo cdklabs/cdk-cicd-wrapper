@@ -47,7 +47,7 @@
     "all-contributors-cli": "^7.0.2",
     "cdklabs-projen-project-types": "^0.6.22",
     "constructs": "10.8.1",
-    "eslint": "^8",
+    "eslint": "^10",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.7",
     "husky": "^9.1.7",
